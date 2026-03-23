@@ -11,11 +11,8 @@
   hardware.xpadneo.enable = true;
 
   # ── Nintendo Switch Pro Controller / Joy-Cons ─────────────────────────────
-  hardware.nintendo-controllers.enable = true;
-
-  # ── DualShock 4 / DualSense (Sony) ───────────────────────────────────────
-  # Sony HID module is in-kernel; load it explicitly.
-  boot.kernelModules = [ "hid_sony" ];
+  # hid_nintendo is an in-kernel driver; no NixOS wrapper option exists in 24.11.
+  boot.kernelModules = [ "hid_nintendo" "hid_sony" ];
 
   # ── udev rules ────────────────────────────────────────────────────────────
   services.udev.extraRules = ''
