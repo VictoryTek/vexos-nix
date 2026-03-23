@@ -15,11 +15,28 @@
       url = "github:nix-community/home-manager/release-25.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # CachyOS kernel — official NixOS packaging.
+    # `release` branch: CI-verified builds present in binary cache.
+    # CRITICAL: Do NOT add inputs.nixpkgs.follows here.
+    # The version pinning between CachyOS patches and kernel source is managed
+    # internally by the release branch CI. Adding nixpkgs.follows breaks this.
+    nix-cachyos-kernel = {
+      url = "github:xddxdd/nix-cachyos-kernel/release";
+    };
   };
 
-  outputs = { self, nixpkgs, nix-gaming, ... }@inputs:
+  outputs = { self, nixpkgs, nix-gaming, nix-cachyos-kernel, ... }@inputs:
   let
     system = "x86_64-linux";
+
+    # Inline NixOS module that applies the CachyOS kernel overlay.
+    # Using a closure here (capturing nix-cachyos-kernel from the outputs scope)
+    # so the overlay works when nixosModules.base is consumed by external flakes
+    # (template/etc-nixos-flake.nix) without needing specialArgs.
+    cachyosOverlayModule = {
+      nixpkgs.overlays = [ nix-cachyos-kernel.overlays.default ];
+    };
 
     # Modules shared across all three configurations
     commonModules = [
@@ -28,6 +45,8 @@
 
       # nix-gaming: declarative low-latency PipeWire tuning
       nix-gaming.nixosModules.pipewireLowLatency
+
+      cachyosOverlayModule
     ];
   in
   {
@@ -67,11 +86,13 @@
           nix-gaming.nixosModules.pipewireLowLatency
           ./configuration.nix
         ];
+        nixpkgs.overlays = [ nix-cachyos-kernel.overlays.default ];
       };
 
       gpuAmd    = ./modules/gpu/amd.nix;
       gpuNvidia = ./modules/gpu/nvidia.nix;
       gpuVm     = ./modules/gpu/vm.nix;
+      asus      = ./modules/asus.nix;
     };
   };
 }

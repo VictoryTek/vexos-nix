@@ -6,5 +6,6 @@
   imports = [
     ../configuration.nix
     ../modules/gpu/nvidia.nix
+    ../modules/asus.nix
   ];
 }

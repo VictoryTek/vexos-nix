@@ -4,12 +4,18 @@
 { config, pkgs, lib, ... }:
 {
   # ── Kernel selection ──────────────────────────────────────────────────────
-  # zen: preemptive, tickless, optimized for desktop/gaming latency.
-  # Alternatives:
-  #   pkgs.linuxPackages_lqx    — Liquorix: includes BORE scheduler, more aggressive tuning
-  #   pkgs.linuxPackages_xanmod — XanMod: BORE + BBR3 + x86-64-v3 optimizations
-  #   pkgs.linuxPackages_latest — Latest mainline (bleeding edge)
-  boot.kernelPackages = pkgs.linuxPackages_zen;
+  # CachyOS BORE: Burst-Oriented Response Enhancer scheduler — best for gaming/interactive.
+  # Patches: ASUS hardware, AMD P-state, le9uo memory management, HDR, ACS override.
+  # Timer: 1000 Hz, full preemption. Thin LTO not used (avoids out-of-tree module issues).
+  # Source: github:xddxdd/nix-cachyos-kernel/release (official CachyOS NixOS packaging).
+  # Overlay applied in flake.nix (cachyosOverlayModule) makes pkgs.cachyosKernels available.
+  # vm.nix overrides this with lib.mkForce pkgs.linuxPackages (LTS) — VM is unaffected.
+  # Alternatives in pkgs.cachyosKernels.*:
+  #   linuxPackages-cachyos-latest  — EEVDF scheduler (general-purpose)
+  #   linuxPackages-cachyos-eevdf   — Pure EEVDF
+  #   linuxPackages-cachyos-deckify — Steam Deck optimized
+  #   linuxPackages-cachyos-lts     — CachyOS LTS (for stability)
+  boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-bore;
 
   # ── Kernel parameters ─────────────────────────────────────────────────────
   boot.kernelParams = [

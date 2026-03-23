@@ -19,4 +19,8 @@
 
   # In a VM the hypervisor manages power — override to performance governor
   powerManagement.cpuFreqGovernor = lib.mkForce "performance";
+
+  # zen kernel doesn't build VirtualBox GuestAdditions cleanly; use LTS instead.
+  # zen provides no benefit in a VM environment.
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages;
 }
