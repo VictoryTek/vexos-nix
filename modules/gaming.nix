@@ -41,10 +41,10 @@
 
   # ── OBS Studio ───────────────────────────────────────────────────────────
   # Use programs.obs-studio to properly wire the OBS VkCapture plugin via NixOS.
-  programs.obs-studio = {
-    enable = true;
-    plugins = [ pkgs.obs-studio-plugins.obs-vkcapture ];
-  };
+  #programs.obs-studio = {
+  #  enable = true;
+  #  plugins = [ pkgs.obs-studio-plugins.obs-vkcapture ];
+  #};
 
   # ── Gaming utilities ──────────────────────────────────────────────────────
   environment.systemPackages = with pkgs; [
@@ -53,8 +53,8 @@
 
     # Game launchers
     lutris          # multi-platform launcher (Proton/Wine)
-    heroic          # Epic / GOG / Amazon Games launcher
-    bottles         # Wine prefix manager
+  #  heroic          # Epic / GOG / Amazon Games launcher
+  #  bottles         # Wine prefix manager
 
     # Proton / Wine tooling
     protonup-qt     # GUI for managing Proton-GE and other runners

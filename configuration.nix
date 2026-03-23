@@ -13,8 +13,9 @@
   ];
 
   # ---------- Bootloader ----------
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
+  # NOT configured here — bootloader is host-specific hardware configuration.
+  # Set it once in your local /etc/nixos/flake.nix using the bootloaderModule
+  # section provided in the template (template/etc-nixos-flake.nix).
 
   # ---------- Networking (base) ----------
   networking.hostName = "vexos";
