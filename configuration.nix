@@ -50,7 +50,11 @@
   # ---------- Nix settings ----------
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
+
+    # Deduplicate identical files in the store (saves significant disk space)
     auto-optimise-store = true;
+
+    # Binary caches — fetch pre-built derivations instead of compiling locally
     substituters = [
       "https://cache.nixos.org"
       "https://nix-gaming.cachix.org"
@@ -59,6 +63,44 @@
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
       "nix-gaming.cachix.org-1:nbjlureqMbRAxR1gJ/f3hxemL9svXaZF/Ees8vCUUs4="
     ];
+
+    # Build concurrency — 1 job at a time, each using half the available cores.
+    # Prevents OOM on low-RAM machines; raise max-jobs on beefy hardware.
+    max-jobs = 1;
+    cores = 0; # 0 = auto-detect (uses all cores for the single active job)
+
+    # Nix daemon process priorities — keeps the system responsive during builds
+    # without killing the build on RAM-constrained hosts.
+    # (requires systemd; ignored on non-Linux)
+
+    # Automatically free store space during builds:
+    #   min-free: start GC when free store space drops below this (bytes)
+    #   max-free: stop GC once free store space reaches this
+    min-free = 1073741824;   # 1 GiB
+    max-free = 5368709120;   # 5 GiB
+
+    # Download only — do not keep build-time deps or .drv files after install
+    keep-outputs = false;
+    keep-derivations = false;
+  };
+
+  # Nix daemon: run builds at lower CPU and I/O priority so the
+  # desktop stays usable during a nixos-rebuild.
+  nix.daemonCPUSchedPolicy = "idle";
+  nix.daemonIOSchedClass = "idle";
+
+  # Automatic store garbage-collection: weekly, remove generations older than 7 days.
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 7d";
+  };
+
+  # Hard-link identical files in the store after every build
+  # (complements auto-optimise-store for any files added between GC runs).
+  nix.optimise = {
+    automatic = true;
+    dates = [ "weekly" ];
   };
 
   # ---------- Unfree packages (required for Steam, NVIDIA, proton-ge-bin) ----------
