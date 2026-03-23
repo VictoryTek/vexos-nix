@@ -79,6 +79,10 @@
     min-free = 1073741824;   # 1 GiB
     max-free = 5368709120;   # 5 GiB
 
+    # Larger download buffer — prevents "download buffer is full" warnings
+    # on slow or unstable connections during large fetches (e.g. Steam).
+    download-buffer-size = 524288000; # 500 MiB
+
     # Download only — do not keep build-time deps or .drv files after install
     keep-outputs = false;
     keep-derivations = false;
