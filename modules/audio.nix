@@ -1,0 +1,41 @@
+# modules/audio.nix
+# PipeWire audio stack with low-latency tuning, ALSA/PulseAudio/JACK compat,
+# rtkit realtime scheduling, and Bluetooth high-quality codec support.
+{ config, pkgs, lib, ... }:
+{
+  # rtkit: allows PipeWire and audio threads to use realtime scheduling
+  security.rtkit.enable = true;
+
+  services.pipewire = {
+    enable = true;
+
+    # ── Compatibility layers ────────────────────────────────────────────────
+    alsa.enable = true;
+    alsa.support32Bit = true; # required for 32-bit Wine/Proton audio paths
+    pulse.enable = true;      # PulseAudio compatibility
+    jack.enable = true;       # JACK compatibility (useful for pro audio / DAWs)
+
+    # ── Low-latency tuning ─────────────────────────────────────────────────
+    # nix-gaming.nixosModules.pipewireLowLatency is imported in flake.nix.
+    # Activate it here by setting the enable flag it exposes.
+    # (Do NOT also set the manual extraConfig entries below — they would conflict.)
+    lowLatency = {
+      enable = true;
+      # Defaults from nix-gaming: quantum = 64, rate = 48000 (~1.33 ms latency).
+      # Increase quantum to 128 or 256 if audio crackling occurs.
+    };
+
+    # ── WirePlumber: Bluetooth high-quality codecs ─────────────────────────
+    # Enables SBC-XQ (higher-quality SBC), mSBC, and hardware volume support.
+    wireplumber.extraConfig."10-bluez" = {
+      "monitor.bluez.properties" = {
+        "bluez5.enable-sbc-xq"    = true;
+        "bluez5.enable-msbc"      = true;
+        "bluez5.enable-hw-volume" = true;
+        "bluez5.roles" = [
+          "hsp_hs" "hsp_ag" "hfp_hf" "hfp_ag"
+        ];
+      };
+    };
+  };
+}
