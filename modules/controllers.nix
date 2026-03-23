@@ -11,7 +11,7 @@
   hardware.xpadneo.enable = true;
 
   # ── Nintendo Switch Pro Controller / Joy-Cons ─────────────────────────────
-  # hid_nintendo is an in-kernel driver; no NixOS wrapper option exists in 24.11.
+  # hid_nintendo is an in-kernel driver; no NixOS wrapper option exists in 25.05.
   boot.kernelModules = [ "hid_nintendo" "hid_sony" ];
 
   # ── udev rules ────────────────────────────────────────────────────────────

@@ -67,6 +67,7 @@
   # ---------- State version ----------
   # This value determines the NixOS release from which the default
   # settings for stateful data (like file locations) were taken.
-  # Do NOT change this after initial install.
+  # Do NOT change this after initial install — it stays at the version
+  # NixOS was first installed with, regardless of nixpkgs channel upgrades.
   system.stateVersion = "24.11";
 }

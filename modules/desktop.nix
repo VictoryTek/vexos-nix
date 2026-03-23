@@ -9,7 +9,7 @@
   # ── GDM display manager ───────────────────────────────────────────────────
   services.displayManager.gdm = {
     enable = true;
-    wayland = true; # Wayland session (default in GNOME 46+ / NixOS 24.11)
+    wayland = true; # Wayland session (default in GNOME 46+ / NixOS 25.05)
   };
 
   # ── XDG Desktop Portal ────────────────────────────────────────────────────

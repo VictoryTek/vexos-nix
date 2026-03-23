@@ -63,7 +63,7 @@ Context7 is NOT required for:
 Project Name: **vexos-nix**  
 Project Type: **Personal NixOS system configuration (Nix Flake)**  
 Primary Language(s): **Nix**  
-Framework(s): **NixOS 24.11, nixpkgs, Nix Flakes**  
+Framework(s): **NixOS 25.05, nixpkgs, Nix Flakes**  
 
 Build Command(s):  
 - `sudo nixos-rebuild switch --flake .#vexos-amd` (AMD GPU)  

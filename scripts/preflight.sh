@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # preflight.sh — vexos-nix Pre-Push Validation Script
-# Project: vexos-nix — Personal NixOS Flake (NixOS 24.11)
+# Project: vexos-nix — Personal NixOS Flake (NixOS 25.05)
 # Purpose: Validate flake structure, system closure, git hygiene, and code
 #          quality before pushing changes to GitHub.
 # Usage:   Run from repository root: bash scripts/preflight.sh

@@ -2,7 +2,7 @@
   description = "vexos-nix — Personal NixOS configuration";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
 
     # nix-gaming: low-latency PipeWire module, SteamOS platform optimisations, Wine-GE packages
     nix-gaming = {
@@ -12,7 +12,7 @@
 
     # home-manager: optional, for user-level dotfiles (future use)
     home-manager = {
-      url = "github:nix-community/home-manager/release-24.11";
+      url = "github:nix-community/home-manager/release-25.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

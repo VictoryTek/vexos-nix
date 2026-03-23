@@ -40,7 +40,9 @@
   };
 
   # ── MangoHud — in-game performance overlay ────────────────────────────────
-  programs.mangohud.enable = true;
+  # programs.mangohud is not available in NixOS 25.05; install via systemPackages.
+  # Enable per-game by prefixing with: mangohud %command% in Steam launch options.
+  environment.systemPackages = with pkgs; [ mangohud ];
 
   # ── OBS Studio ───────────────────────────────────────────────────────────
   # Use programs.obs-studio to properly wire the OBS VkCapture plugin via NixOS.
