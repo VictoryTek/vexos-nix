@@ -28,9 +28,6 @@
 
       # nix-gaming: declarative low-latency PipeWire tuning
       nix-gaming.nixosModules.pipewireLowLatency
-
-      # nix-gaming: Steam platform optimisations (runtime, etc.)
-      nix-gaming.nixosModules.steamPlatformOptimizations
     ];
   in
   {
@@ -68,7 +65,6 @@
       base = { ... }: {
         imports = [
           nix-gaming.nixosModules.pipewireLowLatency
-          nix-gaming.nixosModules.steamPlatformOptimizations
           ./configuration.nix
         ];
       };
