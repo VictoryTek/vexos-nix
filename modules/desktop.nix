@@ -53,12 +53,13 @@
       liberation_ttf
       fira-code
       fira-code-symbols
-      (nerdfonts.override { fonts = [ "FiraCode" "JetBrainsMono" ]; })
+      pkgs.nerd-fonts.fira-code
+      pkgs.nerd-fonts.jetbrains-mono
     ];
     fontconfig.defaultFonts = {
       serif     = [ "Noto Serif" ];
       sansSerif = [ "Noto Sans" ];
-      monospace = [ "FiraCode Nerd Font" ];
+      monospace = [ "FiraCode Nerd Font Mono" ];
     };
   };
 
