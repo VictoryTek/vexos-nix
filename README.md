@@ -1,32 +1,43 @@
 # vexos-nix
 
-Gaming-focused NixOS config (GNOME, Steam, Proton, PipeWire, zen kernel). Pick the variant that matches your hardware.
+Gaming-focused NixOS config (GNOME, Steam, Proton, PipeWire, zen kernel). No cloning required — `/etc/nixos` is the only working directory you need.
 
 ## Fresh install
 
-> Assumes NixOS is installed and `nixos-generate-config` has already run (hardware config lives at `/etc/nixos/hardware-configuration.nix`).
+> Assumes NixOS is installed and `hardware-configuration.nix` already exists at `/etc/nixos/`.
+
+**1. Drop the flake wrapper into `/etc/nixos`**
 
 ```bash
-nix-shell -p git
-git clone <this-repo> ~/vexos-nix
-cd ~/vexos-nix
-sudo nixos-rebuild switch --flake .#vexos-amd     # AMD GPU
-# sudo nixos-rebuild switch --flake .#vexos-nvidia  # NVIDIA GPU
-# sudo nixos-rebuild switch --flake .#vexos-vm      # VM (QEMU / VirtualBox)
+sudo curl -fsSL -o /etc/nixos/flake.nix \
+  https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/template/etc-nixos-flake.nix
 ```
 
-That's it. Log out and back in after the first switch.
+**2. Switch**
+
+```bash
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd     # AMD GPU
+# sudo nixos-rebuild switch --flake /etc/nixos#vexos-nvidia  # NVIDIA GPU
+# sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm      # VM (QEMU / VirtualBox)
+```
+
+Log out and back in after the first switch.
+
+## How it works
+
+`/etc/nixos/flake.nix` is a tiny wrapper that pulls the full config from GitHub. Your `hardware-configuration.nix` never leaves `/etc/nixos`. On every rebuild NixOS uses the pinned version in `/etc/nixos/flake.lock`.
 
 ## Variants
 
 | Target | Use for |
 |---|---|
-| `.#vexos-amd` | AMD GPU (RADV, ROCm, LACT) |
-| `.#vexos-nvidia` | NVIDIA GPU (proprietary, open kernel modules) |
-| `.#vexos-vm` | QEMU/KVM or VirtualBox guest |
+| `vexos-amd` | AMD GPU (RADV, ROCm, LACT) |
+| `vexos-nvidia` | NVIDIA GPU (proprietary, open kernel modules) |
+| `vexos-vm` | QEMU/KVM or VirtualBox guest |
 
-## Updating
+## Updating to the latest config
 
 ```bash
-nix flake update && sudo nixos-rebuild switch --flake .#vexos-amd
+cd /etc/nixos && sudo nix flake update
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd
 ```
