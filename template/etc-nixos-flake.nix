@@ -6,39 +6,6 @@
 #   sudo curl -fsSL -o /etc/nixos/flake.nix \
 #     https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/template/etc-nixos-flake.nix
 #   sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd
-# ════════════════════════════════════════════════════════════════════════════
-# BOOTLOADER — configure once for this host, then never touch again.
-# Uncomment ONE of the two blocks below that matches your firmware/setup.
-# ════════════════════════════════════════════════════════════════════════════
-#
-# ── Option A: EFI (most modern bare-metal installs) ─────────────────────────
-#let
-#  bootloaderModule = {
-#    boot.loader.systemd-boot.enable      = true;
-#    boot.loader.efi.canTouchEfiVariables = true;
-#  };
-#in
-#
-# ── Option B: BIOS / Legacy (VirtualBox without EFI, older hardware) ─────────
-#let
-#  bootloaderModule = {
-#    boot.loader.systemd-boot.enable = false;
-#    boot.loader.grub = {
-#      enable     = true;
-#      efiSupport = false;
-#      device     = "/dev/sda";  # ← change to your disk (check: lsblk)
-#    };
-#  };
-#in
-# ════════════════════════════════════════════════════════════════════════════
-let
-  # Default: EFI / systemd-boot (modern bare-metal installs).
-  # Switch to Option B above if this host uses BIOS firmware (e.g. a BIOS VM).
-  bootloaderModule = {
-    boot.loader.systemd-boot.enable      = true;
-    boot.loader.efi.canTouchEfiVariables = true;
-  };
-in
 {
   inputs = {
     vexos-nix.url = "github:VictoryTek/vexos-nix";
@@ -47,7 +14,39 @@ in
     nixpkgs.follows = "vexos-nix/nixpkgs";
   };
 
-  outputs = { self, vexos-nix, nixpkgs }: {
+  outputs = { self, vexos-nix, nixpkgs }:
+  # ════════════════════════════════════════════════════════════════════════════
+  # BOOTLOADER — configure once for this host, then never touch again.
+  # To override: comment out the active bootloaderModule assignment in the
+  # let block below, then uncomment the desired option here and move it inside
+  # that let block.
+  # ════════════════════════════════════════════════════════════════════════════
+  #
+  # ── Option A: EFI (most modern bare-metal installs) ─────────────────────────
+  # bootloaderModule = {
+  #   boot.loader.systemd-boot.enable      = true;
+  #   boot.loader.efi.canTouchEfiVariables = true;
+  # };
+  #
+  # ── Option B: BIOS / Legacy (VirtualBox without EFI, older hardware) ─────────
+  # bootloaderModule = {
+  #   boot.loader.systemd-boot.enable = false;
+  #   boot.loader.grub = {
+  #     enable     = true;
+  #     efiSupport = false;
+  #     device     = "/dev/sda";  # ← change to your disk (check: lsblk)
+  #   };
+  # };
+  # ════════════════════════════════════════════════════════════════════════════
+  let
+    # Default: EFI / systemd-boot (modern bare-metal installs).
+    # Switch to Option B above if this host uses BIOS firmware (e.g. a BIOS VM).
+    bootloaderModule = {
+      boot.loader.systemd-boot.enable      = true;
+      boot.loader.efi.canTouchEfiVariables = true;
+    };
+  in
+  {
 
     # ── AMD GPU ──────────────────────────────────────────────────────────────
     nixosConfigurations.vexos-amd = nixpkgs.lib.nixosSystem {
