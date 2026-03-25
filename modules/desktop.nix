@@ -132,23 +132,111 @@
     unstable.gnomeExtensions.background-logo            # Desktop background logo
   ];
 
-  # ── Enable GNOME Shell extensions by default ────────────────────────────
+  # ── GNOME dconf system defaults ────────────────────────────────────────────
+  # Written to the NixOS system dconf database at build time.
+  # Does NOT require a D-Bus session, so settings are available at first login.
+  # Users can still override these via GNOME Settings or dconf-editor
+  # (system DB is not locked; user-db:user takes precedence in the profile).
   programs.dconf.profiles.user.databases = [{
     settings = {
       "org/gnome/shell" = {
         enabled-extensions = [
           "appindicatorsupport@rgcjonas.gmail.com"
           "dash-to-dock@micxgx.gmail.com"
-          "AlphabeticalAppGrid@stuarthayhurst.com"
-          "gamemode@christian.kellner.me"
-          "gnome-40-ui-improvements@someone_else"
+          "AlphabeticalAppGrid@stuarthayhurst"
+          "gamemodeshellextension@trsnaqe.com"
+          "gnome-ui-tune@itstime.tech"
           "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
-          "steal-my-focus-window@koutch.github.io"
+          "steal-my-focus-window@steal-my-focus-window"
           "tailscale-status@maxgallup.github.com"
           "caffeine@patapon.info"
-          "restart-to@pratap.fastmail.fm"
+          pkgs.gnomeExtensions.restart-to.extensionUuid
           "blur-my-shell@aunetx"
           "background-logo@fedorahosted.org"
+        ];
+        favorite-apps = [
+          "brave-browser.desktop"
+          "app.zen_browser.zen.desktop"
+          "org.gnome.Nautilus.desktop"
+          "com.mitchellh.ghostty.desktop"
+          "io.github.up.desktop"
+          "org.gnome.Boxes.desktop"
+          "code.desktop"
+          "discord.desktop"
+        ];
+      };
+      "org/gnome/desktop/interface" = {
+        clock-format = "12h";
+        cursor-size  = 24;
+        cursor-theme = "Bibata-Modern-Classic";
+        icon-theme   = "kora";
+      };
+      "org/gnome/desktop/wm/preferences" = {
+        button-layout = "appmenu:minimize,maximize,close";
+      };
+      "org/gnome/desktop/background" = {
+        picture-uri      = "file:///home/nimda/Pictures/Wallpapers/vex-bb-light.jxl";
+        picture-uri-dark = "file:///home/nimda/Pictures/Wallpapers/vex-bb-dark.jxl";
+        picture-options  = "zoom";
+      };
+      "org/gnome/shell/extensions/dash-to-dock" = {
+        dock-position = "LEFT";
+      };
+      "org/gnome/desktop/screensaver" = {
+        lock-enabled = true;
+        lock-delay   = 0;  # lock immediately (uint32 0; written as int32 — read correctly by GNOME)
+      };
+      "org/gnome/session" = {
+        idle-delay = 300;  # 5 min inactivity (uint32 300; written as int32 — read correctly by GNOME)
+      };
+      "org/gnome/desktop/app-folders" = {
+        folder-children = [ "Games" "Office" "Utilities" "System" ];
+      };
+      "org/gnome/desktop/app-folders/folders/Games" = {
+        name = "Games";
+        apps = [
+          "org.prismlauncher.PrismLauncher.desktop"
+          "com.vysp3r.ProtonPlus.desktop"
+        ];
+      };
+      "org/gnome/desktop/app-folders/folders/Office" = {
+        name = "Office";
+        apps = [
+          "org.onlyoffice.desktopeditors.desktop"
+          "org.gnome.TextEditor.desktop"
+          "org.gnome.Papers.desktop"
+        ];
+      };
+      "org/gnome/desktop/app-folders/folders/Utilities" = {
+        name = "Utilities";
+        apps = [
+          "com.mattjakeman.ExtensionManager.desktop"
+          "it.mijorus.gearlever.desktop"
+          "org.gnome.tweaks.desktop"
+          "io.github.flattool.Warehouse.desktop"
+          "io.missioncenter.MissionCenter.desktop"
+          "com.github.tchx84.Flatseal.desktop"
+        ];
+      };
+      "org/gnome/desktop/app-folders/folders/System" = {
+        name = "System";
+        apps = [
+          "org.pulseaudio.pavucontrol.desktop"
+          "rog-control-center.desktop"
+          "org.gnome.SystemMonitor.desktop"
+          "org.gnome.Settings.desktop"
+          "org.gnome.seahorse.Application.desktop"
+          "nixos-manual.desktop"
+          "cups.desktop"
+          "blivet-gui.desktop"
+          "blueman-manager.desktop"
+          "btop.desktop"
+          "ca.desrt.dconf-editor.desktop"
+          "org.gnome.baobab.desktop"
+          "org.gnome.DiskUtility.desktop"
+          "org.gnome.font-viewer.desktop"
+          "htop.desktop"
+          "org.gnome.Logs.desktop"
         ];
       };
     };
