@@ -2,6 +2,38 @@
 # GNOME desktop: GDM Wayland, XDG portals, fonts, Ozone env var, printing, Bluetooth.
 { config, pkgs, lib, ... }:
 {
+  # ── GNOME stack sourced from nixpkgs-unstable ──────────────────────────────
+  # Replaces the GNOME desktop shell and its default-shipped applications with
+  # the latest builds from nixos-unstable.  Everything else on the system stays
+  # on nixos-25.05.  pkgs.unstable is provided by the unstableOverlayModule
+  # defined in flake.nix.
+  nixpkgs.overlays = [
+    (final: prev: let u = final.unstable; in {
+      # Core GNOME shell stack
+      gnome-shell            = u.gnome-shell;
+      mutter                 = u.mutter;
+      gdm                    = u.gdm;
+      gnome-session          = u.gnome-session;
+      gnome-settings-daemon  = u.gnome-settings-daemon;
+      gnome-control-center   = u.gnome-control-center;
+      gnome-shell-extensions = u.gnome-shell-extensions;
+
+      # Default GNOME applications
+      nautilus               = u.nautilus;           # Files
+      gnome-console          = u.gnome-console;      # Terminal
+      gnome-text-editor      = u.gnome-text-editor;
+      gnome-system-monitor   = u.gnome-system-monitor;
+      gnome-calculator       = u.gnome-calculator;
+      gnome-calendar         = u.gnome-calendar;
+      loupe                  = u.loupe;              # Image Viewer
+      evince                 = u.evince;             # Document Viewer
+      totem                  = u.totem;              # Videos
+      gnome-disk-utility     = u.gnome-disk-utility;
+      baobab                 = u.baobab;             # Disk Usage Analyzer
+      gnome-software         = u.gnome-software;
+    })
+  ];
+
   # ── GNOME desktop ─────────────────────────────────────────────────────────
   services.xserver.enable = true;
   services.xserver.desktopManager.gnome.enable = true;
@@ -31,16 +63,42 @@
     gnome-photos
     gnome-tour
     gnome-connections
-    epiphany  # GNOME Web — most users prefer Firefox/Chromium
-    geary     # GNOME email client
+    gnome-weather
+    gnome-clocks
+    gnome-contacts
+    gnome-maps
+    gnome-characters
+    gnome-user-docs
+    yelp
+    simple-scan
+    epiphany    # GNOME Web
+    geary       # GNOME email client
+    xterm
+    gnome-music
+    rhythmbox
   ];
 
   # ── Desktop packages ──────────────────────────────────────────────────────
   environment.systemPackages = with pkgs; [
-    gnome-tweaks              # GNOME customisation GUI
-    gnome-extension-manager  # Install/manage GNOME Shell extensions
-    dconf-editor              # Low-level GNOME settings editor
-    gnomeExtensions.appindicator # System tray icons (Steam, Discord, etc.)
+    # GNOME tooling
+    unstable.gnome-tweaks              # GNOME customisation GUI
+    unstable.gnome-extension-manager  # Install/manage GNOME Shell extensions
+    unstable.dconf-editor              # Low-level GNOME settings editor
+    unstable.gnome-boxes               # Virtual machine manager
+
+    # GNOME Shell extensions
+    unstable.gnomeExtensions.appindicator               # System tray icons
+    unstable.gnomeExtensions.dash-to-dock               # macOS-style dock
+    unstable.gnomeExtensions.alphabetical-app-grid      # Sort app grid alphabetically
+    unstable.gnomeExtensions.gamemode-shell-extension   # GameMode status indicator
+    unstable.gnomeExtensions.gnome-40-ui-improvements   # UI tweaks
+    unstable.gnomeExtensions.nothing-to-say             # Mic mute indicator
+    unstable.gnomeExtensions.steal-my-focus-window      # Force window focus
+    unstable.gnomeExtensions.tailscale-status           # Tailscale tray indicator
+    unstable.gnomeExtensions.caffeine                   # Prevent screen sleep
+    unstable.gnomeExtensions.restart-to                 # Restart-to menu entry
+    unstable.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
+    unstable.gnomeExtensions.background-logo            # Desktop background logo
   ];
 
   # ── Fonts ─────────────────────────────────────────────────────────────────
