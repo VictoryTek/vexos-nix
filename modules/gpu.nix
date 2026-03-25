@@ -31,6 +31,6 @@
     libva-utils  # vainfo — verify VA-API acceleration
     vulkan-tools # vulkaninfo
     vulkan-loader
-    glxinfo      # OpenGL / Vulkan renderer info
+    mesa-demos   # glxinfo, glxgears — OpenGL / Vulkan renderer info
   ];
 }

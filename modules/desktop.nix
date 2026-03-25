@@ -36,10 +36,10 @@
 
   # ── GNOME desktop ─────────────────────────────────────────────────────────
   services.xserver.enable = true;
-  services.xserver.desktopManager.gnome.enable = true;
+  services.desktopManager.gnome.enable = true;
 
   # ── GDM display manager ───────────────────────────────────────────────────
-  services.xserver.displayManager.gdm = {
+  services.displayManager.gdm = {
     enable = true;
     wayland = true; # Wayland session (default in GNOME 47+ / NixOS 25.11)
   };
