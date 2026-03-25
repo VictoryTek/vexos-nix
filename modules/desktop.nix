@@ -39,7 +39,9 @@
   services.xserver.desktopManager.gnome.enable = true;
 
   # ── GDM display manager ───────────────────────────────────────────────────
-  services.xserver.displayManager.gdm = {
+  # NixOS 25.05+: services.displayManager.gdm replaces the deprecated
+  # services.xserver.displayManager.gdm path.
+  services.displayManager.gdm = {
     enable = true;
     wayland = true; # Wayland session (default in GNOME 46+ / NixOS 25.05)
   };
