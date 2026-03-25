@@ -53,4 +53,10 @@ sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd
 
 cd /etc/nixos && sudo nix flake update
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm
+
+
+
+sudo nix --extra-experimental-features 'nix-command flakes' flake update --flake /etc/nixos
+
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm
 ```
