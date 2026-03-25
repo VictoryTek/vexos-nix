@@ -184,10 +184,10 @@
       };
       "org/gnome/desktop/screensaver" = {
         lock-enabled = true;
-        lock-delay   = 0;  # lock immediately (uint32 0; written as int32 — read correctly by GNOME)
+        lock-delay   = lib.gvariant.mkUint32 0;  # lock immediately
       };
       "org/gnome/session" = {
-        idle-delay = 300;  # 5 min inactivity (uint32 300; written as int32 — read correctly by GNOME)
+        idle-delay = lib.gvariant.mkUint32 300;  # 5 min inactivity
       };
       "org/gnome/desktop/app-folders" = {
         folder-children = [ "Games" "Office" "Utilities" "System" ];
