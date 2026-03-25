@@ -167,7 +167,7 @@
       };
       "org/gnome/desktop/interface" = {
         clock-format = "12h";
-        cursor-size  = 24;
+        cursor-size  = lib.gvariant.mkInt32 24;
         cursor-theme = "Bibata-Modern-Classic";
         icon-theme   = "kora";
       };
