@@ -6,14 +6,19 @@ Gaming-focused NixOS config (GNOME, Steam, Proton, PipeWire, zen kernel). No clo
 
 > Assumes NixOS is installed and `hardware-configuration.nix` already exists at `/etc/nixos/`.
 
-**1. Drop the flake wrapper into `/etc/nixos`**
+**1. **Install git**
+   ```bash
+   nix-shell -p git
+   ```
+
+**2. Drop the flake wrapper into `/etc/nixos`**
 
 ```bash
 sudo curl -fsSL -o /etc/nixos/flake.nix \
   https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/template/etc-nixos-flake.nix
 ```
 
-**2. Switch**
+**3. Switch**
 
 ```bash
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd     # AMD GPU
