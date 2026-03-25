@@ -78,7 +78,7 @@
     gnome-calculator
     gnome-calendar
     loupe
-    evince      # renamed to Papers; Flatpak: org.gnome.Papers
+    gnome-papers  # previously evince; renamed in nixpkgs 25.11
     totem
   ];
 
