@@ -49,7 +49,7 @@
   # ── Gaming utilities ──────────────────────────────────────────────────────
   environment.systemPackages = with pkgs; [
     # Performance overlay — enable per-game with: mangohud %command% in Steam launch options
-    mangohud
+    ## mangohud
 
     # Proton / Wine tooling
     protontricks    # winetricks wrapper for Steam games
@@ -66,10 +66,10 @@
 
     # Container tooling (Distrobox for running other distro environments)
     distrobox
-    podman
+    ## podman
 
     # Input remapping
-    input-remapper
+    ## input-remapper
 
     # NOTE: lutris and protonup-qt are installed via Flatpak
     # (net.lutris.Lutris and net.davidotek.pupgui2 in modules/flatpak.nix).
@@ -78,5 +78,5 @@
   # ── Input Remapper daemon ─────────────────────────────────────────────────
   # Use the NixOS service module instead of a manual systemd service definition
   # to avoid conflicts with the packaged service file.
-  services.input-remapper.enable = true;
+  ##services.input-remapper.enable = true;
 }

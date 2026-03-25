@@ -78,7 +78,7 @@
     gnome-calculator
     gnome-calendar
     loupe
-    gnome-papers  # previously evince; renamed in nixpkgs 25.11
+    # gnome-papers omitted — not yet a top-level pkgs attribute in nixos-25.11
     totem
   ];
 
