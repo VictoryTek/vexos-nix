@@ -21,16 +21,12 @@
       # Default GNOME applications
       nautilus               = u.nautilus;           # Files
       gnome-console          = u.gnome-console;      # Terminal
-      gnome-text-editor      = u.gnome-text-editor;
-      gnome-system-monitor   = u.gnome-system-monitor;
-      gnome-calculator       = u.gnome-calculator;
-      gnome-calendar         = u.gnome-calendar;
-      loupe                  = u.loupe;              # Image Viewer
-      evince                 = u.evince;             # Document Viewer
-      totem                  = u.totem;              # Videos
       gnome-disk-utility     = u.gnome-disk-utility;
       baobab                 = u.baobab;             # Disk Usage Analyzer
       gnome-software         = u.gnome-software;
+      # NOTE: gnome-text-editor, gnome-system-monitor, gnome-calculator,
+      # gnome-calendar, loupe, evince/papers, and totem are installed via
+      # Flatpak (see modules/flatpak.nix) to avoid local compilation.
     })
   ];
 
@@ -76,7 +72,42 @@
     xterm
     gnome-music
     rhythmbox
+    # Replaced by Flatpak versions (latest from Flathub, avoids local compilation)
+    gnome-text-editor
+    gnome-system-monitor
+    gnome-calculator
+    gnome-calendar
+    loupe
+    evince      # renamed to Papers; Flatpak: org.gnome.Papers
+    totem
   ];
+
+  # ── GNOME default app Flatpaks ────────────────────────────────────────────
+  # GNOME apps excluded from Nix packages above are installed from Flathub
+  # instead, keeping them up-to-date independently of nixpkgs.
+  # Runs after flatpak-add-flathub.service (defined in modules/flatpak.nix).
+  systemd.services.flatpak-install-gnome-apps = {
+    description = "Install GNOME default apps from Flathub";
+    wantedBy    = [ "multi-user.target" ];
+    after       = [ "flatpak-add-flathub.service" ];
+    requires    = [ "flatpak-add-flathub.service" ];
+    path        = [ pkgs.flatpak ];
+    script      = ''
+      flatpak install --noninteractive --assumeyes flathub \
+        org.gnome.TextEditor \
+        org.gnome.SystemMonitor \
+        org.gnome.Calculator \
+        org.gnome.Calendar \
+        org.gnome.Loupe \
+        org.gnome.Papers \
+        org.gnome.Totem \
+        || true
+    '';
+    serviceConfig = {
+      Type            = "oneshot";
+      RemainAfterExit = true;
+    };
+  };
 
   # ── Desktop packages ──────────────────────────────────────────────────────
   environment.systemPackages = with pkgs; [

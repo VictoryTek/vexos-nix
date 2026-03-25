@@ -47,6 +47,11 @@
         com.mattjakeman.ExtensionManager \
         com.rustdesk.RustDesk \
         io.github.kolunmi.Bazaar \
+        com.brave.Browser \
+        org.pulseaudio.pavucontrol \
+        com.vysp3r.ProtonPlus \
+        net.lutris.Lutris \
+        net.davidotek.pupgui2 \
         || true
     '';
     serviceConfig = {

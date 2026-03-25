@@ -20,14 +20,11 @@
     rustup
     unstable.nodejs_25  # pinned to unstable for latest LTS
 
-    # Browsers
-    brave
-
-    # Gaming utilities
-    protonplus
-
     # Terminal emulator
     ghostty
+
+    # Communication
+    discord
 
     # Terminal utilities
     tree
@@ -39,7 +36,7 @@
     tmux
     just
 
-    # Themes
+    # Themes (must be Nix — consumed by gtk.iconTheme / home.pointerCursor)
     bibata-cursors
     kora-icon-theme
 
@@ -47,11 +44,13 @@
     fastfetch
     btop
     inxi
-    pavucontrol
     blivet-gui
 
     # TODO: add the 'up' flake input (e.g. inputs.up.url = "github:...") and uncomment:
     # inputs.up.packages.${pkgs.stdenv.hostPlatform.system}.default
+
+    # NOTE: brave, pavucontrol, protonplus are installed via Flatpak
+    # (see modules/flatpak.nix). Moving GUI apps to Flatpak avoids local compilation.
   ];
 
   # ── Shell ──────────────────────────────────────────────────────────────────

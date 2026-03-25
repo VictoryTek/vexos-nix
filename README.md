@@ -59,4 +59,8 @@ sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm
 sudo nix --extra-experimental-features 'nix-command flakes' flake update --flake /etc/nixos
 
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm
+
+
+
+sudo nixos-rebuild switch --rollback   
 ```

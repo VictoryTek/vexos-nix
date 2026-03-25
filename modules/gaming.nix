@@ -51,13 +51,7 @@
     # Performance overlay — enable per-game with: mangohud %command% in Steam launch options
     mangohud
 
-    # Game launchers
-    lutris          # multi-platform launcher (Proton/Wine)
-  #  heroic          # Epic / GOG / Amazon Games launcher
-  #  bottles         # Wine prefix manager
-
     # Proton / Wine tooling
-    protonup-qt     # GUI for managing Proton-GE and other runners
     protontricks    # winetricks wrapper for Steam games
     umu-launcher    # Proton launcher for non-Steam games
 
@@ -76,6 +70,9 @@
 
     # Input remapping
     input-remapper
+
+    # NOTE: lutris and protonup-qt are installed via Flatpak
+    # (net.lutris.Lutris and net.davidotek.pupgui2 in modules/flatpak.nix).
   ];
 
   # ── Input Remapper daemon ─────────────────────────────────────────────────
