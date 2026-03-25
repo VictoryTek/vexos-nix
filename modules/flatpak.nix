@@ -23,7 +23,39 @@
     };
   };
 
-  # Ensure Flatpak-installed desktop files are visible to KDE Plasma's app launcher.
+  # Automatically install Flatpak applications from Flathub on boot.
+  # Runs after Flathub remote is registered; idempotent (install --noninteractive).
+  systemd.services.flatpak-install-apps = {
+    description = "Install Flatpak applications from Flathub";
+    wantedBy    = [ "multi-user.target" ];
+    after       = [ "flatpak-add-flathub.service" ];
+    requires    = [ "flatpak-add-flathub.service" ];
+    path        = [ pkgs.flatpak ];
+    script      = ''
+      flatpak install --noninteractive --assumeyes flathub \
+        com.bitwarden.desktop \
+        io.github.pol_rivero.github-desktop-plus \
+        com.github.tchx84.Flatseal \
+        it.mijorus.gearlever \
+        org.gimp.GIMP \
+        io.missioncenter.MissionCenter \
+        org.onlyoffice.desktopeditors \
+        org.prismlauncher.PrismLauncher \
+        com.simplenote.Simplenote \
+        io.github.flattool.Warehouse \
+        app.zen_browser.zen \
+        com.mattjakeman.ExtensionManager \
+        com.rustdesk.RustDesk \
+        io.github.kolunmi.Bazaar \
+        || true
+    '';
+    serviceConfig = {
+      Type            = "oneshot";
+      RemainAfterExit = true;
+    };
+  };
+
+  # Ensure Flatpak-installed desktop files are visible to GNOME's app launcher.
   environment.sessionVariables = {
     XDG_DATA_DIRS = lib.mkAfter [
       "/var/lib/flatpak/exports/share"

@@ -101,6 +101,28 @@
     unstable.gnomeExtensions.background-logo            # Desktop background logo
   ];
 
+  # ── Enable GNOME Shell extensions by default ────────────────────────────
+  programs.dconf.profiles.user.databases = [{
+    settings = {
+      "org/gnome/shell" = {
+        enabled-extensions = [
+          "appindicatorsupport@rgcjonas.gmail.com"
+          "dash-to-dock@micxgx.gmail.com"
+          "AlphabeticalAppGrid@stuarthayhurst.com"
+          "gamemode@christian.kellner.me"
+          "gnome-40-ui-improvements@someone_else"
+          "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
+          "steal-my-focus-window@koutch.github.io"
+          "tailscale-status@maxgallup.github.com"
+          "caffeine@patapon.info"
+          "restart-to@pratap.fastmail.fm"
+          "blur-my-shell@aunetx"
+          "background-logo@fedorahosted.org"
+        ];
+      };
+    };
+  }];
+
   # ── Fonts ─────────────────────────────────────────────────────────────────
   fonts = {
     enableDefaultPackages = true;
