@@ -6,7 +6,7 @@ Gaming-focused NixOS config (GNOME, Steam, Proton, PipeWire, zen kernel). No clo
 
 > Assumes NixOS is installed and `hardware-configuration.nix` already exists at `/etc/nixos/`.
 
-**1. **Install git**
+**1. Install git**
    ```bash
    nix-shell -p git
    ```
@@ -21,9 +21,11 @@ sudo curl -fsSL -o /etc/nixos/flake.nix \
 **3. Switch**
 
 ```bash
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-nvidia  # NVIDIA GPU
+
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd     # AMD GPU
-# sudo nixos-rebuild switch --flake /etc/nixos#vexos-nvidia  # NVIDIA GPU
-# sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm      # VM (QEMU / VirtualBox)
+
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm      # VM (QEMU / VirtualBox)
 ```
 
 Log out and back in after the first switch.
@@ -44,5 +46,11 @@ Log out and back in after the first switch.
 
 ```bash
 cd /etc/nixos && sudo nix flake update
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-nvidia
+
+cd /etc/nixos && sudo nix flake update
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd
+
+cd /etc/nixos && sudo nix flake update
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm
 ```
