@@ -3,6 +3,7 @@
 {
   imports = [
     ./modules/desktop.nix
+    ./modules/packages.nix
     ./modules/gaming.nix
     ./modules/audio.nix
     ./modules/gpu.nix

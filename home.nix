@@ -49,8 +49,8 @@
     # TODO: add the 'up' flake input (e.g. inputs.up.url = "github:...") and uncomment:
     # inputs.up.packages.${pkgs.stdenv.hostPlatform.system}.default
 
-    # NOTE: brave, pavucontrol, protonplus are installed via Flatpak
-    # (see modules/flatpak.nix). Moving GUI apps to Flatpak avoids local compilation.
+    # NOTE: pavucontrol and protonplus are installed via Flatpak (see modules/flatpak.nix).
+    # brave is installed as a Nix package (see modules/packages.nix).
   ];
 
   # ── Shell ──────────────────────────────────────────────────────────────────
@@ -113,12 +113,128 @@
 
   # ── Wallpapers ─────────────────────────────────────────────────────────────
   # Copied from the repo into ~/Pictures/Wallpapers/ at each activation.
-  # JXL format requires a gdk-pixbuf loader; add jxl-pixbuf-loader (or equivalent)
-  # to environment.systemPackages in modules/desktop.nix if wallpapers don't appear.
-  # TODO: add wallpaper files to a wallpapers/ directory at the repo root, then uncomment:
-  # home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/vex-bb-light.jxl;
-  # home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/vex-bb-dark.jxl;
+  # JXL format requires a gdk-pixbuf loader; GNOME on NixOS may need jxl-pixbuf-loader
+  # added to environment.systemPackages in modules/desktop.nix if wallpapers don't appear.
+  home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/vex-bb-light.jxl;
+  home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/vex-bb-dark.jxl;
+  # ── GNOME dconf settings ────────────────────────────────────────────────
+  # Written directly into the user's dconf binary db during home-manager activation.
+  # These override system-level defaults and are the authoritative source for all
+  # GNOME settings tracked in this repo.
+  dconf.settings = {
 
+    "org/gnome/shell" = {
+      enabled-extensions = [
+        "appindicatorsupport@rgcjonas.gmail.com"
+        "dash-to-dock@micxgx.gmail.com"
+        "AlphabeticalAppGrid@stuarthayhurst"
+        "gamemodeshellextension@trsnaqe.com"
+        "gnome-ui-tune@itstime.tech"
+        "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
+        "steal-my-focus-window@steal-my-focus-window"
+        "tailscale-status@maxgallup.github.com"
+        "caffeine@patapon.info"
+        pkgs.unstable.gnomeExtensions.restart-to.extensionUuid
+        "blur-my-shell@aunetx"
+        "background-logo@fedorahosted.org"
+      ];
+      favorite-apps = [
+        "brave-browser.desktop"
+        "app.zen_browser.zen.desktop"
+        "org.gnome.Nautilus.desktop"
+        "com.mitchellh.ghostty.desktop"
+        "io.github.up.desktop"
+        "org.gnome.Boxes.desktop"
+        "code.desktop"
+        "discord.desktop"
+      ];
+    };
+
+    "org/gnome/desktop/interface" = {
+      clock-format = "12h";
+      cursor-size  = 24;
+      cursor-theme = "Bibata-Modern-Classic";
+      icon-theme   = "kora";
+    };
+
+    "org/gnome/desktop/wm/preferences" = {
+      button-layout = "appmenu:minimize,maximize,close";
+    };
+
+    "org/gnome/desktop/background" = {
+      picture-uri      = "file:///home/nimda/Pictures/Wallpapers/vex-bb-light.jxl";
+      picture-uri-dark = "file:///home/nimda/Pictures/Wallpapers/vex-bb-dark.jxl";
+      picture-options  = "zoom";
+    };
+
+    "org/gnome/shell/extensions/dash-to-dock" = {
+      dock-position = "LEFT";
+    };
+
+    "org/gnome/desktop/screensaver" = {
+      lock-enabled = true;
+      lock-delay   = lib.gvariant.mkUint32 0;  # lock immediately
+    };
+
+    "org/gnome/session" = {
+      idle-delay = lib.gvariant.mkUint32 300;  # 5 min inactivity
+    };
+
+    "org/gnome/desktop/app-folders" = {
+      folder-children = [ "Games" "Office" "Utilities" "System" ];
+    };
+
+    "org/gnome/desktop/app-folders/folders/Games" = {
+      name = "Games";
+      apps = [
+        "org.prismlauncher.PrismLauncher.desktop"
+        "com.vysp3r.ProtonPlus.desktop"
+      ];
+    };
+
+    "org/gnome/desktop/app-folders/folders/Office" = {
+      name = "Office";
+      apps = [
+        "org.onlyoffice.desktopeditors.desktop"
+        "org.gnome.TextEditor.desktop"
+        "org.gnome.Papers.desktop"
+      ];
+    };
+
+    "org/gnome/desktop/app-folders/folders/Utilities" = {
+      name = "Utilities";
+      apps = [
+        "com.mattjakeman.ExtensionManager.desktop"
+        "it.mijorus.gearlever.desktop"
+        "org.gnome.tweaks.desktop"
+        "io.github.flattool.Warehouse.desktop"
+        "io.missioncenter.MissionCenter.desktop"
+        "com.github.tchx84.Flatseal.desktop"
+      ];
+    };
+
+    "org/gnome/desktop/app-folders/folders/System" = {
+      name = "System";
+      apps = [
+        "org.pulseaudio.pavucontrol.desktop"
+        "rog-control-center.desktop"
+        "org.gnome.SystemMonitor.desktop"
+        "org.gnome.Settings.desktop"
+        "org.gnome.seahorse.Application.desktop"
+        "nixos-manual.desktop"
+        "cups.desktop"
+        "blivet-gui.desktop"
+        "blueman-manager.desktop"
+        "btop.desktop"
+        "ca.desrt.dconf-editor.desktop"
+        "org.gnome.baobab.desktop"
+        "org.gnome.DiskUtility.desktop"
+        "org.gnome.font-viewer.desktop"
+        "htop.desktop"
+        "org.gnome.Logs.desktop"
+      ];
+    };
+  };
   # ── State version ──────────────────────────────────────────────────────────
   # Do NOT change after first activation — tracks the HM release at initial install.
   home.stateVersion = "24.05";

@@ -36,8 +36,14 @@
 
   # ── GDM display manager ───────────────────────────────────────────────────
   services.displayManager.gdm = {
-    enable = true;
+    enable  = true;
     wayland = true; # Wayland session (default in GNOME 47+ / NixOS 25.11)
+  };
+
+  # ── Auto-login ────────────────────────────────────────────────────────────
+  services.displayManager.autoLogin = {
+    enable = true;
+    user   = "nimda";
   };
 
   # ── XDG Desktop Portal ────────────────────────────────────────────────────
@@ -108,139 +114,6 @@
       RemainAfterExit = true;
     };
   };
-
-  # ── Desktop packages ──────────────────────────────────────────────────────
-  environment.systemPackages = with pkgs; [
-    # GNOME tooling
-    unstable.gnome-tweaks              # GNOME customisation GUI
-    unstable.gnome-extension-manager  # Install/manage GNOME Shell extensions
-    unstable.dconf-editor              # Low-level GNOME settings editor
-    unstable.gnome-boxes               # Virtual machine manager
-
-    # GNOME Shell extensions
-    unstable.gnomeExtensions.appindicator               # System tray icons
-    unstable.gnomeExtensions.dash-to-dock               # macOS-style dock
-    unstable.gnomeExtensions.alphabetical-app-grid      # Sort app grid alphabetically
-    unstable.gnomeExtensions.gamemode-shell-extension   # GameMode status indicator
-    unstable.gnomeExtensions.gnome-40-ui-improvements   # UI tweaks
-    unstable.gnomeExtensions.nothing-to-say             # Mic mute indicator
-    unstable.gnomeExtensions.steal-my-focus-window      # Force window focus
-    unstable.gnomeExtensions.tailscale-status           # Tailscale tray indicator
-    unstable.gnomeExtensions.caffeine                   # Prevent screen sleep
-    unstable.gnomeExtensions.restart-to                 # Restart-to menu entry
-    unstable.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
-    unstable.gnomeExtensions.background-logo            # Desktop background logo
-  ];
-
-  # ── GNOME dconf system defaults ────────────────────────────────────────────
-  # Written to the NixOS system dconf database at build time.
-  # Does NOT require a D-Bus session, so settings are available at first login.
-  # Users can still override these via GNOME Settings or dconf-editor
-  # (system DB is not locked; user-db:user takes precedence in the profile).
-  programs.dconf.profiles.user.databases = [{
-    settings = {
-      "org/gnome/shell" = {
-        enabled-extensions = [
-          "appindicatorsupport@rgcjonas.gmail.com"
-          "dash-to-dock@micxgx.gmail.com"
-          "AlphabeticalAppGrid@stuarthayhurst"
-          "gamemodeshellextension@trsnaqe.com"
-          "gnome-ui-tune@itstime.tech"
-          "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
-          "steal-my-focus-window@steal-my-focus-window"
-          "tailscale-status@maxgallup.github.com"
-          "caffeine@patapon.info"
-          pkgs.gnomeExtensions.restart-to.extensionUuid
-          "blur-my-shell@aunetx"
-          "background-logo@fedorahosted.org"
-        ];
-        favorite-apps = [
-          "brave-browser.desktop"
-          "app.zen_browser.zen.desktop"
-          "org.gnome.Nautilus.desktop"
-          "com.mitchellh.ghostty.desktop"
-          "io.github.up.desktop"
-          "org.gnome.Boxes.desktop"
-          "code.desktop"
-          "discord.desktop"
-        ];
-      };
-      "org/gnome/desktop/interface" = {
-        clock-format = "12h";
-        cursor-size  = lib.gvariant.mkInt32 24;
-        cursor-theme = "Bibata-Modern-Classic";
-        icon-theme   = "kora";
-      };
-      "org/gnome/desktop/wm/preferences" = {
-        button-layout = "appmenu:minimize,maximize,close";
-      };
-      "org/gnome/desktop/background" = {
-        picture-uri      = "file:///home/nimda/Pictures/Wallpapers/vex-bb-light.jxl";
-        picture-uri-dark = "file:///home/nimda/Pictures/Wallpapers/vex-bb-dark.jxl";
-        picture-options  = "zoom";
-      };
-      "org/gnome/shell/extensions/dash-to-dock" = {
-        dock-position = "LEFT";
-      };
-      "org/gnome/desktop/screensaver" = {
-        lock-enabled = true;
-        lock-delay   = lib.gvariant.mkUint32 0;  # lock immediately
-      };
-      "org/gnome/session" = {
-        idle-delay = lib.gvariant.mkUint32 300;  # 5 min inactivity
-      };
-      "org/gnome/desktop/app-folders" = {
-        folder-children = [ "Games" "Office" "Utilities" "System" ];
-      };
-      "org/gnome/desktop/app-folders/folders/Games" = {
-        name = "Games";
-        apps = [
-          "org.prismlauncher.PrismLauncher.desktop"
-          "com.vysp3r.ProtonPlus.desktop"
-        ];
-      };
-      "org/gnome/desktop/app-folders/folders/Office" = {
-        name = "Office";
-        apps = [
-          "org.onlyoffice.desktopeditors.desktop"
-          "org.gnome.TextEditor.desktop"
-          "org.gnome.Papers.desktop"
-        ];
-      };
-      "org/gnome/desktop/app-folders/folders/Utilities" = {
-        name = "Utilities";
-        apps = [
-          "com.mattjakeman.ExtensionManager.desktop"
-          "it.mijorus.gearlever.desktop"
-          "org.gnome.tweaks.desktop"
-          "io.github.flattool.Warehouse.desktop"
-          "io.missioncenter.MissionCenter.desktop"
-          "com.github.tchx84.Flatseal.desktop"
-        ];
-      };
-      "org/gnome/desktop/app-folders/folders/System" = {
-        name = "System";
-        apps = [
-          "org.pulseaudio.pavucontrol.desktop"
-          "rog-control-center.desktop"
-          "org.gnome.SystemMonitor.desktop"
-          "org.gnome.Settings.desktop"
-          "org.gnome.seahorse.Application.desktop"
-          "nixos-manual.desktop"
-          "cups.desktop"
-          "blivet-gui.desktop"
-          "blueman-manager.desktop"
-          "btop.desktop"
-          "ca.desrt.dconf-editor.desktop"
-          "org.gnome.baobab.desktop"
-          "org.gnome.DiskUtility.desktop"
-          "org.gnome.font-viewer.desktop"
-          "htop.desktop"
-          "org.gnome.Logs.desktop"
-        ];
-      };
-    };
-  }];
 
   # ── Fonts ─────────────────────────────────────────────────────────────────
   fonts = {
