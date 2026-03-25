@@ -128,5 +128,5 @@
   # settings for stateful data (like file locations) were taken.
   # Do NOT change this after initial install — it stays at the version
   # NixOS was first installed with, regardless of nixpkgs channel upgrades.
-  system.stateVersion = "24.11";
+  system.stateVersion = "25.11";
 }

@@ -12,7 +12,7 @@
     # Base VA-API and VDPAU acceleration packages (all builds)
     extraPackages = with pkgs; [
       libva               # VA-API runtime
-      vaapiVdpau          # VDPAU via VA-API bridge
+      libva-vdpau-driver  # VDPAU via VA-API bridge (renamed from vaapiVdpau)
       libvdpau-va-gl      # VDPAU OpenGL backend
       intel-media-driver  # iHD VA-API driver (Intel 8th gen+); harmless on AMD/NVIDIA
       mesa                # includes RADV (AMD Vulkan) and llvmpipe
@@ -20,7 +20,7 @@
 
     extraPackages32 = with pkgs.pkgsi686Linux; [
       libva
-      vaapiVdpau
+      libva-vdpau-driver
       mesa
     ];
   };
