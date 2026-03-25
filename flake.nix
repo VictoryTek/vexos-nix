@@ -2,7 +2,7 @@
   description = "vexos-nix — Personal NixOS configuration";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
 
     # nixpkgs-unstable: used to supply latest GNOME application packages in
     # modules/desktop.nix via the pkgs.unstable overlay.
@@ -18,7 +18,7 @@
 
     # home-manager: optional, for user-level dotfiles (future use)
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.05";
+      url = "github:nix-community/home-manager/release-25.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

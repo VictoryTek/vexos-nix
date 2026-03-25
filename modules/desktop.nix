@@ -5,7 +5,7 @@
   # ── GNOME stack sourced from nixpkgs-unstable ──────────────────────────────
   # Replaces the GNOME desktop shell and its default-shipped applications with
   # the latest builds from nixos-unstable.  Everything else on the system stays
-  # on nixos-25.05.  pkgs.unstable is provided by the unstableOverlayModule
+  # on nixos-25.11.  pkgs.unstable is provided by the unstableOverlayModule
   # defined in flake.nix.
   nixpkgs.overlays = [
     (final: prev: let u = final.unstable; in {
@@ -39,11 +39,9 @@
   services.xserver.desktopManager.gnome.enable = true;
 
   # ── GDM display manager ───────────────────────────────────────────────────
-  # NixOS 25.05+: services.displayManager.gdm replaces the deprecated
-  # services.xserver.displayManager.gdm path.
-  services.displayManager.gdm = {
+  services.xserver.displayManager.gdm = {
     enable = true;
-    wayland = true; # Wayland session (default in GNOME 46+ / NixOS 25.05)
+    wayland = true; # Wayland session (default in GNOME 47+ / NixOS 25.11)
   };
 
   # ── XDG Desktop Portal ────────────────────────────────────────────────────
