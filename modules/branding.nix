@@ -37,7 +37,9 @@ let
   # from /etc/os-release and resolves it via GTK's icon-theme lookup.
   # By deploying our brand logo under the same icon name and wrapping
   # with lib.hiPrio, the vexos logo wins in the buildEnv file merge.
-  vexosIcons = pkgs.runCommand "vexos-icons" {} ''
+  vexosIcons = pkgs.runCommand "vexos-icons" {
+    nativeBuildInputs = [ pkgs.gtk3 ];
+  } ''
     # Scalable SVG — GTK4 prefers this for icon-name lookups
     mkdir -p $out/share/icons/hicolor/scalable/apps
     cp ${../files/pixmaps/fedora-logo-sprite.svg} \
@@ -49,6 +51,15 @@ let
       mkdir -p "$dir"
       cp ${../files/pixmaps/fedora-logo-sprite.png} "$dir/nix-snowflake.png"
     done
+
+    # index.theme is required by gtk-update-icon-cache
+    cp ${pkgs.hicolor-icon-theme}/share/icons/hicolor/index.theme \
+       $out/share/icons/hicolor/index.theme
+
+    # Generate the icon-theme.cache so our entries win the buildEnv
+    # merge via lib.hiPrio — without this, nixos-icons' cache wins
+    # uncontested and GTK never sees our nix-snowflake overrides.
+    gtk-update-icon-cache -f -t $out/share/icons/hicolor
   '';
 in
 {
