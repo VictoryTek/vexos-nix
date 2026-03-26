@@ -25,6 +25,10 @@ let
     cp ${../files/pixmaps/fedora-logo.png}           $out/share/pixmaps/vex-logo.png
     cp ${../files/pixmaps/fedora_logo_med.png}       $out/share/pixmaps/vex-logo-med.png
     cp ${../files/pixmaps/fedora_whitelogo_med.png}  $out/share/pixmaps/vex-whitelogo-med.png
+
+    # Background Logo extension — light and dark SVG variants
+    cp ${../files/background_logos/fedora_lightbackground.svg} $out/share/pixmaps/vex-background-logo.svg
+    cp ${../files/background_logos/fedora_darkbackground.svg}  $out/share/pixmaps/vex-background-logo-dark.svg
   '';
 
   # Hicolor icon-theme overrides for the nix-snowflake icon.

@@ -25,6 +25,8 @@ sudo nixos-rebuild switch --flake /etc/nixos#vexos-nvidia  # NVIDIA GPU
 
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd     # AMD GPU
 
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-intel   # Intel GPU
+
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm      # VM (QEMU / VirtualBox)
 ```
 
@@ -50,6 +52,9 @@ sudo nixos-rebuild switch --flake /etc/nixos#vexos-nvidia
 
 cd /etc/nixos && sudo nix flake update
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd
+
+cd /etc/nixos && sudo nix flake update
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-intel
 
 cd /etc/nixos && sudo nix flake update
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm
