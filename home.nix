@@ -85,6 +85,7 @@
   xdg.desktopEntries."org.gnome.Extensions" = {
     name      = "Extensions";
     noDisplay = true;
+    settings.Hidden = "true";
   };
   xdg.desktopEntries."xterm" = {
     name      = "XTerm";
