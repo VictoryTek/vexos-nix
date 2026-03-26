@@ -10,7 +10,7 @@
       package      = pkgs.qemu_kvm;      # KVM-enabled QEMU (hardware acceleration)
       runAsRoot    = false;               # Run QEMU as the calling user (safer)
       swtpm.enable = true;               # Virtual TPM 2.0 (required for Windows 11 guests)
-      ovmf.enable  = true;               # UEFI firmware (required for Secure Boot / EFI guests)
+      # ovmf is no longer configurable; all OVMF images are available by default in NixOS 25.05+
     };
   };
 
