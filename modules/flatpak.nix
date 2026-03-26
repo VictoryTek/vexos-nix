@@ -17,9 +17,15 @@
       flatpak remote-add --if-not-exists flathub \
         https://dl.flathub.org/repo/flathub.flatpakrepo
     '';
+    unitConfig = {
+      StartLimitBurst       = 5;
+      StartLimitIntervalSec = 300;
+    };
     serviceConfig = {
       Type            = "oneshot";
       RemainAfterExit = true;
+      Restart         = "on-failure";
+      RestartSec      = "30s";
     };
   };
 
