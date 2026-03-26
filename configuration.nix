@@ -11,6 +11,8 @@
     ./modules/controllers.nix
     ./modules/flatpak.nix
     ./modules/network.nix
+    ./modules/development.nix
+    ./modules/virtualization.nix
   ];
 
   # ---------- Bootloader ----------
@@ -42,7 +44,6 @@
 
   # ---------- System packages (base) ----------
   environment.systemPackages = with pkgs; [
-    vim
     git
     curl
     wget

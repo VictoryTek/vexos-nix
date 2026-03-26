@@ -56,7 +56,6 @@
         org.pulseaudio.pavucontrol \
         com.vysp3r.ProtonPlus \
         net.lutris.Lutris \
-        net.davidotek.pupgui2 \
         || true
     '';
     serviceConfig = {

@@ -66,13 +66,9 @@
 
     # Container tooling (Distrobox for running other distro environments)
     distrobox
-    ## podman
 
-    # Input remapping
-    ## input-remapper
-
-    # NOTE: lutris and protonup-qt are installed via Flatpak
-    # (net.lutris.Lutris and net.davidotek.pupgui2 in modules/flatpak.nix).
+    # NOTE: lutris and ProtonPlus are installed via Flatpak
+    # (net.lutris.Lutris and com.vysp3r.ProtonPlus in modules/flatpak.nix).
   ];
 
   # ── Input Remapper daemon ─────────────────────────────────────────────────
