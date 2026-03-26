@@ -31,34 +31,30 @@ let
     cp ${../files/background_logos/fedora_darkbackground.svg}  $out/share/pixmaps/vex-background-logo-dark.svg
   '';
 
-  # Hicolor icon-theme overrides for the nix-snowflake icon.
-  # The nixos-icons package installs the NixOS snowflake at every size
-  # in share/icons/hicolor/.  GNOME Settings reads LOGO=nix-snowflake
-  # from /etc/os-release and resolves it via GTK's icon-theme lookup.
-  # By deploying our brand logo under the same icon name and wrapping
-  # with lib.hiPrio, the vexos logo wins in the buildEnv file merge.
+  # Hicolor icon entries for the "vexos-logo" icon name.
+  # /etc/os-release is patched below to set LOGO=vexos-logo, so GNOME
+  # Settings resolves the About-page logo by looking up "vexos-logo" in
+  # the GTK icon theme.  Using a unique name avoids any conflict with the
+  # nixos-icons package (which owns "nix-snowflake").
   vexosIcons = pkgs.runCommand "vexos-icons" {
     nativeBuildInputs = [ pkgs.gtk3 ];
   } ''
-    # Scalable SVG — GTK4 prefers this for icon-name lookups
+    # Scalable SVG — GTK4 prefers scalable for icon-name lookups
     mkdir -p $out/share/icons/hicolor/scalable/apps
     cp ${../files/pixmaps/fedora-logo-sprite.svg} \
-       $out/share/icons/hicolor/scalable/apps/nix-snowflake.svg
+       $out/share/icons/hicolor/scalable/apps/vexos-logo.svg
 
-    # Raster PNGs at every size nixos-icons provides
+    # Raster PNGs at common sizes
     for size in 16 24 32 48 64 72 96 128 256 512 1024; do
       dir=$out/share/icons/hicolor/''${size}x''${size}/apps
       mkdir -p "$dir"
-      cp ${../files/pixmaps/fedora-logo-sprite.png} "$dir/nix-snowflake.png"
+      cp ${../files/pixmaps/fedora-logo-sprite.png} "$dir/vexos-logo.png"
     done
 
     # index.theme is required by gtk-update-icon-cache
     cp ${pkgs.hicolor-icon-theme}/share/icons/hicolor/index.theme \
        $out/share/icons/hicolor/index.theme
 
-    # Generate the icon-theme.cache so our entries win the buildEnv
-    # merge via lib.hiPrio — without this, nixos-icons' cache wins
-    # uncontested and GTK never sees our nix-snowflake overrides.
     gtk-update-icon-cache -f -t $out/share/icons/hicolor
   '';
 in
@@ -71,11 +67,18 @@ in
   boot.plymouth.theme = lib.mkDefault "spinner";
   boot.plymouth.logo  = ../files/plymouth/watermark.png;
 
+  # ── GNOME About-page logo ─────────────────────────────────────────────────
+  # NixOS sets LOGO=nix-snowflake in /etc/os-release by default; GNOME
+  # Settings reads that field and resolves the icon via the GTK icon-theme.
+  # We override it to "vexos-logo" — a name owned exclusively by vexosIcons —
+  # so there is no collision with the nixos-icons package.
+  system.nixos.extraOSReleaseArgs.LOGO = "vexos-logo";
+
   # ── System pixmaps logos ──────────────────────────────────────────────────
   # Deploys branding files into /run/current-system/sw/share/pixmaps/.
   # XDG_DATA_DIRS includes /run/current-system/sw/share on NixOS, so all
   # GLib/GTK applications find these via standard g_get_system_data_dirs().
-  environment.systemPackages = [ vexosLogos (lib.hiPrio vexosIcons) ];
+  environment.systemPackages = [ vexosLogos vexosIcons ];
 
   # ── GDM login-screen logo (optional) ─────────────────────────────────────
   # Nix store paths change on every rebuild; a dconf string value must point
