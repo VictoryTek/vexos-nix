@@ -190,7 +190,7 @@
     };
 
     "org/fedorahosted/background-logo-extension" = {
-      logo-file         = "/run/current-system/sw/share/pixmaps/vex-logo-sprite.svg";
+      logo-file         = "/run/current-system/sw/share/pixmaps/vex-logo-small.png";
       logo-file-dark    = "/run/current-system/sw/share/pixmaps/system-logo-white.png";
       logo-always-visible = true;
     };

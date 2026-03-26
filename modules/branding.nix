@@ -26,6 +26,26 @@ let
     cp ${../files/pixmaps/fedora_logo_med.png}       $out/share/pixmaps/vex-logo-med.png
     cp ${../files/pixmaps/fedora_whitelogo_med.png}  $out/share/pixmaps/vex-whitelogo-med.png
   '';
+
+  # Hicolor icon-theme overrides for the nix-snowflake icon.
+  # The nixos-icons package installs the NixOS snowflake at every size
+  # in share/icons/hicolor/.  GNOME Settings reads LOGO=nix-snowflake
+  # from /etc/os-release and resolves it via GTK's icon-theme lookup.
+  # By deploying our brand logo under the same icon name and wrapping
+  # with lib.hiPrio, the vexos logo wins in the buildEnv file merge.
+  vexosIcons = pkgs.runCommand "vexos-icons" {} ''
+    # Scalable SVG — GTK4 prefers this for icon-name lookups
+    mkdir -p $out/share/icons/hicolor/scalable/apps
+    cp ${../files/pixmaps/fedora-logo-sprite.svg} \
+       $out/share/icons/hicolor/scalable/apps/nix-snowflake.svg
+
+    # Raster PNGs at every size nixos-icons provides
+    for size in 16 24 32 48 64 72 96 128 256 512 1024; do
+      dir=$out/share/icons/hicolor/''${size}x''${size}/apps
+      mkdir -p "$dir"
+      cp ${../files/pixmaps/fedora-logo-sprite.png} "$dir/nix-snowflake.png"
+    done
+  '';
 in
 {
   # ── Plymouth boot splash ──────────────────────────────────────────────────
@@ -40,21 +60,12 @@ in
   # Deploys branding files into /run/current-system/sw/share/pixmaps/.
   # XDG_DATA_DIRS includes /run/current-system/sw/share on NixOS, so all
   # GLib/GTK applications find these via standard g_get_system_data_dirs().
-  environment.systemPackages = [ vexosLogos ];
+  environment.systemPackages = [ vexosLogos (lib.hiPrio vexosIcons) ];
 
   # ── GDM login-screen logo (optional) ─────────────────────────────────────
   # Nix store paths change on every rebuild; a dconf string value must point
   # to a stable path. Deploy the logo to /etc/ first, then reference it.
   environment.etc."vexos/gdm-logo.png".source = ../files/pixmaps/fedora-gdm-logo.png;
-
-  # ── GNOME About page logo ────────────────────────────────────────────────
-  # NixOS sets LOGO=nix-snowflake in /etc/os-release.  GNOME Settings
-  # reads this field with g_get_os_info("LOGO") and resolves it as an icon
-  # name via gtk_image_set_from_icon_name().  GLib's GKeyFile parser returns
-  # the *last* value for duplicate keys, so appending overrides the default.
-  # The icon name "distributor-logo" resolves to share/pixmaps/distributor-logo.png
-  # (deployed by vexosLogos above) via the XDG pixmaps fallback path.
-  environment.etc.os-release.text = lib.mkAfter "LOGO=distributor-logo";
 
   # Sets org.gnome.login-screen.logo in the GDM system dconf profile.
   # If nix flake check reports a conflict with an existing gdm dconf profile

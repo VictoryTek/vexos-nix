@@ -81,5 +81,16 @@
       ];
     };
 
+    # ── Intel GPU (integrated iGPU or Arc A-series discrete) ─────────────────
+    nixosConfigurations.vexos-intel = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        bootloaderModule
+        ./hardware-configuration.nix
+        vexos-nix.nixosModules.base
+        vexos-nix.nixosModules.gpuIntel       # Intel: i915/xe driver, VA-API, GuC/HuC firmware
+      ];
+    };
+
   };
 }
