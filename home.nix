@@ -189,6 +189,12 @@
       dock-position = "LEFT";
     };
 
+    "org/fedorahosted/background-logo-extension" = {
+      logo-file         = "/run/current-system/sw/share/pixmaps/vex-logo-sprite.svg";
+      logo-file-dark    = "/run/current-system/sw/share/pixmaps/system-logo-white.png";
+      logo-always-visible = true;
+    };
+
     "org/gnome/desktop/screensaver" = {
       lock-enabled = true;
       lock-delay   = lib.gvariant.mkUint32 0;  # lock immediately

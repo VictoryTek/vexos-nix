@@ -45,7 +45,16 @@ in
   # ── GDM login-screen logo (optional) ─────────────────────────────────────
   # Nix store paths change on every rebuild; a dconf string value must point
   # to a stable path. Deploy the logo to /etc/ first, then reference it.
-  environment.etc."vexos/gdm-logo.png".source = ../files/pixmaps/system-logo-white.png;
+  environment.etc."vexos/gdm-logo.png".source = ../files/pixmaps/fedora-gdm-logo.png;
+
+  # ── GNOME About page logo ────────────────────────────────────────────────
+  # NixOS sets LOGO=nix-snowflake in /etc/os-release.  GNOME Settings
+  # reads this field with g_get_os_info("LOGO") and resolves it as an icon
+  # name via gtk_image_set_from_icon_name().  GLib's GKeyFile parser returns
+  # the *last* value for duplicate keys, so appending overrides the default.
+  # The icon name "distributor-logo" resolves to share/pixmaps/distributor-logo.png
+  # (deployed by vexosLogos above) via the XDG pixmaps fallback path.
+  environment.etc.os-release.text = lib.mkAfter "LOGO=distributor-logo";
 
   # Sets org.gnome.login-screen.logo in the GDM system dconf profile.
   # If nix flake check reports a conflict with an existing gdm dconf profile
