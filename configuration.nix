@@ -13,6 +13,7 @@
     ./modules/network.nix
     ./modules/development.nix
     ./modules/virtualization.nix
+    ./modules/branding.nix
   ];
 
   # ---------- Bootloader ----------

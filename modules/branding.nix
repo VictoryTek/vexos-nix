@@ -1,0 +1,66 @@
+# modules/branding.nix
+# Custom vexos branding: Plymouth boot watermark and system pixmaps logos.
+# Optionally sets the GDM login-screen logo via dconf.
+#
+# Plymouth enable is deliberately kept in modules/performance.nix.
+# This module only sets the theme and logo (branding concerns).
+{ pkgs, lib, ... }:
+let
+  vexosLogos = pkgs.runCommand "vexos-logos" {} ''
+    mkdir -p $out/share/pixmaps
+
+    # Primary brand logo (deployed under two names)
+    cp ${../files/pixmaps/vex.png}                   $out/share/pixmaps/vex.png
+    cp ${../files/pixmaps/vex.png}                   $out/share/pixmaps/distributor-logo.png
+
+    # White variant (dark-background logo — used by GDM and GNOME About dialog)
+    cp ${../files/pixmaps/system-logo-white.png}     $out/share/pixmaps/system-logo-white.png
+
+    # Size/format variants — renamed from fedora- to vex- at install time.
+    # Source files retain their original names in git (preserving origin context).
+    cp ${../files/pixmaps/fedora-gdm-logo.png}       $out/share/pixmaps/vex-gdm-logo.png
+    cp ${../files/pixmaps/fedora-logo-small.png}     $out/share/pixmaps/vex-logo-small.png
+    cp ${../files/pixmaps/fedora-logo-sprite.png}    $out/share/pixmaps/vex-logo-sprite.png
+    cp ${../files/pixmaps/fedora-logo-sprite.svg}    $out/share/pixmaps/vex-logo-sprite.svg
+    cp ${../files/pixmaps/fedora-logo.png}           $out/share/pixmaps/vex-logo.png
+    cp ${../files/pixmaps/fedora_logo_med.png}       $out/share/pixmaps/vex-logo-med.png
+    cp ${../files/pixmaps/fedora_whitelogo_med.png}  $out/share/pixmaps/vex-whitelogo-med.png
+  '';
+in
+{
+  # ── Plymouth boot splash ──────────────────────────────────────────────────
+  # Switch from bgrt (ACPI firmware splash, does not display boot.plymouth.logo)
+  # to spinner (displays boot.plymouth.logo as a centered watermark).
+  # lib.mkDefault allows a host-level override, e.g. in hosts/vm.nix:
+  #   boot.plymouth.theme = lib.mkForce "text";
+  boot.plymouth.theme = lib.mkDefault "spinner";
+  boot.plymouth.logo  = ../files/plymouth/watermark.png;
+
+  # ── System pixmaps logos ──────────────────────────────────────────────────
+  # Deploys branding files into /run/current-system/sw/share/pixmaps/.
+  # XDG_DATA_DIRS includes /run/current-system/sw/share on NixOS, so all
+  # GLib/GTK applications find these via standard g_get_system_data_dirs().
+  environment.systemPackages = [ vexosLogos ];
+
+  # ── GDM login-screen logo (optional) ─────────────────────────────────────
+  # Nix store paths change on every rebuild; a dconf string value must point
+  # to a stable path. Deploy the logo to /etc/ first, then reference it.
+  environment.etc."vexos/gdm-logo.png".source = ../files/pixmaps/system-logo-white.png;
+
+  # Sets org.gnome.login-screen.logo in the GDM system dconf profile.
+  # If nix flake check reports a conflict with an existing gdm dconf profile
+  # (set by the GNOME NixOS module), remove this block and use a
+  # programs.dconf.packages entry or defer to home-manager instead.
+  programs.dconf.profiles.gdm = {
+    enableUserDb = false;  # GDM system account — no per-user preferences
+    databases = [
+      {
+        settings = {
+          "org/gnome/login-screen" = {
+            logo = "/etc/vexos/gdm-logo.png";
+          };
+        };
+      }
+    ];
+  };
+}
