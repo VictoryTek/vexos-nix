@@ -24,7 +24,7 @@
     ghostty
 
     # Communication
-    discord
+    # discord  # temporarily disabled — work network blocks download
 
     # Terminal utilities
     tree
