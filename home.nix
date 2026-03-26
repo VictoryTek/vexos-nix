@@ -197,8 +197,8 @@
     };
 
     "org/gnome/desktop/screensaver" = {
-      lock-enabled = true;
-      lock-delay   = lib.gvariant.mkUint32 0;  # lock immediately
+      lock-enabled = false;
+      lock-delay   = lib.gvariant.mkUint32 0;
     };
 
     "org/gnome/session" = {
