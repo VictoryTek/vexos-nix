@@ -43,14 +43,6 @@
     ];
   };
 
-  # ---------- System packages (base) ----------
-  environment.systemPackages = with pkgs; [
-    git
-    curl
-    wget
-    htop
-  ];
-
   # ---------- Nix settings ----------
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];

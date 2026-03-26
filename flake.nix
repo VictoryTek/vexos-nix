@@ -106,6 +106,14 @@
       specialArgs = { inherit inputs; };
     };
 
+    # ── Intel GPU build ──────────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-intel
+    nixosConfigurations.vexos-intel = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/intel.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
     # ── NixOS modules (consumed by /etc/nixos/flake.nix on the host) ─────────
     # The thin wrapper at /etc/nixos/flake.nix imports these instead of
     # building directly from the repo, so hardware-configuration.nix never
@@ -138,6 +146,7 @@
       gpuAmd    = ./modules/gpu/amd.nix;
       gpuNvidia = ./modules/gpu/nvidia.nix;
       gpuVm     = ./modules/gpu/vm.nix;
+      gpuIntel  = ./modules/gpu/intel.nix;
       asus      = ./modules/asus.nix;
     };
   };

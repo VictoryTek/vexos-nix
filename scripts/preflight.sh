@@ -47,7 +47,7 @@ echo ""
 
 # ---------- CHECK 2: nixos-rebuild dry-build (HARD) --------------------------
 echo "[2/8] Verifying system closures (dry-build all variants)..."
-for TARGET in vexos-amd vexos-nvidia vexos-vm; do
+for TARGET in vexos-amd vexos-nvidia vexos-vm vexos-intel; do
   if sudo nixos-rebuild dry-build --flake ".#${TARGET}" 2>&1; then
     pass "nixos-rebuild dry-build .#${TARGET} passed"
   else
