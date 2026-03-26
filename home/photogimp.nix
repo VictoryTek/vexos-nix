@@ -6,7 +6,9 @@
 # Strategy:
 #   1. Fetch PhotoGIMP at build time (pkgs.fetchFromGitHub).
 #   2. Install icons into the user hicolor theme via xdg.dataFile (symlinks).
-#   3. Override the GIMP .desktop with PhotoGIMP branding via xdg.desktopEntries.
+#   3. Override the GIMP .desktop with PhotoGIMP branding via xdg.dataFile (text),
+#      placing the file at ~/.local/share/applications/ as a file-level symlink
+#      so GNOME's inotify watcher detects changes on generation switch.
 #   4. Copy GIMP plugin/config files into ~/.config/GIMP/3.0/ at activation
 #      (copy, not symlink — GIMP writes to its own config dir at runtime).
 #      A version sentinel prevents re-copying on every switch.
@@ -114,54 +116,30 @@ in
     };
 
     # ── Step 5: override GIMP .desktop with PhotoGIMP branding ────────────
-    # Using icon = "photogimp" (name, not path) so GNOME's icon theme lookup
-    # resolves it correctly from the hicolor theme installed above.
-    # This file lands at ~/.local/share/applications/org.gimp.GIMP.desktop and
-    # takes precedence over Flatpak's exported .desktop in XDG_DATA_DIRS.
-    xdg.desktopEntries."org.gimp.GIMP" = {
-      name          = "PhotoGIMP";
-      genericName   = "Image Editor";
-      comment       = "Create images and edit photographs";
-      exec          = "flatpak run org.gimp.GIMP %U";
-      icon          = "photogimp";
-      terminal      = false;
-      startupNotify = true;
-      categories    = [ "Graphics" "2DGraphics" "RasterGraphics" "GTK" ];
-      mimeType      = [
-        "image/bmp"
-        "image/g3fax"
-        "image/gif"
-        "image/jpeg"
-        "image/png"
-        "image/tiff"
-        "image/webp"
-        "image/heif"
-        "image/heic"
-        "image/svg+xml"
-        "image/x-bmp"
-        "image/x-compressed-xcf"
-        "image/x-exr"
-        "image/x-gimp-gbr"
-        "image/x-gimp-gih"
-        "image/x-gimp-pat"
-        "image/x-icon"
-        "image/x-pcx"
-        "image/x-portable-anymap"
-        "image/x-portable-bitmap"
-        "image/x-portable-graymap"
-        "image/x-portable-pixmap"
-        "image/x-psd"
-        "image/x-sgi"
-        "image/x-tga"
-        "image/x-wmf"
-        "image/x-xcf"
-        "image/x-xcursor"
-        "image/x-xpixmap"
-        "image/x-xwindowdump"
-        "image/jp2"
-        "application/pdf"
-        "application/postscript"
-      ];
+    # Uses xdg.dataFile + text instead of xdg.desktopEntries so the file lands
+    # at ~/.local/share/applications/org.gimp.GIMP.desktop as a file-level
+    # symlink. GNOME's inotify watcher reliably detects file-level symlink
+    # changes (vs. directory-level profile generation swaps used by
+    # xdg.desktopEntries), and GLib always checks XDG_DATA_HOME/applications/
+    # before any XDG_DATA_DIRS entry, so this override takes precedence over
+    # the Flatpak-exported .desktop in /var/lib/flatpak/exports/share/applications/.
+    # X-Flatpak is required by GNOME Shell 46+ to associate the running Flatpak
+    # window with this .desktop entry for the taskbar/app indicator.
+    xdg.dataFile."applications/org.gimp.GIMP.desktop" = {
+      text = ''
+        [Desktop Entry]
+        Type=Application
+        Name=PhotoGIMP
+        GenericName=Image Editor
+        Comment=Create images and edit photographs
+        Exec=flatpak run org.gimp.GIMP %U
+        Icon=photogimp
+        Terminal=false
+        StartupNotify=true
+        Categories=Graphics;2DGraphics;RasterGraphics;GTK;
+        MimeType=image/bmp;image/g3fax;image/gif;image/jpeg;image/png;image/tiff;image/webp;image/heif;image/heic;image/svg+xml;image/x-bmp;image/x-compressed-xcf;image/x-exr;image/x-gimp-gbr;image/x-gimp-gih;image/x-gimp-pat;image/x-icon;image/x-pcx;image/x-portable-anymap;image/x-portable-bitmap;image/x-portable-graymap;image/x-portable-pixmap;image/x-psd;image/x-sgi;image/x-tga;image/x-wmf;image/x-xcf;image/x-xcursor;image/x-xpixmap;image/x-xwindowdump;image/jp2;application/pdf;application/postscript;
+        X-Flatpak=org.gimp.GIMP
+      '';
     };
   };
 }

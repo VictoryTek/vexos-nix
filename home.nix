@@ -77,6 +77,24 @@
     enableBashIntegration = true;
   };
 
+  xdg.configFile."starship.toml".source = ./files/starship.toml;
+
+  # ── Hidden app grid entries ────────────────────────────────────────────────
+  # These packages cannot be safely removed (they are required dependencies),
+  # so their .desktop files are masked to keep them out of the app grid.
+  xdg.desktopEntries."org.gnome.Extensions" = {
+    name      = "Extensions";
+    noDisplay = true;
+  };
+  xdg.desktopEntries."xterm" = {
+    name      = "XTerm";
+    noDisplay = true;
+  };
+  xdg.desktopEntries."uxterm" = {
+    name      = "UXTerm";
+    noDisplay = true;
+  };
+
   # ── Session environment variables ─────────────────────────────────────────
   # NIXOS_OZONE_WL: forces Electron apps (VS Code, etc.) to use the Wayland backend.
   # MOZ_ENABLE_WAYLAND: forces Firefox/Zen to use the Wayland backend.
@@ -181,14 +199,23 @@
     };
 
     "org/gnome/desktop/app-folders" = {
-      folder-children = [ "Games" "Office" "Utilities" "System" ];
+      folder-children = [ "Games" "Game Utilities" "Office" "Utilities" "System" ];
     };
 
     "org/gnome/desktop/app-folders/folders/Games" = {
       name = "Games";
       apps = [
         "org.prismlauncher.PrismLauncher.desktop"
+        "net.lutris.Lutris.desktop"
+        "steam.desktop"
+      ];
+    };
+
+    "org/gnome/desktop/app-folders/folders/Game Utilities" = {
+      name = "Game Utilities";
+      apps = [
         "com.vysp3r.ProtonPlus.desktop"
+        "protontricks.desktop"
       ];
     };
 
