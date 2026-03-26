@@ -29,6 +29,19 @@
       # gnome-calendar, loupe, evince/papers, and totem are installed via
       # Flatpak (see modules/flatpak.nix) to avoid local compilation.
     })
+
+    # The GNOME Extensions app (org.gnome.Extensions) is bundled inside
+    # gnome-shell and cannot be removed via excludePackages.  Drop its desktop
+    # file so it never appears in the app grid.  This overlay runs after the
+    # unstable-pin overlay above, so prev.gnome-shell is already the unstable
+    # build and overrideAttrs extends it correctly.
+    (final: prev: {
+      gnome-shell = prev.gnome-shell.overrideAttrs (old: {
+        postInstall = (old.postInstall or "") + ''
+          rm -f $out/share/applications/org.gnome.Extensions.desktop
+        '';
+      });
+    })
   ];
 
   # ── GNOME desktop ─────────────────────────────────────────────────────────
