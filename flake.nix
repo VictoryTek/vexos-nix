@@ -5,7 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
 
     # nixpkgs-unstable: used to supply latest GNOME application packages in
-    # modules/desktop.nix via the pkgs.unstable overlay.
+    # modules/gnome.nix via the pkgs.unstable overlay.
     # Do NOT add inputs.nixpkgs-unstable.follows = "nixpkgs" — that would
     # pin unstable to the stable revision, defeating its purpose.
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -45,7 +45,7 @@
     };
 
     # Inline NixOS module: exposes pkgs.unstable.* sourced from nixpkgs-unstable.
-    # Used in modules/desktop.nix to pin GNOME application tools to latest.
+    # Used in modules/gnome.nix to pin GNOME application tools to latest.
     unstableOverlayModule = {
       nixpkgs.overlays = [
         (final: prev: {

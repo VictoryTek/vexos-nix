@@ -1,5 +1,6 @@
-# modules/desktop.nix
-# GNOME desktop: GDM Wayland, XDG portals, fonts, Ozone env var, printing, Bluetooth.
+# modules/gnome.nix
+# GNOME desktop: GDM Wayland, XDG portals, fonts, Ozone env var, printing, Bluetooth,
+# GNOME tooling, and GNOME Shell extensions.
 { config, pkgs, lib, ... }:
 {
   # ── GNOME stack sourced from nixpkgs-unstable ──────────────────────────────
@@ -88,6 +89,29 @@
     totem
   ];
 
+  # ── GNOME tooling & Shell extensions ─────────────────────────────────────
+  environment.systemPackages = with pkgs; [
+    # GNOME tooling
+    unstable.gnome-tweaks                               # GNOME customisation GUI
+    unstable.gnome-extension-manager                   # Install/manage GNOME Shell extensions
+    unstable.dconf-editor                               # Low-level GNOME settings editor
+    unstable.gnome-boxes                                # Virtual machine manager
+
+    # GNOME Shell extensions
+    unstable.gnomeExtensions.appindicator               # System tray icons
+    unstable.gnomeExtensions.dash-to-dock               # macOS-style dock
+    unstable.gnomeExtensions.alphabetical-app-grid      # Sort app grid alphabetically
+    unstable.gnomeExtensions.gamemode-shell-extension   # GameMode status indicator
+    unstable.gnomeExtensions.gnome-40-ui-improvements   # UI tweaks
+    unstable.gnomeExtensions.nothing-to-say             # Mic mute indicator
+    unstable.gnomeExtensions.steal-my-focus-window      # Force window focus
+    unstable.gnomeExtensions.tailscale-status           # Tailscale tray indicator
+    unstable.gnomeExtensions.caffeine                   # Prevent screen sleep
+    unstable.gnomeExtensions.restart-to                 # Restart-to menu entry
+    unstable.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
+    unstable.gnomeExtensions.background-logo            # Desktop background logo
+  ];
+
   # ── GNOME default app Flatpaks ────────────────────────────────────────────
   # GNOME apps excluded from Nix packages above are installed from Flathub
   # instead, keeping them up-to-date independently of nixpkgs.
@@ -141,4 +165,5 @@
   # ── Bluetooth ─────────────────────────────────────────────────────────────
   hardware.bluetooth.enable = true;
   services.blueman.enable = true;
+
 }

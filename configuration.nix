@@ -2,7 +2,7 @@
 
 {
   imports = [
-    ./modules/desktop.nix
+    ./modules/gnome.nix
     ./modules/packages.nix
     ./modules/gaming.nix
     ./modules/audio.nix
