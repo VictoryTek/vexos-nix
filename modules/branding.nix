@@ -67,12 +67,32 @@ in
   boot.plymouth.theme = lib.mkDefault "spinner";
   boot.plymouth.logo  = ../files/plymouth/watermark.png;
 
-  # ── GNOME About-page logo ─────────────────────────────────────────────────
-  # NixOS sets LOGO=nix-snowflake in /etc/os-release by default; GNOME
-  # Settings reads that field and resolves the icon via the GTK icon-theme.
-  # We override it to "vexos-logo" — a name owned exclusively by vexosIcons —
-  # so there is no collision with the nixos-icons package.
-  system.nixos.extraOSReleaseArgs.LOGO = "vexos-logo";
+  # ── OS identity (os-release, GRUB/systemd-boot labels, hostnamectl) ────────
+  # distroName: overrides NAME= and PRETTY_NAME= in /etc/os-release AND the
+  # primary label in both GRUB and systemd-boot boot menu entries.
+  # Marked internal=true in NixOS but fully supported for override.
+  system.nixos.distroName = "VexOS";
+
+  # distroId: overrides ID= in /etc/os-release.  When set to anything other
+  # than "nixos", NixOS automatically adds ID_LIKE=nixos — correct for a
+  # NixOS-based derivative — and sets DEFAULT_HOSTNAME= to this value.
+  system.nixos.distroId = "vexos";
+
+  # vendorName/vendorId: sets VENDOR_NAME= and appears in CPE_NAME=.
+  system.nixos.vendorName = "VexOS";
+  system.nixos.vendorId   = "vexos";
+
+  # HOME_URL, ANSI_COLOR, SUPPORT_URL, and BUG_REPORT_URL are only emitted by
+  # NixOS when distroId == "nixos"; they must be set explicitly here.
+  # LOGO is set here (was previously a standalone line) to consolidate all
+  # os-release customisations in one block.
+  system.nixos.extraOSReleaseArgs = {
+    LOGO           = "vexos-logo";
+    HOME_URL       = "https://github.com/vexos-nix";
+    SUPPORT_URL    = "https://github.com/vexos-nix/issues";
+    BUG_REPORT_URL = "https://github.com/vexos-nix/issues";
+    ANSI_COLOR     = "1;35"; # purple, matching VexOS brand
+  };
 
   # ── System pixmaps logos ──────────────────────────────────────────────────
   # Deploys branding files into /run/current-system/sw/share/pixmaps/.
