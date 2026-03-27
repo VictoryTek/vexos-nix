@@ -73,9 +73,6 @@
     mkVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
-        # Hostname equals the variant name — change here if you want something else.
-        { networking.hostName = variant; }
-
         # Persist the active variant so vexos-updater can read it automatically.
         { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
 
