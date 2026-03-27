@@ -109,9 +109,19 @@ in
   # If nix flake check reports a conflict with an existing gdm dconf profile
   # (set by the GNOME NixOS module), remove this block and use a
   # programs.dconf.packages entry or defer to home-manager instead.
+  # GDM login-screen logo via the NixOS dconf profiles API.
+  # NOTE: Defining programs.dconf.profiles.gdm here overrides the GDM
+  # package's built-in /share/dconf/profile/gdm (which includes user-db:user
+  # and a file-db pointing to greeter-dconf-defaults).  lib.mkDefault on
+  # enableUserDb prevents an evaluation conflict if the GDM NixOS module ever
+  # sets this option explicitly in a future nixpkgs release.
   programs.dconf.profiles.gdm = {
-    enableUserDb = false;  # GDM system account — no per-user preferences
+    enableUserDb = lib.mkDefault false;  # GDM system account — no per-user db
     databases = [
+      # TODO: Re-include GDM's own greeter defaults (auto-suspend, a11y, etc.)
+      # once the correct passthru attribute for the pre-compiled db is confirmed.
+      # Candidates: pkgs.gdm.dconfDb or pkgs.gdm (verify against nixpkgs source).
+      # Omitting for now — the primary branding goal (logo) is preserved below.
       {
         settings = {
           "org/gnome/login-screen" = {

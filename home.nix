@@ -153,7 +153,7 @@
         "steal-my-focus-window@steal-my-focus-window"
         "tailscale-status@maxgallup.github.com"
         "caffeine@patapon.info"
-        pkgs.unstable.gnomeExtensions.restart-to.extensionUuid
+        "restart-to@system76.com"
         "blur-my-shell@aunetx"
         "background-logo@fedorahosted.org"
       ];

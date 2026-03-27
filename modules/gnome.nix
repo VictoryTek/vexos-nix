@@ -48,6 +48,21 @@
   services.xserver.enable = true;
   services.desktopManager.gnome.enable = true;
 
+  # Explicitly enable dconf so the GIO dconf module is loaded and
+  # ~/.config/dconf/user is consulted by GLib for all user settings.
+  # The GNOME NixOS module also sets this implicitly, but declaring it here
+  # makes the dependency explicit and guards against upstream changes.
+  programs.dconf.enable = true;
+
+  # Declare the user dconf profile so NixOS generates /etc/dconf/profile/user.
+  # This makes the lookup chain declarative: user-db:user (home-manager writes
+  # to ~/.config/dconf/user).  Add system-db entries here if system-level
+  # defaults or lock overrides are needed in the future.
+  programs.dconf.profiles.user = {
+    enableUserDb = true;
+    databases    = [];
+  };
+
   # ── GDM display manager ───────────────────────────────────────────────────
   services.displayManager.gdm = {
     enable  = true;

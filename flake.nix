@@ -76,6 +76,10 @@
         useUserPackages  = true;  # install user packages into /etc/profiles instead of ~/.nix-profile
         extraSpecialArgs = { inherit inputs; };
         users.nimda      = import ./home.nix;
+        # Prevents activation abort when managed files (e.g. ~/.bashrc) already
+        # exist as regular files on the host.  Conflicting files are renamed to
+        # *.backup instead of causing checkLinkTargets to exit non-zero.
+        backupFileExtension = "backup";
       };
     };
 
