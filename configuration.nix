@@ -26,7 +26,7 @@
   # networking.networkmanager is managed in modules/network.nix
 
   # ---------- Time / Locale ----------
-  time.timeZone = "America/New_York";
+  time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
 
   # ---------- Users ----------
