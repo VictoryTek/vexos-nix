@@ -1,4 +1,4 @@
-﻿# /etc/nixos/flake.nix
+# /etc/nixos/flake.nix
 # Thin wrapper — hardware-configuration.nix stays here; full system config
 # is pulled automatically from GitHub on every rebuild.
 #
