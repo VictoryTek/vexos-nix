@@ -1,4 +1,15 @@
 {
+  nixConfig = {
+    extra-substituters = [
+      "https://attic.xuyh0120.win/lantian"
+      "https://cache.garnix.io"
+    ];
+    extra-trusted-public-keys = [
+      "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
+      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+    ];
+  };
+
   description = "vexos-nix — Personal NixOS configuration";
 
   inputs = {
@@ -41,7 +52,7 @@
     # so the overlay works when nixosModules.base is consumed by external flakes
     # (template/etc-nixos-flake.nix) without needing specialArgs.
     cachyosOverlayModule = {
-      nixpkgs.overlays = [ nix-cachyos-kernel.overlays.default ];
+      nixpkgs.overlays = [ nix-cachyos-kernel.overlays.pinned ];
     };
 
     # Inline NixOS module: exposes pkgs.unstable.* sourced from nixpkgs-unstable.
@@ -133,7 +144,7 @@
           users.nimda     = import ./home.nix;
         };
         nixpkgs.overlays = [
-          nix-cachyos-kernel.overlays.default
+          nix-cachyos-kernel.overlays.pinned
           (final: prev: {
             unstable = import nixpkgs-unstable {
               inherit (final) config;
