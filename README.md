@@ -74,6 +74,13 @@ sudo curl -fsSL -o /etc/nixos/flake.nix \
 
 Edit `variant`, `hostname`, and `bootloaderModule` in the `let` block, then rebuild once with the explicit target (e.g. `#vexos-vm`). After that, `/etc/nixos/vexos-variant` is managed automatically.
 
+## Notes
+```bash
+sudo nix --extra-experimental-features 'nix-command flakes' flake update --flake /etc/nixos
+
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm
+```  
+
 ## Rollback
 
 ```bash
