@@ -50,14 +50,20 @@
     # Deduplicate identical files in the store (saves significant disk space)
     auto-optimise-store = true;
 
-    # Binary caches — fetch pre-built derivations instead of compiling locally
+    # Binary caches — fetch pre-built derivations instead of compiling locally.
+    # Declaring caches here (trusted system config) avoids the interactive
+    # "do you want to allow this substituter?" prompt that nixConfig in a flake
+    # triggers. The flake's nixConfig block has been removed; these settings
+    # cover the same caches unconditionally.
     substituters = [
-      "https://cache.nixos.org"   # Official NixOS cache — always required
-      "https://cache.garnix.io"   # Garnix CI cache
+      "https://cache.nixos.org"          # Official NixOS cache — always required
+      "https://cache.garnix.io"          # Garnix CI cache
+      "https://attic.xuyh0120.win/lantian" # CachyOS kernel binary cache
     ];
     trusted-public-keys = [
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
       "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+      "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
     ];
 
     # Build concurrency — 1 job at a time, each using half the available cores.

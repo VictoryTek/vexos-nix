@@ -32,7 +32,7 @@ Open the file and set the three variables in the `let` block:
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd     # AMD GPU
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-nvidia  # NVIDIA GPU
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-intel   # Intel GPU
-sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm --accept-flake-config      # VM (QEMU / VirtualBox)
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm      # VM (QEMU / VirtualBox)
 ```
 
 After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild. The `#target` is never needed again.
