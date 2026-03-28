@@ -3,10 +3,12 @@
     extra-substituters = [
       "https://attic.xuyh0120.win/lantian"
       "https://cache.garnix.io"
+      "https://vex-kernels.cachix.org"
     ];
     extra-trusted-public-keys = [
       "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
       "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+      "vex-kernels.cachix.org-1:V2rsF5p1U/J45nH+4uIJ45OlkWmqtv098pZSyq5ABck="
     ];
   };
 
@@ -41,9 +43,19 @@
     nix-cachyos-kernel = {
       url = "github:xddxdd/nix-cachyos-kernel/release";
     };
+
+    # Bazzite kernel — gaming and handheld optimized kernel for VM testing.
+    # CRITICAL: Do NOT add inputs.nixpkgs.follows = "nixpkgs" here.
+    # vex-kernels pins nixos-unstable internally; the nixosModule evaluates
+    # pkgs from the host system, but the flake may require unstable tooling
+    # for standalone builds. Mirrors the established precedent for
+    # nix-cachyos-kernel. A separate nixpkgs lock entry is acceptable.
+    kernel-bazzite = {
+      url = "github:VictoryTek/vex-kernels";
+    };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, nix-cachyos-kernel, home-manager, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, nix-cachyos-kernel, home-manager, kernel-bazzite, ... }@inputs:
   let
     system = "x86_64-linux";
 
