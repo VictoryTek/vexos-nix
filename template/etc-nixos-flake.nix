@@ -9,10 +9,10 @@
 #          https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/template/etc-nixos-flake.nix
 #
 #   2. Apply using the variant that matches your hardware:
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd    --accept-flake-config
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-nvidia --accept-flake-config
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-intel  --accept-flake-config
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm     --accept-flake-config
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-nvidia
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-intel
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm
 #
 #      No editing required — all variants are exposed automatically.
 #      The chosen variant is written to /etc/nixos/vexos-variant on every
@@ -21,7 +21,7 @@
 # ── All future rebuilds / updates ───────────────────────────────────────────
 #
 #   Manually:
-#     sudo nixos-rebuild switch --flake /etc/nixos#$(cat /etc/nixos/vexos-variant) --accept-flake-config
+#     sudo nixos-rebuild switch --flake /etc/nixos#$(cat /etc/nixos/vexos-variant)
 #
 #   Via vexos-updater app:
 #     The app reads /etc/nixos/vexos-variant and builds the command for you.
@@ -29,7 +29,7 @@
 # ── Switching to a different variant later (e.g. vm → amd) ──────────────────
 #
 #   Just rebuild with the new variant target:
-#     sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd --accept-flake-config
+#     sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd
 #   /etc/nixos/vexos-variant is updated automatically — vexos-updater picks
 #   up the new variant from then on.
 #
@@ -48,17 +48,6 @@
 #     };
 #
 {
-  nixConfig = {
-    extra-substituters = [
-      "https://attic.xuyh0120.win/lantian"
-      "https://cache.garnix.io"
-    ];
-    extra-trusted-public-keys = [
-      "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
-      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
-    ];
-  };
-
   inputs = {
     vexos-nix.url = "github:VictoryTek/vexos-nix";
 
