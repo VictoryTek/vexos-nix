@@ -17,9 +17,6 @@
 # so both declarations are factually correct.  Placing them inside the wrapper lambda
 # ensures they survive any subsequent .override call made by kernel.nix.
 #
-# Cachix binary cache (vex-kernels.cachix.org) is configured here for the
-# deployed VM system's runtime Nix. The build-time cache is in flake.nix nixConfig.
-#
 # Bootloader: NOT configured here — set it in your host's hardware-configuration.nix.
 #
 # BIOS VM example (add to /etc/nixos/hardware-configuration.nix):
@@ -58,17 +55,6 @@
         {}
     )
   );
-
-  # Cachix binary cache for vex-kernels (bazzite kernel) — deployed system runtime.
-  # Build-time cache is handled via nixConfig in flake.nix.
-  nix.settings = {
-    substituters = [
-      "https://vex-kernels.cachix.org"
-    ];
-    trusted-public-keys = [
-      "vex-kernels.cachix.org-1:V2rsF5p1U/J45nH+4uIJ45OlkWmqtv098pZSyq5ABck="
-    ];
-  };
 
   # Distinguish the VM host on the network
   networking.hostName = "vexos-vm";
