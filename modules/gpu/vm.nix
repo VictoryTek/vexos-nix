@@ -24,4 +24,17 @@
   # and avoids zen/CachyOS overhead in a VM environment.
   # hosts/vm.nix overrides this with the Bazzite kernel via lib.mkOverride 49.
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages;
+
+  # The Bazzite kernel (Fedora gaming config) does not ship every module that
+  # nixos-generate-config may list in hardware-configuration.nix.  The known
+  # offender is pcips2 (PCI-attached PS/2 controller), which is absent as a
+  # loadable .ko in Bazzite/Fedora kernels.  Patching makeModulesClosure to
+  # tolerate missing modules prevents a fatal build failure when such modules
+  # appear in boot.initrd.availableKernelModules.
+  nixpkgs.overlays = [
+    (final: prev: {
+      makeModulesClosure = args:
+        prev.makeModulesClosure (args // { allowMissing = true; });
+    })
+  ];
 }

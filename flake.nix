@@ -103,9 +103,14 @@
     # something it CAN build — Garnix's default config covers *.x86_64-linux.*
     # — so the compiled kernel lands in cache.garnix.io and future rebuilds on
     # the VM fetch it instead of compiling it locally.
+    #
+    # IMPORTANT: reference kernel-bazzite.packages directly (NOT callPackage)
+    # so this output has the same .drv hash as what hosts/vm.nix uses.
+    # Using callPackage here with vexos-nix's nixpkgs would produce a different
+    # toolchain than vex-kernels' own pinned nixpkgs, yielding a different store
+    # path that Garnix would cache but nixos-rebuild would never request.
     packages.x86_64-linux.linux-bazzite =
-      (nixpkgs.legacyPackages.x86_64-linux.callPackage
-        "${kernel-bazzite}/pkgs/linux-bazzite.nix" {})
+      kernel-bazzite.packages.x86_64-linux.linux-bazzite
       .overrideAttrs (old: {
         passthru = (old.passthru or {}) // {
           features = { ia32Emulation = true; efiBootStub = true; };
