@@ -67,10 +67,12 @@
 
     # ── Variant builder ─────────────────────────────────────────────────────
     # Constructs a complete NixOS configuration for a given variant.
-    # • hostname  → the variant name, also written to /etc/nixos/vexos-variant
-    # • base      → full desktop + gaming + audio + performance stack
-    # • gpuModule → GPU-specific drivers for this variant
-    mkVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
+    # • hostname   → the variant name, also written to /etc/nixos/vexos-variant
+    # • base       → full desktop + gaming + audio + performance stack
+    # • gpuModules → GPU-specific drivers for this variant; accepts a single
+    #                module or a list of modules (used by vexos-vm to include
+    #                both gpuVm and kernelBazzite).
+    mkVariant = variant: gpuModules: nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
         # Persist the active variant so vexos-updater can read it automatically.
@@ -86,8 +88,8 @@
         vexos-nix.nixosModules.base
 
         # GPU-specific drivers and settings for this variant.
-        gpuModule
-      ];
+        # Normalise: accept either a single module or a list of modules.
+      ] ++ (if builtins.isList gpuModules then gpuModules else [ gpuModules ]);
     };
 
   in
@@ -96,7 +98,9 @@
       vexos-amd    = mkVariant "vexos-amd"    vexos-nix.nixosModules.gpuAmd;
       vexos-nvidia = mkVariant "vexos-nvidia" vexos-nix.nixosModules.gpuNvidia;
       vexos-intel  = mkVariant "vexos-intel"  vexos-nix.nixosModules.gpuIntel;
-      vexos-vm     = mkVariant "vexos-vm"     vexos-nix.nixosModules.gpuVm;
+      # vexos-vm requires both the VM guest drivers and the Bazzite kernel override.
+      # kernelBazzite uses lib.mkOverride 49 to beat gpuVm's lib.mkForce (priority 50).
+      vexos-vm     = mkVariant "vexos-vm"     [ vexos-nix.nixosModules.gpuVm vexos-nix.nixosModules.kernelBazzite ];
     };
   };
 }
