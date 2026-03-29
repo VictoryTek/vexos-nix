@@ -104,8 +104,13 @@
     # — so the compiled kernel lands in cache.garnix.io and future rebuilds on
     # the VM fetch it instead of compiling it locally.
     packages.x86_64-linux.linux-bazzite =
-      nixpkgs.legacyPackages.x86_64-linux.callPackage
-        "${kernel-bazzite}/pkgs/linux-bazzite.nix" {};
+      (nixpkgs.legacyPackages.x86_64-linux.callPackage
+        "${kernel-bazzite}/pkgs/linux-bazzite.nix" {})
+      .overrideAttrs (old: {
+        passthru = (old.passthru or {}) // {
+          features = { ia32Emulation = true; efiBootStub = true; };
+        };
+      });
 
     # ── AMD GPU build ────────────────────────────────────────────────────────
     # sudo nixos-rebuild switch --flake .#vexos-amd
@@ -174,19 +179,28 @@
       gpuIntel  = ./modules/gpu/intel.nix;
       asus      = ./modules/asus.nix;
 
-      # Bazzite kernel override — intended for the VM variant when consumed via
-      # the /etc/nixos/flake.nix template (template/etc-nixos-flake.nix).
-      # Uses lib.mkOverride 49 to beat modules/gpu/vm.nix's lib.mkForce (priority 50).
-      # Captures kernel-bazzite from the outputs closure so no specialArgs wiring is needed.
-      # Mirrors the inline override in hosts/vm.nix (used for direct repo builds).
-      #
-      # References kernel-bazzite.packages directly so the store path matches what
-      # Garnix cached from the vex-kernels repo.  linux-bazzite.nix now exposes
-      # `features` natively so no wrapper is needed.
+      # Bazzite kernel override for the VM variant (consumed via template/etc-nixos-flake.nix).
+      # Uses lib.mkOverride 49 to beat modules/gpu/vm.nix lib.mkForce (priority 50).
+      # Wraps rawKernel with passthru.features and lib.makeOverridable shim to satisfy
+      # NixOS nixpkgs 25.11 kernel.nix override requirements (see kernel_features_fix_spec.md).
       kernelBazzite = { pkgs, lib, ... }: {
         boot.kernelPackages = lib.mkOverride 49 (
-          pkgs.linuxPackagesFor
-            kernel-bazzite.packages.x86_64-linux.linux-bazzite
+          let
+            rawKernel = kernel-bazzite.packages.x86_64-linux.linux-bazzite;
+            kernelWithFeatures = rawKernel.overrideAttrs (old: {
+              passthru = (old.passthru or {}) // {
+                features = {
+                  ia32Emulation = true;
+                  efiBootStub   = true;
+                };
+              };
+            });
+            bazziteKernel = lib.makeOverridable
+              ({ features ? {}, randstructSeed ? "", kernelPatches ? [], ... }:
+                kernelWithFeatures)
+              {};
+          in
+          pkgs.linuxPackagesFor bazziteKernel
         );
       };
     };
