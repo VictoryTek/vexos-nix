@@ -47,6 +47,9 @@
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
 
+    # Trust wheel group users to use additional substituters and caches
+    trusted-users = [ "root" "@wheel" ];
+
     # Deduplicate identical files in the store (saves significant disk space)
     auto-optimise-store = true;
 
