@@ -96,6 +96,17 @@
     ];
   in
   {
+    # ── Garnix-cacheable package outputs ─────────────────────────────────────
+    # The nixosConfigurations all import /etc/nixos/hardware-configuration.nix
+    # which doesn't exist on Garnix's servers, so they can never be evaluated
+    # there.  Exposing the Bazzite kernel as a plain package gives Garnix
+    # something it CAN build — Garnix's default config covers *.x86_64-linux.*
+    # — so the compiled kernel lands in cache.garnix.io and future rebuilds on
+    # the VM fetch it instead of compiling it locally.
+    packages.x86_64-linux.linux-bazzite =
+      nixpkgs.legacyPackages.x86_64-linux.callPackage
+        "${kernel-bazzite}/pkgs/linux-bazzite.nix" {};
+
     # ── AMD GPU build ────────────────────────────────────────────────────────
     # sudo nixos-rebuild switch --flake .#vexos-amd
     nixosConfigurations.vexos-amd = nixpkgs.lib.nixosSystem {
@@ -166,20 +177,16 @@
       # Bazzite kernel override — intended for the VM variant when consumed via
       # the /etc/nixos/flake.nix template (template/etc-nixos-flake.nix).
       # Uses lib.mkOverride 49 to beat modules/gpu/vm.nix's lib.mkForce (priority 50).
-      # captures kernel-bazzite from the outputs closure so no specialArgs wiring is needed.
+      # Captures kernel-bazzite from the outputs closure so no specialArgs wiring is needed.
       # Mirrors the inline override in hosts/vm.nix (used for direct repo builds).
+      #
+      # References kernel-bazzite.packages directly so the store path matches what
+      # Garnix cached from the vex-kernels repo.  linux-bazzite.nix now exposes
+      # `features` natively so no wrapper is needed.
       kernelBazzite = { pkgs, lib, ... }: {
         boot.kernelPackages = lib.mkOverride 49 (
-          pkgs.linuxPackagesFor (
-            pkgs.callPackage
-              ({ lib, fetchFromGitHub, fetchurl, linuxManualConfig, runCommand
-               , features ? {}, ... }:
-                let bazziteBase =
-                      import "${kernel-bazzite}/pkgs/linux-bazzite.nix"
-                        { inherit lib fetchFromGitHub fetchurl linuxManualConfig runCommand; };
-                in bazziteBase // { features = (bazziteBase.features or {}) // { ia32Emulation = true; efiBootStub = true; }; })
-              {}
-          )
+          pkgs.linuxPackagesFor
+            kernel-bazzite.packages.x86_64-linux.linux-bazzite
         );
       };
     };

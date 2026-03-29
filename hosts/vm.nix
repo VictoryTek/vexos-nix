@@ -38,22 +38,18 @@
   # modules/performance.nix CachyOS setting (normal priority).
   # Uses lib.mkOverride 49 (priority 49 < 50) so this definition wins over lib.mkForce
   # without triggering a "defined multiple times" conflict on the unique option.
+  #
+  # References inputs.kernel-bazzite.packages directly so the store path matches
+  # exactly what Garnix CI built and cached from the vex-kernels repo.  Re-deriving
+  # via pkgs.callPackage would use vexos-nix's nixos-25.11 pkgs instead of
+  # vex-kernels' nixos-unstable pkgs, producing a different store path and a
+  # guaranteed cache miss on every rebuild.
+  #
+  # features (ia32Emulation, efiBootStub) are now exposed by linux-bazzite.nix
+  # itself via the `// { features = ... }` at the end of that file.
   boot.kernelPackages = lib.mkOverride 49 (
-    pkgs.linuxPackagesFor (
-      pkgs.callPackage
-        ({ lib, fetchFromGitHub, fetchurl, linuxManualConfig, runCommand
-         , features ? {}, ... }:
-          let bazziteBase =
-                import "${inputs.kernel-bazzite}/pkgs/linux-bazzite.nix"
-                  { inherit lib fetchFromGitHub fetchurl linuxManualConfig runCommand; };
-          # Declare ia32Emulation so hardware.graphics.enable32Bit assertion passes.
-          # Declare efiBootStub so systemd-boot assertion passes.
-          # Bazzite uses the Fedora gaming config: CONFIG_IA32_EMULATION=y, CONFIG_EFI_STUB=y.
-          # linuxManualConfig does not auto-expose `features`; we add it here so the
-          # attribute persists through any subsequent .override calls made by kernel.nix.
-          in bazziteBase // { features = (bazziteBase.features or {}) // { ia32Emulation = true; efiBootStub = true; }; })
-        {}
-    )
+    pkgs.linuxPackagesFor
+      inputs.kernel-bazzite.packages.x86_64-linux.linux-bazzite
   );
 
   # Distinguish the VM host on the network
