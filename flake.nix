@@ -110,12 +110,7 @@
     # toolchain than vex-kernels' own pinned nixpkgs, yielding a different store
     # path that Garnix would cache but nixos-rebuild would never request.
     packages.x86_64-linux.linux-bazzite =
-      kernel-bazzite.packages.x86_64-linux.linux-bazzite
-      .overrideAttrs (old: {
-        passthru = (old.passthru or {}) // {
-          features = { ia32Emulation = true; efiBootStub = true; };
-        };
-      });
+      kernel-bazzite.packages.x86_64-linux.linux-bazzite;
 
     # ── AMD GPU build ────────────────────────────────────────────────────────
     # sudo nixos-rebuild switch --flake .#vexos-amd
@@ -186,26 +181,10 @@
 
       # Bazzite kernel override for the VM variant (consumed via template/etc-nixos-flake.nix).
       # Uses lib.mkOverride 49 to beat modules/gpu/vm.nix lib.mkForce (priority 50).
-      # Wraps rawKernel with passthru.features and lib.makeOverridable shim to satisfy
-      # NixOS nixpkgs 25.11 kernel.nix override requirements (see kernel_features_fix_spec.md).
       kernelBazzite = { pkgs, lib, ... }: {
+        # mkOverride 49 wins over modules/gpu/vm.nix which uses mkForce (priority 50).
         boot.kernelPackages = lib.mkOverride 49 (
-          let
-            rawKernel = kernel-bazzite.packages.x86_64-linux.linux-bazzite;
-            kernelWithFeatures = rawKernel.overrideAttrs (old: {
-              passthru = (old.passthru or {}) // {
-                features = {
-                  ia32Emulation = true;
-                  efiBootStub   = true;
-                };
-              };
-            });
-            bazziteKernel = lib.makeOverridable
-              ({ features ? {}, randstructSeed ? "", kernelPatches ? [], ... }:
-                kernelWithFeatures)
-              {};
-          in
-          pkgs.linuxPackagesFor bazziteKernel
+          pkgs.linuxPackagesFor kernel-bazzite.packages.x86_64-linux.linux-bazzite
         );
       };
     };
