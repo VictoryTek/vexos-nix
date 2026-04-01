@@ -10,8 +10,8 @@
   systemd.services.flatpak-add-flathub = {
     description = "Add Flathub Flatpak remote";
     wantedBy    = [ "multi-user.target" ];
-    after       = [ "network-online.target" ];
-    wants       = [ "network-online.target" ];
+    after       = [ "network-online.target" "nss-lookup.target" ];
+    wants       = [ "network-online.target" "nss-lookup.target" ];
     path        = [ pkgs.flatpak ];
     script      = ''
       flatpak remote-add --if-not-exists flathub \
