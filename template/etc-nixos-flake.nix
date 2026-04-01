@@ -92,7 +92,7 @@
           vexos-nix.nixosModules.base
 
           # GPU-specific drivers and settings for this variant.
-        ] ++ modules
+        ] ++ modules;
     };
 
   in
