@@ -22,6 +22,8 @@
     ruff                                          # Python linter & formatter
 
     # ── Rust ──────────────────────────────────────────────────────────────────
+    rustfmt                                       # Rust code formatter
+    clippy                                        # Rust linter
     rustup                                        # Rust toolchain manager (rustc, cargo, clippy)
 
     # ── TypeScript / Node ─────────────────────────────────────────────────────
