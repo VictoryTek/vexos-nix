@@ -175,18 +175,15 @@
 
       gpuAmd    = ./modules/gpu/amd.nix;
       gpuNvidia = ./modules/gpu/nvidia.nix;
-      gpuVm     = ./modules/gpu/vm.nix;
-      gpuIntel  = ./modules/gpu/intel.nix;
-      asus      = ./modules/asus.nix;
-
-      # Bazzite kernel override for the VM variant (consumed via template/etc-nixos-flake.nix).
-      # Uses lib.mkOverride 49 to beat modules/gpu/vm.nix lib.mkForce (priority 50).
-      kernelBazzite = { pkgs, lib, ... }: {
-        # mkOverride 49 wins over modules/gpu/vm.nix which uses mkForce (priority 50).
+      gpuVm = { pkgs, lib, ... }: {
+        imports = [ ./modules/gpu/vm.nix ];
+        # Bazzite kernel: mkOverride 49 beats modules/gpu/vm.nix lib.mkForce (priority 50).
         boot.kernelPackages = lib.mkOverride 49 (
           pkgs.linuxPackagesFor kernel-bazzite.packages.x86_64-linux.linux-bazzite
         );
       };
+      gpuIntel  = ./modules/gpu/intel.nix;
+      asus      = ./modules/asus.nix;
     };
   };
 }
