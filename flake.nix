@@ -40,6 +40,12 @@
     kernel-bazzite = {
       url = "github:VictoryTek/vex-kernels";
     };
+
+    # Up — GTK4 + libadwaita system update GUI (VM variant only).
+    up = {
+      url = "github:VictoryTek/Up";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, nix-cachyos-kernel, home-manager, kernel-bazzite, ... }@inputs:
