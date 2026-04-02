@@ -101,7 +101,10 @@
       vexos-amd    = mkVariant "vexos-amd"    vexos-nix.nixosModules.gpuAmd;
       vexos-nvidia = mkVariant "vexos-nvidia" vexos-nix.nixosModules.gpuNvidia;
       vexos-intel  = mkVariant "vexos-intel"  vexos-nix.nixosModules.gpuIntel;
-      vexos-vm     = mkVariant "vexos-vm"     vexos-nix.nixosModules.gpuVm;
+      vexos-vm     = mkVariant "vexos-vm"     [
+        vexos-nix.nixosModules.gpuVm
+        vexos-nix.nixosModules.kernelBazzite
+      ];
     };
   };
 }
