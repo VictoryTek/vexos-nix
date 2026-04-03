@@ -147,8 +147,8 @@
   systemd.services.flatpak-install-gnome-apps = {
     description = "Install GNOME default apps from Flathub";
     wantedBy    = [ "multi-user.target" ];
-    after       = [ "flatpak-add-flathub.service" ];
-    requires    = [ "flatpak-add-flathub.service" ];
+    after       = [ "flatpak-add-flathub.service" "flatpak-install-apps.service" ];
+    requires    = [ "flatpak-add-flathub.service" "flatpak-install-apps.service" ];
     path        = [ pkgs.flatpak ];
     script      = ''
       flatpak install --noninteractive --assumeyes flathub \
