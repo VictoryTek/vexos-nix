@@ -22,25 +22,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # CachyOS kernel — official NixOS packaging.
-    # `release` branch: CI-verified builds present in binary cache.
-    # CRITICAL: Do NOT add inputs.nixpkgs.follows here.
-    # The version pinning between CachyOS patches and kernel source is managed
-    # internally by the release branch CI. Adding nixpkgs.follows breaks this.
-    nix-cachyos-kernel = {
-      url = "github:xddxdd/nix-cachyos-kernel/release";
-    };
-
-    # Bazzite kernel — gaming and handheld optimized kernel for VM testing.
-    # CRITICAL: Do NOT add inputs.nixpkgs.follows = "nixpkgs" here.
-    # vex-kernels pins nixos-unstable internally; the nixosModule evaluates
-    # pkgs from the host system, but the flake may require unstable tooling
-    # for standalone builds. Mirrors the established precedent for
-    # nix-cachyos-kernel. A separate nixpkgs lock entry is acceptable.
-    kernel-bazzite = {
-      url = "github:VictoryTek/vex-kernels";
-    };
-
     # Up — GTK4 + libadwaita system update GUI (VM variant only).
     up = {
       url = "github:VictoryTek/Up";
@@ -48,17 +29,9 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, nix-cachyos-kernel, home-manager, kernel-bazzite, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, ... }@inputs:
   let
     system = "x86_64-linux";
-
-    # Inline NixOS module that applies the CachyOS kernel overlay.
-    # Using a closure here (capturing nix-cachyos-kernel from the outputs scope)
-    # so the overlay works when nixosModules.base is consumed by external flakes
-    # (template/etc-nixos-flake.nix) without needing specialArgs.
-    cachyosOverlayModule = {
-      nixpkgs.overlays = [ nix-cachyos-kernel.overlays.pinned ];
-    };
 
     # Inline NixOS module: exposes pkgs.unstable.* sourced from nixpkgs-unstable.
     # Used in modules/gnome.nix to pin GNOME application tools to latest.
@@ -96,28 +69,11 @@
       # nix-gaming: declarative low-latency PipeWire tuning
       nix-gaming.nixosModules.pipewireLowLatency
 
-      cachyosOverlayModule
       unstableOverlayModule
       homeManagerModule
     ];
   in
   {
-    # ── Garnix-cacheable package outputs ─────────────────────────────────────
-    # The nixosConfigurations all import /etc/nixos/hardware-configuration.nix
-    # which doesn't exist on Garnix's servers, so they can never be evaluated
-    # there.  Exposing the Bazzite kernel as a plain package gives Garnix
-    # something it CAN build — Garnix's default config covers *.x86_64-linux.*
-    # — so the compiled kernel lands in cache.garnix.io and future rebuilds on
-    # the VM fetch it instead of compiling it locally.
-    #
-    # IMPORTANT: reference kernel-bazzite.packages directly (NOT callPackage)
-    # so this output has the same .drv hash as what hosts/vm.nix uses.
-    # Using callPackage here with vexos-nix's nixpkgs would produce a different
-    # toolchain than vex-kernels' own pinned nixpkgs, yielding a different store
-    # path that Garnix would cache but nixos-rebuild would never request.
-    packages.x86_64-linux.linux-bazzite =
-      kernel-bazzite.packages.x86_64-linux.linux-bazzite;
-
     # ── AMD GPU build ────────────────────────────────────────────────────────
     # sudo nixos-rebuild switch --flake .#vexos-amd
     nixosConfigurations.vexos-amd = nixpkgs.lib.nixosSystem {
@@ -169,7 +125,6 @@
           users.nimda     = import ./home.nix;
         };
         nixpkgs.overlays = [
-          nix-cachyos-kernel.overlays.pinned
           (final: prev: {
             unstable = import nixpkgs-unstable {
               inherit (final) config;
@@ -181,13 +136,7 @@
 
       gpuAmd    = ./modules/gpu/amd.nix;
       gpuNvidia = ./modules/gpu/nvidia.nix;
-      gpuVm = { pkgs, lib, ... }: {
-        imports = [ ./modules/gpu/vm.nix ];
-        # Bazzite kernel: mkOverride 49 beats modules/gpu/vm.nix lib.mkForce (priority 50).
-        boot.kernelPackages = lib.mkOverride 49 (
-          pkgs.linuxPackagesFor kernel-bazzite.packages.x86_64-linux.linux-bazzite
-        );
-      };
+      gpuVm     = ./modules/gpu/vm.nix;
       gpuIntel  = ./modules/gpu/intel.nix;
       asus      = ./modules/asus.nix;
     };

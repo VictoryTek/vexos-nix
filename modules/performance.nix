@@ -1,12 +1,11 @@
 # modules/performance.nix
-# Gaming-grade kernel and performance tuning: zen kernel, kernel params,
+# Gaming-grade kernel and performance tuning: kernel params,
 # ZRAM swap, CPU governor, BBR TCP, VM tunables, transparent huge pages.
 { config, pkgs, lib, ... }:
 {
   # ── Kernel selection ──────────────────────────────────────────────────────
-  # Standard latest kernel: tracks the most recent stable upstream release.
-  # Provided by nixpkgs as pkgs.linuxPackages_latest.
-  # VM variant (hosts/vm.nix) overrides this with the Bazzite kernel via lib.mkOverride 49.
+  # Latest upstream kernel: tracks the most recent stable release from nixpkgs.
+  # Applies to all variants (amd, nvidia, vm, intel).
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
   # ── Kernel parameters ─────────────────────────────────────────────────────
