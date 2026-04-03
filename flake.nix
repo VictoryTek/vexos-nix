@@ -136,7 +136,12 @@
 
       gpuAmd    = ./modules/gpu/amd.nix;
       gpuNvidia = ./modules/gpu/nvidia.nix;
-      gpuVm     = ./modules/gpu/vm.nix;
+      gpuVm = { ... }: {
+        imports = [ ./modules/gpu/vm.nix ];
+        environment.systemPackages = [
+          inputs.up.packages.x86_64-linux.default
+        ];
+      };
       gpuIntel  = ./modules/gpu/intel.nix;
       asus      = ./modules/asus.nix;
     };
