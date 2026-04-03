@@ -146,7 +146,6 @@
       if [ -f /var/lib/flatpak/.gnome-apps-installed ]; then exit 0; fi
       flatpak install --noninteractive --assumeyes flathub \
         org.gnome.TextEditor \
-        org.gnome.SystemMonitor \
         org.gnome.Calculator \
         org.gnome.Calendar \
         org.gnome.Loupe \

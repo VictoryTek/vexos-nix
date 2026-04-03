@@ -252,7 +252,7 @@
       apps = [
         "org.pulseaudio.pavucontrol.desktop"
         "rog-control-center.desktop"
-        "org.gnome.SystemMonitor.desktop"
+        "io.missioncenter.MissionCenter.desktop"
         "org.gnome.Settings.desktop"
         "org.gnome.seahorse.Application.desktop"
         "nixos-manual.desktop"
