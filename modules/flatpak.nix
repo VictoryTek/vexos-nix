@@ -1,43 +1,34 @@
 # modules/flatpak.nix
-# Flatpak subsystem with automatic Flathub remote registration on boot.
 { config, pkgs, lib, ... }:
 {
-  # Enable the Flatpak subsystem
   services.flatpak.enable = true;
 
-  # Automatically add the Flathub remote on system activation.
-  # Runs once after network is up; idempotent (--if-not-exists).
+  # Add Flathub remote on first boot only (stamp: /var/lib/flatpak/.flathub-added).
   systemd.services.flatpak-add-flathub = {
-    description = "Add Flathub Flatpak remote";
+    description = "Add Flathub Flatpak remote (once)";
     wantedBy    = [ "multi-user.target" ];
     after       = [ "network-online.target" "nss-lookup.target" ];
     wants       = [ "network-online.target" "nss-lookup.target" ];
     path        = [ pkgs.flatpak ];
-    script      = ''
+    script = ''
+      if [ -f /var/lib/flatpak/.flathub-added ]; then exit 0; fi
       flatpak remote-add --if-not-exists flathub \
         https://dl.flathub.org/repo/flathub.flatpakrepo
+      touch /var/lib/flatpak/.flathub-added
     '';
-    unitConfig = {
-      StartLimitBurst       = 5;
-      StartLimitIntervalSec = 300;
-    };
-    serviceConfig = {
-      Type            = "oneshot";
-      RemainAfterExit = true;
-      Restart         = "on-failure";
-      RestartSec      = "30s";
-    };
+    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
   };
 
-  # Automatically install Flatpak applications from Flathub on boot.
-  # Runs after Flathub remote is registered; idempotent (install --noninteractive).
+  # Install apps from Flathub on first boot only (stamp: /var/lib/flatpak/.apps-installed).
+  # After initial install, Up manages all flatpak updates.
   systemd.services.flatpak-install-apps = {
-    description = "Install Flatpak applications from Flathub";
+    description = "Install Flatpak applications from Flathub (once)";
     wantedBy    = [ "multi-user.target" ];
     after       = [ "flatpak-add-flathub.service" ];
     requires    = [ "flatpak-add-flathub.service" ];
     path        = [ pkgs.flatpak ];
-    script      = ''
+    script = ''
+      if [ -f /var/lib/flatpak/.apps-installed ]; then exit 0; fi
       flatpak install --noninteractive --assumeyes flathub \
         com.bitwarden.desktop \
         io.github.pol_rivero.github-desktop-plus \
@@ -55,13 +46,10 @@
         io.github.kolunmi.Bazaar \
         org.pulseaudio.pavucontrol \
         com.vysp3r.ProtonPlus \
-        net.lutris.Lutris \
-        || true
+        net.lutris.Lutris
+      touch /var/lib/flatpak/.apps-installed
     '';
-    serviceConfig = {
-      Type            = "oneshot";
-      RemainAfterExit = true;
-    };
+    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
   };
 
   # Ensure Flatpak-installed desktop files are visible to GNOME's app launcher.

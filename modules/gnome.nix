@@ -107,14 +107,6 @@
     xterm
     gnome-music
     rhythmbox
-    # Replaced by Flatpak versions (latest from Flathub, avoids local compilation)
-    gnome-text-editor
-    gnome-system-monitor
-    gnome-calculator
-    gnome-calendar
-    loupe
-    # gnome-papers omitted — not yet a top-level pkgs attribute in nixos-25.11
-    totem
   ];
 
   # ── GNOME tooling & Shell extensions ─────────────────────────────────────
@@ -141,16 +133,17 @@
   ];
 
   # ── GNOME default app Flatpaks ────────────────────────────────────────────
-  # GNOME apps excluded from Nix packages above are installed from Flathub
-  # instead, keeping them up-to-date independently of nixpkgs.
-  # Runs after flatpak-add-flathub.service (defined in modules/flatpak.nix).
+  # Installs GNOME apps from Flathub on first boot only
+  # (stamp: /var/lib/flatpak/.gnome-apps-installed).
+  # After initial install, Up manages updates.
   systemd.services.flatpak-install-gnome-apps = {
-    description = "Install GNOME default apps from Flathub";
+    description = "Install GNOME Flatpak apps (once)";
     wantedBy    = [ "multi-user.target" ];
-    after       = [ "flatpak-add-flathub.service" "flatpak-install-apps.service" ];
-    requires    = [ "flatpak-add-flathub.service" "flatpak-install-apps.service" ];
+    after       = [ "flatpak-install-apps.service" ];
+    requires    = [ "flatpak-add-flathub.service" ];
     path        = [ pkgs.flatpak ];
-    script      = ''
+    script = ''
+      if [ -f /var/lib/flatpak/.gnome-apps-installed ]; then exit 0; fi
       flatpak install --noninteractive --assumeyes flathub \
         org.gnome.TextEditor \
         org.gnome.SystemMonitor \
@@ -158,13 +151,10 @@
         org.gnome.Calendar \
         org.gnome.Loupe \
         org.gnome.Papers \
-        org.gnome.Totem \
-        || true
+        org.gnome.Totem
+      touch /var/lib/flatpak/.gnome-apps-installed
     '';
-    serviceConfig = {
-      Type            = "oneshot";
-      RemainAfterExit = true;
-    };
+    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
   };
 
   # ── Fonts ─────────────────────────────────────────────────────────────────
