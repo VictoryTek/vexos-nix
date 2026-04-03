@@ -29,7 +29,10 @@
     path        = [ pkgs.flatpak ];
     script = ''
       if [ -f /var/lib/flatpak/.apps-installed ]; then exit 0; fi
-      flatpak install --noninteractive --assumeyes flathub \
+
+      FAILED=0
+
+      for app in \
         com.bitwarden.desktop \
         io.github.pol_rivero.github-desktop-plus \
         com.github.tchx84.Flatseal \
@@ -47,9 +50,36 @@
         org.pulseaudio.pavucontrol \
         com.vysp3r.ProtonPlus \
         net.lutris.Lutris
-      touch /var/lib/flatpak/.apps-installed
+      do
+        if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
+          echo "flatpak: $app already installed, skipping"
+          continue
+        fi
+        echo "flatpak: installing $app"
+        if ! flatpak install --noninteractive --assumeyes flathub "$app"; then
+          echo "flatpak: WARNING — failed to install $app"
+          FAILED=1
+        fi
+      done
+
+      if [ "$FAILED" -eq 0 ]; then
+        touch /var/lib/flatpak/.apps-installed
+        echo "flatpak: all apps installed successfully"
+      else
+        echo "flatpak: one or more apps failed — will retry on next start"
+        exit 1
+      fi
     '';
-    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
+    unitConfig = {
+      StartLimitIntervalSec = 600;
+      StartLimitBurst       = 10;
+    };
+    serviceConfig = {
+      Type            = "oneshot";
+      RemainAfterExit = true;
+      Restart         = "on-failure";
+      RestartSec      = 60;
+    };
   };
 
   # Ensure Flatpak-installed desktop files are visible to GNOME's app launcher.
