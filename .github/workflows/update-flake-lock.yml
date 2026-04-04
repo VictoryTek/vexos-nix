@@ -1,0 +1,52 @@
+name: Update nixpkgs flake input
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'   # Every Monday at 04:00 UTC
+  workflow_dispatch:        # Allow manual trigger for testing and ad-hoc updates
+
+permissions:
+  contents: write           # Required to commit and push flake.lock back to main
+
+jobs:
+  update-nixpkgs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # GITHUB_TOKEN is used automatically via the workflow permissions block.
+          # fetch-depth 1 is sufficient — we only need the working tree for the
+          # update command and a single commit.
+          fetch-depth: 1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          # Passes GITHUB_TOKEN to the Nix daemon to avoid API rate limits when
+          # fetching flake inputs from GitHub (nixpkgs, nix-gaming, etc.).
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update nixpkgs input
+        run: nix flake update nixpkgs
+
+      - name: Check if flake.lock changed
+        id: diff
+        run: |
+          if git diff --quiet flake.lock; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "nixpkgs is already up to date — nothing to commit."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "flake.lock has been updated."
+          fi
+
+      - name: Commit and push updated flake.lock
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flake.lock
+          git commit -m "chore: update nixpkgs flake input"
+          git push
