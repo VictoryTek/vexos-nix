@@ -9,9 +9,11 @@
     wantedBy    = [ "multi-user.target" ];
     after       = [ "network-online.target" "nss-lookup.target" ];
     wants       = [ "network-online.target" "nss-lookup.target" ];
+    # Skip entirely if stamp already exists — avoids a failed DNS lookup on
+    # every nixos-rebuild switch when the unit is re-evaluated by systemd.
+    unitConfig.ConditionPathExists = "!/var/lib/flatpak/.flathub-added";
     path        = [ pkgs.flatpak ];
     script = ''
-      if [ -f /var/lib/flatpak/.flathub-added ]; then exit 0; fi
       flatpak remote-add --if-not-exists flathub \
         https://dl.flathub.org/repo/flathub.flatpakrepo
       touch /var/lib/flatpak/.flathub-added
