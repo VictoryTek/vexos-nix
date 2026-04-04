@@ -107,6 +107,7 @@
     xterm
     gnome-music
     rhythmbox
+    totem         # Flatpak org.gnome.Totem is installed instead (auto-updated by Up)
   ];
 
   # ── GNOME tooling & Shell extensions ─────────────────────────────────────
