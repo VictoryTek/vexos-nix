@@ -7,18 +7,27 @@
   systemd.services.flatpak-add-flathub = {
     description = "Add Flathub Flatpak remote (once)";
     wantedBy    = [ "multi-user.target" ];
-    after       = [ "network-online.target" "nss-lookup.target" ];
-    wants       = [ "network-online.target" "nss-lookup.target" ];
+    after       = [ "network-online.target" "nss-lookup.target" "systemd-resolved.service" ];
+    wants       = [ "network-online.target" "nss-lookup.target" "systemd-resolved.service" ];
     # Skip entirely if stamp already exists — avoids a failed DNS lookup on
     # every nixos-rebuild switch when the unit is re-evaluated by systemd.
-    unitConfig.ConditionPathExists = "!/var/lib/flatpak/.flathub-added";
     path        = [ pkgs.flatpak ];
     script = ''
       flatpak remote-add --if-not-exists flathub \
         https://dl.flathub.org/repo/flathub.flatpakrepo
       touch /var/lib/flatpak/.flathub-added
     '';
-    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
+    unitConfig = {
+      ConditionPathExists    = "!/var/lib/flatpak/.flathub-added";
+      StartLimitIntervalSec  = 300;
+      StartLimitBurst        = 5;
+    };
+    serviceConfig = {
+      Type            = "oneshot";
+      RemainAfterExit = true;
+      Restart         = "on-failure";
+      RestartSec      = 30;
+    };
   };
 
   # Install apps from Flathub on first boot only (stamp: /var/lib/flatpak/.apps-installed).
