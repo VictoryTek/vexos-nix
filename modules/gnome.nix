@@ -108,6 +108,7 @@
     gnome-music
     rhythmbox
     totem         # Flatpak org.gnome.Totem is installed instead (auto-updated by Up)
+    showtime      # GNOME 49 video player ("Video Player") — duplicate of Flatpak Totem
   ];
 
   # ── GNOME tooling & Shell extensions ─────────────────────────────────────
