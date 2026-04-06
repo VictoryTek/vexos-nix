@@ -7,5 +7,6 @@
     ../configuration.nix
     ../modules/gpu/amd.nix
     ../modules/asus.nix
+    ../modules/system.nix
   ];
 }
