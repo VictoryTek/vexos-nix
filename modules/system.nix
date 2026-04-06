@@ -1,8 +1,6 @@
 # modules/system.nix
-# General system-level configuration shared across physical hosts.
+# General system-level configuration shared across all hosts (including VM).
 # Includes btrfs snapshot management (snapper) and related GUI tools.
-#
-# DO NOT import in hosts/vm.nix — VMs typically do not use btrfs.
 { pkgs, ... }:
 {
   # ---------- Snapper (btrfs snapshot management) ----------
