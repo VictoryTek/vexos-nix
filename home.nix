@@ -266,6 +266,7 @@
         "org.gnome.font-viewer.desktop"
         "htop.desktop"
         "org.gnome.Logs.desktop"
+        "btrfs-assistant.desktop"
       ];
     };
   };
