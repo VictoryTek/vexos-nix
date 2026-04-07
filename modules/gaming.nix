@@ -4,9 +4,9 @@
 { config, pkgs, lib, ... }:
 {
   # ── Steam ─────────────────────────────────────────────────────────────────
-  programs.steam.enable also enables hardware.steam-hardware.enable automatically.
+  # programs.steam.enable also enables hardware.steam-hardware.enable automatically.
   programs.steam = {
-    enable = false;  # temporarily disabled — work network blocks download
+    enable = true;
     remotePlay.openFirewall = true;
     dedicatedServer.openFirewall = false;
     gamescopeSession.enable = true; # Gamescope session for Steam gaming mode
