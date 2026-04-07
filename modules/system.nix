@@ -24,6 +24,20 @@
   services.snapper.snapshotRootOnBoot = true;
   services.snapper.persistentTimer = true;
 
+  # Create /.snapshots subvolume on first activation if root is btrfs.
+  # Runs on every rebuild but is idempotent — snapper requires this subvolume
+  # to exist before its services start, including on fresh VM installs.
+  system.activationScripts.snapperSubvolume = {
+    text = ''
+      if ${pkgs.util-linux}/bin/findmnt -n -o FSTYPE / | grep -q '^btrfs$'; then
+        if ! ${pkgs.btrfs-progs}/bin/btrfs subvolume show /.snapshots >/dev/null 2>&1; then
+          ${pkgs.btrfs-progs}/bin/btrfs subvolume create /.snapshots
+        fi
+      fi
+    '';
+    deps = [];
+  };
+
   # ---------- btrfs auto-scrub ----------
   services.btrfs.autoScrub = {
     enable = true;

@@ -19,10 +19,8 @@
     ../modules/gpu/vm.nix
   ];
 
-  # Distinguish the VM host on the network
   networking.hostName = "vexos-desktop-vm";
 
-  # Up: GTK4 + libadwaita system update GUI — VM variant only.
   environment.systemPackages = [
     inputs.up.packages.x86_64-linux.default
   ];
