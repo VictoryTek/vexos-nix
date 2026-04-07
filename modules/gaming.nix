@@ -4,7 +4,7 @@
 { config, pkgs, lib, ... }:
 {
   # ── Steam ─────────────────────────────────────────────────────────────────
-  # programs.steam.enable also enables hardware.steam-hardware.enable automatically.
+  programs.steam.enable also enables hardware.steam-hardware.enable automatically.
   programs.steam = {
     enable = false;  # temporarily disabled — work network blocks download
     remotePlay.openFirewall = true;
@@ -38,13 +38,6 @@
       };
     };
   };
-
-  # ── OBS Studio ───────────────────────────────────────────────────────────
-  # Use programs.obs-studio to properly wire the OBS VkCapture plugin via NixOS.
-  #programs.obs-studio = {
-  #  enable = true;
-  #  plugins = [ pkgs.obs-studio-plugins.obs-vkcapture ];
-  #};
 
   # ── Gaming utilities ──────────────────────────────────────────────────────
   environment.systemPackages = with pkgs; [
