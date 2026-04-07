@@ -17,7 +17,6 @@
   imports = [
     ../configuration.nix
     ../modules/gpu/vm.nix
-    ../modules/system.nix
   ];
 
   # Distinguish the VM host on the network

@@ -6,6 +6,5 @@
   imports = [
     ../configuration.nix
     ../modules/gpu/intel.nix
-    ../modules/system.nix
   ];
 }
