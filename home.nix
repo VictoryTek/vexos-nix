@@ -267,6 +267,7 @@
         "htop.desktop"
         "org.gnome.Logs.desktop"
         "btrfs-assistant.desktop"
+        "org.gnome.SystemMonitor.desktop"
       ];
     };
   };
