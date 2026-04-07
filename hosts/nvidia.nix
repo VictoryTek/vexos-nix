@@ -1,6 +1,6 @@
 # hosts/nvidia.nix
-# vexos — NVIDIA GPU system build.
-# Rebuild: sudo nixos-rebuild switch --flake .#vexos-nvidia
+# vexos — NVIDIA GPU desktop build.
+# Rebuild: sudo nixos-rebuild switch --flake .#vexos-desktop-nvidia
 { ... }:
 {
   imports = [

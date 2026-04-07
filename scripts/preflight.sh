@@ -60,7 +60,7 @@ if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
   warn "Skipping dry-build — /etc/nixos/hardware-configuration.nix not found."
   warn "Run 'sudo nixos-generate-config' on the target host and retry."
 elif command -v nixos-rebuild &>/dev/null; then
-  for TARGET in vexos-amd vexos-nvidia vexos-vm vexos-intel; do
+  for TARGET in vexos-desktop-amd vexos-desktop-nvidia vexos-desktop-vm vexos-desktop-intel; do
     if sudo nixos-rebuild dry-build --flake ".#${TARGET}" 2>&1; then
       pass "nixos-rebuild dry-build .#${TARGET} passed"
     else
@@ -72,7 +72,7 @@ else
   # nixos-rebuild not available (e.g. developing on a non-NixOS host).
   # Fall back to nix build --dry-run which evaluates the full closure without sudo.
   warn "nixos-rebuild not found — falling back to 'nix build --dry-run' for each variant"
-  for TARGET in vexos-amd vexos-nvidia vexos-vm vexos-intel; do
+  for TARGET in vexos-desktop-amd vexos-desktop-nvidia vexos-desktop-vm vexos-desktop-intel; do
     if nix build --dry-run --impure ".#nixosConfigurations.${TARGET}.config.system.build.toplevel" 2>&1; then
       pass "nix build --dry-run .#${TARGET} passed"
     else

@@ -1,6 +1,6 @@
 # hosts/amd.nix
-# vexos — AMD GPU system build.
-# Rebuild: sudo nixos-rebuild switch --flake .#vexos-amd
+# vexos — AMD GPU desktop build.
+# Rebuild: sudo nixos-rebuild switch --flake .#vexos-desktop-amd
 { ... }:
 {
   imports = [

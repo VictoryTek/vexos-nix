@@ -66,15 +66,15 @@ Primary Language(s): **Nix**
 Framework(s): **NixOS 25.05, nixpkgs, Nix Flakes**  
 
 Build Command(s):  
-- `sudo nixos-rebuild switch --flake .#vexos-amd` (AMD GPU)  
-- `sudo nixos-rebuild switch --flake .#vexos-nvidia` (NVIDIA GPU)  
-- `sudo nixos-rebuild switch --flake .#vexos-vm` (VM guest)  
+- `sudo nixos-rebuild switch --flake .#vexos-desktop-amd` (AMD GPU)  
+- `sudo nixos-rebuild switch --flake .#vexos-desktop-nvidia` (NVIDIA GPU)  
+- `sudo nixos-rebuild switch --flake .#vexos-desktop-vm` (VM guest)  
 
 Test Command(s):  
 - `nix flake check`  
-- `sudo nixos-rebuild dry-build --flake .#vexos-amd`  
-- `sudo nixos-rebuild dry-build --flake .#vexos-nvidia`  
-- `sudo nixos-rebuild dry-build --flake .#vexos-vm`  
+- `sudo nixos-rebuild dry-build --flake .#vexos-desktop-amd`  
+- `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia`  
+- `sudo nixos-rebuild dry-build --flake .#vexos-desktop-vm`  
 
 Package Manager(s): **Nix (nix CLI / nix flake)**  
 
@@ -85,12 +85,12 @@ Repository Notes:
   - `.github/docs/subagent_docs/` — subagent specification and review documents  
 - Architecture Pattern: **Thin Flake — `hardware-configuration.nix` is delegated to the host at `/etc/nixos/` and imported by reference; all tracked configuration lives in flat Nix modules at the repo root**  
 - Special Constraints:  
-  - The flake defines three outputs: `vexos-amd`, `vexos-nvidia`, `vexos-vm`  
+  - The flake defines four outputs: `vexos-desktop-amd`, `vexos-desktop-nvidia`, `vexos-desktop-intel`, `vexos-desktop-vm`  
   - Host configs live in `hosts/` and import `configuration.nix` + the appropriate `modules/gpu/` variant  
   - GPU-brand-specific configuration lives in `modules/gpu/{amd,nvidia,vm}.nix`  
   - `hardware-configuration.nix` MUST NOT be added to this repository; it is generated per-host by `nixos-generate-config`  
   - `system.stateVersion` in `configuration.nix` MUST NOT be changed after initial installation  
-  - All rebuild commands must target one of `.#vexos-amd`, `.#vexos-nvidia`, or `.#vexos-vm`  
+  - All rebuild commands must target one of `.#vexos-desktop-amd`, `.#vexos-desktop-nvidia`, `.#vexos-desktop-intel`, or `.#vexos-desktop-vm`  
   - `nix flake check` must pass before any change is considered complete  
   - Flake inputs must maintain `nixpkgs.follows` for any new inputs to avoid duplicate nixpkgs  
 
@@ -436,9 +436,9 @@ the latest official API patterns referenced in the spec.
 
 Build Validation — vexos-nix specific steps:
 - Run `nix flake check` to validate flake structure and evaluate all outputs
-- Run `sudo nixos-rebuild dry-build --flake .#vexos-amd` to verify the AMD system closure builds
-- Run `sudo nixos-rebuild dry-build --flake .#vexos-nvidia` to verify the NVIDIA system closure builds
-- Run `sudo nixos-rebuild dry-build --flake .#vexos-vm` to verify the VM system closure builds
+- Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-amd` to verify the AMD system closure builds
+- Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia` to verify the NVIDIA system closure builds
+- Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-vm` to verify the VM system closure builds
 - Confirm `hardware-configuration.nix` is NOT committed to the repository
 - Confirm `system.stateVersion` has not been changed
 - Confirm all new flake inputs declare `inputs.<name>.follows = "nixpkgs"` where appropriate
@@ -571,9 +571,9 @@ The Orchestrator MUST:
    - Design minimal CI-aligned preflight script for vexos-nix
    - The preflight script MUST include at minimum:
      - `nix flake check`
-     - `sudo nixos-rebuild dry-build --flake .#vexos-amd`
-     - `sudo nixos-rebuild dry-build --flake .#vexos-nvidia`
-     - `sudo nixos-rebuild dry-build --flake .#vexos-vm`
+     - `sudo nixos-rebuild dry-build --flake .#vexos-desktop-amd`
+     - `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia`
+     - `sudo nixos-rebuild dry-build --flake .#vexos-desktop-vm`
      - Verification that `hardware-configuration.nix` is not tracked in git
      - Verification that `system.stateVersion` is present in configuration.nix
 

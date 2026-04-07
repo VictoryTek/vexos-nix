@@ -9,10 +9,10 @@
 #          https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/template/etc-nixos-flake.nix
 #
 #   2. Apply using the variant that matches your hardware:
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-nvidia
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-intel
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vm
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-amd
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-intel
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-vm
 #
 #      No editing required — all variants are exposed automatically.
 #      The chosen variant is written to /etc/nixos/vexos-variant on every
@@ -29,7 +29,7 @@
 # ── Switching to a different variant later (e.g. vm → amd) ──────────────────
 #
 #   Just rebuild with the new variant target:
-#     sudo nixos-rebuild switch --flake /etc/nixos#vexos-amd
+#     sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-amd
 #   /etc/nixos/vexos-variant is updated automatically — vexos-updater picks
 #   up the new variant from then on.
 #
@@ -98,10 +98,10 @@
   in
   {
     nixosConfigurations = {
-      vexos-amd    = mkVariant "vexos-amd"    vexos-nix.nixosModules.gpuAmd;
-      vexos-nvidia = mkVariant "vexos-nvidia" vexos-nix.nixosModules.gpuNvidia;
-      vexos-intel  = mkVariant "vexos-intel"  vexos-nix.nixosModules.gpuIntel;
-      vexos-vm     = mkVariant "vexos-vm"     vexos-nix.nixosModules.gpuVm;
+      vexos-desktop-amd    = mkVariant "vexos-desktop-amd"    vexos-nix.nixosModules.gpuAmd;
+      vexos-desktop-nvidia = mkVariant "vexos-desktop-nvidia" vexos-nix.nixosModules.gpuNvidia;
+      vexos-desktop-intel  = mkVariant "vexos-desktop-intel"  vexos-nix.nixosModules.gpuIntel;
+      vexos-desktop-vm     = mkVariant "vexos-desktop-vm"     vexos-nix.nixosModules.gpuVm;
     };
   };
 }

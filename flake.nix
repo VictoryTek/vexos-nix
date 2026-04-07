@@ -75,32 +75,32 @@
   in
   {
     # ── AMD GPU build ────────────────────────────────────────────────────────
-    # sudo nixos-rebuild switch --flake .#vexos-amd
-    nixosConfigurations.vexos-amd = nixpkgs.lib.nixosSystem {
+    # sudo nixos-rebuild switch --flake .#vexos-desktop-amd
+    nixosConfigurations.vexos-desktop-amd = nixpkgs.lib.nixosSystem {
       inherit system;
       modules = commonModules ++ [ ./hosts/amd.nix ];
       specialArgs = { inherit inputs; };
     };
 
     # ── NVIDIA GPU build ─────────────────────────────────────────────────────
-    # sudo nixos-rebuild switch --flake .#vexos-nvidia
-    nixosConfigurations.vexos-nvidia = nixpkgs.lib.nixosSystem {
+    # sudo nixos-rebuild switch --flake .#vexos-desktop-nvidia
+    nixosConfigurations.vexos-desktop-nvidia = nixpkgs.lib.nixosSystem {
       inherit system;
       modules = commonModules ++ [ ./hosts/nvidia.nix ];
       specialArgs = { inherit inputs; };
     };
 
     # ── VM guest build (QEMU/KVM + VirtualBox) ───────────────────────────────
-    # sudo nixos-rebuild switch --flake .#vexos-vm
-    nixosConfigurations.vexos-vm = nixpkgs.lib.nixosSystem {
+    # sudo nixos-rebuild switch --flake .#vexos-desktop-vm
+    nixosConfigurations.vexos-desktop-vm = nixpkgs.lib.nixosSystem {
       inherit system;
       modules = commonModules ++ [ ./hosts/vm.nix ];
       specialArgs = { inherit inputs; };
     };
 
     # ── Intel GPU build ──────────────────────────────────────────────────────
-    # sudo nixos-rebuild switch --flake .#vexos-intel
-    nixosConfigurations.vexos-intel = nixpkgs.lib.nixosSystem {
+    # sudo nixos-rebuild switch --flake .#vexos-desktop-intel
+    nixosConfigurations.vexos-desktop-intel = nixpkgs.lib.nixosSystem {
       inherit system;
       modules = commonModules ++ [ ./hosts/intel.nix ];
       specialArgs = { inherit inputs; };

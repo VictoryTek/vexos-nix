@@ -22,7 +22,7 @@
   # section provided in the template (template/etc-nixos-flake.nix).
 
   # ---------- Networking (base) ----------
-  networking.hostName = lib.mkDefault "vexos";
+  networking.hostName = lib.mkDefault "vexos-desktop";
   # networking.networkmanager is managed in modules/network.nix
 
   # ---------- Time / Locale ----------

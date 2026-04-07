@@ -1,6 +1,6 @@
 # hosts/vm.nix
-# vexos — Virtual machine guest build (QEMU/KVM + VirtualBox).
-# Rebuild: sudo nixos-rebuild switch --flake .#vexos-vm
+# vexos — Virtual machine guest desktop build (QEMU/KVM + VirtualBox).
+# Rebuild: sudo nixos-rebuild switch --flake .#vexos-desktop-vm
 #
 # Bootloader: NOT configured here — set it in your host's hardware-configuration.nix.
 #
@@ -21,7 +21,7 @@
   ];
 
   # Distinguish the VM host on the network
-  networking.hostName = "vexos-vm";
+  networking.hostName = "vexos-desktop-vm";
 
   # Up: GTK4 + libadwaita system update GUI — VM variant only.
   environment.systemPackages = [
