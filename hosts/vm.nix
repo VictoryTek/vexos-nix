@@ -21,9 +21,6 @@
 
   networking.hostName = "vexos-desktop-vm";
 
-  # VM guests use ext4/xfs — no btrfs tooling needed.
-  vexos.btrfs.enable = false;
-
   # VMs rely on hypervisor memory management — no disk swap file needed.
   vexos.swap.enable = false;
 

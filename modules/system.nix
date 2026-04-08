@@ -1,17 +1,22 @@
 # modules/system.nix
 # Base system configuration: kernel, boot, performance tuning, swap, and
-# btrfs snapshot management. Applies to all hosts; btrfs and swap sections
-# are opt-out via vexos.btrfs.enable / vexos.swap.enable (both default true).
+# btrfs snapshot management. Applies to all hosts; the btrfs section is
+# auto-enabled when the root filesystem is btrfs (detected from fileSystems)
+# and can still be forced on/off via vexos.btrfs.enable.
 { pkgs, lib, config, ... }:
 {
   options = {
     vexos.btrfs.enable = lib.mkOption {
       type    = lib.types.bool;
-      default = true;
+      # Auto-detect: enable only when / is actually a btrfs subvolume.
+      # Override explicitly if hardware-configuration.nix is not yet present
+      # or if you want to force the behaviour in either direction.
+      default = (config.fileSystems ? "/") && (config.fileSystems."/".fsType == "btrfs");
       description = ''
         Enable btrfs snapshot management (snapper), auto-scrub, and the
-        btrfs-assistant GUI. Set to false on hosts with ext4/xfs root
-        filesystems (e.g. VM guests) to avoid installing unneeded packages.
+        btrfs-assistant GUI.  Defaults to true when the root filesystem
+        reported in fileSystems is btrfs; false otherwise.  Can be
+        overridden explicitly for edge cases.
       '';
     };
 
