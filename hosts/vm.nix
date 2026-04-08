@@ -30,4 +30,5 @@
   environment.systemPackages = [
     inputs.up.packages.x86_64-linux.default
   ];
+  system.nixos.distroName = "VexOS Desktop VM";
 }
