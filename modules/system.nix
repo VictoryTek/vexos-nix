@@ -1,7 +1,16 @@
 # modules/system.nix
 # General system-level configuration shared across all hosts (including VM).
 # Includes btrfs snapshot management (snapper) and related GUI tools.
-{ pkgs, ... }:
+# Snapper and btrfs-scrub services use ExecCondition to skip gracefully on
+# non-btrfs roots (e.g. VM guests with ext4/xfs), so no per-host flag is needed.
+{ pkgs, lib, ... }:
+let
+  # Returns exit 0 if / is btrfs, exit 1 otherwise.
+  # Used as ExecCondition so snapper/scrub services skip (not fail) on non-btrfs.
+  isBtrfsRoot = pkgs.writeShellScript "is-btrfs-root" ''
+    ${pkgs.util-linux}/bin/findmnt -n -o FSTYPE / | grep -q '^btrfs$'
+  '';
+in
 {
   # ---------- Snapper (btrfs snapshot management) ----------
   services.snapper.configs = {
@@ -49,4 +58,12 @@
     btrfs-assistant
     btrfs-progs
   ];
+
+  # Skip snapper and btrfs-scrub services gracefully on non-btrfs roots.
+  # ExecCondition exit 1-254 = service skipped (success), so no unit failure.
+  systemd.services.snapper-boot.serviceConfig.ExecCondition     = isBtrfsRoot;
+  systemd.services.snapper-cleanup.serviceConfig.ExecCondition  = isBtrfsRoot;
+  systemd.services.snapper-timeline.serviceConfig.ExecCondition = isBtrfsRoot;
+  # btrfs-scrub service name for "/" is "btrfs-scrub--" (lib.escapeSystemdPath "/")
+  systemd.services."btrfs-scrub--".serviceConfig.ExecCondition  = isBtrfsRoot;
 }
