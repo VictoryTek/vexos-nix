@@ -60,7 +60,8 @@
         io.github.kolunmi.Bazaar \
         org.pulseaudio.pavucontrol \
         com.vysp3r.ProtonPlus \
-        net.lutris.Lutris
+        net.lutris.Lutris \
+        com.ranfdev.DistroShelf
       do
         if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
           echo "flatpak: $app already installed, skipping"
