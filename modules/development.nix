@@ -51,5 +51,13 @@
     httpie                                        # Human-friendly HTTP client
     mkcert                                        # Locally-trusted dev TLS certificates
 
+    # ── Base system utilities ─────────────────────────────────────────────────
+    brave                                         # Chromium-based browser
+    git                                           # Version control
+    curl                                          # HTTP / transfer CLI
+    wget                                          # File downloader
+    inxi                                          # System information tool
+    htop                                          # Interactive process viewer
+
   ];
 }

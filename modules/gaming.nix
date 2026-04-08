@@ -68,4 +68,32 @@
   # Use the NixOS service module instead of a manual systemd service definition
   # to avoid conflicts with the packaged service file.
   ##services.input-remapper.enable = true;
+
+  # ── Controllers ───────────────────────────────────────────────────────────
+  # Gamepad and controller support: Xbox (xone/xpadneo), Nintendo Switch,
+  # Sony DualShock/DualSense, and generic HID udev rules.
+
+  # Xbox One / Series S|X USB dongle and wired controllers
+  hardware.xone.enable = true;
+  # Xbox wireless controllers via Bluetooth
+  hardware.xpadneo.enable = true;
+
+  # Nintendo Switch Pro Controller / Joy-Cons; Sony controllers (kernel drivers)
+  boot.kernelModules = [ "hid_nintendo" "hid_sony" ];
+
+  services.udev.extraRules = ''
+    # ── Sony DualShock 4 (USB) ──
+    KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", MODE="0660", GROUP="input"
+    KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="0660", GROUP="input"
+    # ── Sony DualSense (USB) ──
+    KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ce6", MODE="0660", GROUP="input"
+    # ── Sony DualSense Edge (USB) ──
+    KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0df2", MODE="0660", GROUP="input"
+    # ── Sony controllers via Bluetooth ──
+    KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", MODE="0660", GROUP="input"
+    # ── 8BitDo Ultimate Bluetooth ──
+    SUBSYSTEM=="input", ATTRS{idVendor}=="2dc8", ATTRS{idProduct}=="3106", MODE="0660", GROUP="input"
+    # ── Generic: allow all input devices for the input group ──
+    SUBSYSTEM=="input", MODE="0660", GROUP="input"
+  '';
 }

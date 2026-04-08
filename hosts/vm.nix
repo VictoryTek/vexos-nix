@@ -24,6 +24,9 @@
   # VM guests use ext4/xfs — no btrfs tooling needed.
   vexos.btrfs.enable = false;
 
+  # VMs rely on hypervisor memory management — no disk swap file needed.
+  vexos.swap.enable = false;
+
   environment.systemPackages = [
     inputs.up.packages.x86_64-linux.default
   ];

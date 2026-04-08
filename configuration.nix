@@ -3,12 +3,9 @@
 {
   imports = [
     ./modules/gnome.nix
-    ./modules/packages.nix
     ./modules/gaming.nix
     ./modules/audio.nix
     ./modules/gpu.nix
-    ./modules/performance.nix
-    ./modules/controllers.nix
     ./modules/flatpak.nix
     ./modules/network.nix
     ./modules/development.nix
