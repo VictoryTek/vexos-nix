@@ -134,15 +134,30 @@
         ];
       };
 
-      gpuAmd    = ./modules/gpu/amd.nix;
-      gpuNvidia = ./modules/gpu/nvidia.nix;
+      # Guard: disable VirtualBox guest additions on all bare-metal variants.
+      # hardware-configuration.nix generated inside a VirtualBox VM sets
+      # virtualisation.virtualbox.guest.enable = true; lib.mkForce false here
+      # ensures that value can never survive into a non-VM build, preventing
+      # VirtualBox-GuestAdditions from attempting to compile against a kernel
+      # that has removed the required DRM symbols (Linux 6.12+).
+      gpuAmd = { lib, ... }: {
+        imports = [ ./modules/gpu/amd.nix ];
+        virtualisation.virtualbox.guest.enable = lib.mkForce false;
+      };
+      gpuNvidia = { lib, ... }: {
+        imports = [ ./modules/gpu/nvidia.nix ];
+        virtualisation.virtualbox.guest.enable = lib.mkForce false;
+      };
+      gpuIntel = { lib, ... }: {
+        imports = [ ./modules/gpu/intel.nix ];
+        virtualisation.virtualbox.guest.enable = lib.mkForce false;
+      };
       gpuVm = { ... }: {
         imports = [ ./modules/gpu/vm.nix ];
         environment.systemPackages = [
           inputs.up.packages.x86_64-linux.default
         ];
       };
-      gpuIntel  = ./modules/gpu/intel.nix;
       asus      = ./modules/asus.nix;
     };
   };
