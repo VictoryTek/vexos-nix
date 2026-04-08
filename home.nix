@@ -153,7 +153,7 @@
         "steal-my-focus-window@steal-my-focus-window"
         "tailscale-status@maxgallup.github.com"
         "caffeine@patapon.info"
-        "restart-to@system76.com"
+        "restartto@tiagoporsch.github.io"
         "blur-my-shell@aunetx"
         "background-logo@fedorahosted.org"
       ];
