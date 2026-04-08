@@ -21,6 +21,9 @@
 
   networking.hostName = "vexos-desktop-vm";
 
+  # VM guests use ext4/xfs — no btrfs tooling needed.
+  vexos.btrfs.enable = false;
+
   environment.systemPackages = [
     inputs.up.packages.x86_64-linux.default
   ];

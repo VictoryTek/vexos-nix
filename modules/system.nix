@@ -1,69 +1,66 @@
 # modules/system.nix
-# General system-level configuration shared across all hosts (including VM).
-# Includes btrfs snapshot management (snapper) and related GUI tools.
-# Snapper and btrfs-scrub services use ExecCondition to skip gracefully on
-# non-btrfs roots (e.g. VM guests with ext4/xfs), so no per-host flag is needed.
-{ pkgs, lib, ... }:
+# General system-level configuration shared across all hosts.
+# btrfs snapshot management (snapper), auto-scrub, and related GUI tools are
+# enabled by default but can be disabled on non-btrfs hosts (e.g. VM guests)
+# by setting vexos.btrfs.enable = false in the host's configuration.
+{ pkgs, lib, config, ... }:
 let
-  # Returns exit 0 if / is btrfs, exit 1 otherwise.
-  # Used as ExecCondition so snapper/scrub services skip (not fail) on non-btrfs.
-  isBtrfsRoot = pkgs.writeShellScript "is-btrfs-root" ''
-    ${pkgs.util-linux}/bin/findmnt -n -o FSTYPE / | grep -q '^btrfs$'
-  '';
+  cfg = config.vexos.btrfs;
 in
 {
-  # ---------- Snapper (btrfs snapshot management) ----------
-  services.snapper.configs = {
-    root = {
-      SUBVOLUME = "/";
-      ALLOW_USERS = [ "nimda" ];
-      TIMELINE_CREATE = true;
-      TIMELINE_CLEANUP = true;
-      TIMELINE_MIN_AGE = 1800;
-      TIMELINE_LIMIT_HOURLY = 5;
-      TIMELINE_LIMIT_DAILY = 7;
-      TIMELINE_LIMIT_WEEKLY = 4;
-      TIMELINE_LIMIT_MONTHLY = 3;
-      TIMELINE_LIMIT_YEARLY = 0;
-      NUMBER_LIMIT = "50";
-      NUMBER_LIMIT_IMPORTANT = "10";
-    };
+  options.vexos.btrfs.enable = lib.mkOption {
+    type    = lib.types.bool;
+    default = true;
+    description = ''
+      Enable btrfs snapshot management (snapper), auto-scrub, and the
+      btrfs-assistant GUI. Set to false on hosts with ext4/xfs root
+      filesystems (e.g. VM guests) to avoid installing unneeded packages.
+    '';
   };
 
-  services.snapper.snapshotRootOnBoot = true;
-  services.snapper.persistentTimer = true;
+  config = lib.mkIf cfg.enable {
+    # ---------- Snapper (btrfs snapshot management) ----------
+    services.snapper.configs = {
+      root = {
+        SUBVOLUME = "/";
+        ALLOW_USERS = [ "nimda" ];
+        TIMELINE_CREATE = true;
+        TIMELINE_CLEANUP = true;
+        TIMELINE_MIN_AGE = 1800;
+        TIMELINE_LIMIT_HOURLY = 5;
+        TIMELINE_LIMIT_DAILY = 7;
+        TIMELINE_LIMIT_WEEKLY = 4;
+        TIMELINE_LIMIT_MONTHLY = 3;
+        TIMELINE_LIMIT_YEARLY = 0;
+        NUMBER_LIMIT = "50";
+        NUMBER_LIMIT_IMPORTANT = "10";
+      };
+    };
 
-  # Create /.snapshots subvolume on first activation if root is btrfs.
-  # Runs on every rebuild but is idempotent — snapper requires this subvolume
-  # to exist before its services start, including on fresh VM installs.
-  system.activationScripts.snapperSubvolume = {
-    text = ''
-      if ${pkgs.util-linux}/bin/findmnt -n -o FSTYPE / | grep -q '^btrfs$'; then
+    services.snapper.snapshotRootOnBoot = true;
+    services.snapper.persistentTimer = true;
+
+    # Create /.snapshots subvolume on first activation.
+    # Idempotent — snapper requires this subvolume before its services start.
+    system.activationScripts.snapperSubvolume = {
+      text = ''
         if ! ${pkgs.btrfs-progs}/bin/btrfs subvolume show /.snapshots >/dev/null 2>&1; then
           ${pkgs.btrfs-progs}/bin/btrfs subvolume create /.snapshots
         fi
-      fi
-    '';
-    deps = [];
+      '';
+      deps = [];
+    };
+
+    # ---------- btrfs auto-scrub ----------
+    services.btrfs.autoScrub = {
+      enable = true;
+      interval = "monthly";
+      fileSystems = [ "/" ];
+    };
+
+    environment.systemPackages = with pkgs; [
+      btrfs-assistant
+      btrfs-progs
+    ];
   };
-
-  # ---------- btrfs auto-scrub ----------
-  services.btrfs.autoScrub = {
-    enable = true;
-    interval = "monthly";
-    fileSystems = [ "/" ];
-  };
-
-  environment.systemPackages = with pkgs; [
-    btrfs-assistant
-    btrfs-progs
-  ];
-
-  # Skip snapper and btrfs-scrub services gracefully on non-btrfs roots.
-  # ExecCondition exit 1-254 = service skipped (success), so no unit failure.
-  systemd.services.snapper-boot.serviceConfig.ExecCondition     = isBtrfsRoot;
-  systemd.services.snapper-cleanup.serviceConfig.ExecCondition  = isBtrfsRoot;
-  systemd.services.snapper-timeline.serviceConfig.ExecCondition = isBtrfsRoot;
-  # btrfs-scrub service name for "/" is "btrfs-scrub--" (lib.escapeSystemdPath "/")
-  systemd.services."btrfs-scrub--".serviceConfig.ExecCondition  = isBtrfsRoot;
 }
