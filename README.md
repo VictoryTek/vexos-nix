@@ -18,26 +18,17 @@ sudo curl -fsSL -o /etc/nixos/flake.nix \
   https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/template/etc-nixos-flake.nix
 ```
 
-**3. Edit `/etc/nixos/flake.nix`**
-
-Open the file and set the three variables in the `let` block:
-
-- `variant` — pick your hardware variant (see table below)
-- `hostname` — any name you want for this machine on your network
-- `bootloaderModule` — EFI (default) or BIOS
-
-**4. Apply (first build — `#variant` target required once)**
+**3. Apply the desktop role**
 
 ```bash
-sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-amd     # AMD GPU
-sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia  # NVIDIA GPU
-sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-intel   # Intel GPU
-sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-vm      # VM (QEMU / VirtualBox)
+bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh)
 ```
 
-After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild. The `#target` is never needed again.
+The script asks which GPU variant to install (AMD, NVIDIA, Intel, or VM), runs the build, and offers to reboot when complete. After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild — the `#target` is never needed again.
 
-Log out and back in after the first switch.
+> **Prefer to run manually?** See the [Variants](#variants) table and run the matching `nixos-rebuild switch` command directly.
+
+Log out and back in after the first switch (or reboot when prompted).
 
 ## How it works
 
