@@ -111,7 +111,7 @@ if sudo nixos-rebuild switch --flake "/etc/nixos#${FLAKE_TARGET}"; then
   case "${REBOOT_CHOICE,,}" in
     y|yes)
       echo "Rebooting..."
-      sudo reboot
+      systemctl reboot
       ;;
     *)
       echo ""
