@@ -21,10 +21,9 @@
 
   networking.hostName = "vexos-desktop-vm";
 
-  # VMs rely on hypervisor memory management — no disk swap file needed.
-  vexos.swap.enable = false;
-  # VM btrfs layout is not snapper-compatible — disable btrfs/snapper integration.
-  vexos.btrfs.enable = false;
+  # vexos.btrfs.enable = false and vexos.swap.enable = false are set in
+  # modules/gpu/vm.nix so they apply to both repo builds and the external
+  # /etc/nixos/flake.nix template that consumes nixosModules.gpuVm.
 
   environment.systemPackages = [
     inputs.up.packages.x86_64-linux.default

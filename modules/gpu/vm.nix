@@ -25,4 +25,10 @@
   # In a VM the hypervisor manages power — override to performance governor
   powerManagement.cpuFreqGovernor = lib.mkForce "performance";
 
+  # VM btrfs layout is not snapper-compatible — disable btrfs/snapper integration.
+  vexos.btrfs.enable = false;
+
+  # VMs rely on hypervisor memory management — no disk swap file needed.
+  vexos.swap.enable = false;
+
 }
