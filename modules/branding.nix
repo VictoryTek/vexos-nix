@@ -132,4 +132,21 @@ in
       }
     ];
   };
+
+  # ── Boot menu entry cleanup ───────────────────────────────────────────────
+  # Post-process systemd-boot .conf entries after each rebuild to shorten the
+  # verbose auto-generated title.
+  # Auto-generated: "VexOS Desktop VM (Generation N VexOS Desktop VM Xantusia 25.11 (Linux 6.6.132))"
+  # Trimmed to:     "VexOS Desktop VM (Generation N 25.11)"
+  boot.loader.systemd-boot.extraInstallCommands = ''
+    for f in /boot/loader/entries/*.conf; do
+      [ -f "$f" ] || continue
+      # Strip ", built on YYYY-MM-DD" date suffix
+      ${pkgs.gnused}/bin/sed -i 's/, built on [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}//' "$f"
+      # Strip "(Linux X.X.X)" kernel version from generation description
+      ${pkgs.gnused}/bin/sed -i 's/ (Linux [0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*)//' "$f"
+      # Remove repeated distroName + codename, keeping only "Generation N version"
+      ${pkgs.gnused}/bin/sed -i -E 's/\(Generation ([0-9]+) [^0-9]+([0-9]+\.[0-9]+)\)/(Generation \1 \2)/' "$f"
+    done
+  '';
 }

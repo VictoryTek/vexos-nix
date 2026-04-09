@@ -45,6 +45,18 @@ The running config writes `/etc/nixos/vexos-variant` (a one-word file, e.g. `vex
 | `vexos-desktop-intel` | Intel iGPU or Arc dGPU |
 | `vexos-desktop-vm` | QEMU/KVM or VirtualBox guest |
 
+## Switching variants
+
+You can switch from one variant to another at any time — no reinstall required. Just rebuild with the new variant target:
+
+```bash
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-amd
+```
+
+Replace `vexos-desktop-amd` with whichever variant matches your hardware (see the [Variants](#variants) table above). The `/etc/nixos/vexos-variant` file is updated automatically so vexos-updater and future updates use the new target going forward.
+
+> **Switching GPU drivers?** A reboot is recommended after switching between AMD, NVIDIA, and Intel variants so the kernel modules load cleanly.
+
 ## Updating to the latest config
 
 ```bash
