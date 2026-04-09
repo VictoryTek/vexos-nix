@@ -102,6 +102,11 @@ echo ""
 echo -e "${BOLD}Building ${CYAN}${FLAKE_TARGET}${RESET}${BOLD}...${RESET}"
 echo ""
 
+# Ensure standard tools are resolvable inside the systemd-run transient unit
+# that nixos-rebuild switch uses for switch-to-configuration.
+export PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+sudo systemctl set-environment PATH="$PATH"
+
 if sudo nixos-rebuild switch --flake "/etc/nixos#${FLAKE_TARGET}"; then
   echo ""
   echo -e "${GREEN}${BOLD}✓ Build and switch successful!${RESET}"
@@ -127,3 +132,5 @@ else
   echo ""
   exit 1
 fi
+
+sudo systemctl unset-environment PATH

@@ -60,12 +60,12 @@
     # ── Bootloader ──────────────────────────────────────────────────────────
     # EFI / systemd-boot (default — suitable for all modern bare-metal and VM installs).
     # Replace with the BIOS/GRUB stanza from the header comment if needed.
-    bootloaderModule = {
+    bootloaderModule = { pkgs, ... }: {
       boot.loader.systemd-boot.enable      = true;
       boot.loader.efi.canTouchEfiVariables = true;
       boot.loader.systemd-boot.extraInstallCommands = ''
         for f in /boot/loader/entries/*.conf; do
-          [ -f "$f" ] && sed -i 's/, built on [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}//' "$f"
+          [ -f "$f" ] && ${pkgs.gnused}/bin/sed -i 's/, built on [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}//' "$f"
         done
       '';
     };
