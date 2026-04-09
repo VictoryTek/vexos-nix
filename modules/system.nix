@@ -1,6 +1,6 @@
 # modules/system.nix
 # Base system configuration: kernel, boot, performance tuning, swap, and
-# btrfs snapshot management. Applies to all hosts; the btrfs section is
+# btrfs maintenance. Applies to all hosts; the btrfs section is
 # auto-enabled when the root filesystem is btrfs (detected from fileSystems)
 # and can still be forced on/off via vexos.btrfs.enable.
 { pkgs, lib, config, ... }:
@@ -13,10 +13,9 @@
       # or if you want to force the behaviour in either direction.
       default = (config.fileSystems ? "/") && (config.fileSystems."/".fsType == "btrfs");
       description = ''
-        Enable btrfs snapshot management (snapper), auto-scrub, and the
-        btrfs-assistant GUI.  Defaults to true when the root filesystem
-        reported in fileSystems is btrfs; false otherwise.  Can be
-        overridden explicitly for edge cases.
+        Enable btrfs auto-scrub and the btrfs-assistant GUI.
+        Defaults to true when the root filesystem reported in fileSystems
+        is btrfs; false otherwise.  Can be overridden explicitly for edge cases.
       '';
     };
 
@@ -122,8 +121,6 @@
     # ZRAM handles in-RAM compressed overflow first; swap file is last-resort
     # disk overflow for low-RAM configs and enables hibernate support.
     #
-    # BTRFS + snapper: if using snapper on /, create a dedicated /swap btrfs
-    # subvolume in hardware-configuration.nix to avoid snapshot conflicts.
     (lib.mkIf config.vexos.swap.enable {
       swapDevices = [
         {
@@ -136,39 +133,8 @@
       ];
     })
 
-    # ── btrfs: snapshots + scrub (opt-out via vexos.btrfs.enable = false) ─
+    # ── btrfs: scrub (opt-out via vexos.btrfs.enable = false) ─────────────
     (lib.mkIf config.vexos.btrfs.enable {
-      services.snapper.configs = {
-        root = {
-          SUBVOLUME = "/";
-          ALLOW_USERS = [ "nimda" ];
-          TIMELINE_CREATE = true;
-          TIMELINE_CLEANUP = true;
-          TIMELINE_MIN_AGE = 1800;
-          TIMELINE_LIMIT_HOURLY = 5;
-          TIMELINE_LIMIT_DAILY = 7;
-          TIMELINE_LIMIT_WEEKLY = 4;
-          TIMELINE_LIMIT_MONTHLY = 3;
-          TIMELINE_LIMIT_YEARLY = 0;
-          NUMBER_LIMIT = "50";
-          NUMBER_LIMIT_IMPORTANT = "10";
-        };
-      };
-
-      services.snapper.snapshotRootOnBoot = true;
-      services.snapper.persistentTimer = true;
-
-      # Create /.snapshots subvolume on first activation.
-      # Idempotent — snapper requires this subvolume before its services start.
-      system.activationScripts.snapperSubvolume = {
-        text = ''
-          if ! ${pkgs.btrfs-progs}/bin/btrfs subvolume show /.snapshots >/dev/null 2>&1; then
-            ${pkgs.btrfs-progs}/bin/btrfs subvolume create /.snapshots
-          fi
-        '';
-        deps = [];
-      };
-
       services.btrfs.autoScrub = {
         enable = true;
         interval = "monthly";
