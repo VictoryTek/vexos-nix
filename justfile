@@ -1,5 +1,9 @@
 # vexos-nix justfile
-# Run `just --list` to see all available recipes.
+
+# List all available recipes (default when running `just` with no arguments).
+[private]
+default:
+    @just --list
 
 # Show current variant, or switch to a new one.
 # Usage:
@@ -45,6 +49,14 @@ variant action="" name="":
             exit 1
             ;;
     esac
+
+# Update flake inputs and rebuild the active variant.
+update:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd /etc/nixos
+    sudo nix flake update
+    sudo nixos-rebuild switch --flake /etc/nixos#$(cat /etc/nixos/vexos-variant)
 
 # Roll back to the previous NixOS generation and set it as the boot default.
 rollback:
