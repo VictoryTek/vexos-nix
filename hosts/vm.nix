@@ -23,6 +23,8 @@
 
   # VMs rely on hypervisor memory management — no disk swap file needed.
   vexos.swap.enable = false;
+  # VM btrfs layout is not snapper-compatible — disable btrfs/snapper integration.
+  vexos.btrfs.enable = false;
 
   environment.systemPackages = [
     inputs.up.packages.x86_64-linux.default

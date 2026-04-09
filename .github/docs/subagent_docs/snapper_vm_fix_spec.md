@@ -1,8 +1,8 @@
 # Specification: Disable Snapper & btrfs-scrub for VM Host
 
 **Feature name:** `snapper_vm_fix`  
-**Date:** 2026-04-06  
-**Status:** Draft  
+**Date:** 2026-04-09  
+**Status:** Updated — reflects current code state after btrfs auto-detection refactor  
 
 ---
 
@@ -13,13 +13,23 @@
 ```
 hosts/vm.nix
   └─ imports: configuration.nix
-                └─ imports: modules/system.nix   ← snapper enabled here
+                └─ imports: modules/system.nix   ← snapper gated on vexos.btrfs.enable
   └─ imports: modules/gpu/vm.nix
 ```
 
-`modules/system.nix` unconditionally defines:
+`modules/system.nix` declares a custom **`vexos.btrfs.enable`** option with an auto-detection default:
 
-| Option | Value |
+```nix
+vexos.btrfs.enable = lib.mkOption {
+  type    = lib.types.bool;
+  default = (config.fileSystems ? "/") && (config.fileSystems."/".fsType == "btrfs");
+  ...
+};
+```
+
+All snapper and btrfs configuration in `modules/system.nix` is wrapped in `lib.mkIf config.vexos.btrfs.enable { ... }`, which conditionally defines:
+
+| Option | Value (when enabled) |
 |---|---|
 | `services.snapper.configs.root.SUBVOLUME` | `"/"` |
 | `services.snapper.snapshotRootOnBoot` | `true` |
@@ -27,16 +37,25 @@ hosts/vm.nix
 | `services.btrfs.autoScrub.enable` | `true` |
 | `services.btrfs.autoScrub.fileSystems` | `[ "/" ]` |
 | `environment.systemPackages` | `btrfs-assistant`, `btrfs-progs` |
+| `system.activationScripts.snapperSubvolume` | Creates `/.snapshots` btrfs subvolume |
 
-Because `hosts/vm.nix` imports `configuration.nix`, which imports `modules/system.nix`, the VM host receives the full snapper and btrfs-scrub configuration with no override.
+**The auto-detection evaluates at Nix evaluation time** by reading `config.fileSystems."/".fsType` from the host's `hardware-configuration.nix`. If the VM's `hardware-configuration.nix` declares the root filesystem as `btrfs` (the NixOS 25.x graphical installer defaults to btrfs), this evaluates to `true` and the full snapper block is enabled.
 
 ### 1.2 Physical hosts (amd / nvidia / intel)
 
-`hosts/amd.nix`, `hosts/nvidia.nix`, and `hosts/intel.nix` all import `configuration.nix` and run on real hardware provisioned with a BTRFS root filesystem that has a `/.snapshots` subvolume. Snapper works correctly there.
+`hosts/amd.nix`, `hosts/nvidia.nix`, and `hosts/intel.nix` all import `configuration.nix` and run on real hardware provisioned with a btrfs root filesystem. The auto-detection fires correctly and snapper works on those hosts.
 
-### 1.3 VM host filesystem
+### 1.3 VM host filesystem and override state
 
-The VM guest targets QEMU/KVM. Its root device is a virtio block device formatted as **ext4** (the default for NixOS VM images). Even if deliberately formatted as BTRFS, the `/.snapshots` subvolume would never be created automatically; it must be created manually before first use.
+The VM guest targets QEMU/KVM. The NixOS 25.x graphical installer defaults to btrfs for the root filesystem, so the VM's `hardware-configuration.nix` almost certainly declares `fsType = "btrfs"` — causing `vexos.btrfs.enable` to auto-detect as `true`.
+
+However, `hosts/vm.nix` currently only sets:
+
+```nix
+vexos.swap.enable = false;   # disables swap file
+```
+
+There is **no** `vexos.btrfs.enable = false` override. This is the gap that causes the failure.
 
 ---
 
@@ -44,27 +63,37 @@ The VM guest targets QEMU/KVM. Its root device is a virtio block device formatte
 
 ### 2.1 Failing services
 
-Immediately after `nixos-rebuild switch --flake /etc/nixos#vexos-desktop-vm`:
+Immediately after `nixos-rebuild switch --flake .#vexos-desktop-vm`:
 
 ```
-× snapper-boot.service
-IO Error (open failed path://.snapshots errno:2 (No such file or directory))
+warning: the following units failed: snapper-boot.service
 
-× snapper-timeline.service
-IO Error (open failed path://.snapshots errno:2 (No such file or directory))
+× snapper-boot.service - Take snapper snapshot of root on boot
+     Active: failed (Result: exit-code) since Thu 2026-04-09 11:31:48 CDT; 4s ago
+    Process: 21418 ExecStart=.../snapper-0.13.0/bin/snapper --config root create \
+             --cleanup-algorithm number --description boot (code=exited, status=1/FAILURE)
+
+Apr 09 11:31:48 vexos-desktop snapper[21418]: Creating snapshot failed.
 ```
 
-### 2.2 Root cause — filesystem incompatibility
+`nixos-rebuild switch` returned **exit code 4** (activated units failed).
 
-**Snapper requires BTRFS.** From the nixpkgs `snapper.nix` module source
-(nixpkgs `nixos/modules/services/misc/snapper.nix`):
+### 2.2 Root cause — auto-detection gives false positive; btrfs layout not snapper-compatible
+
+The `vexos.btrfs.enable` auto-detection evaluates `config.fileSystems."/".fsType` from the VM's `hardware-configuration.nix`. Because the NixOS installer formats with btrfs by default, this evaluates to `true` and snapper is enabled.
+
+At runtime, `snapper --config root create` fails because the VM's btrfs installation does not have a snapper-compatible subvolume layout. Common causes on NixOS installer-created btrfs systems:
+
+| Root cause | Description |
+|---|---|
+| **No named root subvolume** | The NixOS installer may mount `/` as the btrfs top-level (**subvol ID 5**), not a named subvolume like `@`. Snapper requires the root to be a named subvolume. |
+| **`/.snapshots` missing or wrong type** | The `system.activationScripts.snapperSubvolume` activation script attempts to create `/.snapshots` as a btrfs subvolume, but if `/` is the top-level btrfs volume rather than a subvolume, the snapshot creation still fails. |
+| **Auto-detection is a false positive for VMs** | Even when the filesystem type is btrfs, the VM btrfs layout may not support snapper. The auto-detection check (`fsType == "btrfs"`) is necessary but not sufficient. |
+
+Snapper requires BTRFS with a proper subvolume layout. From the nixpkgs `snapper.nix` module source:
 
 > `SUBVOLUME` — "Path of the subvolume or mount point. This path is a subvolume
 > and **has to contain a subvolume named `.snapshots`**."
-
-The `FSTYPE` option accepts only `"btrfs"` or `"bcachefs"` (enum type). On a
-non-BTRFS filesystem, snapper cannot open `/.snapshots` (errno 2 = ENOENT) and
-all snapper systemd units fail.
 
 ### 2.3 How the failing units are generated
 
@@ -153,28 +182,35 @@ errors on each execution and may accumulate in the journal.
 
 ## 4. Proposed Solution
 
-### 4.1 Approach: host-level overrides in `hosts/vm.nix`
+### 4.1 Approach: use the existing `vexos.btrfs.enable` option (preferred)
 
-The lightest-touch, minimally invasive fix is to add `lib.mkForce` overrides
-directly in `hosts/vm.nix`. This approach:
+`modules/system.nix` already declares a `vexos.btrfs.enable` option specifically
+for this purpose. Its description states:
 
-- **Does not modify** `modules/system.nix`, `configuration.nix`, or any other
-  host file.
-- Keeps snapper fully enabled for `amd`, `nvidia`, and `intel` hosts.
-- Follows the standard NixOS pattern for host-specific overrides of shared
-  module settings.
-- Is consistent with how the NixOS ISO image overrides conflicting options
-  (`mkOverride 60` / `mkForce`).
+> "Can be overridden explicitly for edge cases."
 
-An alternative — adding a `btrfsSupport` option to `modules/system.nix` — is
-more architecturally clean but is out of scope for a targeted bug fix. That
-refactor can be done in a follow-up.
+The VM is exactly this edge case. Setting `vexos.btrfs.enable = false` in
+`hosts/vm.nix` deactivates the entire `lib.mkIf config.vexos.btrfs.enable { ... }`
+block in `modules/system.nix`, cleanly disabling:
 
-### 4.2 Exact changes
+- `services.snapper.configs`
+- `services.snapper.snapshotRootOnBoot`
+- `services.snapper.persistentTimer`
+- `services.btrfs.autoScrub`
+- `system.activationScripts.snapperSubvolume`
+- `btrfs-assistant` and `btrfs-progs` from `environment.systemPackages`
 
-**File: `hosts/vm.nix`** — add a snapper/btrfs override block.
+This approach:
 
-The `lib` argument must be added to the module function signature.
+- **Does not modify** `modules/system.nix`, `configuration.nix`, or any other host file.
+- Uses the **intended public API** of the module rather than bypassing it with raw `mkForce` overrides.
+- Keeps snapper fully enabled for `amd`, `nvidia`, and `intel` hosts (auto-detection continues to work there).
+- Is consistent with the existing `vexos.swap.enable = false` pattern already in `hosts/vm.nix`.
+- Does not require adding `lib` to the function signature.
+
+### 4.2 Exact change
+
+**File: `hosts/vm.nix`** — add one line.
 
 #### Before
 
@@ -188,16 +224,20 @@ The `lib` argument must be added to the module function signature.
 
   networking.hostName = "vexos-desktop-vm";
 
+  # VMs rely on hypervisor memory management — no disk swap file needed.
+  vexos.swap.enable = false;
+
   environment.systemPackages = [
     inputs.up.packages.x86_64-linux.default
   ];
+  system.nixos.distroName = "VexOS Desktop VM";
 }
 ```
 
 #### After
 
 ```nix
-{ inputs, lib, ... }:
+{ inputs, ... }:
 {
   imports = [
     ../configuration.nix
@@ -206,40 +246,57 @@ The `lib` argument must be added to the module function signature.
 
   networking.hostName = "vexos-desktop-vm";
 
-  # ---------- Disable snapper (requires BTRFS + /.snapshots subvolume) ----------
-  # The VM guest uses an ext4 root; snapper-boot and snapper-timeline would fail
-  # with "IO Error (open failed path://.snapshots errno:2)".
-  services.snapper.configs = lib.mkForce {};
-  services.snapper.snapshotRootOnBoot = lib.mkForce false;
-  services.snapper.persistentTimer = lib.mkForce false;
+  # VMs rely on hypervisor memory management — no disk swap file needed.
+  vexos.swap.enable = false;
 
-  # ---------- Disable btrfs auto-scrub (requires BTRFS filesystem) ----------
-  services.btrfs.autoScrub.enable = lib.mkForce false;
+  # VMs do not need in-guest btrfs snapshots — managed by the hypervisor instead.
+  # Explicitly disabled to prevent snapper-boot.service and snapper-timeline.service
+  # from failing when the VM's btrfs layout doesn't support snapper operation.
+  # The auto-detection (fileSystems."/".fsType == "btrfs") fires as true on NixOS
+  # installer-created VMs, but snapper still fails at runtime due to missing subvolume layout.
+  vexos.btrfs.enable = false;
 
   environment.systemPackages = [
     inputs.up.packages.x86_64-linux.default
   ];
+  system.nixos.distroName = "VexOS Desktop VM";
 }
 ```
 
-### 4.3 Why each override uses `lib.mkForce`
+### 4.3 Alternative approach: raw `lib.mkForce` overrides (not preferred)
 
-| Option | Type | Why mkForce is required |
-|---|---|---|
-| `services.snapper.configs` | `attrsOf submodule` | Merges by default; `mkForce {}` discards the `root` config set in `system.nix` (priority 100) |
-| `services.snapper.snapshotRootOnBoot` | `bool` | Same option set to `true` in `system.nix`; competing bool definitions conflict — `mkForce false` wins |
-| `services.snapper.persistentTimer` | `bool` | Same as above |
-| `services.btrfs.autoScrub.enable` | `bool` | Same as above |
+If the `vexos.btrfs.enable` option approach cannot be used for any reason, the
+individual service options can be overridden directly:
+
+```nix
+{ inputs, lib, ... }:
+{
+  # (lib must be added to function args for this approach)
+  services.snapper.configs            = lib.mkForce {};
+  services.snapper.snapshotRootOnBoot = lib.mkForce false;
+  services.snapper.persistentTimer    = lib.mkForce false;
+  services.btrfs.autoScrub.enable     = lib.mkForce false;
+}
+```
+
+This is not preferred because:
+- It bypasses the module API.
+- It does not disable `system.activationScripts.snapperSubvolume` (the activation
+  script that attempts `btrfs subvolume create /.snapshots`).
+- It requires adding `lib` to the function signature.
+- It leaves `btrfs-assistant` and `btrfs-progs` in the VM package set unnecessarily.
 
 ### 4.4 Expected result after fix
 
-| Unit | Before fix | After fix |
+| Unit / item | Before fix | After fix |
 |---|---|---|
-| `snapper-boot.service` | ✗ Fails (errno 2) | Not generated (configs empty + snapshotRootOnBoot false) |
-| `snapper-timeline.service` | ✗ Fails (errno 2) | Not generated (configs empty) |
-| `snapper-cleanup.service` | ✓ or silent | Not generated (configs empty) |
-| `snapper-timeline.timer` | Generated | Not generated (configs empty) |
+| `snapper-boot.service` | ✗ Fails at runtime | Not generated (`vexos.btrfs.enable = false` → `mkIf false`) |
+| `snapper-timeline.service` | Generated (would fail) | Not generated |
+| `snapper-cleanup.service` | Generated | Not generated |
+| `snapper-timeline.timer` | Generated | Not generated |
 | `btrfs-scrub@-.service` | Will fail monthly | Not generated |
+| `activationScripts.snapperSubvolume` | Runs (may fail or succeed) | Not generated |
+| `btrfs-assistant`, `btrfs-progs` | In VM package set | Removed from VM package set |
 
 ---
 
@@ -247,7 +304,7 @@ The `lib` argument must be added to the module function signature.
 
 | File | Change |
 |---|---|
-| `hosts/vm.nix` | Add `lib` to function args; add 4 `lib.mkForce` overrides |
+| `hosts/vm.nix` | Add `vexos.btrfs.enable = false;` with explanatory comment (no signature change needed) |
 
 No other files require modification.
 
@@ -267,32 +324,33 @@ No other files require modification.
 
 ## 7. Packages Decision
 
-`btrfs-assistant` and `btrfs-progs` remain in the VM environment.
+With `vexos.btrfs.enable = false`, the entire btrfs `mkIf` block is suppressed,
+which **removes** `btrfs-assistant` and `btrfs-progs` from the VM's
+`environment.systemPackages`. This is correct:
 
-**Rationale:**
-- They are GUI/CLI tools with no associated services. Their presence does not
-  cause any systemd unit failures.
-- A user may choose to provision a BTRFS-backed VM in the future, at which point
-  the tools are already available.
-- Removing them would require a separate `lib.mkForce` on
-  `environment.systemPackages` which produces an list override, discarding the
-  `inputs.up` package added by vm.nix itself unless explicitly re-included.
-  The complexity is not justified for tools with zero runtime impact.
+- Neither tool is useful in a VM guest where btrfs snapshots are disabled.
+- If the user ever provisions a btrfs-backed VM and re-enables `vexos.btrfs.enable`,
+  the packages will return automatically.
+- Removing them reduces the VM closure size slightly.
 
 ---
 
 ## 8. Implementation Steps
 
 1. Open `hosts/vm.nix`.
-2. Change `{ inputs, ... }:` to `{ inputs, lib, ... }:`.
-3. After the `networking.hostName` line, add the four `lib.mkForce` overrides
-   as shown in Section 4.2.
-4. Run `nix flake check` in the repository root to validate flake structure.
-5. Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-vm` to verify the
+2. After the `vexos.swap.enable = false;` line, add:
+   ```nix
+   # VMs do not need in-guest btrfs snapshots — managed by the hypervisor instead.
+   # Explicitly disabled to prevent snapper-boot.service and snapper-timeline.service
+   # from failing when the VM's btrfs layout doesn't support snapper operation.
+   vexos.btrfs.enable = false;
+   ```
+3. Run `nix flake check` in the repository root to validate flake structure.
+4. Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-vm` to verify the
    VM system closure builds without errors.
-6. Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-amd` to confirm
+5. Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-amd` to confirm
    snapper is still fully configured on the AMD host.
-7. Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia` (same check).
+6. Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia` (same check).
 
 ---
 
@@ -300,11 +358,10 @@ No other files require modification.
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| `lib.mkForce {}` on `services.snapper.configs` breaks amd/nvidia/intel | None — `mkForce {}` only applies in `hosts/vm.nix` which only the VM target imports | No action needed; the override is scoped to the module evaluation of the VM host only |
-| `lib.mkForce false` on a bool conflicts with future module adding `lib.mkForce true` | Low | The priority of `mkForce` (50) beats normal definitions (100) but can be beaten by another `mkForce` (also 50) if defined later in the same module evaluation; unlikely in this codebase |
-| VM user later provisions a BTRFS root and wants snapshots | Low | Remove the overrides from `hosts/vm.nix` and create the `/.snapshots` subvolume manually per the snapper setup docs |
-| `nix flake check` fails for a reason unrelated to this change | None | Run `nix flake check` before and confirm it passes; the diff is small and isolated |
-| `services.btrfs.autoScrub.fileSystems` being defined while `enable = false` | None — the enable guard is respected by the NixOS btrfs module | No action needed |
+| Physical hosts stop getting snapshots | None — change is scoped to `hosts/vm.nix` | amd/nvidia/intel do not import `hosts/vm.nix`; their `vexos.btrfs.enable` auto-detection is unaffected |
+| `vexos.btrfs.enable = false` is overridden by something higher-priority | Very low | No other module in this repo sets `vexos.btrfs.enable`; the plain `false` (priority 100) is definitive |
+| VM user later provisions a btrfs root and wants snapshots | Low | Remove `vexos.btrfs.enable = false` from `hosts/vm.nix` and create `/.snapshots` subvolume per snapper docs |
+| `nix flake check` fails for an unrelated reason | None expected | Run preflight before and after to confirm; the diff is one line |
 
 ---
 
@@ -329,26 +386,28 @@ No other files require modification.
 | _(plain definition)_ | 100 | Normal user/module definition |
 | `lib.mkForce` | 50 | Overrides all normal definitions |
 
-Setting `lib.mkForce false` in `hosts/vm.nix` (priority 50) defeats the
-`true` definition in `modules/system.nix` (priority 100). ✓
+Setting `vexos.btrfs.enable = false` in `hosts/vm.nix` is a plain definition
+(priority 100). The `default = ...` expression in `modules/system.nix` produces
+a `lib.mkDefault` (priority 1000). The plain `false` wins over the default,
+which is the correct and expected NixOS behavior for module option overrides.
+
+No `lib.mkForce` is needed because there is no competing non-default binding
+for `vexos.btrfs.enable` elsewhere in the module tree.
 
 ---
 
-## Appendix B — snapper-boot systemd unit (from nixpkgs source)
+## Appendix B — How `vexos.btrfs.enable = false` suppresses snapper units
 
-```nix
-systemd.services.snapper-boot = lib.mkIf cfg.snapshotRootOnBoot {
-  description = "Take snapper snapshot of root on boot";
-  serviceConfig.ExecStart = "${pkgs.snapper}/bin/snapper --config root
-    create --cleanup-algorithm number --description boot";
-  serviceConfig.Type = "oneshot";
-  requires = [ "local-fs.target" ];
-  wantedBy = [ "multi-user.target" ];
-  unitConfig.ConditionPathExists = "/etc/snapper/configs/root";
-};
-```
+With `vexos.btrfs.enable = false`, the `lib.mkIf config.vexos.btrfs.enable { ... }`
+block in `modules/system.nix` becomes `lib.mkIf false { ... }` — the entire
+block is a no-op at evaluation time. None of its attributes are merged into the
+final system configuration, so `services.snapper.configs` remains `{}` (the
+NixOS snapper module default), and the following units are never generated:
 
-With `services.snapper.configs = lib.mkForce {}`, `/etc/snapper/configs/root`
-is never written, so even if `snapshotRootOnBoot` were not forced false, the
-`ConditionPathExists` check would prevent execution. Setting both overrides
-provides defense-in-depth.
+- `snapper-boot.service`
+- `snapper-timeline.service` / `snapper-timeline.timer`
+- `snapper-cleanup.service` / `snapper-cleanup.timer`
+- `snapperd.service`
+
+The `system.activationScripts.snapperSubvolume` name is also never defined,
+so no activation script attempts `btrfs subvolume create /.snapshots`.
