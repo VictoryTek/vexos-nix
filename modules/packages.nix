@@ -6,10 +6,10 @@
   environment.systemPackages = with pkgs; [
 
     # ── Browser ───────────────────────────────────────────────────────────────
-    brave                                      # Chromium-based browser
+    brave                                              # Chromium-based browser
 
     # ── System Info ───────────────────────────────────────────────────────────
-    inxi                                                # System information tool
+    inxi                                               # System information tool
     git
     curl
     wget

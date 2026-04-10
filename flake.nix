@@ -138,6 +138,70 @@
       specialArgs = { inherit inputs; };
     };
 
+    # ── Server AMD build ─────────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-server-amd
+    nixosConfigurations.vexos-server-amd = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/server-amd.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── Server NVIDIA build ──────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-server-nvidia
+    nixosConfigurations.vexos-server-nvidia = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/server-nvidia.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── Server Intel build ───────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-server-intel
+    nixosConfigurations.vexos-server-intel = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/server-intel.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── Server VM build ──────────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-server-vm
+    nixosConfigurations.vexos-server-vm = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/server-vm.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── HTPC AMD build ───────────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-htpc-amd
+    nixosConfigurations.vexos-htpc-amd = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/htpc-amd.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── HTPC NVIDIA build ────────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-htpc-nvidia
+    nixosConfigurations.vexos-htpc-nvidia = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/htpc-nvidia.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── HTPC Intel build ─────────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-htpc-intel
+    nixosConfigurations.vexos-htpc-intel = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/htpc-intel.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── HTPC VM build ────────────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-htpc-vm
+    nixosConfigurations.vexos-htpc-vm = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/htpc-vm.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
     # ── NixOS modules (consumed by /etc/nixos/flake.nix on the host) ─────────
     # The thin wrapper at /etc/nixos/flake.nix imports these instead of
     # building directly from the repo, so hardware-configuration.nix never
