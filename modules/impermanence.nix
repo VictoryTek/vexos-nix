@@ -5,40 +5,13 @@
 # outside of /nix and /persistent is wiped on every reboot, providing
 # Tails-like ephemeral behaviour (similar to Tails Linux / Deep Freeze).
 #
-# PREREQUISITES — add the following to the host's hardware-configuration.nix:
+# Disk layout (LUKS2 + Btrfs subvolumes) is handled declaratively by
+# modules/privacy-disk.nix using disko. No manual hardware-configuration.nix
+# edits are required. See .github/docs/subagent_docs/privacy_disk_spec.md.
 #
-#   # Ephemeral root — wiped on every reboot
-#   fileSystems."/" = {
-#     device  = "none";
-#     fsType  = "tmpfs";
-#     options = [ "defaults" "size=25%" "mode=755" ];
-#   };
-#
-#   # LUKS-encrypted Btrfs — unlocked at initrd stage
-#   boot.initrd.luks.devices."cryptroot" = {
-#     device         = "/dev/disk/by-uuid/<LUKS_UUID>";
-#     allowDiscards  = true;
-#     bypassWorkqueues = true;
-#   };
-#
-#   # Nix store — persistent, inside LUKS (neededForBoot = required)
-#   fileSystems."/nix" = {
-#     device        = "/dev/disk/by-uuid/<BTRFS_UUID>";
-#     fsType        = "btrfs";
-#     options       = [ "subvol=@nix" "compress=zstd" "noatime" ];
-#     neededForBoot = true;
-#   };
-#
-#   # Persistent state — inside LUKS (neededForBoot = required for impermanence)
-#   fileSystems."/persistent" = {
-#     device        = "/dev/disk/by-uuid/<BTRFS_UUID>";
-#     fsType        = "btrfs";
-#     options       = [ "subvol=@persist" "compress=zstd" "noatime" ];
-#     neededForBoot = true;
-#   };
-#
-# See .github/docs/subagent_docs/impermanence_spec.md for full disk-
-# partitioning and LUKS setup instructions.
+# Run scripts/privacy-setup.sh on the NixOS ISO to format the disk before
+# deploying any privacy host configuration.  The script sets up the required
+# LUKS-encrypted Btrfs layout and calls nixos-install automatically.
 { config, lib, inputs, ... }:
 
 let
@@ -59,11 +32,11 @@ in
       default     = false;
       description = ''
         Enable tmpfs-rooted impermanence for the privacy role.
-        When true, / is expected to be a tmpfs mount and all state
-        outside /nix is ephemeral unless explicitly declared under
+        When true, / is declared as a tmpfs mount by this module and all
+        state outside /nix is ephemeral unless explicitly declared under
         environment.persistence.
-        Requires hardware-configuration.nix to mount / as tmpfs and
-        the persistent volume as a neededForBoot mount.
+        Disk layout is handled by modules/privacy-disk.nix (disko). The
+        tmpfs root is declared by this module automatically when enabled.
       '';
     };
 
@@ -102,6 +75,15 @@ in
 
   config = lib.mkIf cfg.enable {
 
+    # ── Ephemeral root (tmpfs) ──────────────────────────────────────────────
+    # Declare / as a tmpfs mount. This is hardware-independent (no UUID).
+    # Wiped on every reboot by design — this is the core of the privacy model.
+    fileSystems."/" = {
+      device  = "none";
+      fsType  = "tmpfs";
+      options = [ "defaults" "size=25%" "mode=755" ];
+    };
+
     # ── Assertions ──────────────────────────────────────────────────────────
     assertions = [
       {
@@ -110,10 +92,9 @@ in
           ((config.fileSystems."${cfg.persistentPath}".neededForBoot) or false);
         message = ''
           vexos.impermanence.enable = true requires
-          fileSystems."${cfg.persistentPath}" to be declared in
-          hardware-configuration.nix with neededForBoot = true.
-          Without this, impermanence bind mounts will silently fail
-          during early userspace initialisation.
+          fileSystems."${cfg.persistentPath}" to be declared with neededForBoot = true.
+          This is normally satisfied automatically by modules/privacy-disk.nix.
+          Check that privacy-disk.nix is imported in your privacy host file.
         '';
       }
       {
@@ -121,9 +102,9 @@ in
           (config.fileSystems ? "/") &&
           (config.fileSystems."/".fsType == "tmpfs");
         message = ''
-          vexos.impermanence.enable = true requires
-          fileSystems."/" to have fsType = "tmpfs" in
-          hardware-configuration.nix.
+          vexos.impermanence.enable = true requires fileSystems."/" to have
+          fsType = "tmpfs". This is declared automatically by this module.
+          If this assertion fails, another module is overriding fileSystems."/".
         '';
       }
     ];

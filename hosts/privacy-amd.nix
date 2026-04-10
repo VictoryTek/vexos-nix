@@ -6,7 +6,16 @@
   imports = [
     ../configuration-privacy.nix
     ../modules/gpu/amd.nix
+    ../modules/privacy-disk.nix
   ];
+
+  # Override with the actual disk device on the target machine.
+  # Default "/dev/nvme0n1" is suitable for most modern AMD laptops/desktops.
+  # Check with: lsblk -d -o NAME,SIZE,MODEL
+  vexos.privacy.disk = {
+    enable = true;
+    device = lib.mkDefault "/dev/nvme0n1";
+  };
 
   # Prevent hardware-configuration.nix (generated on a VM) from accidentally
   # enabling VirtualBox guest additions on a bare-metal host. Guest additions

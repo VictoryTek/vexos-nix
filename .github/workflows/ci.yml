@@ -1,0 +1,63 @@
+name: CI — Nix Flake Validation
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
+      - '.github/docs/**'
+      - 'wallpapers/**'
+      - 'files/**'
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  flake-check:
+    name: Evaluate all NixOS configurations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          # Supplies GITHUB_TOKEN to the Nix daemon to avoid API rate limits
+          # when fetching flake inputs (nixpkgs, nix-gaming, home-manager, etc.)
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create stub hardware-configuration.nix for CI
+        run: |
+          # This stub satisfies the flake's commonModules import of
+          # /etc/nixos/hardware-configuration.nix without asserting any
+          # hardware config.  It is NOT deployed to any host.
+          sudo mkdir -p /etc/nixos
+          printf '# CI stub — provides no real hardware config\n{ ... }: { }\n' \
+            | sudo tee /etc/nixos/hardware-configuration.nix > /dev/null
+
+      - name: nix flake check — evaluate all configurations (no build)
+        # --no-build: evaluate derivations without building packages
+        # --impure:   allow access to /etc/nixos/hardware-configuration.nix
+        # --show-trace: print full Nix evaluation stack on failure
+        run: nix flake check --no-build --impure --show-trace
+
+      - name: Verify hardware-configuration.nix is not tracked in git
+        run: |
+          if git ls-files hardware-configuration.nix | grep -q .; then
+            echo "FAIL: hardware-configuration.nix must not be tracked in git"
+            exit 1
+          fi
+          echo "PASS: hardware-configuration.nix is not tracked"
+
+      - name: Verify system.stateVersion present in configuration.nix
+        run: |
+          if ! grep -q 'system\.stateVersion' configuration.nix; then
+            echo "FAIL: system.stateVersion missing from configuration.nix"
+            exit 1
+          fi
+          echo "PASS: system.stateVersion is present"

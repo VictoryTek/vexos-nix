@@ -34,18 +34,39 @@ echo "  vexos-nix Preflight Validation"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================================"
 echo ""
-
+# ---------- CHECK 0: Nix binary availability (HARD) -------------------------
+echo "[0/9] Checking for Nix installation..."
+if ! command -v nix &>/dev/null; then
+  echo ""
+  fail "nix is not installed or not in PATH"
+  echo ""
+  echo "  Nix is required to run this preflight script."
+  echo "  On WSL2 Ubuntu (or any Linux), install Nix via Determinate Systems:"
+  echo ""
+  echo "    curl --proto '=https' --tlsv1.2 -sSf -L \\"
+  echo "      https://install.determinate.systems/nix | sh -s -- install"
+  echo ""
+  echo "  After installation, restart your terminal or run:"
+  echo "    . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
+  echo ""
+  echo "  GitHub Actions CI runs this check automatically via cachix/install-nix-action."
+  echo "  See: .github/workflows/ci.yml"
+  echo ""
+  exit 1
+fi
+pass "nix $(nix --version 2>/dev/null | head -1 | sed 's/nix (Nix) //')"
+echo ""
 # ---------- CHECK 1: nix flake check (HARD / WARN if no hw-config) ----------
 # --impure is required because hardware-configuration.nix is intentionally
 # kept at /etc/nixos/ (generated per-host, not tracked in this repo).
 # If the host has not yet run nixos-generate-config the check is downgraded to
 # a warning so the preflight can still pass on fresh dev machines.
-echo "[1/8] Validating flake structure..."
+echo "[1/9] Validating flake structure..."
 if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
   warn "Skipping nix flake check — /etc/nixos/hardware-configuration.nix not found."
   warn "Run 'sudo nixos-generate-config' on the target host and retry."
 else
-  if nix flake check --impure 2>&1; then
+  if nix flake check --no-build --impure --show-trace 2>&1; then
     pass "nix flake check passed"
   else
     fail "nix flake check failed"
@@ -55,7 +76,7 @@ fi
 echo ""
 
 # ---------- CHECK 2: nixos-rebuild dry-build (HARD / WARN if no hw-config) ---
-echo "[2/8] Verifying system closures (dry-build all variants)..."
+echo "[2/9] Verifying system closures (dry-build all variants)..."
 if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
   warn "Skipping dry-build — /etc/nixos/hardware-configuration.nix not found."
   warn "Run 'sudo nixos-generate-config' on the target host and retry."
@@ -84,7 +105,7 @@ fi
 echo ""
 
 # ---------- CHECK 3: hardware-configuration.nix not tracked (HARD) -----------
-echo "[3/8] Checking hardware-configuration.nix is not tracked in git..."
+echo "[3/9] Checking hardware-configuration.nix is not tracked in git..."
 if git ls-files hardware-configuration.nix | grep -q .; then
   fail "hardware-configuration.nix is tracked in git — remove it immediately"
   EXIT_CODE=1
@@ -94,7 +115,7 @@ fi
 echo ""
 
 # ---------- CHECK 4: system.stateVersion present (HARD) ----------------------
-echo "[4/8] Verifying system.stateVersion in configuration.nix..."
+echo "[4/9] Verifying system.stateVersion in configuration.nix..."
 if grep -q 'system\.stateVersion' configuration.nix; then
   pass "system.stateVersion is present in configuration.nix"
 else
@@ -113,7 +134,7 @@ if [ "$EXIT_CODE" -ne 0 ]; then
 fi
 
 # ---------- CHECK 5: flake.lock freshness (WARN) -----------------------------
-echo "[5/8] Checking flake.lock freshness..."
+echo "[5/9] Checking flake.lock freshness..."
 LOCK_HISTORY=$(git log -1 --format="%ct" -- flake.lock 2>/dev/null || true)
 if [ -z "$LOCK_HISTORY" ]; then
   warn "flake.lock has no git history — commit it with: git add flake.lock"
@@ -130,7 +151,7 @@ fi
 echo ""
 
 # ---------- CHECK 6: Nix formatting (WARN) -----------------------------------
-echo "[6/8] Checking Nix formatting..."
+echo "[6/9] Checking Nix formatting..."
 if command -v nixpkgs-fmt &>/dev/null; then
   if nixpkgs-fmt --check . 2>&1; then
     pass "Nix formatting OK"
@@ -143,7 +164,7 @@ fi
 echo ""
 
 # ---------- CHECK 7: No hardcoded secrets (WARN) -----------------------------
-echo "[7/8] Scanning tracked .nix files for hardcoded secrets..."
+echo "[7/9] Scanning tracked .nix files for hardcoded secrets..."
 TRACKED_NIX=$(git ls-files '*.nix' 2>/dev/null || true)
 if [ -z "$TRACKED_NIX" ]; then
   warn "No tracked .nix files found — skipping secret scan"
@@ -161,7 +182,7 @@ fi
 echo ""
 
 # ---------- CHECK 8: flake.lock committed (WARN) -----------------------------
-echo "[8/8] Verifying flake.lock is committed..."
+echo "[8/9] Verifying flake.lock is committed..."
 if ! test -f flake.lock; then
   warn "flake.lock does not exist — run: nix flake lock"
 elif git ls-files flake.lock | grep -q .; then

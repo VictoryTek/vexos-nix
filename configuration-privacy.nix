@@ -43,8 +43,8 @@
   # ---------- Impermanence ----------
   # Enable tmpfs-rooted ephemeral filesystem for the privacy role.
   # / is wiped on every reboot; only /nix and /persistent survive.
-  # Requires hardware-configuration.nix to declare / as tmpfs and
-  # /persistent as a neededForBoot btrfs subvolume (see impermanence_spec.md).
+  # Filesystem impermanence: / is mounted as tmpfs by this module.
+  # Run scripts/privacy-setup.sh to format the disk before first deploy.
   vexos.impermanence.enable = true;
 
   # ---------- Nix settings ----------

@@ -100,6 +100,23 @@ fi
 
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}"
 
+# ---------- Privacy role: first-time install notice -------------------------
+if [ "$ROLE" = "privacy" ]; then
+  echo ""
+  echo -e "${YELLOW}${BOLD}NOTE: Privacy role — fresh install?${RESET}"
+  echo "  If this is a FIRST-TIME installation from the NixOS ISO:"
+  echo "  Use the dedicated setup script instead of install.sh:"
+  echo ""
+  echo "    bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/privacy-setup.sh)"
+  echo ""
+  echo "  privacy-setup.sh handles disk partitioning (LUKS2 + Btrfs), disko"
+  echo "  formatting, hardware config generation, and nixos-install."
+  echo ""
+  echo "  install.sh handles REBUILDS on an already-running vexos-privacy system."
+  echo "  Press Enter to continue with rebuild, or Ctrl+C to abort."
+  read -r _
+fi
+
 # ---------- Build & switch ---------------------------------------------------
 echo ""
 echo -e "${BOLD}Building ${CYAN}${FLAKE_TARGET}${RESET}${BOLD}...${RESET}"

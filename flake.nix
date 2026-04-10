@@ -27,6 +27,13 @@
     # impermanence has no nixpkgs dependency — follows not required.
     impermanence.url = "github:nix-community/impermanence";
 
+    # nix-community/disko: declarative disk partitioning for the privacy role.
+    # Used by modules/privacy-disk.nix to generate fileSystems and LUKS config.
+    disko = {
+      url = "github:nix-community/disko/latest";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Up — GTK4 + libadwaita system update GUI (VM variant only).
     up = {
       url = "github:VictoryTek/Up";
@@ -34,7 +41,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermanence, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermanence, disko, ... }@inputs:
   let
     system = "x86_64-linux";
 
@@ -115,7 +122,10 @@
     # sudo nixos-rebuild switch --flake .#vexos-privacy-amd
     nixosConfigurations.vexos-privacy-amd = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = commonModules ++ [ ./hosts/privacy-amd.nix ];
+      modules = commonModules ++ [
+        ./hosts/privacy-amd.nix
+        inputs.disko.nixosModules.disko
+      ];
       specialArgs = { inherit inputs; };
     };
 
@@ -123,7 +133,10 @@
     # sudo nixos-rebuild switch --flake .#vexos-privacy-nvidia
     nixosConfigurations.vexos-privacy-nvidia = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = commonModules ++ [ ./hosts/privacy-nvidia.nix ];
+      modules = commonModules ++ [
+        ./hosts/privacy-nvidia.nix
+        inputs.disko.nixosModules.disko
+      ];
       specialArgs = { inherit inputs; };
     };
 
@@ -131,7 +144,10 @@
     # sudo nixos-rebuild switch --flake .#vexos-privacy-intel
     nixosConfigurations.vexos-privacy-intel = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = commonModules ++ [ ./hosts/privacy-intel.nix ];
+      modules = commonModules ++ [
+        ./hosts/privacy-intel.nix
+        inputs.disko.nixosModules.disko
+      ];
       specialArgs = { inherit inputs; };
     };
 
@@ -139,7 +155,10 @@
     # sudo nixos-rebuild switch --flake .#vexos-privacy-vm
     nixosConfigurations.vexos-privacy-vm = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = commonModules ++ [ ./hosts/privacy-vm.nix ];
+      modules = commonModules ++ [
+        ./hosts/privacy-vm.nix
+        inputs.disko.nixosModules.disko
+      ];
       specialArgs = { inherit inputs; };
     };
 
@@ -240,14 +259,15 @@
       # Suitable for a clean daily-driver focused on privacy and basic productivity.
       privacyBase = { ... }: {
         # Inject flake inputs into the module system so that downstream modules
-        # (e.g. modules/impermanence.nix) can reference inputs as a formal arg.
-        # Required when this module is consumed via the /etc/nixos/flake.nix
-        # template, which does not pass specialArgs.
+        # (e.g. modules/impermanence.nix, modules/privacy-disk.nix) can reference
+        # inputs as a formal arg.  Required when this module is consumed via the
+        # /etc/nixos/flake.nix template, which does not pass specialArgs.
         _module.args.inputs = inputs;
         imports = [
           nix-gaming.nixosModules.pipewireLowLatency
           home-manager.nixosModules.home-manager
           impermanence.nixosModules.impermanence
+          disko.nixosModules.disko
           ./configuration-privacy.nix
         ];
         home-manager = {
