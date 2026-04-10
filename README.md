@@ -1,6 +1,6 @@
 # vexos-nix
 
-Personal NixOS config (GNOME, PipeWire, zen kernel). Comes in four roles — **Desktop** (full gaming/workstation stack), **Privacy** (minimal daily-driver), **Server** (headless/service stack), and **HTPC** (media centre build). No cloning required — `/etc/nixos` is the only working directory you need.
+Personal NixOS config (GNOME, PipeWire, zen kernel). Comes in four roles — **Desktop** (full gaming/workstation stack), **Privacy** (minimal daily-driver), **Server** (GUI service stack), and **HTPC** (media centre build). No cloning required — `/etc/nixos` is the only working directory you need.
 
 ## Fresh install
 
@@ -56,7 +56,7 @@ The running config writes `/etc/nixos/vexos-variant` (a one-word file, e.g. `vex
 | `vexos-privacy-intel` | Intel iGPU or Arc dGPU, minimal stack |
 | `vexos-privacy-vm` | QEMU/KVM or VirtualBox guest, minimal stack |
 
-### Server role — headless / service stack
+### Server role — GUI service stack
 
 | Variant | Use for |
 |---|---|
