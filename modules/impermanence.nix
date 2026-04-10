@@ -79,8 +79,8 @@ in
     # Declare / as a tmpfs mount. This is hardware-independent (no UUID).
     # Wiped on every reboot by design — this is the core of the privacy model.
     fileSystems."/" = {
-      device  = "none";
-      fsType  = "tmpfs";
+      device  = lib.mkForce "none";
+      fsType  = lib.mkForce "tmpfs";
       options = [ "defaults" "size=25%" "mode=755" ];
     };
 

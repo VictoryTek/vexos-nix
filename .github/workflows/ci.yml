@@ -37,8 +37,18 @@ jobs:
           # /etc/nixos/hardware-configuration.nix without asserting any
           # hardware config.  It is NOT deployed to any host.
           sudo mkdir -p /etc/nixos
-          printf '# CI stub — provides no real hardware config\n{ ... }: { }\n' \
-            | sudo tee /etc/nixos/hardware-configuration.nix > /dev/null
+          sudo tee /etc/nixos/hardware-configuration.nix << 'EOF'
+          { lib, ... }:
+          {
+            # CI stub — satisfies NixOS assertions for non-hardware builds
+            # Uses lib.mkDefault so module-defined options always win
+            fileSystems."/" = {
+              device = lib.mkDefault "/dev/sda1";
+              fsType = lib.mkDefault "ext4";
+            };
+            boot.loader.grub.device = lib.mkDefault "/dev/sda";
+          }
+          EOF
 
       - name: nix flake check — evaluate all configurations (no build)
         # --no-build: evaluate derivations without building packages
