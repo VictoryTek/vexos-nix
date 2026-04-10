@@ -46,9 +46,6 @@
     inxi
     blivet-gui
 
-    # TODO: add the 'up' flake input (e.g. inputs.up.url = "github:...") and uncomment:
-    # inputs.up.packages.${pkgs.stdenv.hostPlatform.system}.default
-
     # NOTE: pavucontrol and protonplus are installed via Flatpak (see modules/flatpak.nix).
     # brave is installed as a Nix package (see modules/packages.nix).
   ];
