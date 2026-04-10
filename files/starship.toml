@@ -2,6 +2,9 @@
 # Users can override by setting STARSHIP_CONFIG in their shell rc.
 # (Copied from skel template)
 
+# Allow more time for directory scanning (default 30ms is too low for nix repos)
+scan_timeout = 10000
+
 ## FIRST LINE/ROW: Info & Status
 # First param ─┌
 [username]

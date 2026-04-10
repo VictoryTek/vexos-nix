@@ -129,6 +129,7 @@
       inherit system;
       modules = commonModules ++ [
         ./hosts/privacy-amd.nix
+        impermanence.nixosModules.impermanence
         inputs.disko.nixosModules.disko
       ];
       specialArgs = { inherit inputs; };
@@ -140,6 +141,7 @@
       inherit system;
       modules = commonModules ++ [
         ./hosts/privacy-nvidia.nix
+        impermanence.nixosModules.impermanence
         inputs.disko.nixosModules.disko
       ];
       specialArgs = { inherit inputs; };
@@ -151,6 +153,7 @@
       inherit system;
       modules = commonModules ++ [
         ./hosts/privacy-intel.nix
+        impermanence.nixosModules.impermanence
         inputs.disko.nixosModules.disko
       ];
       specialArgs = { inherit inputs; };
@@ -162,6 +165,7 @@
       inherit system;
       modules = commonModules ++ [
         ./hosts/privacy-vm.nix
+        impermanence.nixosModules.impermanence
         inputs.disko.nixosModules.disko
       ];
       specialArgs = { inherit inputs; };
@@ -258,16 +262,12 @@
             };
           })
         ];
+        environment.systemPackages = [ up.packages.x86_64-linux.default ];
       };
 
       # Privacy stack: minimal, without gaming/development/virtualization/asus.
       # Suitable for a clean daily-driver focused on privacy and basic productivity.
       privacyBase = { ... }: {
-        # Inject flake inputs into the module system so that downstream modules
-        # (e.g. modules/impermanence.nix, modules/privacy-disk.nix) can reference
-        # inputs as a formal arg.  Required when this module is consumed via the
-        # /etc/nixos/flake.nix template, which does not pass specialArgs.
-        _module.args.inputs = inputs;
         imports = [
           nix-gaming.nixosModules.pipewireLowLatency
           home-manager.nixosModules.home-manager
@@ -289,6 +289,7 @@
             };
           })
         ];
+        environment.systemPackages = [ up.packages.x86_64-linux.default ];
       };
 
       # Guard: disable VirtualBox guest additions on all bare-metal variants.

@@ -1,7 +1,7 @@
 # hosts/privacy-vm.nix
 # vexos — Privacy VM guest build (no gaming, development, virtualization, or ASUS modules).
 # Rebuild: sudo nixos-rebuild switch --flake .#vexos-privacy-vm
-{ inputs, ... }:
+{ ... }:
 {
   imports = [
     ../configuration-privacy.nix
@@ -18,8 +18,5 @@
 
   networking.hostName = "vexos-privacy-vm";
 
-  environment.systemPackages = [
-    inputs.up.packages.x86_64-linux.default
-  ];
   system.nixos.distroName = "VexOS Privacy VM";
 }

@@ -12,20 +12,12 @@
 # Run scripts/privacy-setup.sh on the NixOS ISO to format the disk before
 # deploying any privacy host configuration.  The script sets up the required
 # LUKS-encrypted Btrfs layout and calls nixos-install automatically.
-{ config, lib, inputs, ... }:
+{ config, lib, ... }:
 
 let
   cfg = config.vexos.impermanence;
 in
 {
-  # Import the upstream impermanence NixOS module unconditionally.
-  # NixOS disallows referencing `config` inside `imports` (infinite recursion).
-  # The upstream module is safe to import unconditionally — it only activates
-  # when `environment.persistence` is configured, which is gated by lib.mkIf below.
-  imports = [
-    inputs.impermanence.nixosModules.impermanence
-  ];
-
   options.vexos.impermanence = {
 
     enable = lib.mkOption {

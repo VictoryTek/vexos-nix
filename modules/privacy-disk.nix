@@ -12,20 +12,12 @@
 # IMPORTANT: hardware-configuration.nix MUST be generated with:
 #   nixos-generate-config --no-filesystems --root /mnt
 # to avoid fileSystems conflicts with disko's generated entries.
-{ config, lib, inputs, ... }:
+{ config, lib, ... }:
 
 let
   cfg = config.vexos.privacy.disk;
 in
 {
-  # Import the disko NixOS module unconditionally.
-  # NixOS disallows referencing `config` inside `imports` (infinite recursion).
-  # The disko module is safe to import unconditionally — it only activates
-  # when `disko.devices` is configured, which is gated by lib.mkIf below.
-  imports = [
-    inputs.disko.nixosModules.disko
-  ];
-
   options.vexos.privacy.disk = {
 
     enable = lib.mkOption {
