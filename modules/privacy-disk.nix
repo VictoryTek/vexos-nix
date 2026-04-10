@@ -158,5 +158,20 @@ in
     fileSystems."/persistent".neededForBoot = lib.mkForce true;
     fileSystems."/nix".neededForBoot        = lib.mkForce true;
 
+    # Override filesystem device paths so disko's partlabel-based declarations
+    # take priority over any conflicting entries in hardware-configuration.nix.
+    # Required when hardware-configuration.nix was generated without --no-filesystems.
+    fileSystems."/boot".device = lib.mkForce "/dev/disk/by-partlabel/disk-main-ESP";
+    fileSystems."/nix".device = lib.mkForce (
+      if cfg.enableLuks
+      then "/dev/mapper/${cfg.luksName}"
+      else "/dev/disk/by-partlabel/disk-main-data"
+    );
+    fileSystems."/persistent".device = lib.mkForce (
+      if cfg.enableLuks
+      then "/dev/mapper/${cfg.luksName}"
+      else "/dev/disk/by-partlabel/disk-main-data"
+    );
+
   };
 }
