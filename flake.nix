@@ -267,13 +267,14 @@
 
       # Privacy stack: minimal, without gaming/development/virtualization/asus.
       # Suitable for a clean daily-driver focused on privacy and basic productivity.
-      privacyBase = { ... }: {
+      privacyBase = { lib, ... }: {
         imports = [
           nix-gaming.nixosModules.pipewireLowLatency
           home-manager.nixosModules.home-manager
           impermanence.nixosModules.impermanence
           disko.nixosModules.disko
           ./configuration-privacy.nix
+          ./modules/privacy-disk.nix
         ];
         home-manager = {
           useGlobalPkgs    = true;
@@ -290,6 +291,11 @@
           })
         ];
         environment.systemPackages = [ up.packages.x86_64-linux.default ];
+        vexos.privacy.disk = {
+          enable     = true;
+          device     = lib.mkDefault "/dev/nvme0n1";
+          enableLuks = lib.mkDefault true;
+        };
       };
 
       # Guard: disable VirtualBox guest additions on all bare-metal variants.
@@ -312,6 +318,11 @@
       };
       gpuVm = { ... }: {
         imports = [ ./modules/gpu/vm.nix ];
+      };
+      privacyGpuVm = { lib, ... }: {
+        imports = [ ./modules/gpu/vm.nix ];
+        vexos.privacy.disk.device    = lib.mkForce "/dev/vda";
+        vexos.privacy.disk.enableLuks = lib.mkForce false;
       };
       asus      = ./modules/asus.nix;
     };

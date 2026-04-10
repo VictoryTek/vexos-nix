@@ -125,7 +125,7 @@
       vexos-privacy-amd    = mkPrivacyVariant "vexos-privacy-amd"    vexos-nix.nixosModules.gpuAmd;
       vexos-privacy-nvidia = mkPrivacyVariant "vexos-privacy-nvidia" vexos-nix.nixosModules.gpuNvidia;
       vexos-privacy-intel  = mkPrivacyVariant "vexos-privacy-intel"  vexos-nix.nixosModules.gpuIntel;
-      vexos-privacy-vm     = mkPrivacyVariant "vexos-privacy-vm"     vexos-nix.nixosModules.gpuVm;
+      vexos-privacy-vm     = mkPrivacyVariant "vexos-privacy-vm"    vexos-nix.nixosModules.privacyGpuVm;
     };
   };
 }
