@@ -78,7 +78,7 @@
     # sudo nixos-rebuild switch --flake .#vexos-desktop-amd
     nixosConfigurations.vexos-desktop-amd = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = commonModules ++ [ ./hosts/amd.nix ];
+      modules = commonModules ++ [ ./hosts/desktop-amd.nix ];
       specialArgs = { inherit inputs; };
     };
 
@@ -86,7 +86,7 @@
     # sudo nixos-rebuild switch --flake .#vexos-desktop-nvidia
     nixosConfigurations.vexos-desktop-nvidia = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = commonModules ++ [ ./hosts/nvidia.nix ];
+      modules = commonModules ++ [ ./hosts/desktop-nvidia.nix ];
       specialArgs = { inherit inputs; };
     };
 
@@ -94,7 +94,7 @@
     # sudo nixos-rebuild switch --flake .#vexos-desktop-vm
     nixosConfigurations.vexos-desktop-vm = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = commonModules ++ [ ./hosts/vm.nix ];
+      modules = commonModules ++ [ ./hosts/desktop-vm.nix ];
       specialArgs = { inherit inputs; };
     };
 
@@ -102,7 +102,39 @@
     # sudo nixos-rebuild switch --flake .#vexos-desktop-intel
     nixosConfigurations.vexos-desktop-intel = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = commonModules ++ [ ./hosts/intel.nix ];
+      modules = commonModules ++ [ ./hosts/desktop-intel.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── Privacy AMD build ────────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-privacy-amd
+    nixosConfigurations.vexos-privacy-amd = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/privacy-amd.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── Privacy NVIDIA build ─────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-privacy-nvidia
+    nixosConfigurations.vexos-privacy-nvidia = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/privacy-nvidia.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── Privacy Intel build ──────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-privacy-intel
+    nixosConfigurations.vexos-privacy-intel = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/privacy-intel.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── Privacy VM build ─────────────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-privacy-vm
+    nixosConfigurations.vexos-privacy-vm = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = commonModules ++ [ ./hosts/privacy-vm.nix ];
       specialArgs = { inherit inputs; };
     };
 
@@ -118,6 +150,29 @@
           nix-gaming.nixosModules.pipewireLowLatency
           home-manager.nixosModules.home-manager
           ./configuration.nix
+        ];
+        home-manager = {
+          useGlobalPkgs   = true;
+          useUserPackages = true;
+          users.nimda     = import ./home.nix;
+        };
+        nixpkgs.overlays = [
+          (final: prev: {
+            unstable = import nixpkgs-unstable {
+              inherit (final) config;
+              inherit (final.stdenv.hostPlatform) system;
+            };
+          })
+        ];
+      };
+
+      # Privacy stack: minimal, without gaming/development/virtualization/asus.
+      # Suitable for a clean daily-driver focused on privacy and basic productivity.
+      privacyBase = { ... }: {
+        imports = [
+          nix-gaming.nixosModules.pipewireLowLatency
+          home-manager.nixosModules.home-manager
+          ./configuration-privacy.nix
         ];
         home-manager = {
           useGlobalPkgs   = true;

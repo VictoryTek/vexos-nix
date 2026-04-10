@@ -1,6 +1,6 @@
 # vexos-nix
 
-Gaming-focused NixOS config (GNOME, Steam, Proton, PipeWire, zen kernel). No cloning required — `/etc/nixos` is the only working directory you need.
+Personal NixOS config (GNOME, PipeWire, zen kernel). Comes in two roles — **Desktop** (full gaming/workstation stack with Steam, Proton, and dev tools) and **Privacy** (minimal daily-driver, no gaming/development/virtualization modules). No cloning required — `/etc/nixos` is the only working directory you need.
 
 ## Fresh install
 
@@ -18,13 +18,13 @@ sudo curl -fsSL -o /etc/nixos/flake.nix \
   https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/template/etc-nixos-flake.nix
 ```
 
-**3. Apply the desktop role**
+**3. Apply your role and GPU variant**
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh)
 ```
 
-The script asks which GPU variant to install (AMD, NVIDIA, Intel, or VM), runs the build, and offers to reboot when complete. After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild — the `#target` is never needed again.
+The script asks which role (desktop or privacy) and which GPU variant to install (AMD, NVIDIA, Intel, or VM), runs the build, and offers to reboot when complete. After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild — the `#target` is never needed again.
 
 > **Prefer to run manually?** See the [Variants](#variants) table and run the matching `nixos-rebuild switch` command directly.
 
@@ -38,6 +38,8 @@ The running config writes `/etc/nixos/vexos-variant` (a one-word file, e.g. `vex
 
 ## Variants
 
+### Desktop role — full gaming/workstation stack
+
 | Variant | Use for |
 |---|---|
 | `vexos-desktop-amd` | AMD GPU (RADV, ROCm, LACT) |
@@ -45,15 +47,28 @@ The running config writes `/etc/nixos/vexos-variant` (a one-word file, e.g. `vex
 | `vexos-desktop-intel` | Intel iGPU or Arc dGPU |
 | `vexos-desktop-vm` | QEMU/KVM or VirtualBox guest |
 
+### Privacy role — minimal build (no gaming / dev / virt / ASUS)
+
+| Variant | Use for |
+|---|---|
+| `vexos-privacy-amd` | AMD GPU, minimal stack |
+| `vexos-privacy-nvidia` | NVIDIA GPU, minimal stack |
+| `vexos-privacy-intel` | Intel iGPU or Arc dGPU, minimal stack |
+| `vexos-privacy-vm` | QEMU/KVM or VirtualBox guest, minimal stack |
+
 ## Switching variants
 
-You can switch from one variant to another at any time — no reinstall required. Just rebuild with the new variant target:
+You can switch between variants (and roles) at any time — no reinstall required. Just rebuild with the new variant target:
 
 ```bash
+# Switch to a different desktop GPU variant
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-amd
+
+# Switch to the privacy role
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-amd
 ```
 
-Replace `vexos-desktop-amd` with whichever variant matches your hardware (see the [Variants](#variants) table above). The `/etc/nixos/vexos-variant` file is updated automatically so vexos-updater and future updates use the new target going forward.
+Replace the target with whichever variant matches your hardware and desired role (see the [Variants](#variants) table above). The `/etc/nixos/vexos-variant` file is updated automatically so vexos-updater and future updates use the new target going forward.
 
 > **Switching GPU drivers?** A reboot is recommended after switching between AMD, NVIDIA, and Intel variants so the kernel modules load cleanly.
 
@@ -81,7 +96,17 @@ Edit `variant`, `hostname`, and `bootloaderModule` in the `let` block, then rebu
 ```bash
 sudo nix --extra-experimental-features 'nix-command flakes' flake update --flake /etc/nixos
 
+# Desktop variants
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-amd
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-intel
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-vm
+
+# Privacy variants
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-amd
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-nvidia
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-intel
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-vm
 ```  
 
 ## Rollback

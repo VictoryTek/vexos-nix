@@ -11,6 +11,7 @@
 #
 # Supported roles (expand this list as new roles are added to the flake):
 #   desktop — Gaming/workstation (AMD, NVIDIA, Intel, VM)
+#   privacy — Minimal/clean build, no gaming/dev/virt/ASUS modules (AMD, NVIDIA, Intel, VM)
 #   htpc    — (coming soon)
 #   server  — (coming soon)
 #
@@ -50,28 +51,30 @@ echo ""
 # Only one role exists today; the selector is here so adding htpc/server later
 # requires nothing more than uncommenting the extra options below.
 echo -e "${BOLD}Select your role:${RESET}"
-echo "  1) Desktop — Gaming / workstation"
-# echo "  2) HTPC    — Home theatre PC          (coming soon)"
-# echo "  3) Server  — Headless server           (coming soon)"
+echo "  1) Desktop — Full gaming / workstation stack"
+echo "  2) Privacy — Minimal build (no gaming / dev / virt / ASUS)"
+# echo "  3) HTPC    — Home theatre PC          (coming soon)"
+# echo "  4) Server  — Headless server           (coming soon)"
 echo ""
 
 ROLE=""
 while [ -z "$ROLE" ]; do
-  printf "Enter choice [1] or name (desktop): "
+  printf "Enter choice [1-2] or name (desktop / privacy): "
   read -r INPUT
   case "${INPUT,,}" in
     1|desktop) ROLE="desktop" ;;
-    # 2|htpc)    ROLE="htpc"    ;;
-    # 3|server)  ROLE="server"  ;;
+    2|privacy) ROLE="privacy" ;;
+    # 3|htpc)    ROLE="htpc"    ;;
+    # 4|server)  ROLE="server"  ;;
     *)
-      echo -e "${RED}Invalid selection '${INPUT}'. Only 'desktop' is available right now.${RESET}"
+      echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 (desktop) or 2 (privacy).${RESET}"
       ;;
   esac
 done
 
-# ---------- GPU variant selection (desktop role) -----------------------------
+# ---------- GPU variant selection (desktop and privacy roles) ----------------
 VARIANT=""
-if [ "$ROLE" = "desktop" ]; then
+if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "privacy" ]; then
   echo ""
   echo -e "${BOLD}Select your GPU variant:${RESET}"
   echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
