@@ -14,7 +14,6 @@
     curl
     wget
     htop
-    just                                                # Command runner (justfile)
 
   ];
 }

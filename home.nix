@@ -79,6 +79,11 @@
 
   xdg.configFile."starship.toml".source = ./files/starship.toml;
 
+  # ── Justfile ───────────────────────────────────────────────────────────────
+  # Deploy the repo's justfile to ~/justfile so 'just' works from home dir
+  # on all variants (including VM).
+  home.file."justfile".source = ./justfile;
+
   # ── Hidden app grid entries ────────────────────────────────────────────────
   # These packages cannot be safely removed (they are required dependencies),
   # so their .desktop files are masked to keep them out of the app grid.
