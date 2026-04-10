@@ -10,6 +10,7 @@
     ./modules/packages.nix
     ./modules/branding.nix
     ./modules/system.nix
+    ./modules/impermanence.nix
   ];
 
   # ---------- Bootloader ----------
@@ -27,14 +28,24 @@
 
   # ---------- Users ----------
   users.users.nimda = {
-    isNormalUser = true;
-    description = "nimda";
+    isNormalUser    = true;
+    description     = "nimda";
+    # Default session password — changes at runtime do NOT persist across reboots
+    # because users.mutableUsers = false and / is a tmpfs (set by impermanence module).
+    initialPassword = "vexos";
     extraGroups = [
       "wheel"
       "networkmanager"
       "audio"     # for raw ALSA access (optional alongside PipeWire)
     ];
   };
+
+  # ---------- Impermanence ----------
+  # Enable tmpfs-rooted ephemeral filesystem for the privacy role.
+  # / is wiped on every reboot; only /nix and /persistent survive.
+  # Requires hardware-configuration.nix to declare / as tmpfs and
+  # /persistent as a neededForBoot btrfs subvolume (see impermanence_spec.md).
+  vexos.impermanence.enable = true;
 
   # ---------- Nix settings ----------
   nix.settings = {
