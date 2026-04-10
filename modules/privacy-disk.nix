@@ -18,10 +18,11 @@ let
   cfg = config.vexos.privacy.disk;
 in
 {
-  # Conditionally pull in the disko NixOS module.
-  # Evaluated lazily: when cfg.enable = false (default) disko is never imported,
-  # leaving non-privacy builds entirely unaffected.
-  imports = lib.optionals cfg.enable [
+  # Import the disko NixOS module unconditionally.
+  # NixOS disallows referencing `config` inside `imports` (infinite recursion).
+  # The disko module is safe to import unconditionally — it only activates
+  # when `disko.devices` is configured, which is gated by lib.mkIf below.
+  imports = [
     inputs.disko.nixosModules.disko
   ];
 

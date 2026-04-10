@@ -18,10 +18,11 @@ let
   cfg = config.vexos.impermanence;
 in
 {
-  # Conditionally pull in the upstream impermanence NixOS module.
-  # Evaluated lazily: when cfg.enable = false (default) the upstream module
-  # is never imported, leaving non-privacy builds entirely unaffected.
-  imports = lib.optionals cfg.enable [
+  # Import the upstream impermanence NixOS module unconditionally.
+  # NixOS disallows referencing `config` inside `imports` (infinite recursion).
+  # The upstream module is safe to import unconditionally — it only activates
+  # when `environment.persistence` is configured, which is gated by lib.mkIf below.
+  imports = [
     inputs.impermanence.nixosModules.impermanence
   ];
 
