@@ -2,7 +2,6 @@
 
 {
   imports = [
-    # TODO: flesh out HTPC-specific modules (e.g. media apps, Kodi, codecs)
     ./modules/gnome.nix
     ./modules/audio.nix
     ./modules/gpu.nix
@@ -47,6 +46,13 @@
     min-free = 1073741824;   # 1 GiB
     max-free = 5368709120;   # 5 GiB
   };
+
+  # ---------- Nixpkgs ----------
+  nixpkgs.config.allowUnfree = true;
+
+  # ---------- State version ----------
+  # Set once at install time — do not change after initial deployment.
+  system.stateVersion = "25.11";
 
   # ---------- HTPC role placeholder ----------
   # This configuration is intentionally minimal. Add media centre services,

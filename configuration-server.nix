@@ -2,7 +2,10 @@
 
 {
   imports = [
-    # TODO: flesh out server-specific modules (e.g. services, hardening)
+    ./modules/gnome.nix
+    ./modules/audio.nix
+    ./modules/branding.nix
+    ./modules/flatpak.nix
     ./modules/network.nix
     ./modules/packages.nix
     ./modules/system.nix
@@ -41,6 +44,13 @@
     min-free = 1073741824;   # 1 GiB
     max-free = 5368709120;   # 5 GiB
   };
+
+  # ---------- Nixpkgs ----------
+  nixpkgs.config.allowUnfree = true;
+
+  # ---------- State version ----------
+  # Set once at install time — do not change after initial deployment.
+  system.stateVersion = "25.11";
 
   # ---------- Server role placeholder ----------
   # This configuration is intentionally minimal. Add server-specific
