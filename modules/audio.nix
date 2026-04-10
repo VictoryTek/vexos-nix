@@ -16,13 +16,16 @@
     jack.enable = true;       # JACK compatibility (useful for pro audio / DAWs)
 
     # ── Low-latency tuning ─────────────────────────────────────────────────
-    # nix-gaming.nixosModules.pipewireLowLatency is imported in flake.nix.
-    # Activate it here by setting the enable flag it exposes.
-    # (Do NOT also set the manual extraConfig entries below — they would conflict.)
-    lowLatency = {
-      enable = true;
-      # Defaults from nix-gaming: quantum = 64, rate = 48000 (~1.33 ms latency).
-      # Increase quantum to 128 or 256 if audio crackling occurs.
+    # Native PipeWire quantum/rate config — no external module required.
+    # quantum=64 at 48 kHz gives ~1.33 ms latency; suits all roles.
+    # Increase quantum to 128 or 256 if audio crackling occurs.
+    extraConfig.pipewire."92-low-latency" = {
+      context.properties = {
+        "default.clock.rate"        = 48000;
+        "default.clock.quantum"     = 64;
+        "default.clock.min-quantum" = 64;
+        "default.clock.max-quantum" = 8192;
+      };
     };
 
     # ── WirePlumber: Bluetooth high-quality codecs ─────────────────────────
