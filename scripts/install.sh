@@ -21,7 +21,7 @@
 #   Source code: https://github.com/VictoryTek/vexos-nix/blob/main/scripts/install.sh
 # =============================================================================
 
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_URL="https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh"
 
@@ -53,28 +53,28 @@ echo ""
 echo -e "${BOLD}Select your role:${RESET}"
 echo "  1) Desktop — Full gaming / workstation stack"
 echo "  2) Privacy — Minimal build (no gaming / dev / virt / ASUS)"
-# echo "  3) HTPC    — Home theatre PC          (coming soon)"
-# echo "  4) Server  — Headless server           (coming soon)"
+echo "  3) HTPC    — Home theatre PC"
+echo "  4) Server  — Headless server"
 echo ""
 
 ROLE=""
 while [ -z "$ROLE" ]; do
-  printf "Enter choice [1-2] or name (desktop / privacy): "
+  printf "Enter choice [1-4] or name (desktop / privacy / htpc / server): "
   read -r INPUT
   case "${INPUT,,}" in
     1|desktop) ROLE="desktop" ;;
     2|privacy) ROLE="privacy" ;;
-    # 3|htpc)    ROLE="htpc"    ;;
-    # 4|server)  ROLE="server"  ;;
+    3|htpc)    ROLE="htpc"    ;;
+    4|server)  ROLE="server"  ;;
     *)
-      echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 (desktop) or 2 (privacy).${RESET}"
+      echo -e "${RED}Invalid selection '${INPUT}'. Choose 1-4 or a role name.${RESET}"
       ;;
   esac
 done
 
 # ---------- GPU variant selection (desktop and privacy roles) ----------------
 VARIANT=""
-if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "privacy" ]; then
+if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "privacy" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ]; then
   echo ""
   echo -e "${BOLD}Select your GPU variant:${RESET}"
   echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"

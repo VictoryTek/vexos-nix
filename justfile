@@ -5,58 +5,30 @@
 default:
     @just --list
 
-# Show current variant, or switch to a new one.
-# Usage:
-#   just variant                   – print active variant
-#   just variant switch <name>     – rebuild and switch (amd | nvidia | intel | vm)
-variant action="" name="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    case "{{action}}" in
-        "")
-            raw=$(grep '^NAME=' /etc/os-release 2>/dev/null | cut -d'"' -f2 | tr '[:upper:]' '[:lower:]')
-            case "$raw" in
-                *amd*)    echo "amd"    ;;
-                *nvidia*) echo "nvidia" ;;
-                *intel*)  echo "intel"  ;;
-                *vm*)     echo "vm"     ;;
-                *)        echo "unknown (NAME=${raw})" ;;
-            esac
-            ;;
-        switch)
-            case "{{name}}" in
-                amd|nvidia|intel|vm)
-                    echo "Switching to variant: {{name}}"
-                    sudo nixos-rebuild switch --flake .#vexos-desktop-{{name}}
-                    ;;
-                "")
-                    echo "error: variant name required"
-                    echo "usage: just variant switch <amd|nvidia|intel|vm>"
-                    exit 1
-                    ;;
-                *)
-                    echo "error: unknown variant '{{name}}'"
-                    echo "valid variants: amd  nvidia  intel  vm"
-                    exit 1
-                    ;;
-            esac
-            ;;
-        *)
-            echo "error: unknown action '{{action}}'"
-            echo "usage:"
-            echo "  just variant                   print active variant"
-            echo "  just variant switch <name>     rebuild and switch variant"
-            exit 1
-            ;;
-    esac
+# Print the active NixOS configuration name from /etc/os-release.
+variant:
+    @grep '^NAME=' /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "unknown"
 
-# Update flake inputs and rebuild the active variant.
-update:
+# Rebuild and switch to a role + GPU variant.
+# Roles:    desktop  privacy  htpc  server
+# Variants: amd  nvidia  intel  vm
+# Example:  just switch desktop amd
+switch role variant:
+    sudo nixos-rebuild switch --flake /etc/nixos#vexos-{{role}}-{{variant}}
+
+# Dry-run build without switching — useful for testing config changes.
+# Example: just build desktop amd
+build role variant:
+    sudo nixos-rebuild build --flake /etc/nixos#vexos-{{role}}-{{variant}}
+
+# Update all flake inputs, then rebuild and switch.
+# Example: just update desktop amd
+update role variant:
     #!/usr/bin/env bash
     set -euo pipefail
     cd /etc/nixos
     sudo nix flake update
-    sudo nixos-rebuild switch --flake /etc/nixos#$(cat /etc/nixos/vexos-variant)
+    sudo nixos-rebuild switch --flake /etc/nixos#vexos-{{role}}-{{variant}}
 
 # Roll back to the previous NixOS generation and set it as the boot default.
 rollback:
