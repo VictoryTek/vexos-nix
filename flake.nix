@@ -22,6 +22,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # nix-community/impermanence: declarative persistence for tmpfs-rooted systems.
+    # Used exclusively by the privacy role (configuration-privacy.nix).
+    # impermanence has no nixpkgs dependency — follows not required.
+    impermanence.url = "github:nix-community/impermanence";
+
     # Up — GTK4 + libadwaita system update GUI (VM variant only).
     up = {
       url = "github:VictoryTek/Up";
@@ -29,7 +34,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermanence, ... }@inputs:
   let
     system = "x86_64-linux";
 
@@ -216,9 +221,10 @@
           ./configuration.nix
         ];
         home-manager = {
-          useGlobalPkgs   = true;
-          useUserPackages = true;
-          users.nimda     = import ./home.nix;
+          useGlobalPkgs    = true;
+          useUserPackages  = true;
+          extraSpecialArgs = { inherit inputs; };
+          users.nimda      = import ./home.nix;
         };
         nixpkgs.overlays = [
           (final: prev: {
@@ -233,15 +239,22 @@
       # Privacy stack: minimal, without gaming/development/virtualization/asus.
       # Suitable for a clean daily-driver focused on privacy and basic productivity.
       privacyBase = { ... }: {
+        # Inject flake inputs into the module system so that downstream modules
+        # (e.g. modules/impermanence.nix) can reference inputs as a formal arg.
+        # Required when this module is consumed via the /etc/nixos/flake.nix
+        # template, which does not pass specialArgs.
+        _module.args.inputs = inputs;
         imports = [
           nix-gaming.nixosModules.pipewireLowLatency
           home-manager.nixosModules.home-manager
+          impermanence.nixosModules.impermanence
           ./configuration-privacy.nix
         ];
         home-manager = {
-          useGlobalPkgs   = true;
-          useUserPackages = true;
-          users.nimda     = import ./home.nix;
+          useGlobalPkgs    = true;
+          useUserPackages  = true;
+          extraSpecialArgs = { inherit inputs; };
+          users.nimda      = import ./home.nix;
         };
         nixpkgs.overlays = [
           (final: prev: {
