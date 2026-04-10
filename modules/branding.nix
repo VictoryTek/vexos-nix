@@ -145,8 +145,8 @@ in
       ${pkgs.gnused}/bin/sed -i 's/, built on [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}//' "$f"
       # Strip "(Linux X.X.X)" kernel version from generation description
       ${pkgs.gnused}/bin/sed -i 's/ (Linux [0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*)//' "$f"
-      # Remove repeated distroName + codename, keeping only "Generation N version"
-      ${pkgs.gnused}/bin/sed -i -E 's/\(Generation ([0-9]+) [^0-9]+([0-9]+\.[0-9]+)\)/(Generation \1 \2)/' "$f"
+      # Remove redundant distroName + variant, keeping "Generation N [Codename] version"
+      ${pkgs.gnused}/bin/sed -i -E 's/\(Generation ([0-9]+) VexOS Desktop (AMD|NVIDIA|Intel|VM) ([^0-9]+ ([0-9]+\.[0-9]+))\)/(Generation \1 \3)/' "$f"
     done
   '';
 }
