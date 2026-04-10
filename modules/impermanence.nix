@@ -89,7 +89,7 @@ in
       {
         assertion =
           (config.fileSystems ? "${cfg.persistentPath}") &&
-          ((config.fileSystems."${cfg.persistentPath}".neededForBoot) or false);
+          (config.fileSystems."${cfg.persistentPath}".neededForBoot or false);
         message = ''
           vexos.impermanence.enable = true requires
           fileSystems."${cfg.persistentPath}" to be declared with neededForBoot = true.
