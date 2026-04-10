@@ -34,14 +34,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Up — GTK4 + libadwaita system update GUI (VM variant only).
+    # Up — GTK4 + libadwaita system update GUI (all roles and variants).
     up = {
       url = "github:VictoryTek/Up";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermanence, disko, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermanence, disko, up, ... }@inputs:
   let
     system = "x86_64-linux";
 
@@ -80,12 +80,14 @@
 
       unstableOverlayModule
       homeManagerModule
+      { environment.systemPackages = [ up.packages.x86_64-linux.default ]; }
     ];
 
     # Modules for server/htpc roles — no home-manager
     minimalModules = [
       /etc/nixos/hardware-configuration.nix
       unstableOverlayModule
+      { environment.systemPackages = [ up.packages.x86_64-linux.default ]; }
     ];
   in
   {
@@ -309,9 +311,6 @@
       };
       gpuVm = { ... }: {
         imports = [ ./modules/gpu/vm.nix ];
-        environment.systemPackages = [
-          inputs.up.packages.x86_64-linux.default
-        ];
       };
       asus      = ./modules/asus.nix;
     };
