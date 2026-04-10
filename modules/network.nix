@@ -20,6 +20,17 @@
     # Steam Remote Play ports are handled by programs.steam.remotePlay.openFirewall in gaming.nix.
   };
 
+  # ── SSH server ───────────────────────────────────────────────────────────
+  services.openssh = {
+    enable = true;
+    settings = {
+      PasswordAuthentication = false;  # key-based auth only
+      PermitRootLogin        = "no";
+    };
+  };
+
+  networking.firewall.allowedTCPPorts = [ 22 ];
+
   # ── DNS resolver ──────────────────────────────────────────────────────────
   services.resolved = {
     enable      = true;
