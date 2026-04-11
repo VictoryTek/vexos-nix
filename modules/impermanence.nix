@@ -75,8 +75,17 @@ in
     fileSystems."/" = {
       device  = lib.mkForce "none";
       fsType  = lib.mkForce "tmpfs";
-      options = [ "defaults" "size=25%" "mode=755" ];
+      options = lib.mkForce [ "defaults" "size=25%" "mode=755" ];
     };
+
+    # ── Systemd initrd ─────────────────────────────────────────────────────
+    # Required for a tmpfs-root system.  systemd-initrd provides:
+    #   • Reliable mount ordering via unit dependencies (Before=/After=)
+    #   • Correct integration with impermanence.nixosModules.impermanence
+    #     (which generates systemd mount units in the initrd when this is true)
+    #   • Correct Plymouth integration (plymouth.service in initrd namespace)
+    #   • Emergency mode from initrd store (not /nix) on mount failure
+    boot.initrd.systemd.enable = true;
 
     # ── Assertions ──────────────────────────────────────────────────────────
     assertions = [
@@ -90,6 +99,22 @@ in
           This is normally satisfied automatically by modules/stateless-disk.nix.
           For fresh installs: run scripts/stateless-setup.sh from the NixOS live ISO.
           For existing systems: run scripts/migrate-to-stateless.sh to migrate in-place.
+        '';
+      }
+      {
+        assertion =
+          (config.fileSystems ? "/nix") &&
+          (config.fileSystems."/nix".neededForBoot or false);
+        message = ''
+          vexos.impermanence.enable = true requires fileSystems."/nix" to be declared
+          with neededForBoot = true.  This is normally satisfied automatically by
+          modules/stateless-disk.nix when vexos.stateless.disk.enable = true.
+          If this assertion fails, hardware-configuration.nix is defining
+          fileSystems."/nix" without neededForBoot = true at a priority that
+          overrides the stateless-disk.nix default.
+          Fix: add `neededForBoot = true;` to fileSystems."/nix" in
+          /etc/nixos/hardware-configuration.nix, or re-run
+          scripts/migrate-to-stateless.sh to regenerate it correctly.
         '';
       }
       {

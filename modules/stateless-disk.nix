@@ -69,6 +69,10 @@ in
       rootPart    = if isNvmeStyle then "${cfg.device}p2" else "${cfg.device}2";
     in
     {
+      # Ensure btrfs module is available in initrd (belt-and-suspenders — normally
+      # provided by hardware-configuration.nix via availableKernelModules detection).
+      boot.initrd.availableKernelModules = lib.mkDefault [ "btrfs" ];
+
       # ── Boot partition (EFI / FAT32) ──────────────────────────────────────
       # lib.mkDefault: hardware-configuration.nix overrides with UUID path.
       fileSystems."/boot" = lib.mkDefault {
@@ -84,7 +88,7 @@ in
         device        = rootPart;
         fsType        = "btrfs";
         options       = [ "subvol=@nix" "compress=zstd" "noatime" ];
-        neededForBoot = true;
+        neededForBoot = lib.mkForce true;
       };
 
       # ── Persistent state ──────────────────────────────────────────────────
