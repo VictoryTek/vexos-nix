@@ -172,15 +172,15 @@ nix flake check --no-build --impure --show-trace
 
 This is not in scope for the current modification (spec only required adding CHECK 0) but should be addressed in a follow-up.
 
-#### WARNING-3 — CHECK 2 Fallback Loop Has Duplicate Privacy Targets (Pre-existing)
+#### WARNING-3 — CHECK 2 Fallback Loop Has Duplicate Stateless Targets (Pre-existing)
 
-The `nix build --dry-run` fallback loop (when `nixos-rebuild` is not available) lists the privacy targets twice:
+The `nix build --dry-run` fallback loop (when `nixos-rebuild` is not available) lists the stateless targets twice:
 
 ```bash
 for TARGET in vexos-desktop-amd vexos-desktop-nvidia vexos-desktop-vm vexos-desktop-intel \
-  vexos-privacy-amd vexos-privacy-nvidia vexos-privacy-intel vexos-privacy-vm \
-  vexos-privacy-amd vexos-privacy-nvidia vexos-privacy-intel vexos-privacy-vm; do
-# ↑ privacy variants duplicated
+  vexos-stateless-amd vexos-stateless-nvidia vexos-stateless-intel vexos-stateless-vm \
+  vexos-stateless-amd vexos-stateless-nvidia vexos-stateless-intel vexos-stateless-vm; do
+# ↑ stateless variants duplicated
 ```
 
 This causes 4 redundant `nix build --dry-run` invocations. Not a correctness failure (dry-run is idempotent) but wastes significant time.
@@ -191,7 +191,7 @@ This causes 4 redundant `nix build --dry-run` invocations. Not a correctness fai
 
 Both the `nixos-rebuild` loop and the fallback loop cover only 8 of the 16 `nixosConfigurations` defined in `flake.nix`:
 
-- ✓ Covered: `vexos-desktop-{amd,nvidia,intel,vm}`, `vexos-privacy-{amd,nvidia,intel,vm}`
+- ✓ Covered: `vexos-desktop-{amd,nvidia,intel,vm}`, `vexos-stateless-{amd,nvidia,intel,vm}`
 - ✗ Missing: `vexos-server-{amd,nvidia,intel,vm}`, `vexos-htpc-{amd,nvidia,intel,vm}`
 
 The CI workflow covers all 16 via `nix flake check` which evaluates all `nixosConfigurations.*` outputs. The preflight provides weaker local coverage.
@@ -236,7 +236,7 @@ None.
 |----|----------|-------|
 | W-1 | `ci.yml` → Cache step | `actions/cache@v4` placed after Nix install; caching `/nix/store` fails silently due to permissions; cache step is a non-functional no-op |
 | W-2 | `preflight.sh` CHECK 1 | `nix flake check` missing `--no-build`; inconsistent with CI behavior; risk of triggering full package builds locally |
-| W-3 | `preflight.sh` CHECK 2 | Privacy targets duplicated in `nix build --dry-run` fallback loop |
+| W-3 | `preflight.sh` CHECK 2 | Stateless targets duplicated in `nix build --dry-run` fallback loop |
 | W-4 | `preflight.sh` CHECK 2 | Server and HTPC configurations not covered in dry-build loop (8 of 16) |
 
 ### RECOMMENDATION
@@ -245,7 +245,7 @@ None.
 | R-1 | `ci.yml` | Pin `cachix/install-nix-action` to `v31.10.4` full semver |
 | R-2 | `ci.yml` | Replace cache configuration: move before Nix install, target `~/.cache/nix` only |
 | R-3 | `preflight.sh` CHECK 1 | Add `--no-build --show-trace` to `nix flake check --impure` |
-| R-4 | `preflight.sh` CHECK 2 | Remove duplicate privacy targets from fallback loop |
+| R-4 | `preflight.sh` CHECK 2 | Remove duplicate stateless targets from fallback loop |
 | R-5 | `preflight.sh` CHECK 2 | Add `vexos-server-*` and `vexos-htpc-*` variants to dry-build loops |
 
 ---

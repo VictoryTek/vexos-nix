@@ -1,10 +1,10 @@
-# Impermanence Implementation Review — vexos-nix Privacy Role
+# Impermanence Implementation Review — vexos-nix Stateless Role
 
 **Feature:** `impermanence`
 **Reviewer:** NixOS Code Review Agent
 **Date:** 2026-04-10
-**Review Scope:** `modules/impermanence.nix` (NEW), `flake.nix` (MODIFIED), `configuration-privacy.nix` (MODIFIED)
-**Reference Files:** `configuration.nix`, `modules/system.nix`, `hosts/privacy-amd.nix`, `hosts/privacy-nvidia.nix`, `hosts/privacy-vm.nix`, `template/etc-nixos-flake.nix`
+**Review Scope:** `modules/impermanence.nix` (NEW), `flake.nix` (MODIFIED), `configuration-stateless.nix` (MODIFIED)
+**Reference Files:** `configuration.nix`, `modules/system.nix`, `hosts/stateless-amd.nix`, `hosts/stateless-nvidia.nix`, `hosts/stateless-vm.nix`, `template/etc-nixos-flake.nix`
 
 ---
 
@@ -14,9 +14,9 @@
 
 Nix is not installed in the native Windows environment or in the available WSL Ubuntu instance (`nix not found`). The following commands could not be executed:
 - `nix flake check`
-- `sudo nixos-rebuild dry-build --flake .#vexos-privacy-amd`
-- `sudo nixos-rebuild dry-build --flake .#vexos-privacy-nvidia`
-- `sudo nixos-rebuild dry-build --flake .#vexos-privacy-vm`
+- `sudo nixos-rebuild dry-build --flake .#vexos-stateless-amd`
+- `sudo nixos-rebuild dry-build --flake .#vexos-stateless-nvidia`
+- `sudo nixos-rebuild dry-build --flake .#vexos-stateless-vm`
 
 A thorough manual Nix syntax and logic review was performed instead. One CRITICAL structural issue was found that would cause evaluation failure on one deployment path. See findings below.
 
@@ -28,25 +28,25 @@ A thorough manual Nix syntax and logic review was performed instead. One CRITICA
 
 ---
 
-#### CRITICAL-01: `modules/impermanence.nix` requires `inputs` as a module arg — breaks `nixosModules.privacyBase` template path
+#### CRITICAL-01: `modules/impermanence.nix` requires `inputs` as a module arg — breaks `nixosModules.statelessBase` template path
 
-**File:** `flake.nix` (nixosModules.privacyBase definition), `modules/impermanence.nix`
+**File:** `flake.nix` (nixosModules.statelessBase definition), `modules/impermanence.nix`
 
 **Description:**
 
 `modules/impermanence.nix` declares `{ config, lib, inputs, ... }:` as its module signature. The `inputs` argument is a named formal parameter, not a variadic `...` capture. In the NixOS module system, named module arguments must be satisfied either by the standard module args set (`config`, `options`, `lib`, `pkgs`, `modulesPath`) or by `specialArgs` / `_module.args` passed to `nixpkgs.lib.nixosSystem`.
 
-**Path 1 — `nixosConfigurations.vexos-privacy-*` (WORKS):**
+**Path 1 — `nixosConfigurations.vexos-stateless-*` (WORKS):**
 ```nix
-nixosConfigurations.vexos-privacy-amd = nixpkgs.lib.nixosSystem {
+nixosConfigurations.vexos-stateless-amd = nixpkgs.lib.nixosSystem {
   inherit system;
-  modules = commonModules ++ [ ./hosts/privacy-amd.nix ];
+  modules = commonModules ++ [ ./hosts/stateless-amd.nix ];
   specialArgs = { inherit inputs; };  # ← inputs provided here
 };
 ```
 `inputs` is available. The conditional import in `modules/impermanence.nix` evaluates correctly. ✓
 
-**Path 2 — `nixosModules.privacyBase` via `template/etc-nixos-flake.nix` (BROKEN):**
+**Path 2 — `nixosModules.statelessBase` via `template/etc-nixos-flake.nix` (BROKEN):**
 ```nix
 # In template/etc-nixos-flake.nix:
 _mkVariantWith = baseModule: variant: gpuModule: nixpkgs.lib.nixosSystem {
@@ -54,37 +54,37 @@ _mkVariantWith = baseModule: variant: gpuModule: nixpkgs.lib.nixosSystem {
   modules = [ ... baseModule ... ];
   # ← No specialArgs — inputs is NOT available
 };
-mkPrivacyVariant = _mkVariantWith vexos-nix.nixosModules.privacyBase;
+mkStatelessVariant = _mkVariantWith vexos-nix.nixosModules.statelessBase;
 ```
 
-`nixosModules.privacyBase` imports `./configuration-privacy.nix`, which imports `./modules/impermanence.nix`. When the module function `{ config, lib, inputs, ... }:` is applied, `inputs` is not in the module args. NixOS will error:
+`nixosModules.statelessBase` imports `./configuration-stateless.nix`, which imports `./modules/impermanence.nix`. When the module function `{ config, lib, inputs, ... }:` is applied, `inputs` is not in the module args. NixOS will error:
 
 ```
 error: Function called without required argument 'inputs'
 ```
 
-This breaks every privacy-role deployment made via the template file, which is the standard end-user deployment path.
+This breaks every stateless-role deployment made via the template file, which is the standard end-user deployment path.
 
-**Root cause:** `nixosModules.privacyBase` already imports `impermanence.nixosModules.impermanence` unconditionally at the module level (so the upstream module options are available), but it does not inject `inputs` into `_module.args`, leaving `modules/impermanence.nix`'s conditional import unable to resolve `inputs`.
+**Root cause:** `nixosModules.statelessBase` already imports `impermanence.nixosModules.impermanence` unconditionally at the module level (so the upstream module options are available), but it does not inject `inputs` into `_module.args`, leaving `modules/impermanence.nix`'s conditional import unable to resolve `inputs`.
 
-**Fix:** Add `_module.args.inputs = inputs;` to the `privacyBase` module definition in `flake.nix`. Since `inputs` is in scope in the `outputs` function (via `@inputs`), this injects the flake's own inputs into the NixOS module system for all downstream modules.
+**Fix:** Add `_module.args.inputs = inputs;` to the `statelessBase` module definition in `flake.nix`. Since `inputs` is in scope in the `outputs` function (via `@inputs`), this injects the flake's own inputs into the NixOS module system for all downstream modules.
 
 ```nix
-# flake.nix — nixosModules.privacyBase
-privacyBase = { ... }: {
+# flake.nix — nixosModules.statelessBase
+statelessBase = { ... }: {
   _module.args.inputs = inputs;          # ← ADD THIS LINE
   imports = [
     nix-gaming.nixosModules.pipewireLowLatency
     home-manager.nixosModules.home-manager
     impermanence.nixosModules.impermanence
-    ./configuration-privacy.nix
+    ./configuration-stateless.nix
   ];
   home-manager = { ... };
   nixpkgs.overlays = [ ... ];
 };
 ```
 
-**Impact:** High — blocks all template-based privacy deployments. The `nix flake check` would likely pass (it evaluates `nixosConfigurations`, not `nixosModules`), but runtime evaluation via the template at `/etc/nixos/flake.nix` on a user machine would fail.
+**Impact:** High — blocks all template-based stateless deployments. The `nix flake check` would likely pass (it evaluates `nixosConfigurations`, not `nixosModules`), but runtime evaluation via the template at `/etc/nixos/flake.nix` on a user machine would fail.
 
 ---
 
@@ -112,25 +112,25 @@ zramSwap = {
 
 ---
 
-#### WARNING-02: `electron-36.9.5` in `permittedInsecurePackages` is likely unnecessary for the privacy role
+#### WARNING-02: `electron-36.9.5` in `permittedInsecurePackages` is likely unnecessary for the stateless role
 
-**File:** `configuration-privacy.nix`
+**File:** `configuration-stateless.nix`
 
-**Description:** `nixpkgs.config.permittedInsecurePackages = [ "electron-36.9.5" ]` is carried over from the desktop role. This exception exists to support Heroic Games Launcher, which is a gaming application. The privacy role does not import `modules/gaming.nix`, and `modules/packages.nix` only includes `brave`, `inxi`, `git`, `curl`, `wget`, and `htop` — none of which require Electron.
+**Description:** `nixpkgs.config.permittedInsecurePackages = [ "electron-36.9.5" ]` is carried over from the desktop role. This exception exists to support Heroic Games Launcher, which is a gaming application. The stateless role does not import `modules/gaming.nix`, and `modules/packages.nix` only includes `brave`, `inxi`, `git`, `curl`, `wget`, and `htop` — none of which require Electron.
 
 Permitting insecure packages unnecessarily broadens the attack surface.
 
-**Recommendation:** Remove or comment out `permittedInsecurePackages` from `configuration-privacy.nix`, or explicitly document why it is retained (e.g., if Brave itself bundles an electron dep in a way that triggers this check).
+**Recommendation:** Remove or comment out `permittedInsecurePackages` from `configuration-stateless.nix`, or explicitly document why it is retained (e.g., if Brave itself bundles an electron dep in a way that triggers this check).
 
 ---
 
-#### WARNING-03: `nixosModules.privacyBase` imports impermanence module unconditionally
+#### WARNING-03: `nixosModules.statelessBase` imports impermanence module unconditionally
 
 **File:** `flake.nix`
 
-**Description:** `nixosModules.privacyBase` imports `impermanence.nixosModules.impermanence` regardless of whether `vexos.impermanence.enable` is true. This is not wrong — it makes the upstream module options available before the conditional import in `modules/impermanence.nix` runs — but it means that any consumer of `privacyBase` always has the impermanence upstream module loaded even if they set `vexos.impermanence.enable = false`.
+**Description:** `nixosModules.statelessBase` imports `impermanence.nixosModules.impermanence` regardless of whether `vexos.impermanence.enable` is true. This is not wrong — it makes the upstream module options available before the conditional import in `modules/impermanence.nix` runs — but it means that any consumer of `statelessBase` always has the impermanence upstream module loaded even if they set `vexos.impermanence.enable = false`.
 
-For the primary use case (privacy role with impermanence always enabled), this is correct behaviour. The redundancy is low-risk but worth noting.
+For the primary use case (stateless role with impermanence always enabled), this is correct behaviour. The redundancy is low-risk but worth noting.
 
 ---
 
@@ -142,7 +142,7 @@ For the primary use case (privacy role with impermanence always enabled), this i
 
 **File:** `template/etc-nixos-flake.nix`
 
-**Description:** Even after CRITICAL-01 is fixed via `_module.args.inputs = inputs;` in `privacyBase`, it is defensive to also update the template so that privacy-variant builds explicitly pass specialArgs. This ensures forward-compatibility if future modules added to the privacy stack require `inputs`:
+**Description:** Even after CRITICAL-01 is fixed via `_module.args.inputs = inputs;` in `statelessBase`, it is defensive to also update the template so that stateless-variant builds explicitly pass specialArgs. This ensures forward-compatibility if future modules added to the stateless stack require `inputs`:
 
 ```nix
 _mkVariantWith = baseModule: variant: gpuModule: nixpkgs.lib.nixosSystem {
@@ -188,19 +188,19 @@ Note: `vexos-nix.inputs` exposes the upstream flake's inputs to downstream consu
 | Suppress sudo lecture | ✓ | Defaults lecture = never |
 | `hideMounts = true` | ✓ | |
 | `/var/lib/nixos` persisted | ✓ | |
-| NetworkManager connections NOT persisted | ✓ | Privacy default, commented guidance |
-| Bluetooth NOT persisted | ✓ | Privacy default, commented guidance |
-| machine-id NOT persisted | ✓ | Privacy default, commented guidance |
+| NetworkManager connections NOT persisted | ✓ | Stateless default, commented guidance |
+| Bluetooth NOT persisted | ✓ | Stateless default, commented guidance |
+| machine-id NOT persisted | ✓ | Stateless default, commented guidance |
 | User home fully ephemeral | ✓ | Documented with opt-in guidance |
 | Assertion for tmpfs root check | ✓ | |
 | Assertion for neededForBoot check | ✓ | |
 | `imp` input added to flake | ✓ | No follows (correct — no nixpkgs dep) |
 | `impermanence` destructured in outputs | ✓ | |
-| `modules/impermanence.nix` imported in `configuration-privacy.nix` | ✓ | |
-| `vexos.impermanence.enable = true` in privacy config | ✓ | |
+| `modules/impermanence.nix` imported in `configuration-stateless.nix` | ✓ | |
+| `vexos.impermanence.enable = true` in stateless config | ✓ | |
 | `users.nimda.initialPassword = "vexos"` set | ✓ | Documented as session password |
-| Privacy hosts unchanged | ✓ | Spec 4.6 correctly states no changes needed |
-| Privacy flake outputs declared | ✓ | All four GPU variants present |
+| Stateless hosts unchanged | ✓ | Spec 4.6 correctly states no changes needed |
+| Stateless flake outputs declared | ✓ | All four GPU variants present |
 
 **Spec note:** The spec (Section 4.5) incorrectly specified `inputs.nixpkgs.follows` and `inputs.home-manager.follows` for the impermanence input. The implementation CORRECTLY deviates by omitting these follows (impermanence has no nixpkgs or home-manager dependency). This is a positive correction.
 
@@ -230,20 +230,20 @@ No syntax errors detected via manual review. The `or false` fallback on `neededF
 | No incorrect `follows` added | ✓ | Correctly omitted |
 | `impermanence` destructured in outputs function | ✓ | `outputs = { ..., impermanence, ... }@inputs:` |
 | `inputs.impermanence.nixosModules.impermanence` reference | ✓ | In `modules/impermanence.nix` imports |
-| Privacy flake outputs provide `specialArgs = { inherit inputs; }` | ✓ | All `vexos-privacy-*` configs |
-| `nixosModules.privacyBase` provides inputs to module system | ✗ | **CRITICAL-01** — missing `_module.args.inputs` |
+| Stateless flake outputs provide `specialArgs = { inherit inputs; }` | ✓ | All `vexos-stateless-*` configs |
+| `nixosModules.statelessBase` provides inputs to module system | ✗ | **CRITICAL-01** — missing `_module.args.inputs` |
 
 ### 4. Module Integration
 
 | Check | Status |
 |---|---|
-| `modules/impermanence.nix` imported in `configuration-privacy.nix` | ✓ |
+| `modules/impermanence.nix` imported in `configuration-stateless.nix` | ✓ |
 | `specialArgs` provides `inputs` for `nixosConfigurations` | ✓ |
-| `specialArgs` NOT provided for `nixosModules.privacyBase` path | ✗ (CRITICAL-01) |
-| Privacy role sets `vexos.impermanence.enable = true` | ✓ |
+| `specialArgs` NOT provided for `nixosModules.statelessBase` path | ✗ (CRITICAL-01) |
+| Stateless role sets `vexos.impermanence.enable = true` | ✓ |
 | Desktop/HTPC/Server roles unaffected (module not imported) | ✓ |
 
-### 5. Privacy Best Practices
+### 5. Stateless Best Practices
 
 | Check | Status | Notes |
 |---|---|---|
@@ -254,7 +254,7 @@ No syntax errors detected via manual review. The `or false` fallback on `neededF
 | System logs ephemeral | ✓ | Storage=volatile |
 | Crash dumps ephemeral | ✓ | Not persisted |
 | machine-id not persisted | ✓ | Boot correlation prevented |
-| SSH host keys not persisted | ✓ | Privacy default with opt-in guidance |
+| SSH host keys not persisted | ✓ | Stateless default with opt-in guidance |
 | `users.mutableUsers = false` | ✓ | Runtime password changes don't survive reboot |
 
 ### 6. Swap / ZRAM Interaction
@@ -284,7 +284,7 @@ No syntax errors detected via manual review. The `or false` fallback on `neededF
 | AMD drivers (`amdgpu`) in `/nix/store` | ✓ | Fully compatible with tmpfs root |
 | NVIDIA drivers in `/nix/store` | ✓ | `nvidia-persistenced` state is ephemeral — acceptable |
 | VM guest drivers in `/nix/store` | ✓ | VirtIO/QXL/SPICE unaffected |
-| `hosts/privacy-vm.nix` adds Up package via `inputs` | ✓ | Template requires `inputs` specialArg — already present in direct flake outputs |
+| `hosts/stateless-vm.nix` adds Up package via `inputs` | ✓ | Template requires `inputs` specialArg — already present in direct flake outputs |
 | No GPU-specific paths requiring persistence identified | ✓ | |
 
 ---
@@ -302,7 +302,7 @@ No syntax errors detected via manual review. The `or false` fallback on `neededF
 | Consistency | 88% | B+ |
 | Build Success | N/A | UNTESTED* |
 
-*Build could not be executed (Nix unavailable on Windows). Manual review suggests the `nixosConfigurations.vexos-privacy-*` outputs are structurally sound. The `nixosModules.privacyBase` path has a confirmed critical defect.
+*Build could not be executed (Nix unavailable on Windows). Manual review suggests the `nixosConfigurations.vexos-stateless-*` outputs are structurally sound. The `nixosModules.statelessBase` path has a confirmed critical defect.
 
 **Overall Grade: B+ (89%) — pending CRITICAL-01 fix**
 
@@ -316,33 +316,33 @@ No syntax errors detected via manual review. The `or false` fallback on `neededF
 
 ### CRITICAL Issues That Must Be Fixed
 
-#### CRITICAL-01 — `nixosModules.privacyBase` does not inject `inputs` into the module system
+#### CRITICAL-01 — `nixosModules.statelessBase` does not inject `inputs` into the module system
 
 **File to fix:** `c:\Projects\vexos-nix\flake.nix`
 
-**Change required:** In the `nixosModules.privacyBase` definition, add `_module.args.inputs = inputs;` as the first attribute:
+**Change required:** In the `nixosModules.statelessBase` definition, add `_module.args.inputs = inputs;` as the first attribute:
 
 ```nix
 # BEFORE:
-privacyBase = { ... }: {
+statelessBase = { ... }: {
   imports = [
     nix-gaming.nixosModules.pipewireLowLatency
     home-manager.nixosModules.home-manager
     impermanence.nixosModules.impermanence
-    ./configuration-privacy.nix
+    ./configuration-stateless.nix
   ];
   home-manager = { ... };
   nixpkgs.overlays = [ ... ];
 };
 
 # AFTER:
-privacyBase = { ... }: {
+statelessBase = { ... }: {
   _module.args.inputs = inputs;          # ← Inject flake inputs so modules/impermanence.nix can reference them
   imports = [
     nix-gaming.nixosModules.pipewireLowLatency
     home-manager.nixosModules.home-manager
     impermanence.nixosModules.impermanence
-    ./configuration-privacy.nix
+    ./configuration-stateless.nix
   ];
   home-manager = { ... };
   nixpkgs.overlays = [ ... ];
@@ -356,5 +356,5 @@ privacyBase = { ... }: {
 ### Recommended Fixes (Not Blocking)
 
 1. **Remove redundant `zramSwap.enable = true`** from `modules/impermanence.nix` or keep it with clarified ownership comment (WARNING-01).
-2. **Remove `electron-36.9.5`** from `permittedInsecurePackages` in `configuration-privacy.nix` if Brave browser does not require it (WARNING-02).
+2. **Remove `electron-36.9.5`** from `permittedInsecurePackages` in `configuration-stateless.nix` if Brave browser does not require it (WARNING-02).
 3. **Add secondary hardening** to `template/etc-nixos-flake.nix` by injecting `specialArgs = { inputs = vexos-nix.inputs; }` in the `_mkVariantWith` helper (RECOMMENDATION-01).

@@ -1,14 +1,14 @@
-# template/privacy-disko.nix
-# Standalone disko disk layout for the VexOS privacy role.
-# Used by scripts/privacy-setup.sh during initial installation from the NixOS ISO.
+# template/stateless-disko.nix
+# Standalone disko disk layout for the VexOS stateless role.
+# Used by scripts/stateless-setup.sh during initial installation from the NixOS ISO.
 #
 # This is NOT a NixOS module — it is a plain Nix file passed directly to the
-# disko CLI.  The NixOS module equivalent is modules/privacy-disk.nix.
+# disko CLI.  The NixOS module equivalent is modules/stateless-disk.nix.
 #
 # Usage:
 #   sudo nix run 'github:nix-community/disko/latest' -- \
 #     --mode destroy,format,mount \
-#     /tmp/vexos-privacy-disk.nix \
+#     /tmp/vexos-stateless-disk.nix \
 #     --arg disk '"/dev/nvme0n1"' \
 #     --arg enableLuks 'true'
 #

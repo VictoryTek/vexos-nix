@@ -24,7 +24,7 @@ switch role="" variant="":
         echo ""
         echo "Select role:"
         echo "  1) desktop"
-        echo "  2) privacy"
+        echo "  2) stateless"
         echo "  3) htpc"
         echo "  4) server"
         echo ""
@@ -33,10 +33,10 @@ switch role="" variant="":
             read -r INPUT
             case "${INPUT,,}" in
                 1|desktop) ROLE="desktop" ;;
-                2|privacy) ROLE="privacy" ;;
+                2|stateless) ROLE="stateless" ;;
                 3|htpc)    ROLE="htpc"    ;;
                 4|server)  ROLE="server"  ;;
-                *) echo "Invalid — enter 1-4 or desktop/privacy/htpc/server" ;;
+                *) echo "Invalid — enter 1-4 or desktop/stateless/htpc/server" ;;
             esac
         done
     fi

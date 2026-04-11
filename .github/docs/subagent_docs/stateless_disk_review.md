@@ -1,9 +1,9 @@
-# Privacy Disk Automation — Code Review
+# Stateless Disk Automation — Code Review
 
-**Feature:** `privacy_disk`
+**Feature:** `stateless_disk`
 **Date:** 2026-04-10
 **Reviewer:** Phase 3 Review Subagent
-**Spec:** `.github/docs/subagent_docs/privacy_disk_spec.md`
+**Spec:** `.github/docs/subagent_docs/stateless_disk_spec.md`
 
 ---
 
@@ -35,9 +35,9 @@ None found.
 
 ### WARNING
 
-#### W-1 — `configuration-privacy.nix`: Outdated impermanence comment
+#### W-1 — `configuration-stateless.nix`: Outdated impermanence comment
 
-**File:** `configuration-privacy.nix`
+**File:** `configuration-stateless.nix`
 **Severity:** WARNING
 **Category:** Consistency / Documentation
 
@@ -51,47 +51,47 @@ The comment above `vexos.impermanence.enable = true` still reads:
 This is directly contradicted by the new implementation:
 
 - `modules/impermanence.nix` now **automatically** declares `fileSystems."/"` as tmpfs inside `config = lib.mkIf cfg.enable { ... }` — no manual action required.
-- `modules/privacy-disk.nix` now **automatically** sets `neededForBoot = true` on `/persistent` and `/nix` via `lib.mkForce` — no manual action required.
+- `modules/stateless-disk.nix` now **automatically** sets `neededForBoot = true` on `/persistent` and `/nix` via `lib.mkForce` — no manual action required.
 
-The comment is not within the spec's stated scope of files to modify (`configuration-privacy.nix` was not in the modification list), but it directly contradicts the purpose of this change and could mislead a user into adding conflicting `fileSystems."/"` entries to `hardware-configuration.nix`, causing an evaluation conflict.
+The comment is not within the spec's stated scope of files to modify (`configuration-stateless.nix` was not in the modification list), but it directly contradicts the purpose of this change and could mislead a user into adding conflicting `fileSystems."/"` entries to `hardware-configuration.nix`, causing an evaluation conflict.
 
 **Recommended fix:**
 
 ```nix
 # ---------- Impermanence ----------
-# Enable tmpfs-rooted ephemeral filesystem for the privacy role.
+# Enable tmpfs-rooted ephemeral filesystem for the stateless role.
 # / is wiped on every reboot; only /nix and /persistent survive.
-# Disk layout is handled declaratively by modules/privacy-disk.nix (disko).
+# Disk layout is handled declaratively by modules/stateless-disk.nix (disko).
 # No manual hardware-configuration.nix edits are required.
 vexos.impermanence.enable = true;
 ```
 
 ---
 
-#### W-2 — `flake.nix` + `modules/privacy-disk.nix`: Redundant double import of disko module
+#### W-2 — `flake.nix` + `modules/stateless-disk.nix`: Redundant double import of disko module
 
-**Files:** `flake.nix`, `modules/privacy-disk.nix`
+**Files:** `flake.nix`, `modules/stateless-disk.nix`
 **Severity:** WARNING
 **Category:** Consistency / Code Quality
 
-`inputs.disko.nixosModules.disko` is imported in two places for every privacy build:
+`inputs.disko.nixosModules.disko` is imported in two places for every stateless build:
 
-1. **`flake.nix`** — unconditionally in the `modules` list of all four `vexos-privacy-*` nixosConfigurations:
+1. **`flake.nix`** — unconditionally in the `modules` list of all four `vexos-stateless-*` nixosConfigurations:
    ```nix
    modules = commonModules ++ [
-     ./hosts/privacy-amd.nix
+     ./hosts/stateless-amd.nix
      inputs.disko.nixosModules.disko   ← import #1
    ];
    ```
 
-2. **`modules/privacy-disk.nix`** — conditionally via `lib.optionals cfg.enable`:
+2. **`modules/stateless-disk.nix`** — conditionally via `lib.optionals cfg.enable`:
    ```nix
    imports = lib.optionals cfg.enable [
      inputs.disko.nixosModules.disko   ← import #2 (fires when enable=true)
    ];
    ```
 
-Since all four privacy hosts set `vexos.privacy.disk.enable = true`, import #2 always fires for privacy configs, resulting in the same module value being added twice to the module list.
+Since all four stateless hosts set `vexos.stateless.disk.enable = true`, import #2 always fires for stateless configs, resulting in the same module value being added twice to the module list.
 
 **Impact:** NixOS deduplicates modules by reference equality for non-path modules. Since both references point to the same `inputs.disko.nixosModules.disko` Nix value, the module system handles this correctly — the module is only evaluated once. There is **no functional defect**.
 
@@ -99,13 +99,13 @@ However, this is architecturally redundant and creates confusion about which imp
 
 **Note:** The spec explicitly required both, so this is not a spec deviation. Flagged for awareness.
 
-**Recommended fix (optional):** Remove `inputs.disko.nixosModules.disko` from the per-nixosConfiguration `modules` list in `flake.nix` and rely solely on the conditional import in `modules/privacy-disk.nix`. This makes `privacy-disk.nix` fully self-contained — enabling the disk module automatically brings in disko, with no action required in `flake.nix` beyond the input declaration.
+**Recommended fix (optional):** Remove `inputs.disko.nixosModules.disko` from the per-nixosConfiguration `modules` list in `flake.nix` and rely solely on the conditional import in `modules/stateless-disk.nix`. This makes `stateless-disk.nix` fully self-contained — enabling the disk module automatically brings in disko, with no action required in `flake.nix` beyond the input declaration.
 
 ---
 
-#### W-3 — `scripts/privacy-setup.sh`: Missing `-e` in `set -uo pipefail`
+#### W-3 — `scripts/stateless-setup.sh`: Missing `-e` in `set -uo pipefail`
 
-**File:** `scripts/privacy-setup.sh`
+**File:** `scripts/stateless-setup.sh`
 **Severity:** WARNING
 **Category:** Best Practices / Safety
 
@@ -127,7 +127,7 @@ set -euo pipefail
 
 ### RECOMMENDATION
 
-#### R-1 — `modules/privacy-disk.nix`: Missing assertion for empty `cfg.device`
+#### R-1 — `modules/stateless-disk.nix`: Missing assertion for empty `cfg.device`
 
 The `device` option accepts any `lib.types.str` including `""`. An empty string passed to disko as the disk device would cause a cryptic disko error at format time rather than a clear NixOS evaluation failure.
 
@@ -138,7 +138,7 @@ assertions = [
   {
     assertion = cfg.device != "";
     message = ''
-      vexos.privacy.disk.enable = true requires vexos.privacy.disk.device
+      vexos.stateless.disk.enable = true requires vexos.stateless.disk.device
       to be set to a valid block device path (e.g. "/dev/nvme0n1").
       It is currently set to an empty string.
     '';
@@ -148,13 +148,13 @@ assertions = [
 
 ---
 
-#### R-2 — Consider setting `vexos.privacy.disk.enable = true` in `configuration-privacy.nix`
+#### R-2 — Consider setting `vexos.stateless.disk.enable = true` in `configuration-stateless.nix`
 
-Currently, `enable = true` must be set in each of the four privacy host files. Since the privacy role always requires the disk module (by definition), centralizing this in `configuration-privacy.nix` would be more DRY and make it impossible to accidentally create a privacy host without the disk module enabled.
+Currently, `enable = true` must be set in each of the four stateless host files. Since the stateless role always requires the disk module (by definition), centralizing this in `configuration-stateless.nix` would be more DRY and make it impossible to accidentally create a stateless host without the disk module enabled.
 
 ---
 
-#### R-3 — `scripts/privacy-setup.sh`: No pre-disko LUKS passphrase advisory
+#### R-3 — `scripts/stateless-setup.sh`: No pre-disko LUKS passphrase advisory
 
 The spec explicitly chose to let disko handle the interactive LUKS passphrase prompt (rather than pre-prompting and using a temp file). This is correct. However, the script does not print any advisory before the disko step about what the user will be asked for during formatting (a passphrase prompt will appear mid-operation without forewarning in the flow).
 
@@ -187,12 +187,12 @@ fi
 
 ---
 
-### B. `modules/privacy-disk.nix`
+### B. `modules/stateless-disk.nix`
 
 | Check | Result |
 |-------|--------|
 | Module signature `{ config, lib, inputs, ... }:` | ✅ PASS |
-| Options under `options.vexos.privacy.disk.*` | ✅ PASS |
+| Options under `options.vexos.stateless.disk.*` | ✅ PASS |
 | `enable` defaults to `false` | ✅ PASS |
 | `device` type is `lib.types.str` | ✅ PASS |
 | `enableLuks` defaults to `true` | ✅ PASS |
@@ -208,19 +208,19 @@ fi
 
 ---
 
-### C. `template/privacy-disko.nix`
+### C. `template/stateless-disko.nix`
 
 | Check | Result |
 |-------|--------|
 | Standalone disko config (not a NixOS module) | ✅ PASS |
 | Accepts `disk` parameter (function default arg) | ✅ PASS |
-| Layout matches `modules/privacy-disk.nix` | ✅ PASS |
+| Layout matches `modules/stateless-disk.nix` | ✅ PASS |
 | Compatible with disko CLI `--arg` invocation | ✅ PASS |
 | No Nix syntax errors | ✅ PASS |
 
 ---
 
-### D. `scripts/privacy-setup.sh`
+### D. `scripts/stateless-setup.sh`
 
 | Check | Result |
 |-------|--------|
@@ -233,7 +233,7 @@ fi
 | Runs disko with correct arguments | ✅ PASS |
 | `nixos-generate-config --no-filesystems --root /mnt` | ✅ PASS |
 | GPU variant selection | ✅ PASS |
-| `nixos-install --flake ...#vexos-privacy-<variant>` | ✅ PASS |
+| `nixos-install --flake ...#vexos-stateless-<variant>` | ✅ PASS |
 | No bash syntax errors | ✅ PASS |
 | Repo at /mnt/etc/nixos via template flake | ✅ PASS |
 
@@ -246,24 +246,24 @@ fi
 | `disko` input with `url = "github:nix-community/disko/latest"` | ✅ PASS |
 | `inputs.nixpkgs.follows = "nixpkgs"` | ✅ PASS |
 | `disko` in outputs destructuring | ✅ PASS |
-| `inputs.disko.nixosModules.disko` in all 4 privacy nixosConfigurations | ✅ PASS |
+| `inputs.disko.nixosModules.disko` in all 4 stateless nixosConfigurations | ✅ PASS |
 | No syntax errors | ✅ PASS |
 
 ---
 
-### F. Privacy host files
+### F. Stateless host files
 
 | Check | AMD | NVIDIA | Intel | VM |
 |-------|-----|--------|-------|-----|
-| `../modules/privacy-disk.nix` imported | ✅ | ✅ | ✅ | ✅ |
-| `vexos.privacy.disk.enable = true` | ✅ | ✅ | ✅ | ✅ |
-| `vexos.privacy.disk.device` set | ✅ `lib.mkDefault "/dev/nvme0n1"` | ✅ `lib.mkDefault "/dev/nvme0n1"` | ✅ `lib.mkDefault "/dev/nvme0n1"` | ✅ `/dev/vda` |
+| `../modules/stateless-disk.nix` imported | ✅ | ✅ | ✅ | ✅ |
+| `vexos.stateless.disk.enable = true` | ✅ | ✅ | ✅ | ✅ |
+| `vexos.stateless.disk.device` set | ✅ `lib.mkDefault "/dev/nvme0n1"` | ✅ `lib.mkDefault "/dev/nvme0n1"` | ✅ `lib.mkDefault "/dev/nvme0n1"` | ✅ `/dev/vda` |
 | VM: `enableLuks = false` | N/A | N/A | N/A | ✅ |
 | No syntax errors | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
-### G. Security review of `privacy-setup.sh`
+### G. Security review of `stateless-setup.sh`
 
 | Check | Result |
 |-------|--------|
@@ -275,13 +275,13 @@ fi
 
 ---
 
-### H. Interaction between `impermanence.nix` and `privacy-disk.nix`
+### H. Interaction between `impermanence.nix` and `stateless-disk.nix`
 
 | Check | Result |
 |-------|--------|
-| Option namespaces don't conflict (`vexos.impermanence` vs `vexos.privacy.disk`) | ✅ PASS |
+| Option namespaces don't conflict (`vexos.impermanence` vs `vexos.stateless.disk`) | ✅ PASS |
 | tmpfs `"/"` in impermanence.nix and disko layout don't conflict | ✅ PASS — separate mount points |
-| `neededForBoot` assertion in impermanence satisfied by `lib.mkForce` in privacy-disk | ✅ PASS |
+| `neededForBoot` assertion in impermanence satisfied by `lib.mkForce` in stateless-disk | ✅ PASS |
 
 ---
 
@@ -314,19 +314,19 @@ requirements from the spec have been met:
 - The PREREQUISITES comment block in `impermanence.nix` has been removed and replaced with a
   concise reference comment
 - `fileSystems."/"` is now declared programmatically inside `config = lib.mkIf cfg.enable`
-- `modules/privacy-disk.nix` implements the full disko disk layout with correct LUKS2 + Btrfs
+- `modules/stateless-disk.nix` implements the full disko disk layout with correct LUKS2 + Btrfs
   subvolume structure, proper `neededForBoot` flags, and VM bypass path
-- `template/privacy-disko.nix` is a correct standalone parameterized disko config
-- `scripts/privacy-setup.sh` correctly delegates LUKS passphrase handling to disko
+- `template/stateless-disko.nix` is a correct standalone parameterized disko config
+- `scripts/stateless-setup.sh` correctly delegates LUKS passphrase handling to disko
   (per spec section 14), validates the disk device, and requires double confirmation
 - `flake.nix` correctly adds disko as an input and imports the disko module in all four
-  privacy configurations
-- All four privacy host files correctly import the new module and set the required options
-- `scripts/install.sh` includes the required notice directing privacy users to
-  `privacy-setup.sh` for initial installs
+  stateless configurations
+- All four stateless host files correctly import the new module and set the required options
+- `scripts/install.sh` includes the required notice directing stateless users to
+  `stateless-setup.sh` for initial installs
 
 No CRITICAL issues were found. Three WARNINGs and three RECOMMENDATIONs are noted above,
-the most impactful being the outdated comment in `configuration-privacy.nix` (W-1) which
+the most impactful being the outdated comment in `configuration-stateless.nix` (W-1) which
 contradicts the purpose of this entire change.
 
 ---
@@ -336,5 +336,5 @@ contradicts the purpose of this entire change.
 **PASS**
 
 The implementation is ready to proceed. Address WARNING W-1 (outdated comment in
-`configuration-privacy.nix`) and W-3 (missing `-e` in `set -uo pipefail`) before the
+`configuration-stateless.nix`) and W-3 (missing `-e` in `set -uo pipefail`) before the
 next system rebuild to avoid user confusion and improve script reliability.

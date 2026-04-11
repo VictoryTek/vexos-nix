@@ -1,8 +1,8 @@
-# modules/privacy-disk.nix
-# Declarative disk layout for the VexOS privacy role using disko.
+# modules/stateless-disk.nix
+# Declarative disk layout for the VexOS stateless role using disko.
 #
 # Uses disko (github:nix-community/disko) to declare the full GPT partition
-# table, LUKS2 container, and Btrfs subvolumes required by the privacy role.
+# table, LUKS2 container, and Btrfs subvolumes required by the stateless role.
 #
 # disko generates fileSystems."/nix", fileSystems."/persistent",
 # fileSystems."/boot", and boot.initrd.luks.devices."cryptroot" automatically.
@@ -15,19 +15,19 @@
 { config, lib, ... }:
 
 let
-  cfg = config.vexos.privacy.disk;
+  cfg = config.vexos.stateless.disk;
 in
 {
-  options.vexos.privacy.disk = {
+  options.vexos.stateless.disk = {
 
     enable = lib.mkOption {
       type        = lib.types.bool;
       default     = false;
       description = ''
-        Enable disko-managed disk layout for the privacy role.
+        Enable disko-managed disk layout for the stateless role.
         When true, disko declares the full GPT + LUKS2 + Btrfs subvolume
         layout and generates fileSystems entries automatically.
-        Requires a block device to be specified via vexos.privacy.disk.device.
+        Requires a block device to be specified via vexos.stateless.disk.device.
       '';
     };
 
@@ -35,10 +35,10 @@ in
       type        = lib.types.str;
       default     = "/dev/nvme0n1";
       description = ''
-        Block device to use for the privacy disk layout.
+        Block device to use for the stateless disk layout.
         This becomes disko.devices.disk.main.device.
         Examples: "/dev/nvme0n1"  "/dev/sda"  "/dev/vda"
-        Override in your host file: vexos.privacy.disk.device = "/dev/sda";
+        Override in your host file: vexos.stateless.disk.device = "/dev/sda";
       '';
     };
 

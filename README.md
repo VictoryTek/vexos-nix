@@ -1,6 +1,6 @@
 # vexos-nix
 
-Personal NixOS config (GNOME, PipeWire, zen kernel). Comes in four roles — **Desktop** (full gaming/workstation stack), **Privacy** (minimal daily-driver), **Server** (GUI service stack), and **HTPC** (media centre build). No cloning required — `/etc/nixos` is the only working directory you need.
+Personal NixOS config (GNOME, PipeWire, zen kernel). Comes in four roles — **Desktop** (full gaming/workstation stack), **Stateless** (minimal daily-driver), **Server** (GUI service stack), and **HTPC** (media centre build). No cloning required — `/etc/nixos` is the only working directory you need.
 
 ## Fresh install
 
@@ -24,7 +24,7 @@ sudo curl -fsSL -o /etc/nixos/flake.nix \
 bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh)
 ```
 
-The script asks which role (desktop or privacy) and which GPU variant to install (AMD, NVIDIA, Intel, or VM), runs the build, and offers to reboot when complete. After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild — the `#target` is never needed again.
+The script asks which role (desktop or stateless) and which GPU variant to install (AMD, NVIDIA, Intel, or VM), runs the build, and offers to reboot when complete. After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild — the `#target` is never needed again.
 
 > **Prefer to run manually?** See the [Variants](#variants) table and run the matching `nixos-rebuild switch` command directly.
 
@@ -47,14 +47,14 @@ The running config writes `/etc/nixos/vexos-variant` (a one-word file, e.g. `vex
 | `vexos-desktop-intel` | Intel iGPU or Arc dGPU |
 | `vexos-desktop-vm` | QEMU/KVM or VirtualBox guest |
 
-### Privacy role — minimal build (no gaming / dev / virt / ASUS)
+### Stateless role — minimal build (no gaming / dev / virt / ASUS)
 
 | Variant | Use for |
 |---|---|
-| `vexos-privacy-amd` | AMD GPU, minimal stack |
-| `vexos-privacy-nvidia` | NVIDIA GPU, minimal stack |
-| `vexos-privacy-intel` | Intel iGPU or Arc dGPU, minimal stack |
-| `vexos-privacy-vm` | QEMU/KVM or VirtualBox guest, minimal stack |
+| `vexos-stateless-amd` | AMD GPU, minimal stack |
+| `vexos-stateless-nvidia` | NVIDIA GPU, minimal stack |
+| `vexos-stateless-intel` | Intel iGPU or Arc dGPU, minimal stack |
+| `vexos-stateless-vm` | QEMU/KVM or VirtualBox guest, minimal stack |
 
 ### Server role — GUI service stack
 
@@ -83,7 +83,7 @@ You can switch between variants (and roles) at any time — no reinstall require
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-amd
 
 # Switch to another role
-sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-amd
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-amd
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-server-amd
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-amd
 ```
@@ -122,11 +122,11 @@ sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-intel
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-vm
 
-# Privacy variants
-sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-amd
-sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-nvidia
-sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-intel
-sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-vm
+# Stateless variants
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-amd
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-nvidia
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-intel
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-vm
 
 # Server variants
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-server-amd

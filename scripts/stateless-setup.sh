@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
-# privacy-setup.sh — VexOS Privacy Role Initial Disk Setup
+# stateless-setup.sh — VexOS Stateless Role Initial Disk Setup
 # Repository: https://github.com/VictoryTek/vexos-nix
 #
 # Usage (one-liner from NixOS live ISO, recommended):
-#   bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/privacy-setup.sh)
+#   bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh)
 #
 # Or clone first and run locally:
-#   bash scripts/privacy-setup.sh
+#   bash scripts/stateless-setup.sh
 #
 # What this script does:
 #   1. Partitions and formats the target disk (DESTRUCTIVE — all data erased)
@@ -15,12 +15,12 @@
 #      (@nix → /nix,  @persist → /persistent)
 #   3. Runs nixos-generate-config --no-filesystems --root /mnt
 #   4. Downloads the vexos-nix template flake to /mnt/etc/nixos/
-#   5. Runs nixos-install targeting the chosen vexos-privacy-<variant>
+#   5. Runs nixos-install targeting the chosen vexos-stateless-<variant>
 #
 # SECURITY NOTICE:
 #   This script is fetched from raw.githubusercontent.com and executed directly.
 #   Always verify the source URL above before running.
-#   Source code: https://github.com/VictoryTek/vexos-nix/blob/main/scripts/privacy-setup.sh
+#   Source code: https://github.com/VictoryTek/vexos-nix/blob/main/scripts/stateless-setup.sh
 # =============================================================================
 
 set -euo pipefail
@@ -33,8 +33,8 @@ trap cleanup EXIT
 
 REPO_RAW="https://raw.githubusercontent.com/VictoryTek/vexos-nix/main"
 TEMPLATE_URL="${REPO_RAW}/template/etc-nixos-flake.nix"
-DISKO_TEMPLATE_URL="${REPO_RAW}/template/privacy-disko.nix"
-DISKO_TMP="/tmp/vexos-privacy-disk.nix"
+DISKO_TEMPLATE_URL="${REPO_RAW}/template/stateless-disko.nix"
+DISKO_TMP="/tmp/vexos-stateless-disk.nix"
 
 # ---------- Color helpers (only if stdout is a TTY with color support) -------
 if [ -t 1 ] && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
@@ -51,7 +51,7 @@ fi
 # ---------- Header -----------------------------------------------------------
 echo ""
 echo -e "${BOLD}${CYAN}============================================================${RESET}"
-echo -e "${BOLD}${CYAN}   VexOS Privacy Role — Initial Disk Setup${RESET}"
+echo -e "${BOLD}${CYAN}   VexOS Stateless Role — Initial Disk Setup${RESET}"
 echo -e "${BOLD}${CYAN}============================================================${RESET}"
 echo ""
 echo -e "${RED}${BOLD}  WARNING: This script will ERASE ALL DATA on the target disk.${RESET}"
@@ -127,9 +127,9 @@ done
 
 # ---------- Prompt: hostname -------------------------------------------------
 echo ""
-printf "Enter hostname [vexos-privacy]: "
+printf "Enter hostname [vexos-stateless]: "
 read -r HOSTNAME_INPUT
-HOSTNAME="${HOSTNAME_INPUT:-vexos-privacy}"
+HOSTNAME="${HOSTNAME_INPUT:-vexos-stateless}"
 
 # ---------- Determine LUKS setting ------------------------------------------
 if [ "$VARIANT" = "vm" ]; then
@@ -147,7 +147,7 @@ echo "  Disk:       ${DISK}"
 echo "  GPU variant: ${VARIANT}"
 echo "  Hostname:   ${HOSTNAME}"
 echo "  LUKS:       ${LUKS_BOOL}"
-echo "  Flake target: vexos-privacy-${VARIANT}"
+echo "  Flake target: vexos-stateless-${VARIANT}"
 echo ""
 printf "Proceed with installation? This will ERASE ${DISK}. [yes/N] "
 read -r PROCEED
@@ -192,7 +192,7 @@ sudo curl -fsSL "${TEMPLATE_URL}" -o /mnt/etc/nixos/flake.nix
 echo -e "${GREEN}✓ /mnt/etc/nixos/flake.nix downloaded.${RESET}"
 
 # ---------- Run nixos-install ------------------------------------------------
-FLAKE_TARGET="vexos-privacy-${VARIANT}"
+FLAKE_TARGET="vexos-stateless-${VARIANT}"
 echo ""
 echo -e "${BOLD}Running nixos-install targeting ${CYAN}${FLAKE_TARGET}${RESET}${BOLD}...${RESET}"
 echo -e "${YELLOW}This may take a while — it will download and build the NixOS closure.${RESET}"
@@ -203,7 +203,7 @@ sudo nixos-install \
 
 echo ""
 echo -e "${GREEN}${BOLD}============================================================${RESET}"
-echo -e "${GREEN}${BOLD}  ✓ VexOS Privacy installation complete!${RESET}"
+echo -e "${GREEN}${BOLD}  ✓ VexOS Stateless installation complete!${RESET}"
 echo -e "${GREEN}${BOLD}============================================================${RESET}"
 echo ""
 echo -e "${BOLD}Next steps:${RESET}"

@@ -1,17 +1,17 @@
-# hosts/privacy-intel.nix
-# vexos — Privacy Intel GPU build (no gaming, development, virtualization, or ASUS modules).
-# Rebuild: sudo nixos-rebuild switch --flake .#vexos-privacy-intel
+# hosts/stateless-intel.nix
+# vexos — Stateless Intel GPU build (no gaming, development, virtualization, or ASUS modules).
+# Rebuild: sudo nixos-rebuild switch --flake .#vexos-stateless-intel
 { lib, ... }:
 {
   imports = [
-    ../configuration-privacy.nix
+    ../configuration-stateless.nix
     ../modules/gpu/intel.nix
-    ../modules/privacy-disk.nix
+    ../modules/stateless-disk.nix
   ];
 
   # Override with the actual disk device on the target machine.
   # Check with: lsblk -d -o NAME,SIZE,MODEL
-  vexos.privacy.disk = {
+  vexos.stateless.disk = {
     enable = true;
     device = lib.mkDefault "/dev/nvme0n1";
   };
@@ -20,5 +20,5 @@
   # enabling VirtualBox guest additions on a bare-metal host. Guest additions
   # fail to build against linuxPackages_latest (kernel 6.12+).
   virtualisation.virtualbox.guest.enable = lib.mkForce false;
-  system.nixos.distroName = "VexOS Privacy Intel";
+  system.nixos.distroName = "VexOS Stateless Intel";
 }

@@ -11,7 +11,7 @@
 #
 # Supported roles (expand this list as new roles are added to the flake):
 #   desktop — Gaming/workstation (AMD, NVIDIA, Intel, VM)
-#   privacy — Minimal/clean build, no gaming/dev/virt/ASUS modules (AMD, NVIDIA, Intel, VM)
+#   stateless — Minimal/clean build, no gaming/dev/virt/ASUS modules (AMD, NVIDIA, Intel, VM)
 #   htpc    — (coming soon)
 #   server  — (coming soon)
 #
@@ -52,18 +52,18 @@ echo ""
 # requires nothing more than uncommenting the extra options below.
 echo -e "${BOLD}Select your role:${RESET}"
 echo "  1) Desktop — Full gaming / workstation stack"
-echo "  2) Privacy — Minimal build (no gaming / dev / virt / ASUS)"
+echo "  2) Stateless — Minimal build (no gaming / dev / virt / ASUS)"
 echo "  3) HTPC    — Home theatre PC"
 echo "  4) Server  — Headless server"
 echo ""
 
 ROLE=""
 while [ -z "$ROLE" ]; do
-  printf "Enter choice [1-4] or name (desktop / privacy / htpc / server): "
+  printf "Enter choice [1-4] or name (desktop / stateless / htpc / server): "
   read -r INPUT
   case "${INPUT,,}" in
     1|desktop) ROLE="desktop" ;;
-    2|privacy) ROLE="privacy" ;;
+    2|stateless) ROLE="stateless" ;;
     3|htpc)    ROLE="htpc"    ;;
     4|server)  ROLE="server"  ;;
     *)
@@ -72,9 +72,9 @@ while [ -z "$ROLE" ]; do
   esac
 done
 
-# ---------- GPU variant selection (desktop and privacy roles) ----------------
+# ---------- GPU variant selection (desktop and stateless roles) ----------------
 VARIANT=""
-if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "privacy" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ]; then
+if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "stateless" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ]; then
   echo ""
   echo -e "${BOLD}Select your GPU variant:${RESET}"
   echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
@@ -100,19 +100,19 @@ fi
 
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}"
 
-# ---------- Privacy role: first-time install notice -------------------------
-if [ "$ROLE" = "privacy" ]; then
+# ---------- Stateless role: first-time install notice -------------------------
+if [ "$ROLE" = "stateless" ]; then
   echo ""
-  echo -e "${YELLOW}${BOLD}NOTE: Privacy role — fresh install?${RESET}"
+  echo -e "${YELLOW}${BOLD}NOTE: Stateless role — fresh install?${RESET}"
   echo "  If this is a FIRST-TIME installation from the NixOS ISO:"
   echo "  Use the dedicated setup script instead of install.sh:"
   echo ""
-  echo "    bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/privacy-setup.sh)"
+  echo "    bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh)"
   echo ""
-  echo "  privacy-setup.sh handles disk partitioning (LUKS2 + Btrfs), disko"
+  echo "  stateless-setup.sh handles disk partitioning (LUKS2 + Btrfs), disko"
   echo "  formatting, hardware config generation, and nixos-install."
   echo ""
-  echo "  install.sh handles REBUILDS on an already-running vexos-privacy system."
+  echo "  install.sh handles REBUILDS on an already-running vexos-stateless system."
   echo "  Press Enter to continue with rebuild, or Ctrl+C to abort."
   read -r _
 fi

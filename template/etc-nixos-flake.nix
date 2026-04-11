@@ -16,11 +16,11 @@
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-intel
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-vm
 #
-#      Privacy role (minimal stack, no gaming/dev/virt/ASUS modules):
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-amd
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-nvidia
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-intel
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-privacy-vm
+#      Stateless role (minimal stack, no gaming/dev/virt/ASUS modules):
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-amd
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-nvidia
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-intel
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-vm
 #
 #      No editing required — all variants are exposed automatically.
 #      The chosen variant is written to /etc/nixos/vexos-variant on every
@@ -81,7 +81,7 @@
     # • gpuModule  → GPU-specific drivers for this variant (single module or list)
     #
     # Normalises gpuModule to accept either a single module or a list of modules.
-    # Shared builder helper — used by both mkVariant and mkPrivacyVariant.
+    # Shared builder helper — used by both mkVariant and mkStatelessVariant.
     _mkVariantWith = baseModule: variant: gpuModule: nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules =
@@ -109,8 +109,8 @@
     # Desktop role: full gaming/workstation stack.
     mkVariant = _mkVariantWith vexos-nix.nixosModules.base;
 
-    # Privacy role: minimal stack (no gaming/dev/virt/ASUS modules).
-    mkPrivacyVariant = _mkVariantWith vexos-nix.nixosModules.privacyBase;
+    # Stateless role: minimal stack (no gaming/dev/virt/ASUS modules).
+    mkStatelessVariant = _mkVariantWith vexos-nix.nixosModules.statelessBase;
 
   in
   {
@@ -121,11 +121,11 @@
       vexos-desktop-intel  = mkVariant "vexos-desktop-intel"  vexos-nix.nixosModules.gpuIntel;
       vexos-desktop-vm     = mkVariant "vexos-desktop-vm"     vexos-nix.nixosModules.gpuVm;
 
-      # ── Privacy role — minimal, no gaming/dev/virt/ASUS modules ──────────
-      vexos-privacy-amd    = mkPrivacyVariant "vexos-privacy-amd"    vexos-nix.nixosModules.gpuAmd;
-      vexos-privacy-nvidia = mkPrivacyVariant "vexos-privacy-nvidia" vexos-nix.nixosModules.gpuNvidia;
-      vexos-privacy-intel  = mkPrivacyVariant "vexos-privacy-intel"  vexos-nix.nixosModules.gpuIntel;
-      vexos-privacy-vm     = mkPrivacyVariant "vexos-privacy-vm"    vexos-nix.nixosModules.privacyGpuVm;
+      # ── Stateless role — minimal, no gaming/dev/virt/ASUS modules ──────────
+      vexos-stateless-amd    = mkStatelessVariant "vexos-stateless-amd"    vexos-nix.nixosModules.gpuAmd;
+      vexos-stateless-nvidia = mkStatelessVariant "vexos-stateless-nvidia" vexos-nix.nixosModules.gpuNvidia;
+      vexos-stateless-intel  = mkStatelessVariant "vexos-stateless-intel"  vexos-nix.nixosModules.gpuIntel;
+      vexos-stateless-vm     = mkStatelessVariant "vexos-stateless-vm"    vexos-nix.nixosModules.statelessGpuVm;
     };
   };
 }

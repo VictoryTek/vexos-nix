@@ -1,10 +1,10 @@
 # Review: Fix disko / hardware-configuration.nix fileSystems Device Conflict
 
-**Feature name:** `privacy_vm_disko_conflict`
+**Feature name:** `stateless_vm_disko_conflict`
 **Date:** 2026-04-10
 **Reviewer role:** Subagent Review Phase
-**Spec:** `.github/docs/subagent_docs/privacy_vm_disko_conflict_spec.md`
-**Modified file:** `modules/privacy-disk.nix`
+**Spec:** `.github/docs/subagent_docs/stateless_vm_disko_conflict_spec.md`
+**Modified file:** `modules/stateless-disk.nix`
 
 ---
 
@@ -37,7 +37,7 @@
 - [x] `fileSystems."/nix".device = lib.mkForce (if cfg.enableLuks then "/dev/mapper/${cfg.luksName}" else "/dev/disk/by-partlabel/disk-main-data")` is present
 - [x] `fileSystems."/persistent".device = lib.mkForce (if ... then ... else ...)` is present with identical LUKS/non-LUKS logic
 - [x] All three new lines are WITHIN `config = lib.mkIf cfg.enable { }` — confirmed by the file structure (they follow the disko.devices block closing brace, still inside the outer config block, before the final `};` and `}`)
-- [x] No other files were modified beyond `modules/privacy-disk.nix`
+- [x] No other files were modified beyond `modules/stateless-disk.nix`
 
 Minor cosmetic delta from spec: the comment block uses slightly fewer words than
 the spec's template (the full "lib.mkForce sets priority 50, which defeats the
@@ -53,7 +53,7 @@ condensed). This is non-functional and not a defect.
 - [x] Three-way merge analysis verified:
   - `hardware-configuration.nix` defines each `.device` at priority 100
   - disko module defines each `.device` at priority 100
-  - `privacy-disk.nix` overrides each `.device` at priority 50 via `lib.mkForce`
+  - `stateless-disk.nix` overrides each `.device` at priority 50 via `lib.mkForce`
   - NixOS module system discards ALL priority-100 definitions when a priority-50 definition exists; no conflict error is raised; the `lib.mkForce` value wins
 - [x] `/boot` partlabel `disk-main-ESP` matches partition name `ESP` on disk `main` — disko generates partlabels as `disk-<diskName>-<partName>` → `disk-main-ESP` ✓
 - [x] `/nix` and `/persistent` non-LUKS device `disk-main-data` matches partition name `data` on disk `main` → `disk-main-data` ✓
@@ -76,22 +76,22 @@ condensed). This is non-functional and not a defect.
 
 ### Files That Should NOT Have Changed
 
-- [x] **`flake.nix`** — `privacyBase` module:
-  - imports `./modules/privacy-disk.nix` ✓
+- [x] **`flake.nix`** — `statelessBase` module:
+  - imports `./modules/stateless-disk.nix` ✓
   - imports `disko.nixosModules.disko` and `impermanence.nixosModules.impermanence` ✓
-  - sets `vexos.privacy.disk.enable = true` ✓
-  - `privacyGpuVm` module exists and sets `device = lib.mkForce "/dev/vda"` and `enableLuks = lib.mkForce false` ✓
-- [x] **`template/etc-nixos-flake.nix`** — uses `vexos-nix.nixosModules.privacyGpuVm` for `vexos-privacy-vm` ✓
-- [x] **`hosts/privacy-vm.nix`** — unchanged; imports `../modules/privacy-disk.nix` directly, sets `enableLuks = false`, `device = "/dev/vda"` ✓
-- [x] **`modules/impermanence.nix`** — unchanged; `neededForBoot` assertion for `cfg.persistentPath` is still present and still satisfied by `privacy-disk.nix`
+  - sets `vexos.stateless.disk.enable = true` ✓
+  - `statelessGpuVm` module exists and sets `device = lib.mkForce "/dev/vda"` and `enableLuks = lib.mkForce false` ✓
+- [x] **`template/etc-nixos-flake.nix`** — uses `vexos-nix.nixosModules.statelessGpuVm` for `vexos-stateless-vm` ✓
+- [x] **`hosts/stateless-vm.nix`** — unchanged; imports `../modules/stateless-disk.nix` directly, sets `enableLuks = false`, `device = "/dev/vda"` ✓
+- [x] **`modules/impermanence.nix`** — unchanged; `neededForBoot` assertion for `cfg.persistentPath` is still present and still satisfied by `stateless-disk.nix`
 
 ---
 
 ### Static File Checks
 
 - [x] `modules/gpu/vm.nix` exists ✓
-- [x] `modules/privacy-disk.nix` contains all three new `lib.mkForce` device lines ✓
-- [x] All referenced files (`configuration-privacy.nix`, `modules/privacy-disk.nix`, `modules/gpu/vm.nix`, `home.nix`) exist in the repository ✓
+- [x] `modules/stateless-disk.nix` contains all three new `lib.mkForce` device lines ✓
+- [x] All referenced files (`configuration-stateless.nix`, `modules/stateless-disk.nix`, `modules/gpu/vm.nix`, `home.nix`) exist in the repository ✓
 
 ---
 
@@ -105,14 +105,14 @@ condensed). This is non-functional and not a defect.
 
 1. **Comment brevity:** The comment added above the three new lines is correct but slightly less informative than the spec template. The phrase "lib.mkForce sets priority 50, which defeats the default priority-100 definitions emitted by nixos-generate-config without affecting any user-level mkForce / mkOverride declarations" was condensed to a two-line summary. No functional impact; the intent is still clear.
 
-2. **Impermanence assertion alignment:** The `impermanence.nix` assertion checks `fileSystems."${cfg.persistentPath}".neededForBoot or false`. With the new `.device` mkForce, the `fileSystems."/persistent"` attribute set will now have both `.neededForBoot` (mkForce true) and `.device` (mkForce partlabel/mapper) populated by `privacy-disk.nix` and the disko module respectively. The assertion evaluates `.neededForBoot` only, so it remains satisfied. ✓
+2. **Impermanence assertion alignment:** The `impermanence.nix` assertion checks `fileSystems."${cfg.persistentPath}".neededForBoot or false`. With the new `.device` mkForce, the `fileSystems."/persistent"` attribute set will now have both `.neededForBoot` (mkForce true) and `.device` (mkForce partlabel/mapper) populated by `stateless-disk.nix` and the disko module respectively. The assertion evaluates `.neededForBoot` only, so it remains satisfied. ✓
 
 ---
 
 ## Summary
 
 The implementation is a minimal, correct, and well-scoped change. Exactly three
-lines were added to `modules/privacy-disk.nix` inside the `config = lib.mkIf
+lines were added to `modules/stateless-disk.nix` inside the `config = lib.mkIf
 cfg.enable { }` block. Each line uses `lib.mkForce` to assert the correct
 device path for `/boot`, `/nix`, and `/persistent`, ensuring that disko's
 partlabel/mapper-based declarations win over any conflicting UUID-based entries

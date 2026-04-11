@@ -1,16 +1,16 @@
 # modules/impermanence.nix
-# Filesystem impermanence for the VexOS privacy role.
+# Filesystem impermanence for the VexOS stateless role.
 #
 # This module implements a tmpfs-rooted NixOS system where everything
 # outside of /nix and /persistent is wiped on every reboot, providing
 # Tails-like ephemeral behaviour (similar to Tails Linux / Deep Freeze).
 #
 # Disk layout (LUKS2 + Btrfs subvolumes) is handled declaratively by
-# modules/privacy-disk.nix using disko. No manual hardware-configuration.nix
-# edits are required. See .github/docs/subagent_docs/privacy_disk_spec.md.
+# modules/stateless-disk.nix using disko. No manual hardware-configuration.nix
+# edits are required. See .github/docs/subagent_docs/stateless_disk_spec.md.
 #
-# Run scripts/privacy-setup.sh on the NixOS ISO to format the disk before
-# deploying any privacy host configuration.  The script sets up the required
+# Run scripts/stateless-setup.sh on the NixOS ISO to format the disk before
+# deploying any stateless host configuration.  The script sets up the required
 # LUKS-encrypted Btrfs layout and calls nixos-install automatically.
 { config, lib, ... }:
 
@@ -24,11 +24,11 @@ in
       type        = lib.types.bool;
       default     = false;
       description = ''
-        Enable tmpfs-rooted impermanence for the privacy role.
+        Enable tmpfs-rooted impermanence for the stateless role.
         When true, / is declared as a tmpfs mount by this module and all
         state outside /nix is ephemeral unless explicitly declared under
         environment.persistence.
-        Disk layout is handled by modules/privacy-disk.nix (disko). The
+        Disk layout is handled by modules/stateless-disk.nix (disko). The
         tmpfs root is declared by this module automatically when enabled.
       '';
     };
@@ -70,7 +70,7 @@ in
 
     # ── Ephemeral root (tmpfs) ──────────────────────────────────────────────
     # Declare / as a tmpfs mount. This is hardware-independent (no UUID).
-    # Wiped on every reboot by design — this is the core of the privacy model.
+    # Wiped on every reboot by design — this is the core of the stateless model.
     fileSystems."/" = {
       device  = lib.mkForce "none";
       fsType  = lib.mkForce "tmpfs";
@@ -86,8 +86,8 @@ in
         message = ''
           vexos.impermanence.enable = true requires
           fileSystems."${cfg.persistentPath}" to be declared with neededForBoot = true.
-          This is normally satisfied automatically by modules/privacy-disk.nix.
-          Check that privacy-disk.nix is imported in your privacy host file.
+          This is normally satisfied automatically by modules/stateless-disk.nix.
+          Check that stateless-disk.nix is imported in your stateless host file.
         '';
       }
       {
@@ -134,7 +134,7 @@ in
 
     # ── Declarative persistence ─────────────────────────────────────────────
     # MINIMAL set — only what is strictly required for a functional NixOS
-    # privacy system.  Everything else (home directories, logs, browser
+    # stateless system.  Everything else (home directories, logs, browser
     # history, caches, crash dumps, Bluetooth pairings, NetworkManager
     # connections) is ephemeral and discarded on every reboot.
     environment.persistence."${cfg.persistentPath}" = {
@@ -149,10 +149,10 @@ in
           # Without this, NixOS cannot reliably verify UIDs across activations.
           "/var/lib/nixos"
 
-          # Everything below is intentionally OMITTED for the privacy role:
+          # Everything below is intentionally OMITTED for the stateless role:
           #
           # NetworkManager connections — WiFi/VPN credentials are NOT saved.
-          # Re-enter credentials each session for maximum privacy.
+          # Re-enter credentials each session for maximum stateless.
           # Uncomment to persist:
           # "/etc/NetworkManager/system-connections"
           #
@@ -164,7 +164,7 @@ in
 
       files =
         [
-          # /etc/machine-id is intentionally NOT persisted (privacy default).
+          # /etc/machine-id is intentionally NOT persisted (stateless default).
           # Persisting it would allow an adversary to correlate boots via
           # systemd journal, D-Bus, and other machine-id consumers.
           # Uncomment only if stable SSH known_hosts identity is required:

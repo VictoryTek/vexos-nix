@@ -1,15 +1,15 @@
 # Spec: Fix disko / hardware-configuration.nix fileSystems Device Conflict
 
-**Feature name:** `privacy_vm_disko_conflict`
+**Feature name:** `stateless_vm_disko_conflict`
 **Date:** 2026-04-10
-**File to modify:** `modules/privacy-disk.nix` (only)
+**File to modify:** `modules/stateless-disk.nix` (only)
 
 ---
 
 ## 1. Current State Analysis
 
-`modules/privacy-disk.nix` is the disko-backed disk layout module for the
-VexOS privacy role. Its `config` block (inside `lib.mkIf cfg.enable { }`)
+`modules/stateless-disk.nix` is the disko-backed disk layout module for the
+VexOS stateless role. Its `config` block (inside `lib.mkIf cfg.enable { }`)
 currently sets:
 
 ```nix
@@ -20,11 +20,11 @@ fileSystems."/nix".neededForBoot        = lib.mkForce true;
 It does **not** set `lib.mkForce` overrides for the `.device` attribute of
 any mount point.
 
-`privacyBase` in `flake.nix` (line ~270) imports both
-`disko.nixosModules.disko` and `./modules/privacy-disk.nix`, and enables
-`vexos.privacy.disk.enable = true`.
+`statelessBase` in `flake.nix` (line ~270) imports both
+`disko.nixosModules.disko` and `./modules/stateless-disk.nix`, and enables
+`vexos.stateless.disk.enable = true`.
 
-The disko partition layout in `privacy-disk.nix` defines:
+The disko partition layout in `stateless-disk.nix` defines:
 
 | Partition name | Disk name | Generated partlabel     | Mount   |
 |----------------|-----------|-------------------------|---------|
@@ -64,7 +64,7 @@ error: The option `fileSystems."/boot".device' has conflicting definition values
 The same conflict will appear for `/nix` and `/persistent` if
 `hardware-configuration.nix` was generated without `--no-filesystems`.
 
-**Root cause:** `privacy-disk.nix` does not force its device declarations to
+**Root cause:** `stateless-disk.nix` does not force its device declarations to
 take precedence over whatever `hardware-configuration.nix` declares.
 
 **Note on `fileSystems.options`:** This attribute is a `listOf` type and is
@@ -86,7 +86,7 @@ the merge without changing any other behaviour.
 
 ### Exact code change
 
-**File:** `modules/privacy-disk.nix`
+**File:** `modules/stateless-disk.nix`
 
 **Find** (the last two lines of the `config` block, with their comment):
 
@@ -158,7 +158,7 @@ the merge without changing any other behaviour.
 
 | File | Change type |
 |------|-------------|
-| `modules/privacy-disk.nix` | Add 13 lines (comment block + 3 `lib.mkForce` device overrides) inside existing `config` block |
+| `modules/stateless-disk.nix` | Add 13 lines (comment block + 3 `lib.mkForce` device overrides) inside existing `config` block |
 
 No other files need modification.
 
@@ -181,9 +181,9 @@ No other files need modification.
 After implementation:
 
 1. `nix flake check` — must pass with no evaluation errors
-2. `sudo nixos-rebuild dry-build --flake .#vexos-privacy-vm` (or equivalent privacy host) — must complete without the `conflicting definition values` error
+2. `sudo nixos-rebuild dry-build --flake .#vexos-stateless-vm` (or equivalent stateless host) — must complete without the `conflicting definition values` error
 3. Confirm `fileSystems."/boot".device` resolves to `disk-main-ESP` in the evaluated config:
    ```
-   nix eval .#nixosConfigurations.vexos-privacy-vm.config.fileSystems."/boot".device
+   nix eval .#nixosConfigurations.vexos-stateless-vm.config.fileSystems."/boot".device
    # expected: "/dev/disk/by-partlabel/disk-main-ESP"
    ```

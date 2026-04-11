@@ -1,7 +1,7 @@
-# Impermanence for VexOS Privacy Role — Implementation Specification
+# Impermanence for VexOS Stateless Role — Implementation Specification
 
 **Feature name:** `impermanence`
-**Target role:** Privacy (`configuration-privacy.nix`, `hosts/privacy-*.nix`)
+**Target role:** Stateless (`configuration-stateless.nix`, `hosts/stateless-*.nix`)
 **NixOS version:** 25.11
 **Date:** 2026-04-10
 **Status:** RESEARCH COMPLETE — READY FOR IMPLEMENTATION
@@ -10,18 +10,18 @@
 
 ## 1. Current State Analysis
 
-### 1.1 Privacy role structure
+### 1.1 Stateless role structure
 
-The project defines four privacy builds, all sharing one base configuration:
+The project defines four stateless builds, all sharing one base configuration:
 
 | Flake output | Host file | GPU module |
 |---|---|---|
-| `vexos-privacy-amd` | `hosts/privacy-amd.nix` | `modules/gpu/amd.nix` |
-| `vexos-privacy-nvidia` | `hosts/privacy-nvidia.nix` | `modules/gpu/nvidia.nix` |
-| `vexos-privacy-intel` | `hosts/privacy-intel.nix` | `modules/gpu/intel.nix` |
-| `vexos-privacy-vm` | `hosts/privacy-vm.nix` | `modules/gpu/vm.nix` |
+| `vexos-stateless-amd` | `hosts/stateless-amd.nix` | `modules/gpu/amd.nix` |
+| `vexos-stateless-nvidia` | `hosts/stateless-nvidia.nix` | `modules/gpu/nvidia.nix` |
+| `vexos-stateless-intel` | `hosts/stateless-intel.nix` | `modules/gpu/intel.nix` |
+| `vexos-stateless-vm` | `hosts/stateless-vm.nix` | `modules/gpu/vm.nix` |
 
-All four import `configuration-privacy.nix`, which imports:
+All four import `configuration-stateless.nix`, which imports:
 - `modules/gnome.nix`
 - `modules/audio.nix`
 - `modules/gpu.nix`
@@ -41,23 +41,23 @@ All four import `configuration-privacy.nix`, which imports:
 
 ### 1.3 Existing relevant infrastructure
 
-- `modules/system.nix` provides `vexos.btrfs.enable` and `vexos.swap.enable` options — the swap option must be force-disabled for privacy builds
+- `modules/system.nix` provides `vexos.btrfs.enable` and `vexos.swap.enable` options — the swap option must be force-disabled for stateless builds
 - `flake.nix` already passes `specialArgs = { inherit inputs; }` to all configurations, which means any module can receive `inputs` and import flake-provided modules
-- `configuration-privacy.nix` sets `networking.hostName = lib.mkDefault "vexos-privacy"` and includes only the non-gaming/non-dev module subset — privacy-appropriate
+- `configuration-stateless.nix` sets `networking.hostName = lib.mkDefault "vexos-stateless"` and includes only the non-gaming/non-dev module subset — stateless-appropriate
 - The user is `nimda`; no password is currently set declaratively (mutable users are the default)
 
 ---
 
 ## 2. Problem Definition
 
-The vexos privacy role is intended to behave like a **privacy-first live system** — similar to Tails Linux or a Deep Freeze / bilibop-style locked filesystem — where:
+The vexos stateless role is intended to behave like a **stateless-first live system** — similar to Tails Linux or a Deep Freeze / bilibop-style locked filesystem — where:
 
 1. **Nothing outside of explicitly declared locations persists between reboots.** All session activity (browsing history, downloaded files, GNOME settings, temporary files, logs, crash dumps) is discarded when the system powers off or reboots.
 2. **The underlying Nix store remains intact** so the system boots fully functional without a network connection.
 3. **Optional encrypted persistent storage** is available for users who need to retain specific data (GPG keys, SSH identities, VPN configurations) in a LUKS-encrypted volume.
 4. **Both AMD and NVIDIA GPU drivers work correctly.** All GPU firmware and kernel modules are in `/nix/store` and are unaffected by root ephemerality.
 
-Without this, the privacy role is functionally identical to a standard desktop installation — state accumulates in `/etc`, `/var`, and user home directories and persists indefinitely.
+Without this, the stateless role is functionally identical to a standard desktop installation — state accumulates in `/etc`, `/var`, and user home directories and persists indefinitely.
 
 ---
 
@@ -98,7 +98,7 @@ The root subvolume `/` is mounted from a Btrfs volume. During `boot.initrd.postR
 - More complex initrd scripting required; must handle nested subvolumes (systemd creates subvolumes under `/var/lib/machines`, `/var/lib/portables`)
 - Session data DOES touch physical disk before rollback — creates forensic artifacts recoverable until the next GC/TRIM
 - Disk space is consumed by ephemeral session state and old roots
-- Less "pure" from a privacy standpoint
+- Less "pure" from a stateless standpoint
 
 ### 3.3 Approach C — ZFS rollback (grahamc's method)
 
@@ -112,7 +112,7 @@ Create a ZFS dataset for `/`, snapshot it blank, and roll back on each boot via 
 - ZFS is not the existing filesystem strategy in this project — `modules/system.nix` auto-detects Btrfs
 - ZFS requires additional kernel module (`zfs`) and `boot.supportedFilesystems = ["zfs"]`
 - ZFS licensing complexity with Linux kernel (CDDL vs GPL)
-- More complex than tmpfs for a privacy-focused use case
+- More complex than tmpfs for a stateless-focused use case
 
 ### 3.4 Approach D — EROFS/SquashFS overlay
 
@@ -129,10 +129,10 @@ Mount a compressed read-only root image with an overlay tmpfs layer.
 **Use Approach A (tmpfs root)** with the `nix-community/impermanence` module for declarative persistence management.
 
 Rationale:
-- Maximum privacy: session files never touch physical storage
+- Maximum stateless: session files never touch physical storage
 - Simplest implementation: no initrd rollback scripts
 - Fully composable with the existing flake and module structure
-- The impermanence module's `enable` flag allows the same `modules/impermanence.nix` to be imported by all privacy builds without breaking non-privacy builds if ever added to commonModules
+- The impermanence module's `enable` flag allows the same `modules/impermanence.nix` to be imported by all stateless builds without breaking non-stateless builds if ever added to commonModules
 
 ---
 
@@ -218,7 +218,7 @@ fileSystems."/boot" = {
 
 ### 4.3 Module: `modules/impermanence.nix` (new file)
 
-This module is imported by `configuration-privacy.nix`. It:
+This module is imported by `configuration-stateless.nix`. It:
 
 1. Declares the `vexos.impermanence.enable` option (default: `false`)
 2. Declares the `vexos.impermanence.persistentPath` option (default: `"/persistent"`)
@@ -229,10 +229,10 @@ This module is imported by `configuration-privacy.nix`. It:
    - Configures `environment.persistence.<path>` with the minimal required entries
    - Disables persistent systemd journal (journal stored in RAM)
    - Sets `security.sudo.extraConfig` to suppress the sudo lecture (resets on each reboot otherwise)
-   - Disables Nix store GC on privacy builds (or redirects to acceptable behavior)
+   - Disables Nix store GC on stateless builds (or redirects to acceptable behavior)
    - Provides an assertion that the persistent path exists in `config.fileSystems` with `neededForBoot = true`
 
-### 4.4 Changes to `configuration-privacy.nix`
+### 4.4 Changes to `configuration-stateless.nix`
 
 1. Add `./modules/impermanence.nix` to the `imports` list
 2. Set `vexos.impermanence.enable = true`
@@ -257,11 +257,11 @@ Update the `outputs` declaration to destructure `impermanence`:
 outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermanence, ... }@inputs:
 ```
 
-Pass `impermanence` through `inputs` (already available via `specialArgs = { inherit inputs; }`). No changes to individual privacy host entries are required.
+Pass `impermanence` through `inputs` (already available via `specialArgs = { inherit inputs; }`). No changes to individual stateless host entries are required.
 
-### 4.6 Changes to `hosts/privacy-*.nix`
+### 4.6 Changes to `hosts/stateless-*.nix`
 
-**No changes required.** The impermanence module is imported and enabled at the `configuration-privacy.nix` level, which is shared by all four privacy host files.
+**No changes required.** The impermanence module is imported and enabled at the `configuration-stateless.nix` level, which is shared by all four stateless host files.
 
 ---
 
@@ -269,7 +269,7 @@ Pass `impermanence` through `inputs` (already available via `specialArgs = { inh
 
 ```nix
 # modules/impermanence.nix
-# Filesystem impermanence for the VexOS privacy role.
+# Filesystem impermanence for the VexOS stateless role.
 #
 # This module implements a tmpfs-rooted NixOS system where everything
 # outside of /nix and /persistent is wiped on every reboot, providing
@@ -297,7 +297,7 @@ in
       type    = lib.types.bool;
       default = false;
       description = ''
-        Enable tmpfs-rooted impermanence for the privacy role.
+        Enable tmpfs-rooted impermanence for the stateless role.
         When true, / is expected to be tmpfs and all state outside
         /nix is ephemeral unless declared under environment.persistence.
         Requires hardware-configuration.nix to mount / as tmpfs and
@@ -363,7 +363,7 @@ in
 
     # ── Impermanence: declare what must persist across reboots ───────────
     # MINIMAL set — only what is strictly required for a functional
-    # NixOS privacy system. Everything else is ephemeral.
+    # NixOS stateless system. Everything else is ephemeral.
     environment.persistence."${cfg.persistentPath}" = {
       hideMounts = true;  # Hide bind mounts from GNOME Files / file managers
 
@@ -372,23 +372,23 @@ in
         # is NOT used, but safe to keep here; NixOS needs it on first activation.
         "/var/lib/nixos"
 
-        # NetworkManager: omitted intentionally for privacy.
+        # NetworkManager: omitted intentionally for stateless.
         # WiFi passwords are NOT persisted — must be re-entered each session.
         # To persist connections, uncomment:
         # "/etc/NetworkManager/system-connections"
 
-        # Bluetooth device pairings: omitted for privacy.
+        # Bluetooth device pairings: omitted for stateless.
         # Devices must be re-paired each session.
         # "/var/lib/bluetooth"
       ];
 
       files = [
         # machine-id: used by systemd for boot-scoped log correlation.
-        # PRIVACY NOTE: persisting machine-id allows correlation of boots.
+        # NOTE: persisting machine-id allows correlation of boots.
         # Uncomment only if persistent journald boot tracking is needed.
         # "/etc/machine-id"
 
-        # SSH host keys: omitted for privacy — regenerated each boot.
+        # SSH host keys: omitted for stateless — regenerated each boot.
         # Clients will see key-changed warnings. Uncomment if SSH must be stable:
         # "/etc/ssh/ssh_host_ed25519_key"
         # "/etc/ssh/ssh_host_ed25519_key.pub"
@@ -427,17 +427,17 @@ in
 | `/boot` | **PERSIST** (via disk mount) | Bootloader — required |
 | `/persistent` | **PERSIST** (via disk mount) | Persistent storage volume itself |
 | `/var/lib/nixos` | **PERSIST** (via impermanence) | NixOS user/group UID tracking database |
-| `/etc/machine-id` | **EPHEMERAL** (privacy default) | Regenerated each boot; persisting enables boot correlation |
-| `/var/log` | **EPHEMERAL** | Logs do not survive reboot (privacy) |
+| `/etc/machine-id` | **EPHEMERAL** (stateless default) | Regenerated each boot; persisting enables boot correlation |
+| `/var/log` | **EPHEMERAL** | Logs do not survive reboot (stateless) |
 | `/var/lib/bluetooth` | **EPHEMERAL** | Devices re-paired each session |
-| `/etc/NetworkManager/system-connections` | **EPHEMERAL** | VPN/WiFi credentials not saved (privacy) |
+| `/etc/NetworkManager/system-connections` | **EPHEMERAL** | VPN/WiFi credentials not saved (stateless) |
 | `/var/lib/systemd/coredump` | **EPHEMERAL** | Crash dumps cleared on reboot |
 | `/var/lib/systemd/timers` | **EPHEMERAL** | Timer state regenerated |
 | `/tmp` | **EPHEMERAL** | Lives in tmpfs `/` |
 | `/var/tmp` | **EPHEMERAL** | Lives in tmpfs `/` |
 | `/var/lib/gdm` | **EPHEMERAL** | GDM session data cleared |
 | `/var/lib/nixos-hardware` | **EPHEMERAL** | Hardware scan cache regenerated |
-| `/etc/ssh/ssh_host_*` | **EPHEMERAL** (privacy default) | Host keys regenerated; clients see key-changed warning |
+| `/etc/ssh/ssh_host_*` | **EPHEMERAL** (stateless default) | Host keys regenerated; clients see key-changed warning |
 
 ### 6.2 User-level paths (`/home/nimda/`)
 
@@ -448,8 +448,8 @@ in
 | `~/.cache/` | **EPHEMERAL** | Cache cleared per session |
 | `~/Downloads/` | **EPHEMERAL** | Downloaded files cleared per session |
 | `~/.bash_history` | **EPHEMERAL** | Shell history not retained |
-| `~/.gnupg/` | **EPHEMERAL** (privacy default) | GPG keys not retained; import each session |
-| `~/.ssh/` | **EPHEMERAL** (privacy default) | SSH identity not retained; import each session |
+| `~/.gnupg/` | **EPHEMERAL** (stateless default) | GPG keys not retained; import each session |
+| `~/.ssh/` | **EPHEMERAL** (stateless default) | SSH identity not retained; import each session |
 
 ---
 
@@ -531,7 +531,7 @@ blkid /dev/mapper/cryptroot
 
 ---
 
-## 10. `configuration-privacy.nix` Changes
+## 10. `configuration-stateless.nix` Changes
 
 Add `./modules/impermanence.nix` to `imports` and enable the feature:
 
@@ -547,7 +547,7 @@ vexos.impermanence.enable = true;
 users.users.nimda.initialPassword = "vexos";
 ```
 
-No other changes to `configuration-privacy.nix` are required. The impermanence module forces `vexos.swap.enable = false` internally.
+No other changes to `configuration-stateless.nix` are required. The impermanence module forces `vexos.swap.enable = false` internally.
 
 ---
 
@@ -580,9 +580,9 @@ outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermane
 | File | Action | Description |
 |---|---|---|
 | `modules/impermanence.nix` | **CREATE** | New module: options, impermanence config, swap disable, journal config |
-| `configuration-privacy.nix` | **MODIFY** | Add impermanence module import, set `enable = true`, set `initialPassword` |
+| `configuration-stateless.nix` | **MODIFY** | Add impermanence module import, set `enable = true`, set `initialPassword` |
 | `flake.nix` | **MODIFY** | Add `impermanence` input; update outputs destructuring |
-| `hosts/privacy-*.nix` | **NO CHANGE** | All changes cascade from configuration-privacy.nix |
+| `hosts/stateless-*.nix` | **NO CHANGE** | All changes cascade from configuration-stateless.nix |
 
 ---
 
@@ -629,10 +629,10 @@ tmpfs contents discarded — system returns to clean state
 | User forgets to set `/` to tmpfs | HIGH | `assertions` block validates `fileSystems."/".fsType == "tmpfs"` |
 | OOM if user writes large files to tmpfs `/`  | MEDIUM | tmpfs size cap (25% of RAM). ZRAM provides additional overflow. Document warning clearly. |
 | NVIDIA persistence daemon fails without `/var/lib/nvidia-persistenced` | LOW | On tmpfs, the directory is created by systemd-tmpfiles on each boot; no persistent data needed |
-| Nix GC removes live packages on small `/nix` partition | LOW | GC runs weekly (inherited from `configuration-privacy.nix`); `/nix` is on persistent disk |
+| Nix GC removes live packages on small `/nix` partition | LOW | GC runs weekly (inherited from `configuration-stateless.nix`); `/nix` is on persistent disk |
 | SSH clients see host key changed warning on each boot | LOW | Expected Tails-like behavior; documented as intentional. Users can persist host keys if needed. |
-| LUKS decrypt on each boot adds latency | LOW | Acceptable for a privacy system; Argon2id tuning can be adjusted |
-| `users.mutableUsers = false` locks out user if `initialPassword` not set | HIGH | `configuration-privacy.nix` explicitly sets `initialPassword = "vexos"` |
+| LUKS decrypt on each boot adds latency | LOW | Acceptable for a stateless system; Argon2id tuning can be adjusted |
+| `users.mutableUsers = false` locks out user if `initialPassword` not set | HIGH | `configuration-stateless.nix` explicitly sets `initialPassword = "vexos"` |
 | Btrfs auto-scrub enabled by `vexos.btrfs.enable` on /nix partition | LOW | Scrub is beneficial for `/nix`; no conflict with tmpfs root |
 
 ---
@@ -657,4 +657,4 @@ tmpfs contents discarded — system returns to clean state
 5. Impermanence module README — https://github.com/nix-community/impermanence (flake integration, `environment.persistence` options)
 6. elis.nu, "NixOS tmpfs as root" — https://elis.nu/blog/2020/05/nixos-tmpfs-as-root/ (tmpfs root installation walkthrough)
 7. willbush.dev, "Impermanent NixOS" — https://willbush.dev/blog/impermanent-nixos/ (LUKS + tmpfs + flakes integration)
-8. NixOS source: `modules/system.nix` vexos options, `configuration-privacy.nix` current state, `flake.nix` input and output structure (read directly from workspace)
+8. NixOS source: `modules/system.nix` vexos options, `configuration-stateless.nix` current state, `flake.nix` input and output structure (read directly from workspace)

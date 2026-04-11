@@ -19,7 +19,7 @@
   # section provided in the template (template/etc-nixos-flake.nix).
 
   # ---------- Networking (base) ----------
-  networking.hostName = lib.mkDefault "vexos-privacy";
+  networking.hostName = lib.mkDefault "vexos-stateless";
   # networking.networkmanager is managed in modules/network.nix
 
   # ---------- Time / Locale ----------
@@ -41,10 +41,10 @@
   };
 
   # ---------- Impermanence ----------
-  # Enable tmpfs-rooted ephemeral filesystem for the privacy role.
+  # Enable tmpfs-rooted ephemeral filesystem for the stateless role.
   # / is wiped on every reboot; only /nix and /persistent survive.
   # Filesystem impermanence: / is mounted as tmpfs by this module.
-  # Run scripts/privacy-setup.sh to format the disk before first deploy.
+  # Run scripts/stateless-setup.sh to format the disk before first deploy.
   vexos.impermanence.enable = true;
 
   # ---------- Nix settings ----------

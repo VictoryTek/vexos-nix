@@ -26,9 +26,9 @@ home-manager = {
 
 ---
 
-### 2. `nixosModules.privacyBase` — `extraSpecialArgs` present?
+### 2. `nixosModules.statelessBase` — `extraSpecialArgs` present?
 
-**PASS.** The `home-manager` block inside `nixosModules.privacyBase` now reads:
+**PASS.** The `home-manager` block inside `nixosModules.statelessBase` now reads:
 
 ```nix
 home-manager = {
@@ -68,7 +68,7 @@ No modifications to this block.
 
 **PASS.** The diff is contained to exactly two line additions:
 - `extraSpecialArgs = { inherit inputs; };` in `nixosModules.base`
-- `extraSpecialArgs = { inherit inputs; };` in `nixosModules.privacyBase`
+- `extraSpecialArgs = { inherit inputs; };` in `nixosModules.statelessBase`
 
 No other blocks, attributes, or files were altered.
 
@@ -102,7 +102,7 @@ No other blocks, attributes, or files were altered.
 outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermanence, ... }@inputs:
 ```
 
-`nixosModules` is defined inside the `in { ... }` block of this function. The lambda captures `inputs` via lexical closure, making `inherit inputs;` valid in both `base` and `privacyBase`.
+`nixosModules` is defined inside the `in { ... }` block of this function. The lambda captures `inputs` via lexical closure, making `inherit inputs;` valid in both `base` and `statelessBase`.
 
 ---
 
@@ -123,7 +123,7 @@ outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermane
 
 ### 11. `inputs` in scope at definition sites?
 
-**PASS.** Both `nixosModules.base` and `nixosModules.privacyBase` are evaluated inside the `outputs` function body, which receives `inputs` as a named binding. Lexical scoping in Nix means `inputs` is accessible throughout the entire `in { ... }` block without any additional plumbing.
+**PASS.** Both `nixosModules.base` and `nixosModules.statelessBase` are evaluated inside the `outputs` function body, which receives `inputs` as a named binding. Lexical scoping in Nix means `inputs` is accessible throughout the entire `in { ... }` block without any additional plumbing.
 
 ---
 
@@ -131,8 +131,8 @@ outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermane
 
 | Observation | Severity | Introduced by fix? |
 |-------------|----------|--------------------|
-| `backupFileExtension = "backup";` present in `homeManagerModule` but absent from `nixosModules.base` and `nixosModules.privacyBase` | Minor — pre-existing inconsistency | No — pre-existing |
-| `nixosModules.privacyBase` retains `_module.args.inputs = inputs;` alongside the new `extraSpecialArgs` | Acceptable — the `_module.args` injection covers NixOS modules; `extraSpecialArgs` covers home-manager modules. Both are needed when downstream NixOS modules also reference `inputs` | No — pre-existing design |
+| `backupFileExtension = "backup";` present in `homeManagerModule` but absent from `nixosModules.base` and `nixosModules.statelessBase` | Minor — pre-existing inconsistency | No — pre-existing |
+| `nixosModules.statelessBase` retains `_module.args.inputs = inputs;` alongside the new `extraSpecialArgs` | Acceptable — the `_module.args` injection covers NixOS modules; `extraSpecialArgs` covers home-manager modules. Both are needed when downstream NixOS modules also reference `inputs` | No — pre-existing design |
 
 Neither observation is a defect introduced by this fix.
 
@@ -160,4 +160,4 @@ Neither observation is a defect introduced by this fix.
 
 **PASS**
 
-The fix is correct, complete, and scoped exactly as specified. Both `nixosModules.base` and `nixosModules.privacyBase` now include `home-manager.extraSpecialArgs = { inherit inputs; };`, which will cause home-manager to supply `inputs` to `home.nix` when these modules are consumed via the `/etc/nixos/flake.nix` template. No unintended changes were made. Syntax is valid. Scoping is correct.
+The fix is correct, complete, and scoped exactly as specified. Both `nixosModules.base` and `nixosModules.statelessBase` now include `home-manager.extraSpecialArgs = { inherit inputs; };`, which will cause home-manager to supply `inputs` to `home.nix` when these modules are consumed via the `/etc/nixos/flake.nix` template. No unintended changes were made. Syntax is valid. Scoping is correct.

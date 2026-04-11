@@ -5,7 +5,7 @@
 `home.nix` declares `inputs` as a required formal argument. The `homeManagerModule`
 used by direct `nixosConfigurations.*` builds already passes
 `extraSpecialArgs = { inherit inputs; }` correctly. However, the two standalone
-`nixosModules` exports (`nixosModules.base` and `nixosModules.privacyBase`) do NOT
+`nixosModules` exports (`nixosModules.base` and `nixosModules.statelessBase`) do NOT
 include `extraSpecialArgs`, so any host that consumes those modules via the
 `/etc/nixos/flake.nix` template will fail to evaluate `home.nix` with a Nix
 attribute-missing error.
@@ -87,18 +87,18 @@ base = { ... }: {
 };
 ```
 
-### flake.nix — nixosModules.privacyBase — MISSING extraSpecialArgs
+### flake.nix — nixosModules.statelessBase — MISSING extraSpecialArgs
 
-**File:** `flake.nix`, inside `nixosModules.privacyBase`
+**File:** `flake.nix`, inside `nixosModules.statelessBase`
 
 ```nix
-privacyBase = { ... }: {
+statelessBase = { ... }: {
   _module.args.inputs = inputs;   # makes inputs available to NixOS modules only
   imports = [
     nix-gaming.nixosModules.pipewireLowLatency
     home-manager.nixosModules.home-manager
     impermanence.nixosModules.impermanence
-    ./configuration-privacy.nix
+    ./configuration-stateless.nix
   ];
   home-manager = {
     useGlobalPkgs   = true;
@@ -124,7 +124,7 @@ passing extra arguments into home-manager modules.
 
 The `homeManagerModule` let-binding (used by `nixosConfigurations.*`) was
 updated to include `extraSpecialArgs` but the same fix was not applied to the
-`nixosModules.base` and `nixosModules.privacyBase` exports, which are
+`nixosModules.base` and `nixosModules.statelessBase` exports, which are
 structurally distinct blocks that each configure home-manager independently.
 
 ---
@@ -157,9 +157,9 @@ home-manager = {
 };
 ```
 
-### Change 2 — nixosModules.privacyBase
+### Change 2 — nixosModules.statelessBase
 
-Apply the identical addition inside `nixosModules.privacyBase`:
+Apply the identical addition inside `nixosModules.statelessBase`:
 
 ```nix
 # BEFORE
@@ -185,10 +185,10 @@ home-manager = {
 | File | Change |
 |------|--------|
 | `flake.nix` | Add `extraSpecialArgs = { inherit inputs; };` to `nixosModules.base` home-manager block |
-| `flake.nix` | Add `extraSpecialArgs = { inherit inputs; };` to `nixosModules.privacyBase` home-manager block |
+| `flake.nix` | Add `extraSpecialArgs = { inherit inputs; };` to `nixosModules.statelessBase` home-manager block |
 
 **No other files need to be modified.** `home.nix`, `home/photogimp.nix`,
-`configuration.nix`, and `configuration-privacy.nix` are all correct as-is.
+`configuration.nix`, and `configuration-stateless.nix` are all correct as-is.
 
 ---
 
@@ -228,7 +228,7 @@ After applying the fix:
 
 4. **Confirm `system.stateVersion` is unchanged** in `configuration.nix`.
 
-5. **Manual spot-check:** Confirm `nixosModules.base` and `nixosModules.privacyBase`
+5. **Manual spot-check:** Confirm `nixosModules.base` and `nixosModules.statelessBase`
    in `flake.nix` both contain `extraSpecialArgs = { inherit inputs; };` after the edit.
 
 ---
@@ -241,5 +241,5 @@ After applying the fix:
   with `useUserPackages`), matching the style already used in `homeManagerModule`.
 - The fix is purely additive — no existing lines are removed or reordered.
 - `backupFileExtension = "backup"` is present in `homeManagerModule` but intentionally
-  absent from `nixosModules.base` and `nixosModules.privacyBase`. Do NOT add it here;
+  absent from `nixosModules.base` and `nixosModules.statelessBase`. Do NOT add it here;
   that is a separate concern out of scope for this fix.

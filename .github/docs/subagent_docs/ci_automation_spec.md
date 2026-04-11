@@ -24,11 +24,11 @@ The flake defines **16 `nixosConfigurations`** outputs across four roles × four
 | Role | Variants |
 |------|----------|
 | `desktop` | amd, nvidia, intel, vm |
-| `privacy` | amd, nvidia, intel, vm |
+| `stateless` | amd, nvidia, intel, vm |
 | `server` | amd, nvidia, intel, vm |
 | `htpc` | amd, nvidia, intel, vm |
 
-Additionally, the flake exports `nixosModules.base`, `nixosModules.privacy`, `nixosModules.server`, and `nixosModules.htpc`.
+Additionally, the flake exports `nixosModules.base`, `nixosModules.stateless`, `nixosModules.server`, and `nixosModules.htpc`.
 
 **Critical constraint:** ALL `nixosConfigurations` share `commonModules` which directly imports `/etc/nixos/hardware-configuration.nix` as an absolute filesystem path. This path is host-generated, never tracked in the repository, and will not exist on a GitHub Actions Ubuntu runner.
 
@@ -427,7 +427,7 @@ These are maintained tags that receive security patches automatically (the major
 | `nix flake check` timeout on first run (large nixpkgs fetch) | Medium | `actions/cache@v4` with flake.lock key reduces subsequent runs; 6-hour job timeout is sufficient |
 | Stub hardware-configuration.nix causes false positive for some module option that REQUIRES hardware info | Low | The NixOS module system uses `lib.mkDefault` for hardware options; empty hardware config is a valid state |
 | `--no-build` misses build-time errors (e.g., broken package in system packages) | Medium-Low | Accepted trade-off. Full closure validation requires a live NixOS host. CI catches evaluation errors; deploy-time catches build errors. Document this clearly. |
-| Privacy configs (with disko) fail to evaluate with stub hardware config | Low | disko module defines its own `fileSystems` via disko options; it does not require hardware `fileSystems` from hardware-config. Stub is compatible. |
+| Stateless configs (with disko) fail to evaluate with stub hardware config | Low | disko module defines its own `fileSystems` via disko options; it does not require hardware `fileSystems` from hardware-config. Stub is compatible. |
 | GitHub Actions cache fills storage quota | Low | Monitor with first-run metrics. The 10 GB GitHub cache quota should be sufficient. Cache eviction is automatic after 7 days of no access. |
 
 ---
