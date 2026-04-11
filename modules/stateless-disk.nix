@@ -69,9 +69,9 @@ in
       rootPart    = if isNvmeStyle then "${cfg.device}p2" else "${cfg.device}2";
     in
     {
-      # Ensure btrfs module is available in initrd (belt-and-suspenders — normally
-      # provided by hardware-configuration.nix via availableKernelModules detection).
-      boot.initrd.availableKernelModules = lib.mkDefault [ "btrfs" ];
+      # Force unconditional early loading of btrfs — availableKernelModules relies
+      # on udev hotplug ordering which is unreliable in early initrd.
+      boot.initrd.kernelModules = lib.mkDefault [ "btrfs" ];
 
       # ── Boot partition (EFI / FAT32) ──────────────────────────────────────
       # lib.mkDefault: hardware-configuration.nix overrides with UUID path.

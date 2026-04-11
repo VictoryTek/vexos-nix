@@ -78,15 +78,6 @@ in
       options = lib.mkForce [ "defaults" "size=25%" "mode=755" ];
     };
 
-    # ── Systemd initrd ─────────────────────────────────────────────────────
-    # Required for a tmpfs-root system.  systemd-initrd provides:
-    #   • Reliable mount ordering via unit dependencies (Before=/After=)
-    #   • Correct integration with impermanence.nixosModules.impermanence
-    #     (which generates systemd mount units in the initrd when this is true)
-    #   • Correct Plymouth integration (plymouth.service in initrd namespace)
-    #   • Emergency mode from initrd store (not /nix) on mount failure
-    boot.initrd.systemd.enable = true;
-
     # ── Assertions ──────────────────────────────────────────────────────────
     assertions = [
       {
