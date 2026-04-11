@@ -56,15 +56,11 @@ The running config writes `/etc/nixos/vexos-variant` (a one-word file, e.g. `vex
 | `vexos-stateless-intel` | Intel iGPU or Arc dGPU, minimal stack |
 | `vexos-stateless-vm` | QEMU/KVM or VirtualBox guest, minimal stack |
 
-#### Migrating an existing install to stateless
-
-Run this **on your installed system** (not from a live ISO). It creates `@nix` and `@persist` Btrfs subvolumes inside your existing root partition without repartitioning, then rewrites `hardware-configuration.nix` to mount them.
+To install the stateless role, run the standard install script — it automatically detects whether you're on a live ISO (full disk setup) or an existing NixOS install (in-place Btrfs migration) and runs the correct script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/migrate-to-stateless.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh | bash
 ```
-
-> **Note:** `sudo bash <(curl ...)` will fail in `nix-shell` and other environments where `/dev/fd` is not mounted. Use the pipe form above.
 
 ### Server role — GUI service stack
 

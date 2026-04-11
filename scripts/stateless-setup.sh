@@ -4,7 +4,7 @@
 # Repository: https://github.com/VictoryTek/vexos-nix
 #
 # Usage (one-liner from NixOS live ISO, recommended):
-#   bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh)
+#   curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh | bash
 #
 # Or clone first and run locally:
 #   bash scripts/stateless-setup.sh

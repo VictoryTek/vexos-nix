@@ -72,18 +72,22 @@ while [ -z "$ROLE" ]; do
   esac
 done
 
-# ---------- Stateless role: handled by its own script -----------------------
+# ---------- Stateless role: auto-detect context and invoke correct script ----
 if [ "$ROLE" = "stateless" ]; then
-  echo ""
-  echo -e "${YELLOW}The stateless role has its own setup script that handles disk preparation"
-  echo -e "and the rebuild in one step:${RESET}"
-  echo ""
-  echo "  From an existing NixOS install (no disk wipe):"
-  echo "    sudo bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/migrate-to-stateless.sh)"
-  echo ""
-  echo "  From the NixOS live ISO (erases disk):"
-  echo "    bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh)"
-  echo ""
+  ROOT_FSTYPE=$(findmnt -n -o FSTYPE / 2>/dev/null || true)
+  if [ "$ROOT_FSTYPE" = "tmpfs" ]; then
+    # Running from NixOS live ISO — full disk setup
+    echo ""
+    echo -e "${CYAN}Live ISO detected — launching stateless disk setup (erases target disk)...${RESET}"
+    echo ""
+    curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh | bash
+  else
+    # Running on an existing NixOS install — in-place Btrfs migration
+    echo ""
+    echo -e "${CYAN}Existing install detected — launching in-place stateless migration...${RESET}"
+    echo ""
+    curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/migrate-to-stateless.sh | sudo bash
+  fi
   exit 0
 fi
 
