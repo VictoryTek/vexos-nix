@@ -10,13 +10,14 @@
 #     --mode destroy,format,mount \
 #     /tmp/vexos-stateless-disk.nix \
 #     --arg disk '"/dev/nvme0n1"' \
-#     --arg enableLuks 'true'
+#     --arg enableLuks 'false'
 #
 # Parameters:
 #   disk       — block device path (string, e.g. "/dev/nvme0n1")
-#   enableLuks — whether to use LUKS2 encryption (bool, default true)
+#   enableLuks — whether to use LUKS2 encryption (bool, default false)
 #   luksName   — name of the LUKS device-mapper entry (string, default "cryptroot")
-{ disk ? "/dev/nvme0n1", enableLuks ? true, luksName ? "cryptroot" }:
+#   diskoFile  — injected by disko 1.13+ (ignored, accepted for compatibility)
+{ disk ? "/dev/nvme0n1", enableLuks ? false, luksName ? "cryptroot", diskoFile ? null }:
 {
   disko.devices = {
     disk.main = {

@@ -27,13 +27,6 @@
     # impermanence has no nixpkgs dependency — follows not required.
     impermanence.url = "github:nix-community/impermanence";
 
-    # nix-community/disko: declarative disk partitioning for the stateless role.
-    # Used by modules/stateless-disk.nix to generate fileSystems and LUKS config.
-    disko = {
-      url = "github:nix-community/disko/latest";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     # Up — GTK4 + libadwaita system update GUI (all roles and variants).
     up = {
       url = "github:VictoryTek/Up";
@@ -41,7 +34,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermanence, disko, up, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermanence, up, ... }@inputs:
   let
     system = "x86_64-linux";
 
@@ -130,7 +123,6 @@
       modules = commonModules ++ [
         ./hosts/stateless-amd.nix
         impermanence.nixosModules.impermanence
-        inputs.disko.nixosModules.disko
       ];
       specialArgs = { inherit inputs; };
     };
@@ -142,7 +134,6 @@
       modules = commonModules ++ [
         ./hosts/stateless-nvidia.nix
         impermanence.nixosModules.impermanence
-        inputs.disko.nixosModules.disko
       ];
       specialArgs = { inherit inputs; };
     };
@@ -154,7 +145,6 @@
       modules = commonModules ++ [
         ./hosts/stateless-intel.nix
         impermanence.nixosModules.impermanence
-        inputs.disko.nixosModules.disko
       ];
       specialArgs = { inherit inputs; };
     };
@@ -166,7 +156,6 @@
       modules = commonModules ++ [
         ./hosts/stateless-vm.nix
         impermanence.nixosModules.impermanence
-        inputs.disko.nixosModules.disko
       ];
       specialArgs = { inherit inputs; };
     };
@@ -272,7 +261,6 @@
           nix-gaming.nixosModules.pipewireLowLatency
           home-manager.nixosModules.home-manager
           impermanence.nixosModules.impermanence
-          disko.nixosModules.disko
           ./configuration-stateless.nix
           ./modules/stateless-disk.nix
         ];
@@ -294,7 +282,6 @@
         vexos.stateless.disk = {
           enable     = true;
           device     = lib.mkDefault "/dev/nvme0n1";
-          enableLuks = lib.mkDefault true;
         };
       };
 
@@ -321,8 +308,7 @@
       };
       statelessGpuVm = { lib, ... }: {
         imports = [ ./modules/gpu/vm.nix ];
-        vexos.stateless.disk.device    = lib.mkForce "/dev/vda";
-        vexos.stateless.disk.enableLuks = lib.mkForce false;
+        vexos.stateless.disk.device = lib.mkForce "/dev/vda";
       };
       asus      = ./modules/asus.nix;
     };

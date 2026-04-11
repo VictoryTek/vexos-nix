@@ -1,0 +1,373 @@
+#!/usr/bin/env bash
+# =============================================================================
+# migrate-to-stateless.sh — VexOS Stateless In-Place Migration
+# Repository: https://github.com/VictoryTek/vexos-nix
+#
+# Usage (run on an existing NixOS system — NOT from the live ISO):
+#   sudo bash scripts/migrate-to-stateless.sh
+#
+# What this script does:
+#   1. Detects your existing Btrfs root partition and FAT32 /boot partition
+#   2. Creates Btrfs subvolumes @nix (→/nix) and @persist (→/persistent)
+#   3. Reflink-copies /nix into the @nix subvolume (instant copy-on-write)
+#   4. Backs up and regenerates hardware-configuration.nix with the correct
+#      UUID-based filesystem declarations for the stateless layout
+#   5. Runs nixos-rebuild switch to activate the stateless configuration
+#
+# Partition requirements:
+#   - FAT32 EFI partition mounted at /boot
+#   - Btrfs root partition mounted at /
+#   - No LUKS — encryption is not used in the stateless role
+#
+# SECURITY NOTICE:
+#   Always review scripts before running as root.
+#   Source: https://github.com/VictoryTek/vexos-nix/blob/main/scripts/migrate-to-stateless.sh
+# =============================================================================
+
+set -euo pipefail
+
+# ---------- Color helpers (only if TTY with color support) -------------------
+if [ -t 1 ] && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[0;33m'
+  CYAN='\033[0;36m'
+  BOLD='\033[1m'
+  RESET='\033[0m'
+else
+  RED='' GREEN='' YELLOW='' CYAN='' BOLD='' RESET=''
+fi
+
+BTRFS_MOUNT="/mnt/vexos-migrate-btrfs"
+HW_CONFIG="/etc/nixos/hardware-configuration.nix"
+HW_CONFIG_BAK="${HW_CONFIG}.pre-stateless"
+
+# ---------- Root check -------------------------------------------------------
+if [ "$(id -u)" -ne 0 ]; then
+  echo -e "${RED}This script must be run as root (use sudo).${RESET}"
+  exit 1
+fi
+
+# ---------- Header -----------------------------------------------------------
+echo ""
+echo -e "${BOLD}${CYAN}============================================================${RESET}"
+echo -e "${BOLD}${CYAN}   VexOS Stateless Migration — In-Place Conversion${RESET}"
+echo -e "${BOLD}${CYAN}============================================================${RESET}"
+echo ""
+echo -e "${YELLOW}  This script converts an existing NixOS install to the${RESET}"
+echo -e "${YELLOW}  VexOS stateless (impermanence) layout without wiping your disk.${RESET}"
+echo -e "${YELLOW}  Run this on your installed system — NOT from a live ISO.${RESET}"
+echo ""
+
+# ---------- Detect live ISO (abort if running from ISO) ---------------------
+# Check if / is tmpfs (impermanence or live ISO) — abort if so
+ROOT_FSTYPE=$(findmnt -n -o FSTYPE /)
+if [ "$ROOT_FSTYPE" = "tmpfs" ]; then
+  echo -e "${RED}Root filesystem is tmpfs.${RESET}"
+  echo "  This looks like a NixOS live ISO or already-converted stateless system."
+  echo "  Run this script on a standard NixOS installation, not from the ISO."
+  exit 1
+fi
+
+# ---------- Detect btrfs tools -----------------------------------------------
+if ! command -v btrfs &>/dev/null; then
+  echo -e "${RED}btrfs-progs not found in PATH.${RESET}"
+  echo "  Install with: nix-shell -p btrfs-progs"
+  exit 1
+fi
+
+# ---------- Detect root Btrfs partition -------------------------------------
+echo -e "${BOLD}Detecting disk layout...${RESET}"
+echo ""
+
+ROOT_DEVICE=$(findmnt -n -o SOURCE /)
+ROOT_FSTYPE_CHECK=$(findmnt -n -o FSTYPE /)
+
+if [ "$ROOT_FSTYPE_CHECK" != "btrfs" ]; then
+  echo -e "${RED}Root filesystem is not Btrfs (found: ${ROOT_FSTYPE_CHECK}).${RESET}"
+  echo "  VexOS stateless requires a Btrfs root partition."
+  echo "  Partition your disk with a Btrfs root and re-install, then run this script."
+  exit 1
+fi
+
+# Strip subvol or subvolid from the device if present (get the raw device)
+ROOT_DEV_RAW=$(echo "$ROOT_DEVICE" | sed 's/\[.*//')
+
+# ---------- Detect /boot FAT32 partition ------------------------------------
+BOOT_DEVICE=$(findmnt -n -o SOURCE /boot 2>/dev/null || true)
+BOOT_FSTYPE=$(findmnt -n -o FSTYPE /boot 2>/dev/null || true)
+
+if [ -z "$BOOT_DEVICE" ]; then
+  echo -e "${RED}No filesystem mounted at /boot.${RESET}"
+  echo "  VexOS stateless requires a separate FAT32 EFI partition mounted at /boot."
+  exit 1
+fi
+
+if [ "$BOOT_FSTYPE" != "vfat" ]; then
+  echo -e "${YELLOW}Warning: /boot filesystem type is '${BOOT_FSTYPE}', expected 'vfat'.${RESET}"
+  echo "  Continuing — you may need to adjust the /boot filesystem entry manually."
+fi
+
+# ---------- Get UUIDs --------------------------------------------------------
+ROOT_UUID=$(blkid -s UUID -o value "$ROOT_DEV_RAW" 2>/dev/null || true)
+BOOT_UUID=$(blkid -s UUID -o value "$BOOT_DEVICE" 2>/dev/null || true)
+
+if [ -z "$ROOT_UUID" ]; then
+  echo -e "${RED}Could not determine UUID for root device: ${ROOT_DEV_RAW}${RESET}"
+  exit 1
+fi
+if [ -z "$BOOT_UUID" ]; then
+  echo -e "${RED}Could not determine UUID for boot device: ${BOOT_DEVICE}${RESET}"
+  exit 1
+fi
+
+echo "  Root device:  ${ROOT_DEV_RAW}  (UUID: ${ROOT_UUID})"
+echo "  Boot device:  ${BOOT_DEVICE}  (UUID: ${BOOT_UUID})"
+echo ""
+
+# ---------- Check for existing subvolumes ------------------------------------
+echo -e "${BOLD}Checking for existing @nix and @persist subvolumes...${RESET}"
+mkdir -p "${BTRFS_MOUNT}"
+mount -o subvolid=5 "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}" 2>/dev/null || \
+  mount "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}"
+
+EXISTING_NIX=false
+EXISTING_PERSIST=false
+
+if btrfs subvolume show "${BTRFS_MOUNT}/@nix" &>/dev/null; then
+  EXISTING_NIX=true
+  echo -e "${YELLOW}  @nix subvolume already exists.${RESET}"
+fi
+if btrfs subvolume show "${BTRFS_MOUNT}/@persist" &>/dev/null; then
+  EXISTING_PERSIST=true
+  echo -e "${YELLOW}  @persist subvolume already exists.${RESET}"
+fi
+
+umount "${BTRFS_MOUNT}"
+rmdir "${BTRFS_MOUNT}" 2>/dev/null || true
+
+if $EXISTING_NIX || $EXISTING_PERSIST; then
+  echo ""
+  echo -e "${YELLOW}One or more target subvolumes already exist.${RESET}"
+  printf "Continue anyway? Existing subvolumes will be SKIPPED. [yes/N] "
+  read -r CONTINUE_EXISTING
+  if [ "${CONTINUE_EXISTING}" != "yes" ]; then
+    echo "Aborting."
+    exit 0
+  fi
+fi
+echo ""
+
+# ---------- Summary and confirmation -----------------------------------------
+echo -e "${BOLD}Migration summary:${RESET}"
+echo "  Root partition: ${ROOT_DEV_RAW} (UUID: ${ROOT_UUID})"
+echo "  Boot partition: ${BOOT_DEVICE} (UUID: ${BOOT_UUID})"
+echo "  Will create:    @nix subvol → /nix"
+echo "  Will create:    @persist subvol → /persistent"
+echo "  Nix store copy: reflink (instant, same-filesystem)"
+echo ""
+echo -e "${YELLOW}${BOLD}  This will modify /etc/nixos/hardware-configuration.nix${RESET}"
+echo -e "${YELLOW}  A backup will be saved to: ${HW_CONFIG_BAK}${RESET}"
+echo ""
+
+printf "Proceed with migration? [yes/N] "
+read -r PROCEED
+if [ "${PROCEED}" != "yes" ]; then
+  echo "Aborting."
+  exit 0
+fi
+
+# ---------- Mount raw Btrfs --------------------------------------------------
+echo ""
+echo -e "${BOLD}Mounting raw Btrfs filesystem...${RESET}"
+mkdir -p "${BTRFS_MOUNT}"
+mount -o subvolid=5 "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}" 2>/dev/null || \
+  mount "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}"
+echo -e "${GREEN}  Mounted ${ROOT_DEV_RAW} at ${BTRFS_MOUNT}${RESET}"
+
+# ---------- Create @nix subvolume --------------------------------------------
+if ! $EXISTING_NIX; then
+  echo ""
+  echo -e "${BOLD}Creating @nix subvolume...${RESET}"
+  btrfs subvolume create "${BTRFS_MOUNT}/@nix"
+  echo -e "${GREEN}  Created @nix${RESET}"
+else
+  echo ""
+  echo -e "${YELLOW}Skipping @nix creation (already exists).${RESET}"
+fi
+
+# ---------- Create @persist subvolume ----------------------------------------
+if ! $EXISTING_PERSIST; then
+  echo ""
+  echo -e "${BOLD}Creating @persist subvolume...${RESET}"
+  btrfs subvolume create "${BTRFS_MOUNT}/@persist"
+  echo -e "${GREEN}  Created @persist${RESET}"
+else
+  echo ""
+  echo -e "${YELLOW}Skipping @persist creation (already exists).${RESET}"
+fi
+
+# ---------- Reflink copy /nix → @nix -----------------------------------------
+if ! $EXISTING_NIX; then
+  echo ""
+  echo -e "${BOLD}Copying /nix to @nix subvolume (Btrfs reflink — instant copy-on-write)...${RESET}"
+  echo -e "${CYAN}  This does not duplicate data on disk — it shares blocks until modified.${RESET}"
+  cp -a --reflink=always /nix/. "${BTRFS_MOUNT}/@nix/"
+  echo -e "${GREEN}  ✓ /nix copied to @nix${RESET}"
+else
+  echo ""
+  echo -e "${YELLOW}Skipping /nix copy — @nix already existed.${RESET}"
+fi
+
+# ---------- Unmount raw Btrfs ------------------------------------------------
+echo ""
+echo -e "${BOLD}Unmounting raw Btrfs...${RESET}"
+umount "${BTRFS_MOUNT}"
+rmdir "${BTRFS_MOUNT}" 2>/dev/null || true
+echo -e "${GREEN}  Unmounted.${RESET}"
+
+# ---------- Back up hardware-configuration.nix --------------------------------
+echo ""
+echo -e "${BOLD}Backing up hardware-configuration.nix...${RESET}"
+if [ ! -f "${HW_CONFIG}" ]; then
+  echo -e "${RED}  ${HW_CONFIG} not found. Cannot continue.${RESET}"
+  echo "  Ensure /etc/nixos/hardware-configuration.nix exists (generated by nixos-generate-config)."
+  exit 1
+fi
+cp "${HW_CONFIG}" "${HW_CONFIG_BAK}"
+echo -e "${GREEN}  Backed up to ${HW_CONFIG_BAK}${RESET}"
+
+# ---------- Regenerate hardware-configuration.nix (no filesystems) ----------
+echo ""
+echo -e "${BOLD}Regenerating hardware-configuration.nix (without filesystem entries)...${RESET}"
+nixos-generate-config --no-filesystems
+echo -e "${GREEN}  Regenerated.${RESET}"
+
+# ---------- Append stateless filesystem declarations -------------------------
+echo ""
+echo -e "${BOLD}Appending stateless filesystem declarations...${RESET}"
+
+# Remove the final closing "}" from the generated file, then append our entries
+# The generated hardware-configuration.nix ends with a single "}" on its own line
+TMPFILE=$(mktemp)
+# Strip trailing blank lines and the final "}"
+perl -0777 -pe 's/\n\}\s*$/\n/' "${HW_CONFIG}" > "${TMPFILE}" 2>/dev/null || \
+  head -n -1 "${HW_CONFIG}" > "${TMPFILE}"
+
+cat >> "${TMPFILE}" << NIXEOF
+
+  # ── Stateless filesystem layout ─────────────────────────────────────────
+  # Written by scripts/migrate-to-stateless.sh — do not edit this block manually.
+  # To revert: restore from ${HW_CONFIG_BAK}
+
+  fileSystems."/boot" = {
+    device  = "/dev/disk/by-uuid/${BOOT_UUID}";
+    fsType  = "vfat";
+    options = [ "fmask=0077" "dmask=0077" ];
+  };
+
+  fileSystems."/nix" = {
+    device        = "/dev/disk/by-uuid/${ROOT_UUID}";
+    fsType        = "btrfs";
+    options       = [ "subvol=@nix" "compress=zstd" "noatime" ];
+    neededForBoot = true;
+  };
+
+  fileSystems."/persistent" = {
+    device        = "/dev/disk/by-uuid/${ROOT_UUID}";
+    fsType        = "btrfs";
+    options       = [ "subvol=@persist" "compress=zstd" "noatime" ];
+    neededForBoot = true;
+  };
+
+}
+NIXEOF
+
+cp "${TMPFILE}" "${HW_CONFIG}"
+rm -f "${TMPFILE}"
+echo -e "${GREEN}  ✓ Filesystem declarations appended.${RESET}"
+
+# ---------- GPU variant prompt -----------------------------------------------
+echo ""
+echo -e "${BOLD}Select your GPU variant:${RESET}"
+echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
+echo "  2) NVIDIA — NVIDIA GPU (proprietary, open kernel modules)"
+echo "  3) Intel  — Intel iGPU or Arc dGPU"
+echo "  4) VM     — QEMU/KVM or VirtualBox guest"
+echo ""
+
+VARIANT=""
+while [ -z "$VARIANT" ]; do
+  printf "Enter choice [1-4] or name (amd / nvidia / intel / vm): "
+  read -r INPUT
+  case "${INPUT,,}" in
+    1|amd)    VARIANT="amd"    ;;
+    2|nvidia) VARIANT="nvidia" ;;
+    3|intel)  VARIANT="intel"  ;;
+    4|vm)     VARIANT="vm"     ;;
+    *)
+      echo -e "${RED}Invalid selection. Please enter 1, 2, 3, 4, amd, nvidia, intel, or vm.${RESET}"
+      ;;
+  esac
+done
+
+# ---------- Hostname prompt --------------------------------------------------
+echo ""
+printf "Enter hostname [vexos]: "
+read -r HOSTNAME_INPUT
+HOSTNAME="${HOSTNAME_INPUT:-vexos}"
+
+# ---------- Summary before rebuild ------------------------------------------
+echo ""
+echo -e "${BOLD}Ready to rebuild:${RESET}"
+echo "  Target: /etc/nixos#vexos-stateless-${VARIANT}"
+echo "  Hostname: ${HOSTNAME}"
+echo ""
+printf "Run nixos-rebuild switch now? [yes/N] "
+read -r DO_REBUILD
+if [ "${DO_REBUILD}" != "yes" ]; then
+  echo ""
+  echo -e "${YELLOW}Skipping rebuild. Run manually when ready:${RESET}"
+  echo "  sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-${VARIANT}"
+  echo ""
+  exit 0
+fi
+
+# ---------- nixos-rebuild switch --------------------------------------------
+echo ""
+echo -e "${BOLD}Running nixos-rebuild switch...${RESET}"
+echo -e "${YELLOW}This may take a while on first run.${RESET}"
+echo ""
+nixos-rebuild switch --flake "/etc/nixos#vexos-stateless-${VARIANT}"
+
+# ---------- Completion -------------------------------------------------------
+echo ""
+echo -e "${GREEN}${BOLD}============================================================${RESET}"
+echo -e "${GREEN}${BOLD}  ✓ Migration to stateless complete!${RESET}"
+echo -e "${GREEN}${BOLD}============================================================${RESET}"
+echo ""
+echo -e "${BOLD}Next steps:${RESET}"
+echo "  1. Reboot to activate the stateless (impermanence) filesystem:"
+echo "       sudo reboot"
+echo ""
+echo "  2. After reboot, / will be a fresh tmpfs on every boot."
+echo "     /nix and /persistent survive reboots. Everything else is ephemeral."
+echo ""
+echo -e "${YELLOW}Note: After rebooting into stateless mode, the original / data on${RESET}"
+echo -e "${YELLOW}the Btrfs partition remains but is not mounted. You can reclaim${RESET}"
+echo -e "${YELLOW}that space later by booting from a live ISO and deleting the root${RESET}"
+echo -e "${YELLOW}subvolume contents (keep only @nix and @persist).${RESET}"
+echo ""
+printf "Reboot now? [y/N] "
+read -r REBOOT_CHOICE
+case "${REBOOT_CHOICE,,}" in
+  y|yes)
+    echo "Rebooting..."
+    reboot
+    ;;
+  *)
+    echo ""
+    echo -e "${YELLOW}Run 'sudo reboot' when ready.${RESET}"
+    echo ""
+    ;;
+esac

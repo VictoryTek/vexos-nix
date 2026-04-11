@@ -5,13 +5,13 @@
 # outside of /nix and /persistent is wiped on every reboot, providing
 # Tails-like ephemeral behaviour (similar to Tails Linux / Deep Freeze).
 #
-# Disk layout (LUKS2 + Btrfs subvolumes) is handled declaratively by
-# modules/stateless-disk.nix using disko. No manual hardware-configuration.nix
-# edits are required. See .github/docs/subagent_docs/stateless_disk_spec.md.
+# Disk layout (plain Btrfs with @nix and @persist subvolumes) is declared by
+# modules/stateless-disk.nix. No LUKS encryption is used.
 #
-# Run scripts/stateless-setup.sh on the NixOS ISO to format the disk before
-# deploying any stateless host configuration.  The script sets up the required
-# LUKS-encrypted Btrfs layout and calls nixos-install automatically.
+# Two setup paths are supported:
+#   Fresh install from ISO: run scripts/stateless-setup.sh (formats disk, calls nixos-install).
+#   Existing system migration: run scripts/migrate-to-stateless.sh (in-place Btrfs subvol setup).
+# No LUKS — disk layout is plain Btrfs with @nix and @persist subvolumes.
 { config, lib, ... }:
 
 let
@@ -28,8 +28,9 @@ in
         When true, / is declared as a tmpfs mount by this module and all
         state outside /nix is ephemeral unless explicitly declared under
         environment.persistence.
-        Disk layout is handled by modules/stateless-disk.nix (disko). The
-        tmpfs root is declared by this module automatically when enabled.
+        Disk layout (Btrfs subvolumes @nix/@persist) is declared by
+        modules/stateless-disk.nix. The tmpfs root is declared by this module
+        automatically when enabled.
       '';
     };
 
@@ -87,7 +88,8 @@ in
           vexos.impermanence.enable = true requires
           fileSystems."${cfg.persistentPath}" to be declared with neededForBoot = true.
           This is normally satisfied automatically by modules/stateless-disk.nix.
-          Check that stateless-disk.nix is imported in your stateless host file.
+          For fresh installs: run scripts/stateless-setup.sh from the NixOS live ISO.
+          For existing systems: run scripts/migrate-to-stateless.sh to migrate in-place.
         '';
       }
       {
@@ -121,7 +123,7 @@ in
     # ── Volatile systemd journal ────────────────────────────────────────────
     # Logs are stored in RAM only and discarded on poweroff/reboot.
     # This eliminates forensic log artefacts on the persistent volume and
-    # reduces writes to the LUKS-encrypted Btrfs partition.
+    # reduces writes to the persistent Btrfs partition.
     services.journald.extraConfig = ''
       Storage=volatile
       RuntimeMaxUse=64M

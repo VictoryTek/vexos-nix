@@ -11,8 +11,8 @@
 #
 # What this script does:
 #   1. Partitions and formats the target disk (DESTRUCTIVE — all data erased)
-#   2. Creates: EFI partition (512 MiB), LUKS2 container, Btrfs subvolumes
-#      (@nix → /nix,  @persist → /persistent)
+#   2. Creates: EFI partition (512 MiB), Btrfs root partition with subvolumes
+#      (@nix → /nix,  @persist → /persistent)  — no LUKS encryption
 #   3. Runs nixos-generate-config --no-filesystems --root /mnt
 #   4. Downloads the vexos-nix template flake to /mnt/etc/nixos/
 #   5. Runs nixos-install targeting the chosen vexos-stateless-<variant>
@@ -127,18 +127,14 @@ done
 
 # ---------- Prompt: hostname -------------------------------------------------
 echo ""
-printf "Enter hostname [vexos-stateless]: "
+printf "Enter hostname [vexos]: "
 read -r HOSTNAME_INPUT
-HOSTNAME="${HOSTNAME_INPUT:-vexos-stateless}"
+HOSTNAME="${HOSTNAME_INPUT:-vexos}"
 
-# ---------- Determine LUKS setting ------------------------------------------
-if [ "$VARIANT" = "vm" ]; then
-  LUKS_BOOL="false"
-  echo ""
-  echo -e "${CYAN}VM variant selected — disk encryption (LUKS2) will be skipped.${RESET}"
-else
-  LUKS_BOOL="true"
-fi
+# ---------- LUKS: always disabled -------------------------------------------
+# VexOS stateless role does not use disk encryption.
+# Encryption is the responsibility of the hypervisor or physical security policy.
+LUKS_BOOL="false"
 
 # ---------- Summary and final confirmation ----------------------------------
 echo ""
@@ -146,7 +142,7 @@ echo -e "${BOLD}Installation summary:${RESET}"
 echo "  Disk:       ${DISK}"
 echo "  GPU variant: ${VARIANT}"
 echo "  Hostname:   ${HOSTNAME}"
-echo "  LUKS:       ${LUKS_BOOL}"
+echo "  LUKS:       disabled (no encryption)"
 echo "  Flake target: vexos-stateless-${VARIANT}"
 echo ""
 printf "Proceed with installation? This will ERASE ${DISK}. [yes/N] "
@@ -210,9 +206,6 @@ echo -e "${BOLD}Next steps:${RESET}"
 echo "  1. Set a root password if needed:  nixos-enter --root /mnt -- passwd"
 echo "  2. Remove the live ISO from your boot device."
 echo "  3. Reboot: sudo reboot"
-echo ""
-echo -e "${YELLOW}${BOLD}IMPORTANT:${RESET} Store your LUKS passphrase in a secure location."
-echo "  If you lose it, all data on the encrypted volume is unrecoverable."
 echo ""
 printf "Reboot now? [y/N] "
 read -r REBOOT_CHOICE

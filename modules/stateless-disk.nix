@@ -1,17 +1,29 @@
 # modules/stateless-disk.nix
-# Declarative disk layout for the VexOS stateless role using disko.
+# Filesystem declarations for the VexOS stateless role.
 #
-# Uses disko (github:nix-community/disko) to declare the full GPT partition
-# table, LUKS2 container, and Btrfs subvolumes required by the stateless role.
+# This module declares the expected filesystem mounts for the stateless role
+# using lib.mkDefault (lowest priority), so that hardware-configuration.nix
+# can override these entries with UUID-based device paths when rebuilding from
+# an existing system.
 #
-# disko generates fileSystems."/nix", fileSystems."/persistent",
-# fileSystems."/boot", and boot.initrd.luks.devices."cryptroot" automatically.
-# This module replaces all hardware-UUID prerequisites previously documented
-# in modules/impermanence.nix.
+# Workflow — two supported paths:
 #
-# IMPORTANT: hardware-configuration.nix MUST be generated with:
-#   nixos-generate-config --no-filesystems --root /mnt
-# to avoid fileSystems conflicts with disko's generated entries.
+#   Fresh install from ISO:
+#     1. Run scripts/stateless-setup.sh from the NixOS live ISO
+#     2. disko CLI formats the disk (creates ESP + Btrfs @nix/@persist subvols)
+#     3. nixos-install is called; this module provides fileSystems fallbacks
+#        when hardware-configuration.nix is generated with --no-filesystems
+#
+#   Rebuild from existing system (preferred):
+#     1. Run scripts/migrate-to-stateless.sh on the running NixOS system
+#     2. The migration script creates Btrfs subvols and regenerates
+#        hardware-configuration.nix with exact UUID-based filesystem entries
+#     3. Those hardware-configuration.nix entries override this module's
+#        mkDefault declarations (higher priority wins — no conflicts)
+#     4. Run: sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-<variant>
+#
+# No LUKS. Disk layout: FAT32 /boot (EFI) + plain Btrfs root partition
+# with @nix (→/nix) and @persist (→/persistent) subvolumes.
 { config, lib, ... }:
 
 let
@@ -24,10 +36,11 @@ in
       type        = lib.types.bool;
       default     = false;
       description = ''
-        Enable disko-managed disk layout for the stateless role.
-        When true, disko declares the full GPT + LUKS2 + Btrfs subvolume
-        layout and generates fileSystems entries automatically.
-        Requires a block device to be specified via vexos.stateless.disk.device.
+        Enable filesystem declarations for the stateless role.
+        When true, this module declares lib.mkDefault fileSystems for /boot,
+        /nix, and /persistent based on the disk device path.
+        hardware-configuration.nix UUID-based declarations take priority and
+        override these defaults automatically when present.
       '';
     };
 
@@ -35,143 +48,54 @@ in
       type        = lib.types.str;
       default     = "/dev/nvme0n1";
       description = ''
-        Block device to use for the stateless disk layout.
-        This becomes disko.devices.disk.main.device.
+        Full disk device path (not a partition).
+        Partition paths are derived automatically:
+          nvme/mmcblk: <device>p1 (boot) and <device>p2 (root)
+          sata/virtio: <device>1  (boot) and <device>2  (root)
         Examples: "/dev/nvme0n1"  "/dev/sda"  "/dev/vda"
-        Override in your host file: vexos.stateless.disk.device = "/dev/sda";
-      '';
-    };
-
-    enableLuks = lib.mkOption {
-      type        = lib.types.bool;
-      default     = true;
-      description = ''
-        Wrap the data partition in LUKS2 full-disk encryption.
-        Set to false for VM guests that do not require disk encryption.
-        When false, the Btrfs filesystem is created directly on the partition.
-      '';
-    };
-
-    luksName = lib.mkOption {
-      type        = lib.types.str;
-      default     = "cryptroot";
-      description = ''
-        Name for the LUKS device-mapper entry.
-        The decrypted device will appear at /dev/mapper/<luksName>.
-      '';
-    };
-
-    memorySize = lib.mkOption {
-      type        = lib.types.str;
-      default     = "25%";
-      description = ''
-        Size passed to the tmpfs root mount (size= option).
-        The tmpfs root is declared by modules/impermanence.nix, not here.
-        This option is informational and may be used for documentation.
+        This default is overridden by hardware-configuration.nix UUID paths
+        when scripts/migrate-to-stateless.sh has been run.
       '';
     };
 
   };
 
-  config = lib.mkIf cfg.enable {
-
-    disko.devices = {
-      disk.main = {
-        type   = "disk";
-        device = cfg.device;
-        content = {
-          type = "gpt";
-          partitions =
-            # EFI System Partition — always present
-            {
-              ESP = {
-                size     = "512MiB";
-                type     = "EF00";
-                priority = 1;
-                content = {
-                  type         = "filesystem";
-                  format       = "vfat";
-                  mountpoint   = "/boot";
-                  mountOptions = [ "umask=0077" ];
-                };
-              };
-            }
-            # LUKS2-encrypted Btrfs (hardware installs)
-            // lib.optionalAttrs cfg.enableLuks {
-              luks = {
-                size     = "100%";
-                priority = 2;
-                content = {
-                  type  = "luks";
-                  name  = cfg.luksName;
-                  settings = {
-                    allowDiscards    = true;
-                    bypassWorkqueues = true;
-                  };
-                  content = {
-                    type      = "btrfs";
-                    extraArgs = [ "-f" ];
-                    subvolumes = {
-                      "@nix" = {
-                        mountpoint   = "/nix";
-                        mountOptions = [ "compress=zstd" "noatime" ];
-                      };
-                      "@persist" = {
-                        mountpoint   = "/persistent";
-                        mountOptions = [ "compress=zstd" "noatime" ];
-                      };
-                    };
-                  };
-                };
-              };
-            }
-            # Plain Btrfs (VM installs — no LUKS overhead)
-            // lib.optionalAttrs (!cfg.enableLuks) {
-              data = {
-                size     = "100%";
-                priority = 2;
-                content = {
-                  type      = "btrfs";
-                  extraArgs = [ "-f" ];
-                  subvolumes = {
-                    "@nix" = {
-                      mountpoint   = "/nix";
-                      mountOptions = [ "compress=zstd" "noatime" ];
-                    };
-                    "@persist" = {
-                      mountpoint   = "/persistent";
-                      mountOptions = [ "compress=zstd" "noatime" ];
-                    };
-                  };
-                };
-              };
-            };
-        };
+  config = lib.mkIf cfg.enable (
+    let
+      # Derive partition paths from the disk device.
+      # nvme and mmcblk use "p" separator before partition number.
+      isNvmeStyle = builtins.match ".*(nvme|mmcblk).*" cfg.device != null;
+      bootPart    = if isNvmeStyle then "${cfg.device}p1" else "${cfg.device}1";
+      rootPart    = if isNvmeStyle then "${cfg.device}p2" else "${cfg.device}2";
+    in
+    {
+      # ── Boot partition (EFI / FAT32) ──────────────────────────────────────
+      # lib.mkDefault: hardware-configuration.nix overrides with UUID path.
+      fileSystems."/boot" = lib.mkDefault {
+        device  = bootPart;
+        fsType  = "vfat";
+        options = [ "fmask=0077" "dmask=0077" ];
       };
-    };
 
-    # disko generates fileSystems entries for /nix and /persistent but does
-    # not set neededForBoot.  impermanence requires neededForBoot = true on
-    # /persistent so that bind mounts are available during early userspace.
-    # /nix is also flagged so the Nix store is available before activation.
-    # lib.mkForce overrides the disko default (false) without causing a conflict.
-    fileSystems."/persistent".neededForBoot = lib.mkForce true;
-    fileSystems."/nix".neededForBoot        = lib.mkForce true;
+      # ── Nix store (persistent) ────────────────────────────────────────────
+      # Mounted from the @nix Btrfs subvolume on the root partition.
+      # neededForBoot = true: must be available before activation scripts run.
+      fileSystems."/nix" = lib.mkDefault {
+        device        = rootPart;
+        fsType        = "btrfs";
+        options       = [ "subvol=@nix" "compress=zstd" "noatime" ];
+        neededForBoot = true;
+      };
 
-    # Override filesystem device paths so disko's partlabel-based declarations
-    # take priority over any conflicting entries in hardware-configuration.nix.
-    # Required when hardware-configuration.nix was generated without --no-filesystems.
-    fileSystems."/boot".device = lib.mkForce "/dev/disk/by-partlabel/disk-main-ESP";
-    fileSystems."/nix".device = lib.mkForce (
-      if cfg.enableLuks
-      then "/dev/mapper/${cfg.luksName}"
-      else "/dev/disk/by-partlabel/disk-main-data"
-    );
-    fileSystems."/persistent".device = lib.mkForce (
-      if cfg.enableLuks
-      then "/dev/mapper/${cfg.luksName}"
-      else "/dev/disk/by-partlabel/disk-main-data"
-    );
-
-  };
+      # ── Persistent state ──────────────────────────────────────────────────
+      # Mounted from the @persist Btrfs subvolume on the root partition.
+      # neededForBoot = true: required by impermanence bind mounts.
+      fileSystems."/persistent" = lib.mkDefault {
+        device        = rootPart;
+        fsType        = "btrfs";
+        options       = [ "subvol=@persist" "compress=zstd" "noatime" ];
+        neededForBoot = true;
+      };
+    }
+  );
 }

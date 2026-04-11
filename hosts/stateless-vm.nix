@@ -13,7 +13,6 @@
   vexos.stateless.disk = {
     enable     = true;
     device     = "/dev/vda";
-    enableLuks = false;
   };
 
   networking.hostName = "vexos-stateless-vm";
