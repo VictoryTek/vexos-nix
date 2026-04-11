@@ -75,7 +75,7 @@ echo ""
 DISK=""
 while [ -z "$DISK" ]; do
   printf "Enter the disk device to install to (e.g. /dev/nvme0n1 or /dev/sda): "
-  read -r DISK_INPUT
+  read -r DISK_INPUT </dev/tty
   if [[ ! "$DISK_INPUT" =~ ^/dev/ ]]; then
     echo -e "${RED}Device must start with /dev/ — e.g. /dev/nvme0n1${RESET}"
     DISK=""
@@ -95,7 +95,7 @@ echo -e "${RED}${BOLD}  !! POINT OF NO RETURN !!${RESET}"
 echo -e "${YELLOW}  ALL DATA on ${DISK} will be permanently destroyed.${RESET}"
 echo ""
 printf "To confirm, type the device path again exactly: "
-read -r DISK_CONFIRM
+read -r DISK_CONFIRM </dev/tty
 if [ "$DISK_CONFIRM" != "$DISK" ]; then
   echo -e "${RED}Confirmation does not match. Aborting.${RESET}"
   exit 1
@@ -113,7 +113,7 @@ echo ""
 VARIANT=""
 while [ -z "$VARIANT" ]; do
   printf "Enter choice [1-4] or name (amd / nvidia / intel / vm): "
-  read -r INPUT
+  read -r INPUT </dev/tty
   case "${INPUT,,}" in
     1|amd)    VARIANT="amd"    ;;
     2|nvidia) VARIANT="nvidia" ;;
@@ -128,7 +128,7 @@ done
 # ---------- Prompt: hostname -------------------------------------------------
 echo ""
 printf "Enter hostname [vexos]: "
-read -r HOSTNAME_INPUT
+read -r HOSTNAME_INPUT </dev/tty
 HOSTNAME="${HOSTNAME_INPUT:-vexos}"
 
 # ---------- LUKS: always disabled -------------------------------------------
@@ -146,7 +146,7 @@ echo "  LUKS:       disabled (no encryption)"
 echo "  Flake target: vexos-stateless-${VARIANT}"
 echo ""
 printf "Proceed with installation? This will ERASE ${DISK}. [yes/N] "
-read -r PROCEED
+read -r PROCEED </dev/tty
 if [ "${PROCEED}" != "yes" ]; then
   echo "Aborting."
   exit 0
@@ -218,7 +218,7 @@ echo "  2. Remove the live ISO from your boot device."
 echo "  3. Reboot: sudo reboot"
 echo ""
 printf "Reboot now? [y/N] "
-read -r REBOOT_CHOICE
+read -r REBOOT_CHOICE </dev/tty
 case "${REBOOT_CHOICE,,}" in
   y|yes)
     echo "Rebooting..."

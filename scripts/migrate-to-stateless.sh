@@ -152,7 +152,7 @@ if $EXISTING_NIX || $EXISTING_PERSIST; then
   echo ""
   echo -e "${YELLOW}One or more target subvolumes already exist.${RESET}"
   printf "Continue anyway? Existing subvolumes will be SKIPPED. [yes/N] "
-  read -r CONTINUE_EXISTING
+  read -r CONTINUE_EXISTING </dev/tty
   if [ "${CONTINUE_EXISTING}" != "yes" ]; then
     echo "Aborting."
     exit 0
@@ -173,7 +173,7 @@ echo -e "${YELLOW}  A backup will be saved to: ${HW_CONFIG_BAK}${RESET}"
 echo ""
 
 printf "Proceed with migration? [yes/N] "
-read -r PROCEED
+read -r PROCEED </dev/tty
 if [ "${PROCEED}" != "yes" ]; then
   echo "Aborting."
   exit 0
@@ -301,7 +301,7 @@ echo ""
 VARIANT=""
 while [ -z "$VARIANT" ]; do
   printf "Enter choice [1-4] or name (amd / nvidia / intel / vm): "
-  read -r INPUT
+  read -r INPUT </dev/tty
   case "${INPUT,,}" in
     1|amd)    VARIANT="amd"    ;;
     2|nvidia) VARIANT="nvidia" ;;
@@ -316,7 +316,7 @@ done
 # ---------- Hostname prompt --------------------------------------------------
 echo ""
 printf "Enter hostname [vexos]: "
-read -r HOSTNAME_INPUT
+read -r HOSTNAME_INPUT </dev/tty
 HOSTNAME="${HOSTNAME_INPUT:-vexos}"
 
 # ---------- Summary before rebuild ------------------------------------------
@@ -326,7 +326,7 @@ echo "  Target: /etc/nixos#vexos-stateless-${VARIANT}"
 echo "  Hostname: ${HOSTNAME}"
 echo ""
 printf "Run nixos-rebuild switch now? [yes/N] "
-read -r DO_REBUILD
+read -r DO_REBUILD </dev/tty
 if [ "${DO_REBUILD}" != "yes" ]; then
   echo ""
   echo -e "${YELLOW}Skipping rebuild. Run manually when ready:${RESET}"
@@ -361,7 +361,7 @@ echo -e "${YELLOW}that space later by booting from a live ISO and deleting the r
 echo -e "${YELLOW}subvolume contents (keep only @nix and @persist).${RESET}"
 echo ""
 printf "Reboot now? [y/N] "
-read -r REBOOT_CHOICE
+read -r REBOOT_CHOICE </dev/tty
 case "${REBOOT_CHOICE,,}" in
   y|yes)
     echo "Rebooting..."
