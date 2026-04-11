@@ -72,9 +72,24 @@ while [ -z "$ROLE" ]; do
   esac
 done
 
-# ---------- GPU variant selection (desktop and stateless roles) ----------------
+# ---------- Stateless role: handled by its own script -----------------------
+if [ "$ROLE" = "stateless" ]; then
+  echo ""
+  echo -e "${YELLOW}The stateless role has its own setup script that handles disk preparation"
+  echo -e "and the rebuild in one step:${RESET}"
+  echo ""
+  echo "  From an existing NixOS install (no disk wipe):"
+  echo "    sudo bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/migrate-to-stateless.sh)"
+  echo ""
+  echo "  From the NixOS live ISO (erases disk):"
+  echo "    bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh)"
+  echo ""
+  exit 0
+fi
+
+# ---------- GPU variant selection --------------------------------------------
 VARIANT=""
-if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "stateless" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ]; then
+if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ]; then
   echo ""
   echo -e "${BOLD}Select your GPU variant:${RESET}"
   echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
@@ -99,21 +114,6 @@ if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "stateless" ] || [ "$ROLE" = "htpc" ] 
 fi
 
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}"
-
-# ---------- Stateless role: handled by its own script -----------------------
-if [ "$ROLE" = "stateless" ]; then
-  echo ""
-  echo -e "${YELLOW}The stateless role has its own setup script that handles disk preparation"
-  echo -e "and the rebuild in one step:${RESET}"
-  echo ""
-  echo "  From an existing NixOS install (no disk wipe):"
-  echo "    sudo bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/migrate-to-stateless.sh)"
-  echo ""
-  echo "  From the NixOS live ISO (erases disk):"
-  echo "    bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh)"
-  echo ""
-  exit 0
-fi
 
 # ---------- Build & switch ---------------------------------------------------
 echo ""

@@ -16,8 +16,8 @@
 #   disk       — block device path (string, e.g. "/dev/nvme0n1")
 #   enableLuks — whether to use LUKS2 encryption (bool, default false)
 #   luksName   — name of the LUKS device-mapper entry (string, default "cryptroot")
-#   diskoFile  — injected by disko 1.13+ (ignored, accepted for compatibility)
-{ disk ? "/dev/nvme0n1", enableLuks ? false, luksName ? "cryptroot", diskoFile ? null }:
+#   ...        — absorbs any extra arguments injected by disko (e.g. diskoFile, mode)
+{ disk ? "/dev/nvme0n1", enableLuks ? false, luksName ? "cryptroot", ... }:
 {
   disko.devices = {
     disk.main = {
