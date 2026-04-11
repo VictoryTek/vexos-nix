@@ -100,26 +100,19 @@ fi
 
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}"
 
-# ---------- Stateless role: first-time install notice -------------------------
+# ---------- Stateless role: handled by its own script -----------------------
 if [ "$ROLE" = "stateless" ]; then
   echo ""
-  echo -e "${YELLOW}${BOLD}NOTE: Stateless role — getting started${RESET}"
+  echo -e "${YELLOW}The stateless role has its own setup script that handles disk preparation"
+  echo -e "and the rebuild in one step:${RESET}"
   echo ""
-  echo "  Two setup paths are available:"
+  echo "  From an existing NixOS install (no disk wipe):"
+  echo "    sudo bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/migrate-to-stateless.sh)"
   echo ""
-  echo "  1) EXISTING NixOS install (recommended) — migrate in-place:"
-  echo "       sudo bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/migrate-to-stateless.sh)"
-  echo "     Creates Btrfs @nix/@persist subvolumes, updates hardware-configuration.nix,"
-  echo "     and runs nixos-rebuild switch automatically. No disk wipe required."
+  echo "  From the NixOS live ISO (erases disk):"
+  echo "    bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh)"
   echo ""
-  echo "  2) FRESH install from the NixOS live ISO:"
-  echo "       bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh)"
-  echo "     Partitions the disk (FAT32 /boot + Btrfs root), generates hardware"
-  echo "     config, and runs nixos-install. All data on the target disk will be erased."
-  echo ""
-  echo "  install.sh handles REBUILDS on an already-running vexos-stateless system."
-  echo "  Press Enter to continue with rebuild, or Ctrl+C to abort."
-  read -r _
+  exit 0
 fi
 
 # ---------- Build & switch ---------------------------------------------------
