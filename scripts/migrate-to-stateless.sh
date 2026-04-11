@@ -4,6 +4,8 @@
 # Repository: https://github.com/VictoryTek/vexos-nix
 #
 # Usage (run on an existing NixOS system — NOT from the live ISO):
+#   curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/migrate-to-stateless.sh | sudo bash
+# Or, if you have the repo cloned:
 #   sudo bash scripts/migrate-to-stateless.sh
 #
 # What this script does:

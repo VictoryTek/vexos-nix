@@ -21,7 +21,7 @@ sudo curl -fsSL -o /etc/nixos/flake.nix \
 **3. Apply your role and GPU variant**
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh)
+curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh | bash
 ```
 
 The script asks which role (desktop or stateless) and which GPU variant to install (AMD, NVIDIA, Intel, or VM), runs the build, and offers to reboot when complete. After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild — the `#target` is never needed again.
@@ -55,6 +55,16 @@ The running config writes `/etc/nixos/vexos-variant` (a one-word file, e.g. `vex
 | `vexos-stateless-nvidia` | NVIDIA GPU, minimal stack |
 | `vexos-stateless-intel` | Intel iGPU or Arc dGPU, minimal stack |
 | `vexos-stateless-vm` | QEMU/KVM or VirtualBox guest, minimal stack |
+
+#### Migrating an existing install to stateless
+
+Run this **on your installed system** (not from a live ISO). It creates `@nix` and `@persist` Btrfs subvolumes inside your existing root partition without repartitioning, then rewrites `hardware-configuration.nix` to mount them.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/migrate-to-stateless.sh | sudo bash
+```
+
+> **Note:** `sudo bash <(curl ...)` will fail in `nix-shell` and other environments where `/dev/fd` is not mounted. Use the pipe form above.
 
 ### Server role — GUI service stack
 

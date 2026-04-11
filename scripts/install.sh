@@ -4,7 +4,7 @@
 # Repository: https://github.com/VictoryTek/vexos-nix
 #
 # Usage (one-liner, recommended):
-#   bash <(curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh)
+#   curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh | bash
 #
 # Or clone first and run locally:
 #   bash scripts/install.sh
