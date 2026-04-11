@@ -187,6 +187,16 @@ echo -e "${BOLD}Downloading vexos-nix template flake to /mnt/etc/nixos/...${RESE
 sudo curl -fsSL "${TEMPLATE_URL}" -o /mnt/etc/nixos/flake.nix
 echo -e "${GREEN}✓ /mnt/etc/nixos/flake.nix downloaded.${RESET}"
 
+# ---------- Git-track the flake so Nix uses git+file: not path:+narHash ------
+# Without git tracking, `nixos-install` locks /mnt/etc/nixos as a path: flake
+# with a narHash.  Writing the lock file then changes the directory content,
+# which causes a Nix assertion failure (narHash mismatch).  Initialising a git
+# repo and staging all files makes Nix use git+file: instead, which is stable.
+echo ""
+echo -e "${BOLD}Initialising git repo in /mnt/etc/nixos to stabilise flake identity...${RESET}"
+sudo git -C /mnt/etc/nixos init -q
+sudo git -C /mnt/etc/nixos add .
+
 # ---------- Run nixos-install ------------------------------------------------
 FLAKE_TARGET="vexos-stateless-${VARIANT}"
 echo ""
