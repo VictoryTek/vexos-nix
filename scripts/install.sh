@@ -60,7 +60,7 @@ echo ""
 ROLE=""
 while [ -z "$ROLE" ]; do
   printf "Enter choice [1-4] or name (desktop / stateless / htpc / server): "
-  read -r INPUT
+  read -r INPUT </dev/tty
   case "${INPUT,,}" in
     1|desktop) ROLE="desktop" ;;
     2|stateless) ROLE="stateless" ;;
@@ -104,7 +104,7 @@ if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ]; th
 
   while [ -z "$VARIANT" ]; do
     printf "Enter choice [1-4] or name (amd / nvidia / intel / vm): "
-    read -r INPUT
+    read -r INPUT </dev/tty
     case "${INPUT,,}" in          # ${var,,} = lowercase (bash 4+)
       1|amd)    VARIANT="amd"    ;;
       2|nvidia) VARIANT="nvidia" ;;
@@ -129,7 +129,7 @@ if sudo nixos-rebuild switch --flake "/etc/nixos#${FLAKE_TARGET}"; then
   echo -e "${GREEN}${BOLD}✓ Build and switch successful!${RESET}"
   echo ""
   printf "Reboot now? [y/N] "
-  read -r REBOOT_CHOICE
+  read -r REBOOT_CHOICE </dev/tty
   case "${REBOOT_CHOICE,,}" in
     y|yes)
       echo "Rebooting..."
