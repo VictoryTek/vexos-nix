@@ -31,6 +31,12 @@
 
   networking.firewall.allowedTCPPorts = [ 22 ];
 
+  # ── Tailscale ─────────────────────────────────────────────────────────────
+  services.tailscale = {
+    enable = true;
+    openFirewall = true;   # opens UDP 41641 (WireGuard/Tailscale data plane)
+  };
+
   # ── DNS resolver ──────────────────────────────────────────────────────────
   services.resolved = {
     enable      = true;
