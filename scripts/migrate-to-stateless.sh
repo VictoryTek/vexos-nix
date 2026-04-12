@@ -209,19 +209,9 @@ else
   echo -e "${YELLOW}Skipping @persist creation (already exists).${RESET}"
 fi
 
-# ---------- Reflink copy /nix → @nix -----------------------------------------
-if ! $EXISTING_NIX; then
-  echo ""
-  echo -e "${BOLD}Copying /nix to @nix subvolume (Btrfs reflink — instant copy-on-write)...${RESET}"
-  echo -e "${CYAN}  This does not duplicate data on disk — it shares blocks until modified.${RESET}"
-  cp -a --reflink=always /nix/. "${BTRFS_MOUNT}/@nix/"
-  echo -e "${GREEN}  ✓ /nix copied to @nix${RESET}"
-else
-  echo ""
-  echo -e "${YELLOW}Skipping /nix copy — @nix already existed.${RESET}"
-fi
-
 # ---------- Unmount raw Btrfs ------------------------------------------------
+# Note: /nix is copied to @nix AFTER nixos-rebuild switch (below), so that
+# the newly built stateless closure is included in the snapshot.
 echo ""
 echo -e "${BOLD}Unmounting raw Btrfs...${RESET}"
 umount "${BTRFS_MOUNT}"
@@ -341,6 +331,22 @@ echo -e "${BOLD}Running nixos-rebuild switch...${RESET}"
 echo -e "${YELLOW}This may take a while on first run.${RESET}"
 echo ""
 nixos-rebuild switch --flake "/etc/nixos#vexos-stateless-${VARIANT}"
+
+# ---------- Sync /nix → @nix (after rebuild, captures new closure) -----------
+# This MUST happen after nixos-rebuild so the stateless-vm system closure
+# (and any other newly built packages) are present in @nix before reboot.
+# Without this, /nix after reboot would be missing the stateless generation
+# and systemd would fail to spawn every service executor.
+echo ""
+echo -e "${BOLD}Syncing /nix into @nix subvolume (capturing newly built closure)...${RESET}"
+echo -e "${CYAN}  Btrfs reflink — unchanged blocks are shared, only new data is written.${RESET}"
+mkdir -p "${BTRFS_MOUNT}"
+mount -o subvolid=5 "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}" 2>/dev/null || \
+  mount "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}"
+cp -a --reflink=always /nix/. "${BTRFS_MOUNT}/@nix/"
+umount "${BTRFS_MOUNT}"
+rmdir "${BTRFS_MOUNT}" 2>/dev/null || true
+echo -e "${GREEN}  ✓ /nix synced to @nix${RESET}"
 
 # ---------- Completion -------------------------------------------------------
 echo ""
