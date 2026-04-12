@@ -1,7 +1,7 @@
 # hosts/htpc-vm.nix
 # vexos — HTPC VM guest build (QEMU/KVM + VirtualBox).
 # Rebuild: sudo nixos-rebuild switch --flake .#vexos-htpc-vm
-{ ... }:
+{ lib, ... }:
 {
   imports = [
     ../configuration-htpc.nix
