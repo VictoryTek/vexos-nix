@@ -13,7 +13,7 @@
   ];
 
   # ---------- Bootloader ----------
-  networking.hostName = lib.mkDefault "vexos-htpc";
+  networking.hostName = lib.mkDefault "vexos";
 
   # ---------- Time / Locale ----------
   time.timeZone = "America/Chicago";
@@ -45,6 +45,25 @@
     cores = 0;
     min-free = 1073741824;   # 1 GiB
     max-free = 5368709120;   # 5 GiB
+
+    download-buffer-size = 524288000; # 500 MiB
+
+    keep-outputs = false;
+    keep-derivations = false;
+  };
+
+  nix.daemonCPUSchedPolicy = "idle";
+  nix.daemonIOSchedClass = "idle";
+
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 7d";
+  };
+
+  nix.optimise = {
+    automatic = true;
+    dates = [ "weekly" ];
   };
 
   # ---------- Nixpkgs ----------

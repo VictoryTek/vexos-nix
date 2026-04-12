@@ -15,7 +15,7 @@
     device     = "/dev/vda";
   };
 
-  networking.hostName = "vexos-stateless-vm";
+  networking.hostName = lib.mkDefault "vexos";
 
   system.nixos.distroName = "VexOS Stateless VM";
 }

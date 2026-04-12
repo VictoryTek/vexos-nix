@@ -147,15 +147,15 @@ in
       ${pkgs.gnused}/bin/sed -i 's/ (Linux [0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*)//' "$f"
       # Normalise outer title label to the current host distroName (fixes old
       # entries that were built before per-host distroName was set).
-      # Matches "title VexOS Desktop <anything-not-a-paren>(Generation" and
+      # Matches "title VexOS <Role> <anything-not-a-paren>(Generation" and
       # replaces the outer label with the current host's distroName.
-      ${pkgs.gnused}/bin/sed -i 's/^title VexOS Desktop[^(]*(Generation/title ${config.system.nixos.distroName} (Generation/' "$f"
-      # Remove redundant "VexOS Desktop <Variant>" from inside generation parens
+      ${pkgs.gnused}/bin/sed -i 's/^title VexOS [^(]*(Generation/title ${config.system.nixos.distroName} (Generation/' "$f"
+      # Remove redundant "VexOS <Role> <Variant>" from inside generation parens
       # (new format — distroName includes the variant, e.g. "VexOS Desktop VM").
-      ${pkgs.gnused}/bin/sed -i -E 's/\(Generation ([0-9]+) VexOS Desktop (AMD|NVIDIA|Intel|VM) ([A-Za-z]+ [0-9]+\.[0-9]+)\)/(Generation \1 \3)/' "$f"
-      # Remove redundant "VexOS Desktop" from inside generation parens
+      ${pkgs.gnused}/bin/sed -i -E 's/\(Generation ([0-9]+) VexOS [A-Za-z]+ (AMD|NVIDIA|Intel|VM) ([A-Za-z]+ [0-9]+\.[0-9]+)\)/(Generation \1 \3)/' "$f"
+      # Remove redundant "VexOS <Role>" from inside generation parens
       # (old format — no variant suffix in the inner label).
-      ${pkgs.gnused}/bin/sed -i -E 's/\(Generation ([0-9]+) VexOS Desktop ([A-Za-z]+ [0-9]+\.[0-9]+)\)/(Generation \1 \2)/' "$f"
+      ${pkgs.gnused}/bin/sed -i -E 's/\(Generation ([0-9]+) VexOS [A-Za-z]+ ([A-Za-z]+ [0-9]+\.[0-9]+)\)/(Generation \1 \2)/' "$f"
     done
   '';
 }
