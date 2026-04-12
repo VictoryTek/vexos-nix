@@ -66,21 +66,21 @@ switch role="" variant="":
     echo ""
     echo "Switching to: ${TARGET}"
     echo ""
-    sudo nixos-rebuild switch --flake /etc/nixos#"${TARGET}"
+    sudo nixos-rebuild switch --flake "{{justfile_directory()}}"#"${TARGET}"
 
 # Dry-run build without switching — useful for testing config changes.
 # Example: just build desktop amd
 build role variant:
-    sudo nixos-rebuild build --flake /etc/nixos#vexos-{{role}}-{{variant}}
+    sudo nixos-rebuild build --flake "{{justfile_directory()}}"#vexos-{{role}}-{{variant}}
 
 # Update all flake inputs, then rebuild and switch using the current variant.
 update:
     #!/usr/bin/env bash
     set -euo pipefail
     target=$(cat /etc/nixos/vexos-variant 2>/dev/null) || { echo "error: /etc/nixos/vexos-variant not found — run a build first"; exit 1; }
-    cd /etc/nixos
-    sudo nix flake update
-    sudo nixos-rebuild switch --flake /etc/nixos#"${target}"
+    cd "{{justfile_directory()}}"
+    nix flake update
+    sudo nixos-rebuild switch --flake "{{justfile_directory()}}"#"${target}"
 
 # Roll back to the previous NixOS generation and set it as the boot default.
 rollback:
