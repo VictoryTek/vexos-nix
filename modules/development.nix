@@ -14,7 +14,7 @@
   environment.systemPackages = with pkgs; [
 
     # ── Editor ────────────────────────────────────────────────────────────────
-    vscode                                        # Visual Studio Code
+    unstable.vscode                               # Visual Studio Code (unstable channel)
 
     # ── Python ────────────────────────────────────────────────────────────────
     python3                                       # CPython interpreter
