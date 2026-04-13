@@ -112,6 +112,12 @@
     # Stateless role: minimal stack (no gaming/dev/virt/ASUS modules).
     mkStatelessVariant = _mkVariantWith vexos-nix.nixosModules.statelessBase;
 
+    # HTPC role: media-centre stack.
+    mkHtpcVariant = _mkVariantWith vexos-nix.nixosModules.htpcBase;
+
+    # Server role: headless stack.
+    mkServerVariant = _mkVariantWith vexos-nix.nixosModules.serverBase;
+
   in
   {
     nixosConfigurations = {
@@ -126,6 +132,18 @@
       vexos-stateless-nvidia = mkStatelessVariant "vexos-stateless-nvidia" vexos-nix.nixosModules.gpuNvidia;
       vexos-stateless-intel  = mkStatelessVariant "vexos-stateless-intel"  vexos-nix.nixosModules.gpuIntel;
       vexos-stateless-vm     = mkStatelessVariant "vexos-stateless-vm"    vexos-nix.nixosModules.statelessGpuVm;
+
+      # ── HTPC role — media-centre stack ──────────────────────────────────
+      vexos-htpc-amd    = mkHtpcVariant "vexos-htpc-amd"    vexos-nix.nixosModules.gpuAmd;
+      vexos-htpc-nvidia = mkHtpcVariant "vexos-htpc-nvidia" vexos-nix.nixosModules.gpuNvidia;
+      vexos-htpc-intel  = mkHtpcVariant "vexos-htpc-intel"  vexos-nix.nixosModules.gpuIntel;
+      vexos-htpc-vm     = mkHtpcVariant "vexos-htpc-vm"     vexos-nix.nixosModules.gpuVm;
+
+      # ── Server role — headless stack ─────────────────────────────────────
+      vexos-server-amd    = mkServerVariant "vexos-server-amd"    vexos-nix.nixosModules.gpuAmd;
+      vexos-server-nvidia = mkServerVariant "vexos-server-nvidia" vexos-nix.nixosModules.gpuNvidia;
+      vexos-server-intel  = mkServerVariant "vexos-server-intel"  vexos-nix.nixosModules.gpuIntel;
+      vexos-server-vm     = mkServerVariant "vexos-server-vm"     vexos-nix.nixosModules.gpuVm;
     };
   };
 }

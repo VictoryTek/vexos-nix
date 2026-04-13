@@ -311,6 +311,34 @@
         vexos.stateless.disk.device = lib.mkForce "/dev/vda";
       };
       asus      = ./modules/asus.nix;
+
+      # HTPC stack: media-centre focused, no gaming/development/virtualization.
+      htpcBase = { ... }: {
+        imports = [ ./configuration-htpc.nix ];
+        nixpkgs.overlays = [
+          (final: prev: {
+            unstable = import nixpkgs-unstable {
+              inherit (final) config;
+              inherit (final.stdenv.hostPlatform) system;
+            };
+          })
+        ];
+        environment.systemPackages = [ up.packages.x86_64-linux.default ];
+      };
+
+      # Server stack: headless, no gaming/development/virtualization.
+      serverBase = { ... }: {
+        imports = [ ./configuration-server.nix ];
+        nixpkgs.overlays = [
+          (final: prev: {
+            unstable = import nixpkgs-unstable {
+              inherit (final) config;
+              inherit (final.stdenv.hostPlatform) system;
+            };
+          })
+        ];
+        environment.systemPackages = [ up.packages.x86_64-linux.default ];
+      };
     };
   };
 }
