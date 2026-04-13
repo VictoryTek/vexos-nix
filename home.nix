@@ -77,12 +77,19 @@
   xdg.configFile."starship.toml".source = ./files/starship.toml;
 
   # ── Just ───────────────────────────────────────────────────────────────────
-  # Point just at the repo justfile so 'just' works from any directory.
-  # JUST_WORKING_DIRECTORY ensures {{justfile_directory()}} resolves correctly.
-  home.sessionVariables = {
-    JUST_JUSTFILE          = "/home/nimda/Projects/vexos-nix/justfile";
-    JUST_WORKING_DIRECTORY = "/home/nimda/Projects/vexos-nix";
-  };
+  # Detect the vexos-nix repo location at shell startup and point just at it
+  # so 'just' works from any directory.  Checks ~/Projects/vexos-nix first
+  # (developer clone), then /etc/nixos (default install.sh path).
+  programs.bash.initExtra = ''
+    for _vexos_dir in "$HOME/Projects/vexos-nix" /etc/nixos; do
+      if [ -f "$_vexos_dir/justfile" ]; then
+        export JUST_JUSTFILE="$_vexos_dir/justfile"
+        export JUST_WORKING_DIRECTORY="$_vexos_dir"
+        break
+      fi
+    done
+    unset _vexos_dir
+  '';
 
   # ── Hidden app grid entries ────────────────────────────────────────────────
   # These packages cannot be safely removed (they are required dependencies),
