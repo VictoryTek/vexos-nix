@@ -66,21 +66,46 @@ switch role="" variant="":
     echo ""
     echo "Switching to: ${TARGET}"
     echo ""
-    sudo nixos-rebuild switch --flake "{{justfile_directory()}}"#"${TARGET}"
+    # Resolve the flake root: follow symlinks on the justfile itself, then
+    # fall back to known install locations if flake.nix is not found there.
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    _jf_dir=$(dirname "$_jf_real")
+    if [ ! -f "$_jf_dir/flake.nix" ]; then
+        for _d in /etc/nixos "$HOME/Projects/vexos-nix"; do
+            if [ -f "$_d/flake.nix" ]; then _jf_dir="$_d"; break; fi
+        done
+    fi
+    sudo nixos-rebuild switch --flake "$_jf_dir"#"${TARGET}"
 
 # Dry-run build without switching — useful for testing config changes.
 # Example: just build desktop amd
 build role variant:
-    sudo nixos-rebuild build --flake "{{justfile_directory()}}"#vexos-{{role}}-{{variant}}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    _jf_dir=$(dirname "$_jf_real")
+    if [ ! -f "$_jf_dir/flake.nix" ]; then
+        for _d in /etc/nixos "$HOME/Projects/vexos-nix"; do
+            if [ -f "$_d/flake.nix" ]; then _jf_dir="$_d"; break; fi
+        done
+    fi
+    sudo nixos-rebuild build --flake "$_jf_dir"#vexos-{{role}}-{{variant}}
 
 # Update all flake inputs, then rebuild and switch using the current variant.
 update:
     #!/usr/bin/env bash
     set -euo pipefail
     target=$(cat /etc/nixos/vexos-variant 2>/dev/null) || { echo "error: /etc/nixos/vexos-variant not found — run a build first"; exit 1; }
-    cd "{{justfile_directory()}}"
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    _jf_dir=$(dirname "$_jf_real")
+    if [ ! -f "$_jf_dir/flake.nix" ]; then
+        for _d in /etc/nixos "$HOME/Projects/vexos-nix"; do
+            if [ -f "$_d/flake.nix" ]; then _jf_dir="$_d"; break; fi
+        done
+    fi
+    cd "$_jf_dir"
     nix flake update
-    sudo nixos-rebuild switch --flake "{{justfile_directory()}}"#"${target}"
+    sudo nixos-rebuild switch --flake "$_jf_dir"#"${target}"
 
 # Roll back to the previous NixOS generation and set it as the boot default.
 rollback:
