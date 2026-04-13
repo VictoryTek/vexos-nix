@@ -76,10 +76,13 @@
 
   xdg.configFile."starship.toml".source = ./files/starship.toml;
 
-  # ── Justfile ───────────────────────────────────────────────────────────────
-  # Deploy the repo's justfile to ~/justfile so 'just' works from home dir
-  # on all variants (including VM).
-  home.file."justfile".source = ./justfile;
+  # ── Just ───────────────────────────────────────────────────────────────────
+  # Point just at the repo justfile so 'just' works from any directory.
+  # JUST_WORKING_DIRECTORY ensures {{justfile_directory()}} resolves correctly.
+  home.sessionVariables = {
+    JUST_JUSTFILE          = "/home/nimda/Projects/vexos-nix/justfile";
+    JUST_WORKING_DIRECTORY = "/home/nimda/Projects/vexos-nix";
+  };
 
   # ── Hidden app grid entries ────────────────────────────────────────────────
   # These packages cannot be safely removed (they are required dependencies),
