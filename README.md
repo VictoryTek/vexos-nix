@@ -94,9 +94,31 @@ sudo nixos-rebuild switch --flake /etc/nixos#vexos-server-amd
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-amd
 ```
 
+Or use `just switch`, which now resolves a flake path that actually contains the requested target (for example `vexos-htpc-vm`) while keeping the same role/variant prompts:
+
+```bash
+# Interactive role/variant selection
+just switch
+
+# Direct role/variant selection
+just switch htpc vm
+
+# Explicit flake override (optional)
+just switch htpc vm /path/to/flake
+```
+
+`just switch` and `just build` are intended for Linux hosts with both `nix` and `sudo` available; on unsupported environments they now fail early with explicit guidance.
+
 Replace the target with whichever variant matches your hardware and desired role (see the [Variants](#variants) table above). The `/etc/nixos/vexos-variant` file is updated automatically so vexos-updater and future updates use the new target going forward.
 
 > **Switching GPU drivers?** A reboot is recommended after switching between AMD, NVIDIA, and Intel variants so the kernel modules load cleanly.
+
+If `/etc/nixos/flake.nix` is stale or missing targets, check both flake outputs:
+
+```bash
+nix flake show /etc/nixos
+nix flake show /path/to/repo
+```
 
 ## Updating to the latest config
 
