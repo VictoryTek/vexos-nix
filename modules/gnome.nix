@@ -87,7 +87,14 @@
 
   # ── Ozone Wayland ─────────────────────────────────────────────────────────
   # Makes Electron/Chromium-based apps use native Wayland rendering.
-  environment.sessionVariables.NIXOS_OZONE_WL = "1";
+  # NIXOS_OZONE_WL: nixpkgs wrapper adds --ozone-platform=wayland to Electron args.
+  # ELECTRON_OZONE_PLATFORM_HINT: Electron 28+ (VS Code 1.87+) requires this to
+  # auto-detect the Wayland backend inside the buildFHSEnvBubblewrap sandbox used
+  # by vscode-fhs; without it the app silently exits on Wayland sessions.
+  environment.sessionVariables = {
+    NIXOS_OZONE_WL             = "1";
+    ELECTRON_OZONE_PLATFORM_HINT = "auto";
+  };
 
   # ── GNOME bloat reduction ─────────────────────────────────────────────────
   environment.gnome.excludePackages = with pkgs; [
