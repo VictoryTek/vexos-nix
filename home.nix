@@ -16,7 +16,8 @@
   # ── User packages ──────────────────────────────────────────────────────────
   home.packages = with pkgs; [
     # Development tools
-    vscode
+    # NOTE: VS Code is installed as unstable.vscode-fhs in modules/development.nix
+    # (FHS env required for VS Code to launch correctly on NixOS).
     rustup
     unstable.nodejs_25  # pinned to unstable for latest LTS
 
