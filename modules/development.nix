@@ -14,7 +14,7 @@
   environment.systemPackages = with pkgs; [
 
     # ── Editor ────────────────────────────────────────────────────────────────
-    unstable.vscode                               # Visual Studio Code (unstable channel)
+    unstable.vscode-fhs                           # VS Code in FHS env (fixes launch on NixOS)
 
     # ── Python ────────────────────────────────────────────────────────────────
     python3                                       # CPython interpreter
