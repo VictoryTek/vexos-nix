@@ -73,6 +73,22 @@
   # Set once at install time — do not change after initial deployment.
   system.stateVersion = "25.11";
 
+  # ---------- Branding ----------
+  # Override branding.nix's lib.mkDefault "VexOS Desktop" (priority 1000).
+  # Using mkOverride 500 so host files can still use plain assignments (priority 100)
+  # to set more specific names like "VexOS HTPC AMD" when needed.
+  system.nixos.distroName = lib.mkOverride 500 "VexOS HTPC";
+
+  # ---------- Icons ----------
+  # Install Kora icon theme system-wide and set it as the default via a
+  # system-level dconf database so GNOME picks it up without home-manager.
+  environment.systemPackages = [ pkgs.kora-icon-theme ];
+  programs.dconf.profiles.user.databases = [
+    {
+      settings."org/gnome/desktop/interface".icon-theme = "kora";
+    }
+  ];
+
   # ---------- HTPC role placeholder ----------
   # This configuration is intentionally minimal. Add media centre services,
   # codec support, remote control input, and display configuration here
