@@ -12,77 +12,25 @@ on:
   pull_request:
     branches: [ main ]
 
+# Cancel any in-progress run for the same branch when a new push arrives.
+# Prevents multiple long-running eval jobs queuing up behind each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   actions: write   # Required by cache-nix-action to save Nix store cache
 
 jobs:
-  flake-check:
-    name: Evaluate all NixOS configurations
+  # ── Static checks (no Nix required — fast) ─────────────────────────────────
+  lint:
+    name: Static checks
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     steps:
-      - name: Free disk space
-        # GitHub's ubuntu-latest runners ship with ~14 GB free; evaluating
-        # all nixpkgs-backed configurations quickly exhausts it.  Remove large
-        # pre-installed toolchains that are unused by this job.
-        run: |
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /usr/local/.ghcup \
-            /opt/hostedtoolcache/CodeQL \
-            "$AGENT_TOOLSDIRECTORY" || true
-          df -h /
-
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
-        with:
-          # Supplies GITHUB_TOKEN to the Nix daemon to avoid API rate limits
-          # when fetching flake inputs (nixpkgs, nix-gaming, home-manager, etc.)
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Cache Nix store
-        uses: nix-community/cache-nix-action@v6
-        with:
-          # Key includes flake.lock hash — cache is invalidated on any input change
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
-          # Fall back to any previous cache for this OS to get a warm store
-          restore-prefixes-first-match: nix-${{ runner.os }}-
-          # Cap store size before saving to stay within GitHub's 10 GiB cache limit
-          gc-max-store-size-linux: 8589934592  # 8 GiB
-
-      - name: Create stub hardware-configuration.nix for CI
-        run: |
-          # This stub satisfies the flake's commonModules import of
-          # /etc/nixos/hardware-configuration.nix without asserting any
-          # hardware config.  It is NOT deployed to any host.
-          sudo mkdir -p /etc/nixos
-          sudo tee /etc/nixos/hardware-configuration.nix << 'EOF'
-          { lib, ... }:
-          {
-            # CI stub — satisfies NixOS assertions for non-hardware builds
-            # Uses lib.mkDefault so module-defined options always win
-            fileSystems."/" = {
-              device = lib.mkDefault "/dev/sda1";
-              fsType = lib.mkDefault "ext4";
-            };
-            boot.loader.grub.device = lib.mkDefault "/dev/sda";
-          }
-          EOF
-
-      - name: nix flake check — evaluate all configurations (no build)
-        # --no-build: evaluate derivations without building packages
-        # --impure:   allow access to /etc/nixos/hardware-configuration.nix
-        # --show-trace is intentionally omitted: it produces traces so large
-        # that GitHub Actions truncates them before the actual error is visible.
-        # timeout 25m: hard-kill nix if it hangs, producing a clean failure
-        # instead of silently blocking until the job timeout kills the runner.
-        run: timeout 25m nix flake check --no-build --impure
 
       - name: Verify hardware-configuration.nix is not tracked in git
         run: |
@@ -99,3 +47,113 @@ jobs:
             exit 1
           fi
           echo "PASS: system.stateVersion is present"
+
+  # ── Parallel config evaluation (4 groups × ~5 min each) ────────────────────
+  # Each group runs on its own runner in parallel instead of all 22 configs
+  # running sequentially on one runner for 20+ minutes.
+  # nix eval ... .drvPath forces full evaluation (including all NixOS assertions)
+  # without building any packages — equivalent to nix flake check --no-build.
+  evaluate:
+    name: Evaluate ${{ matrix.group }} configs
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false   # Run all groups even if one fails
+      matrix:
+        include:
+          - group: desktop
+            configs: >-
+              vexos-desktop-amd
+              vexos-desktop-nvidia
+              vexos-desktop-nvidia-legacy535
+              vexos-desktop-nvidia-legacy470
+              vexos-desktop-vm
+              vexos-desktop-intel
+          - group: stateless
+            configs: >-
+              vexos-stateless-amd
+              vexos-stateless-nvidia
+              vexos-stateless-nvidia-legacy535
+              vexos-stateless-nvidia-legacy470
+              vexos-stateless-intel
+              vexos-stateless-vm
+          - group: server
+            configs: >-
+              vexos-server-amd
+              vexos-server-nvidia
+              vexos-server-intel
+              vexos-server-vm
+          - group: htpc
+            configs: >-
+              vexos-htpc-amd
+              vexos-htpc-nvidia
+              vexos-htpc-nvidia-legacy535
+              vexos-htpc-nvidia-legacy470
+              vexos-htpc-intel
+              vexos-htpc-vm
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL \
+            "$AGENT_TOOLSDIRECTORY" || true
+          df -h /
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cache Nix store
+        uses: nix-community/cache-nix-action@v6
+        with:
+          # Per-group primary key; restore-prefix falls back to any warmed cache
+          # from a prior run of any group — nixpkgs store paths are shared.
+          primary-key: nix-${{ runner.os }}-${{ matrix.group }}-${{ hashFiles('flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          gc-max-store-size-linux: 8589934592  # 8 GiB
+
+      - name: Create stub hardware-configuration.nix for CI
+        run: |
+          sudo mkdir -p /etc/nixos
+          sudo tee /etc/nixos/hardware-configuration.nix << 'EOF'
+          { lib, ... }:
+          {
+            fileSystems."/" = {
+              device = lib.mkDefault "/dev/sda1";
+              fsType = lib.mkDefault "ext4";
+            };
+            boot.loader.grub.device = lib.mkDefault "/dev/sda";
+          }
+          EOF
+
+      - name: Evaluate ${{ matrix.group }} configurations
+        # Evaluate each config's system derivation path — forces full Nix
+        # evaluation including all module assertions without building packages.
+        # Per-config timeout of 8 minutes ensures a hung eval fails cleanly.
+        run: |
+          failed=()
+          for config in ${{ matrix.configs }}; do
+            echo "::group::${config}"
+            if timeout 8m nix eval --impure \
+                ".#nixosConfigurations.${config}.config.system.build.toplevel.drvPath" \
+                > /dev/null; then
+              echo "PASS: ${config}"
+            else
+              echo "FAIL: ${config}"
+              failed+=("${config}")
+            fi
+            echo "::endgroup::"
+          done
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "Failed: ${failed[*]}"
+            exit 1
+          fi
