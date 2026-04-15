@@ -19,8 +19,22 @@ jobs:
   flake-check:
     name: Evaluate all NixOS configurations
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
     steps:
+      - name: Free disk space
+        # GitHub's ubuntu-latest runners ship with ~14 GB free; evaluating
+        # all nixpkgs-backed configurations quickly exhausts it.  Remove large
+        # pre-installed toolchains that are unused by this job.
+        run: |
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL \
+            "$AGENT_TOOLSDIRECTORY" || true
+          df -h /
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
