@@ -8,7 +8,7 @@
 #   "legacy_535" — 535.x LTS branch; proprietary modules; open = false.
 #                  Optional LTS alternative for Maxwell/Pascal/Volta. NOT architecturally required.
 #   "legacy_470" — Kepler (GeForce 600 / 700 series)
-#   "legacy_390" — Fermi  (GeForce 400 / 500 series)
+#   (legacy_390 / Fermi is broken in current nixpkgs and has been removed)
 { config, pkgs, lib, ... }:
 
 let
@@ -19,8 +19,7 @@ let
     if variant == "latest"          then config.boot.kernelPackages.nvidiaPackages.stable
     else if variant == "legacy_535" then config.boot.kernelPackages.nvidiaPackages.legacy_535
     else if variant == "legacy_470" then config.boot.kernelPackages.nvidiaPackages.legacy_470
-    else if variant == "legacy_390" then config.boot.kernelPackages.nvidiaPackages.legacy_390
-    else abort "vexos.gpu.nvidiaDriverVariant: unknown value '${variant}'";
+    else abort "vexos.gpu.nvidiaDriverVariant: unknown value '${variant}'";  # legacy_390 (Fermi) is broken in nixpkgs
 
   # Open kernel modules require Turing (RTX 20xx / GTX 16xx) or newer.
   # All legacy variants must use proprietary closed modules.
@@ -29,7 +28,7 @@ let
 in
 {
   options.vexos.gpu.nvidiaDriverVariant = lib.mkOption {
-    type = lib.types.enum [ "latest" "legacy_535" "legacy_470" "legacy_390" ];
+    type = lib.types.enum [ "latest" "legacy_535" "legacy_470" ];
     default = "latest";
     description = ''
       NVIDIA driver branch to use. Choose based on your GPU generation:
@@ -42,8 +41,7 @@ in
                        These GPUs work equally well with "latest"; this variant is NOT required.
         "legacy_470" — 470.x branch; proprietary modules required.
                        Use for Kepler GPUs: GeForce 600 and 700 series.
-        "legacy_390" — 390.x branch; proprietary modules required.
-                       Use for Fermi GPUs: GeForce 400 and 500 series.
+                       (legacy_390 / Fermi is broken in current nixpkgs and is not supported)
     '';
   };
 

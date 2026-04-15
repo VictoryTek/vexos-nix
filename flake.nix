@@ -122,17 +122,6 @@
       specialArgs = { inherit inputs; };
     };
 
-    # ── NVIDIA GPU build — Fermi legacy (GeForce 400/500 series) ─────────────
-    # sudo nixos-rebuild switch --flake .#vexos-desktop-nvidia-legacy390
-    nixosConfigurations.vexos-desktop-nvidia-legacy390 = nixpkgs.lib.nixosSystem {
-      inherit system;
-      modules = commonModules ++ [
-        ./hosts/desktop-nvidia.nix
-        { vexos.gpu.nvidiaDriverVariant = "legacy_390"; }
-      ];
-      specialArgs = { inherit inputs; };
-    };
-
     # ── VM guest build (QEMU/KVM + VirtualBox) ───────────────────────────────
     # sudo nixos-rebuild switch --flake .#vexos-desktop-vm
     nixosConfigurations.vexos-desktop-vm = nixpkgs.lib.nixosSystem {
@@ -191,18 +180,6 @@
         ./hosts/stateless-nvidia.nix
         impermanence.nixosModules.impermanence
         { vexos.gpu.nvidiaDriverVariant = "legacy_470"; }
-      ];
-      specialArgs = { inherit inputs; };
-    };
-
-    # ── Stateless NVIDIA build — Fermi legacy (GeForce 400/500 series) ────────
-    # sudo nixos-rebuild switch --flake .#vexos-stateless-nvidia-legacy390
-    nixosConfigurations.vexos-stateless-nvidia-legacy390 = nixpkgs.lib.nixosSystem {
-      inherit system;
-      modules = commonModules ++ [
-        ./hosts/stateless-nvidia.nix
-        impermanence.nixosModules.impermanence
-        { vexos.gpu.nvidiaDriverVariant = "legacy_390"; }
       ];
       specialArgs = { inherit inputs; };
     };
@@ -295,17 +272,6 @@
       modules = minimalModules ++ [
         ./hosts/htpc-nvidia.nix
         { vexos.gpu.nvidiaDriverVariant = "legacy_470"; }
-      ];
-      specialArgs = { inherit inputs; };
-    };
-
-    # ── HTPC NVIDIA build — Fermi legacy (GeForce 400/500 series) ────────────
-    # sudo nixos-rebuild switch --flake .#vexos-htpc-nvidia-legacy390
-    nixosConfigurations.vexos-htpc-nvidia-legacy390 = nixpkgs.lib.nixosSystem {
-      inherit system;
-      modules = minimalModules ++ [
-        ./hosts/htpc-nvidia.nix
-        { vexos.gpu.nvidiaDriverVariant = "legacy_390"; }
       ];
       specialArgs = { inherit inputs; };
     };
