@@ -1,10 +1,11 @@
-# Review: NVIDIA Legacy Driver Support
+# Review: NVIDIA Legacy Driver Support — Phase 2 (Flake Outputs)
 **Feature Name:** `nvidia_legacy_drivers`
 **Review File:** `.github/docs/subagent_docs/nvidia_legacy_drivers_review.md`
-**Date:** 2026-04-02
+**Date:** 2026-04-14
 **Reviewer:** QA Subagent (Phase 3)
 **Spec:** `.github/docs/subagent_docs/nvidia_legacy_drivers_spec.md`
-**Implementation:** `modules/gpu/nvidia.nix`
+**Reviewed Files:** `flake.nix`, `modules/gpu/nvidia.nix`, `README.md`, `template/etc-nixos-flake.nix`
+**Phase:** 2 — Flake outputs (supersedes Phase 1 module review dated 2026-04-02)
 
 ---
 
@@ -12,229 +13,263 @@
 
 | Category | Score | Grade |
 |---|---|---|
-| Specification Compliance | 100% | A+ |
-| Best Practices | 95% | A |
-| Functionality | 100% | A+ |
-| Code Quality | 95% | A |
+| Specification Compliance | 65% | C |
+| Best Practices | 80% | B |
+| Functionality | 85% | B+ |
+| Code Quality | 85% | B+ |
 | Security | 100% | A+ |
 | Performance | 100% | A+ |
-| Consistency | 100% | A+ |
-| Build Success | N/A | — |
+| Consistency | 75% | C+ |
+| Build Success | 50% | D |
 
-**Overall Grade: A+ (99%)**
+**Overall Grade: C+ (80%)**
 
 ---
 
 ## Build Result
 
-**Not verifiable in this environment.**
+`nix flake check --impure` was executed in `/home/nimda/Projects/vexos-nix`.
 
-Neither a native `nix` CLI nor a WSL-hosted Nix installation is available on this Windows
-machine (`where.exe nix` → not found; `wsl -e which nix` → not found).
+**Exit code: 1**
 
-**Assessment basis:** Static inspection of Nix syntax and semantic correctness.
-Nix syntax is correct, attribute paths are valid per spec and nixpkgs source, and no infinite
-recursion risk was identified. Per task instructions, the absent build is NOT treated as CRITICAL.
-
----
-
-## 1. Specification Compliance — 100% A+
-
-All requirements from Section 4.3 of the spec are implemented exactly and in full.
-
-| Requirement | Result |
-|---|---|
-| `options.vexos.gpu.nvidiaDriverVariant` declared | ✓ line 29 |
-| Enum type: `["latest", "legacy_535", "legacy_470", "legacy_390"]` | ✓ exact match |
-| Default `"latest"` | ✓ |
-| `hardware.nvidia.package` driven by option via `driverPackage` let-binding | ✓ |
-| `hardware.nvidia.open = false` for all legacy variants (via `useOpen = variant == "latest"`) | ✓ |
-| `nvidia-vaapi-driver` excluded for legacy via `lib.mkIf useOpen` | ✓ |
-| `options` / `config` split at module root | ✓ |
-| Header comment with per-variant GPU generation guidance | ✓ |
-| `hosts/nvidia.nix` unchanged (backward-compatible default) | ✓ |
-
-No deviations from the specification were found.
-
----
-
-## 2. Nix Correctness
-
-### 2.1 `options` / `config` split
-
-The module returns an attribute set with `options.vexos.gpu.nvidiaDriverVariant` and
-`config = { ... }` as sibling top-level keys of the module's return value. This is the required
-structure for any NixOS module that both declares options and applies configuration. **Correct.**
-
-### 2.2 `let` bindings and `config` argument usage
-
-```nix
-let
-  variant = config.vexos.gpu.nvidiaDriverVariant;
-  driverPackage = if variant == "latest" then ...
-  useOpen = variant == "latest";
-in
+```
+error: Failed assertions:
+- You must set the option 'boot.loader.grub.devices' or 'boot.loader.grub.mirroredBoots'
+  to make the system bootable.
 ```
 
-The `config` referenced here is the **merged system configuration** passed in via the module
-function argument `{ config, pkgs, lib, ... }`. Reading `config.vexos.gpu.nvidiaDriverVariant`
-from the let-block is standard NixOS module practice — the option is declared with a default so
-it always has a value. No infinite recursion risk: the let-bindings compute scalar values from
-already-merged external config; they do not feed back into the option declaration itself.
+This failure occurs on **all** outputs — including the pre-existing `vexos-desktop-amd` —
+because `/etc/nixos/hardware-configuration.nix` does not exist on this development machine.
+The error is an infrastructure constraint of the build environment, **not** introduced by this
+implementation. The `nix flake check` fallback in `scripts/preflight.sh` explicitly skips the
+check when hardware-configuration.nix is absent.
 
-### 2.3 Attribute paths in `config.boot.kernelPackages.nvidiaPackages.*`
+**Assessment basis:** Static inspection of all modified and adjacent files combined with
+the partial build output above. The new outputs were not the immediate failure cause.
 
-`legacy_535`, `legacy_470`, `legacy_390`, and `stable` all exist in
-`pkgs/os-specific/linux/nvidia-x11/default.nix` in nixpkgs for both `nixos-25.05` and `nixos-25.11`
-(the channel used by this flake). All are lazy-evaluated — the `driverPackage` mapping only
-evaluates the selected variant's path at build time, so un-selected legacy paths are never
-fetched for default `"latest"` builds.
-
-### 2.4 `lib.mkIf` on a list-type option
-
-`hardware.graphics.extraPackages = lib.mkIf useOpen (with pkgs; [ nvidia-vaapi-driver ])`
-
-`hardware.graphics.extraPackages` is a list option; NixOS merges contributions from all modules.
-`modules/gpu.nix` (always imported via `configuration.nix`) contributes the base list
-`[libva, libva-vdpau-driver, ...]`. This module conditionally appends `nvidia-vaapi-driver` via
-`lib.mkIf`. When `useOpen = false`, `lib.mkIf` removes this module's contribution from the merge,
-leaving only the base packages. This is correct and idiomatic.
-
-### 2.5 `abort` fallback
-
-The else-branch `abort "vexos.gpu.nvidiaDriverVariant: unknown value '${variant}'"` is
-unreachable in normal usage because `lib.types.enum` enforces valid values before config is
-applied. It is **dead code**, but harmless and a defensible style choice for catching potential
-future misuse (e.g., if the type constraint were ever removed). Flagged as RECOMMENDED cleanup
-below.
+Build category is scored at 50% (cannot confirm full pass or clean failure isolation).
 
 ---
 
-## 3. Backward Compatibility
+## 1. Specification Compliance — 65% C
 
-With the default `"latest"`:
+### 1.1 Required Flake Outputs — PRESENT ✓
 
-| Setting | Before | After | Match |
+All 6 outputs required by the review prompt checklist are present in `flake.nix`:
+
+| Flake output | Variant injected | Modules base | Status |
 |---|---|---|---|
-| `hardware.nvidia.open` | `true` | `useOpen = true` | ✓ |
-| `hardware.nvidia.package` | `nvidiaPackages.stable` | `nvidiaPackages.stable` | ✓ |
-| `nvidia-vaapi-driver` included | yes | `lib.mkIf true` → yes | ✓ |
-| `hardware.nvidia.modesetting.enable` | `true` | `true` | ✓ |
-| `powerManagement.enable` | `false` | `false` | ✓ |
-| `powerManagement.finegrained` | `false` | `false` | ✓ |
+| `vexos-desktop-nvidia-legacy470` | `legacy_470` | `commonModules` | ✓ |
+| `vexos-desktop-nvidia-legacy390` | `legacy_390` | `commonModules` | ✓ |
+| `vexos-htpc-nvidia-legacy470` | `legacy_470` | `minimalModules` | ✓ |
+| `vexos-htpc-nvidia-legacy390` | `legacy_390` | `minimalModules` | ✓ |
+| `vexos-stateless-nvidia-legacy470` | `legacy_470` + impermanence | `commonModules` | ✓ |
+| `vexos-stateless-nvidia-legacy390` | `legacy_390` + impermanence | `commonModules` | ✓ |
 
-Behavior is **identical** to the pre-change module when the default is used.
-`hosts/nvidia.nix` requires no edits for existing Turing+ installations.
+Each injects the variant as an inline single-attribute module (`{ vexos.gpu.nvidiaDriverVariant = ...; }`),
+exactly as specified in spec Section 4.1 and Section 5 Step 2.
 
----
+### 1.2 Existing Output Unaffected — PASS ✓
 
-## 4. Best Practices
+`vexos-desktop-nvidia` continues to use only `commonModules ++ [ ./hosts/desktop-nvidia.nix ]`
+with no variant override, so `vexos.gpu.nvidiaDriverVariant` defaults to `"latest"`. ✓
 
-The module demonstrates strong adherence to NixOS module authoring conventions:
+### 1.3 CRITICAL MISS — `modules/gpu/nvidia.nix` documentation not updated
 
-- Header comment block clearly states purpose, import restriction, and all variant options.
-- Inline comments at every non-obvious decision point (`useOpen`, `driverPackage` mapping,
-  `lib.mkIf` for vaapi, `finegrained` power management note).
-- Option `description` string is detailed and provides GPU-generation examples for all four values.
-- `let`-binding strategy keeps the `config` block concise and readable.
-- Uses `lib.mkIf` (standard idiomatic NixOS conditional) rather than ad-hoc `if-then-else` in
-  the config body.
+Spec Step 1 required two documentation corrections to `modules/gpu/nvidia.nix`.
+Neither was applied.
 
-Minor deduction (−5%): the `abort` dead-code branch adds minor noise; see RECOMMENDED below.
+**File header comment — NOT updated:**
 
----
-
-## 5. Security
-
-No security concerns. This module configures GPU driver selection — a purely local hardware
-configuration concern. No secrets, no network access, no privilege escalation paths.
-
----
-
-## 6. Performance
-
-The module has no runtime performance implications beyond selecting the correct driver package.
-Lazy evaluation of `driverPackage` ensures un-selected legacy driver paths are not fetched
-during a default `"latest"` build.
-
----
-
-## 7. Consistency
-
-The module is fully consistent with:
-- Existing module style in `modules/gpu/amd.nix` (no options declared there, but structure
-  follows project conventions).
-- The `vexos.*` option namespace is unique — no other module in the project declares any
-  `vexos.*` options (confirmed by grep across all `.nix` files). No namespace conflicts.
-- `hardware.graphics.extraPackages` additions are consistent with `modules/gpu.nix` which also
-  contributes to the same merged list.
-
----
-
-## CRITICAL Issues
-
-**None.**
-
-No blocking issues were found. The implementation is correct, complete, and safe.
-
----
-
-## RECOMMENDED Improvements
-
-### R1 — Remove the unreachable `abort` branch (LOW priority)
-
+Current (wrong):
 ```nix
--- current
-  driverPackage =
-    if variant == "latest"          then config.boot.kernelPackages.nvidiaPackages.stable
-    else if variant == "legacy_535" then config.boot.kernelPackages.nvidiaPackages.legacy_535
-    else if variant == "legacy_470" then config.boot.kernelPackages.nvidiaPackages.legacy_470
-    else if variant == "legacy_390" then config.boot.kernelPackages.nvidiaPackages.legacy_390
-    else abort "vexos.gpu.nvidiaDriverVariant: unknown value '${variant}'";
+#   "latest"     — Turing (RTX 20xx / GTX 16xx) and newer  [default]
+#   "legacy_535" — Maxwell / Pascal / Volta (GTX 750–1080 Ti, Titan V)
 ```
 
-Because `lib.types.enum` prevents any value outside the declared set from reaching the
-`config` phase, the `else abort` branch can never execute in practice. It may be removed for
-cleaner code. Not a blocking issue.
+Required per spec (not present):
+```nix
+#   "latest"     — Stable (570.x+) branch; open kernel modules; supports Maxwell (GTX 750+)
+#                  through Ada/Hopper. Correct choice for GTX 750+, RTX 20/30/40xx and newer.
+#   "legacy_535" — 535.x LTS branch; proprietary modules; open = false.
+#                  Optional LTS alternative for Maxwell/Pascal/Volta. NOT architecturally required.
+```
 
-### R2 — Note `legacy_390` kernel compatibility in option description (LOW priority)
+**Option description for `"legacy_535"` — NOT corrected:**
 
-The 390.x driver branch is known to require nixpkgs-maintained backport patches to build on
-kernels ≥5.16. While `nixos-25.11` includes those patches, users should be aware that `legacy_390`
-support has a finite lifespan. A brief note in the option `description` (e.g., *"GeForce 400/500
-series; subject to limited kernel support on future kernels"*) would improve user awareness.
+Current (wrong — implies "required"):
+```
+"legacy_535" — 535.x LTS branch; proprietary modules required.
+               Use for Maxwell (GTX 750/Ti), Pascal (GTX 1050–1080 Ti), and Volta (Titan V).
+```
 
-### R3 — Document the option in `README.md` (RECOMMENDED per spec Section 5, Step 3)
+Required per spec:
+```
+"legacy_535" — 535.x LTS branch; proprietary modules; open = false.
+               Optional stable alternative for Maxwell (GTX 750+), Pascal (GTX 1050–1080 Ti),
+               and Volta (Titan V) who prefer a proven LTS driver over current production.
+               These GPUs work equally well with "latest"; this variant is NOT required.
+```
 
-The spec explicitly lists updating `README.md` as "optional but recommended." The NVIDIA GPU
-section of the README should document the `vexos.gpu.nvidiaDriverVariant` option and link to the
-per-variant GPU generation examples from the spec. Not required for correctness.
+**Impact:** A user with a GTX 1080 (Pascal) reads the current description and may incorrectly
+believe they must use `legacy_535`. This is concrete misinformation introduced by the spec's
+original wording that was explicitly scheduled for correction. Classification: **CRITICAL**.
+
+### 1.4 CRITICAL MISS — `template/etc-nixos-flake.nix` not updated
+
+Spec Step 3 required replacing the single NVIDIA rebuild comment in the template header with an
+expanded block documenting all legacy variants. This was **not done**.
+
+Current at template line 15:
+```
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia
+```
+
+Required per spec:
+```
+#      NVIDIA GPU (desktop role):
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia              (RTX 20xx / GTX 16xx and newer)
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy535    (Maxwell/Pascal/Volta — LTS alt.)
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy470    (Kepler — GTX 600/700)
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy390    (Fermi  — GTX 400/500)
+```
+
+**Impact:** The primary user-facing installation template still presents only one NVIDIA option.
+Users with legacy hardware following the template docs have no discovery path to the correct target.
+Classification: **CRITICAL**.
+
+### 1.5 MEDIUM — `legacy_535` inconsistency
+
+The spec (Section 5 Step 2, note) requires the implementation subagent to:
+- If `legacy_535` is available in nixos-25.11: add `vexos-desktop-nvidia-legacy535`,
+  `vexos-htpc-nvidia-legacy535`, and `vexos-stateless-nvidia-legacy535` outputs.
+- If `legacy_535` is NOT available: remove `"legacy_535"` from the enum in `modules/gpu/nvidia.nix`.
+
+The implementation did **neither**: no `legacy_535` outputs were added, but `"legacy_535"` remains
+in the enum. The current flake uses `nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11"`, and
+`legacy_535` is known to exist in that branch. The module's `"legacy_535"` enum value is therefore
+valid, but the corresponding flake outputs are absent. Classification: **MEDIUM** (enumerable
+inconsistency; users who set the option manually can still use it, but no discoverable flake
+output exists).
 
 ---
 
-## Summary of Findings
+## 2. Forbidden Changes — PASS ✓
 
-The implementation of `modules/gpu/nvidia.nix` is a complete and correct realization of the
-specification. All four checklist categories from the review prompt are satisfied:
+| Check | Result |
+|---|---|
+| `hardware-configuration.nix` NOT tracked in git | ✓ (`git ls-files` returned empty) |
+| `system.stateVersion` unchanged | ✓ (`"25.11"` at configuration.nix line 123) |
+| No new flake inputs added | ✓ (inputs block unchanged) |
+| No host files modified | ✓ (`hosts/desktop-nvidia.nix`, `hosts/htpc-nvidia.nix`, `hosts/stateless-nvidia.nix` untouched) |
 
-1. **Option declared correctly** — enum type with four values, default `"latest"`, proper
-   `options`/`config` split.
-2. **`hardware.nvidia.open = false` for all legacy variants** — enforced via the `useOpen` boolean
-   derived solely from `variant == "latest"`.
-3. **`nvidia-vaapi-driver` excluded for legacy** — implemented via `lib.mkIf useOpen`.
-4. **Backward compatibility** — with default `"latest"`, behavior is byte-for-byte identical to the
-   pre-change module.
+---
 
-No CRITICAL issues exist. Three low-priority recommendations are noted but none block approval.
-The implementation is safe for use as-is.
+## 3. Code Quality — 85% B+
+
+All 6 new `nixosConfigurations` entries follow the exact same structural pattern as existing outputs:
+
+```nix
+# ── <description> ──────────
+# sudo nixos-rebuild switch --flake .#<output>
+nixosConfigurations.<output> = nixpkgs.lib.nixosSystem {
+  inherit system;
+  modules = <base> ++ [
+    ./hosts/<host>.nix
+    { vexos.gpu.nvidiaDriverVariant = "<variant>"; }
+  ];
+  specialArgs = { inherit inputs; };
+};
+```
+
+The HTPC outputs correctly use `minimalModules` (no home-manager), matching the other HTPC outputs.
+The stateless outputs correctly include `impermanence.nixosModules.impermanence`, matching the
+other stateless outputs. Header comments are accurate and include the rebuild command.
+
+No dead code, no unnecessary abstraction. The inline module override is idiomatic NixOS practice
+for per-output single-attribute overrides. No code duplication that a helper function could avoid
+(a `mkNvidiaLegacy` helper would save ~5 lines per output but would reduce readability for
+marginal gain; the current verbosity is appropriate).
+
+Minor: the `vexos-desktop-nvidia-legacy535` output should either be present or commented out with
+an explanation — its absence without any note is silent.
+
+---
+
+## 4. README Accuracy — PASS ✓
+
+`README.md` was updated correctly:
+
+- All 6 new outputs appear in the correct role tables (Desktop, Stateless, HTPC) with accurate
+  descriptions.
+- The Notes rebuild-commands block lists all new legacy targets by role.
+- The existing variant descriptions were not inadvertently altered.
+
+---
+
+## 5. Security — 100% A+
+
+No security concerns. Hardware driver configuration only. No secrets, network access, or
+privilege escalation paths introduced.
+
+---
+
+## 6. Performance — 100% A+
+
+New outputs share the same evaluated module tree as their base variants, differing only in one
+attribute override. Closure evaluation overhead is negligible.
+
+---
+
+## 7. Consistency — 75% C+
+
+Structural consistency of the new `flake.nix` outputs is excellent. However:
+
+- The module option description misrepresents `"legacy_535"` as required for Maxwell/Pascal/Volta,
+  which contradicts the spec's intended correction and is inconsistent with the `"latest"` driver
+  behaviour documented elsewhere.
+- The template (`template/etc-nixos-flake.nix`) is inconsistent with `flake.nix`: the flake
+  exposes 6 new legacy outputs but the template user documentation doesn't mention any of them.
+
+---
+
+## Issues Summary
+
+### CRITICAL Issues (block approval)
+
+| # | File | Issue |
+|---|---|---|
+| C1 | `modules/gpu/nvidia.nix` | File header comment for `"legacy_535"` not updated — still implies Maxwell/Pascal/Volta require this branch |
+| C2 | `modules/gpu/nvidia.nix` | Option `description` for `"legacy_535"` not corrected — still says "Use for Maxwell (GTX 750/Ti), Pascal, Volta"; does not say "NOT required" |
+| C3 | `template/etc-nixos-flake.nix` | Spec Step 3 entirely absent — template still shows only `vexos-desktop-nvidia`; legacy variants not documented |
+
+### MEDIUM Issues
+
+| # | File | Issue |
+|---|---|---|
+| M1 | `flake.nix` | `legacy_535` outputs absent but enum value retained in `modules/gpu/nvidia.nix` — spec required one or the other to be resolved |
+
+### LOW Issues
+
+| # | File | Issue |
+|---|---|---|
+| L1 | `modules/gpu/nvidia.nix` | `"latest"` description does not explicitly mention Maxwell/Pascal/Volta compatibility; spec said to add this for discoverability |
 
 ---
 
 ## Final Verdict
 
-**PASS**
+**NEEDS_REFINEMENT**
 
-The implementation is approved. No refinement cycle required.
-All CRITICAL checks: ✓ clear.
-Build validation: not verifiable in this environment (Windows / no Nix CLI in WSL) — treat as
-neutral per task instructions; static analysis confirms correctness.
+The core functional deliverable (6 new flake outputs for legacy NVIDIA variants) is correctly
+implemented and follows the NixOS module override pattern exactly as specified. README is well-updated.
+However, three tasks defined in the spec are entirely absent:
+
+1. `modules/gpu/nvidia.nix` header comment and option description corrections (spec Step 1)
+2. `template/etc-nixos-flake.nix` documentation update (spec Step 3)
+3. `legacy_535` enum/output consistency resolution (spec Note in Step 2)
+
+CRITICAL issues C1, C2, and C3 must be resolved before this work can be approved. The
+misinformation in the `"legacy_535"` description is particularly important because it may cause
+users with Maxwell/Pascal/Volta hardware to choose a sub-optimal driver branch.
+

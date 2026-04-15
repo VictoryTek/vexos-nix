@@ -117,7 +117,33 @@ if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ]; th
   done
 fi
 
-FLAKE_TARGET="vexos-${ROLE}-${VARIANT}"
+# ---------- NVIDIA driver branch selection -----------------------------------
+NVIDIA_SUFFIX=""
+if [ "$VARIANT" = "nvidia" ]; then
+  echo ""
+  echo -e "${BOLD}Select NVIDIA driver:${RESET}"
+  echo "  1) Latest — RTX, GTX 16xx, GTX 750 and newer"
+  echo "  2) Legacy — Everything older"
+  echo ""
+  echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"
+  echo -e "${YELLOW}Wrong choice? Run this installer again and switch.${RESET}"
+  echo ""
+
+  while [ -z "$NVIDIA_SUFFIX" ]; do
+    printf "Enter choice [1-2]: "
+    read -r INPUT </dev/tty
+    case "${INPUT}" in
+      1) NVIDIA_SUFFIX=""           ;;
+      2) NVIDIA_SUFFIX="-legacy470" ;;
+      *)
+        echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
+        ;;
+    esac
+    [[ -n "${INPUT}" ]] && break
+  done
+fi
+
+FLAKE_TARGET="vexos-${ROLE}-${VARIANT}${NVIDIA_SUFFIX}"
 
 # ---------- Build & switch ---------------------------------------------------
 echo ""

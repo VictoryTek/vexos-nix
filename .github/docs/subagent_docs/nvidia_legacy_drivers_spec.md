@@ -1,364 +1,439 @@
-# Specification: NVIDIA Legacy Driver Support
+# Specification: NVIDIA Legacy Driver Support — Phase 2 (Flake Outputs)
 **Feature Name:** `nvidia_legacy_drivers`
 **Spec File:** `.github/docs/subagent_docs/nvidia_legacy_drivers_spec.md`
-**Date:** 2026-04-02
+**Date:** 2026-04-14
 **Status:** Ready for Implementation
+**Supersedes:** Previous revision dated 2026-04-02 (Phase 1 — module option)
+
+---
+
+## 0. Phase 1 Recap (Already Implemented)
+
+The April 2 spec and its implementation added `vexos.gpu.nvidiaDriverVariant` to
+`modules/gpu/nvidia.nix`. That module is technically complete and was reviewed at A+ (99%).
+It already:
+
+- Declares `options.vexos.gpu.nvidiaDriverVariant` as an enum defaulting to `"latest"`.
+- Maps the variant to the correct `hardware.nvidia.package`.
+- Sets `hardware.nvidia.open = false` for all legacy variants (proprietary modules).
+- Conditionally includes `nvidia-vaapi-driver` only for the `"latest"` variant.
+
+**Phase 1 is complete. No changes to `modules/gpu/nvidia.nix` are required.**
 
 ---
 
 ## 1. Current State Analysis
 
-### File: `modules/gpu/nvidia.nix`
+### 1.1 Module: `modules/gpu/nvidia.nix` (Phase 1 — DONE)
 
+The module is correctly implemented. Support for the following variants exists:
+
+| Variant value   | Driver package                    | `open` | `nvidia-vaapi-driver` |
+|-----------------|-----------------------------------|--------|-----------------------|
+| `"latest"`      | `nvidiaPackages.stable` (570.x+)  | true   | included              |
+| `"legacy_535"`  | `nvidiaPackages.legacy_535`       | false  | excluded              |
+| `"legacy_470"`  | `nvidiaPackages.legacy_470`       | false  | excluded              |
+| `"legacy_390"`  | `nvidiaPackages.legacy_390`       | false  | excluded              |
+
+### 1.2 Host files — no variant is set
+
+All NVIDIA host files (`hosts/desktop-nvidia.nix`, `hosts/htpc-nvidia.nix`,
+`hosts/stateless-nvidia.nix`, `hosts/server-nvidia.nix`) import
+`modules/gpu/nvidia.nix` but **do not set `vexos.gpu.nvidiaDriverVariant`**.
+The option defaults to `"latest"` in every case.
+
+### 1.3 Flake outputs — only one NVIDIA desktop output exists
+
+`flake.nix` defines:
 ```nix
-{ config, pkgs, lib, ... }:
-{
-  services.xserver.videoDrivers = [ "nvidia" ];
-
-  hardware.nvidia = {
-    open = true;                          # ← HARDCODED — Turing+ (RTX 20xx / GTX 16xx) only
-    modesetting.enable = true;
-    powerManagement = {
-      enable = false;
-      finegrained = false;
-    };
-    package = config.boot.kernelPackages.nvidiaPackages.stable;  # ← HARDCODED stable only
-  };
-
-  hardware.graphics.extraPackages = with pkgs; [
-    nvidia-vaapi-driver               # ← Turing+ only; broken on older cards
-  ];
-}
+nixosConfigurations.vexos-desktop-nvidia = nixpkgs.lib.nixosSystem {
+  inherit system;
+  modules = commonModules ++ [ ./hosts/desktop-nvidia.nix ];
+  specialArgs = { inherit inputs; };
+};
 ```
 
-**What is correct:**
-- `services.xserver.videoDrivers = [ "nvidia" ]` — correct for all NVIDIA proprietary driver configs.
-- `hardware.nvidia.modesetting.enable = true` — correct; required for Wayland on all NVIDIA cards.
-- Power management defaults (`false`) — reasonable and safe defaults for a desktop.
+No outputs for `vexos-desktop-nvidia-legacy470`, `vexos-desktop-nvidia-legacy390`,
+or other legacy variants exist. The same gap exists for the `htpc` and `stateless`
+roles.
 
-**What is missing / wrong:**
-1. `hardware.nvidia.open = true` is hardcoded. Open kernel modules require Turing architecture
-   (RTX 20xx / GTX 16xx and newer). Setting `open = true` on Maxwell, Pascal, Volta, Kepler, or
-   Fermi cards causes a broken build or a non-functional GPU.
-2. `nvidiaPackages.stable` is hardcoded. This uses the 570.x driver branch, which does **not**
-   support Fermi (GeForce 400/500 series) or Kepler (GeForce 600/700 series) GPUs. Those GPU
-   generations require `legacy_390` or `legacy_470` respectively.
-3. `nvidia-vaapi-driver` is unconditionally included. This package provides VA-API via NVDEC and
-   requires Turing+ hardware. On older GPUs it fails to initialize and pollutes the hardware
-   acceleration stack.
+### 1.4 Template: `template/etc-nixos-flake.nix`
 
-**Verdict:** The module covers **only** latest/Turing+ NVIDIA cards. There is **no support** for
-legacy cards requiring `legacy_390`, `legacy_470`, or `legacy_535`.
+The template documents only `vexos-desktop-nvidia` as the NVIDIA rebuild target.
+No legacy targets are mentioned. Users with legacy GPUs have no discoverable path
+to the correct flake output.
 
 ---
 
 ## 2. Problem Definition
 
-The `vexos-nvidia` flake output is unusable on any NVIDIA GPU older than Turing (RTX 20xx / GTX
-16xx) because:
+### 2.1 Symptoms
 
-- `open = true` will select open kernel modules, which do not build or load on pre-Turing silicon.
-- `nvidiaPackages.stable` (570.x) does not ship kernel module support for Fermi or Kepler GPUs.
-- No user-facing option exists to select an appropriate older driver branch.
+When a user with a Kepler GPU (GeForce 600/700 series, e.g. GTX 670) runs:
+```
+sudo nixos-rebuild switch --flake .#vexos-desktop-nvidia
+```
+the build succeeds, but the resulting system fails to display graphics or boots to
+a black screen. The NVIDIA 570.x+ production driver does **not** support Kepler or
+Fermi architectures. The kernel module fails to initialize the GPU.
 
-A user with, for example, a GTX 1070 (Pascal), a GTX 770 (Kepler), or a GTX 580 (Fermi) who
-deploys the `vexos-nvidia` configuration will get a broken system. The module needs a documented,
-user-configurable path to the correct driver branch.
+### 2.2 Root Cause
+
+The `vexos.gpu.nvidiaDriverVariant` option exists but is never set in any host
+file, so it always defaults to `"latest"`. No separate flake outputs expose the
+legacy variants. Users with legacy GPUs have no discoverable, zero-edit path to a
+working configuration.
+
+### 2.3 NVIDIA GPU Architecture → Required Driver
+
+| GPU Family | Example Cards                  | Required driver          |
+|------------|--------------------------------|--------------------------|
+| Ada / Hopper / Ampere / Turing / GTX 16xx | RTX 20/30/40xx, GTX 1650/1660 | `"latest"` |
+| Volta       | Titan V                        | `"latest"` (still supported) |
+| Pascal      | GTX 1050–1080 Ti, Titan XP     | `"latest"` (still supported) |
+| Maxwell 2nd | GTX 950–980 Ti                 | `"latest"` (still supported) |
+| Maxwell 1st | GTX 750, GTX 750 Ti            | `"latest"` (still supported) |
+| Kepler      | GTX 600/700 series             | **MUST use `"legacy_470"`** |
+| Fermi       | GTX 400/500 series             | **MUST use `"legacy_390"`** |
+| Tesla       | GeForce 8000–580               | `legacy_340` — **broken on kernel ≥ 6.7; not supported** |
+
+**Important:** Maxwell, Pascal, and Volta GPUs work correctly with `"latest"`.
+The `"legacy_535"` variant is an *optional LTS alternative* for those
+architectures — it is not architecturally required.
 
 ---
 
-## 3. Background: NixOS NVIDIA Driver Packages
+## 3. Research Findings
 
-### 3.1 Available packages in `config.boot.kernelPackages.nvidiaPackages`
+### Source 1 — NixOS Wiki: NVIDIA
+https://nixos.wiki/wiki/Nvidia
 
-Source: `pkgs/os-specific/linux/nvidia-x11/default.nix` in nixpkgs (nixos-25.05 / nixos-25.11)
+Confirmed available driver packages in NixOS nixos-25.05 / nixos-25.11:
+```nix
+config.boot.kernelPackages.nvidiaPackages.stable       # 570.x production
+config.boot.kernelPackages.nvidiaPackages.legacy_535   # 535.x LTS
+config.boot.kernelPackages.nvidiaPackages.legacy_470   # Kepler (470.x)
+config.boot.kernelPackages.nvidiaPackages.legacy_390   # Fermi (390.x)
+config.boot.kernelPackages.nvidiaPackages.legacy_340   # Tesla (broken ≥ kernel 6.7)
+```
 
-| Attribute | Version (nixos-25.05) | GPU Architectures | GPU Examples |
-|---|---|---|---|
-| `stable` / `production` | 570.195.03 | Maxwell and newer (with `open = false`); Turing+ (with `open = true`) | GTX 750+, RTX 20/30/40 series |
-| `legacy_535` | 535.274.02 | Maxwell (GM1xx/GM2xx), Pascal (GP1xx), Volta (GV1xx); also Turing+ | GTX 750/Ti, GTX 960–980, GTX 1050–1080 Ti, Titan V, also RTX 20/30/40 |
-| `legacy_470` | 470.256.02 | Kepler (GK1xx, GK2xx) | GeForce 600, 700, 800M series |
-| `legacy_390` | 390.157 | Fermi (GF1xx) | GeForce 400, 500, some 600 series |
-| `legacy_340` | 340.108 | Tesla/early Fermi | *(broken on kernel ≥ 6.7; not supported)* |
+The wiki lists `legacy_580` as an available option. Research below clarifies
+this refers to a **data-center driver** (dc_580), not a consumer GPU legacy branch.
 
-> **Reference:** [NixOS Wiki – NVIDIA legacy branches](https://wiki.nixos.org/wiki/NVIDIA#Legacy_branches)
-> **Reference:** [nixpkgs default.nix for nvidia-x11 (25.05)](https://github.com/NixOS/nixpkgs/blob/nixos-25.05/pkgs/os-specific/linux/nvidia-x11/default.nix)
+### Source 2 — nixpkgs hardware/video/nvidia.nix (nixos-25.05)
+https://github.com/NixOS/nixpkgs/blob/nixos-25.05/nixos/modules/hardware/video/nvidia.nix
 
-### 3.2 `hardware.nvidia.open` compatibility matrix
+Upstream `hardware.nvidia.package` option default:
+```nix
+default = config.boot.kernelPackages.nvidiaPackages."${if cfg.datacenter.enable then "dc" else "stable"}";
+example = "config.boot.kernelPackages.nvidiaPackages.legacy_470";
+```
+Confirms `legacy_470` is the documented example for legacy package selection.
 
-| Driver variant | `open = true` | `open = false` |
-|---|---|---|
-| `stable` / `latest` (Turing+ card) | ✔ Required for Wayland best results | ✔ Allowed |
-| `stable` (Maxwell/Pascal/Volta card) | ✘ Fails — no open module support | ✔ Required |
-| `legacy_535` | ✘ 535 branch uses proprietary modules only | ✔ Required |
-| `legacy_470` | ✘ No open modules for Kepler | ✔ Required |
-| `legacy_390` | ✘ No open modules for Fermi | ✔ Required |
+NixOS assertion for drivers ≥ 560: `hardware.nvidia.open` must be explicitly
+set to `true` or `false`. The vexos module already satisfies this.
 
-> Since driver 560, NixOS/nixpkgs requires `hardware.nvidia.open` to be explicitly set.
-> For all legacy variants the only correct value is `false`.
+### Source 3 — nixpkgs nvidia-x11/default.nix (nixos-25.05)
+https://github.com/NixOS/nixpkgs/blob/nixos-25.05/pkgs/os-specific/linux/nvidia-x11/default.nix
 
-### 3.3 `nvidia-vaapi-driver` (NVDEC-based VA-API) compatibility
+- Production driver: **570.195.03**
+- `legacy_535`: **535.274.02**
+- `legacy_470`: maintained with kernel 6.12 patches
 
-`nvidia-vaapi-driver` requires NVDEC hardware present in Turing (RTX 20xx) and newer cards.
-Maxwell and Pascal cards lack the NVDEC generation compatible with this driver. Fermi and Kepler
-have no NVDEC at all. The package must only be included when the driver variant is `"latest"`.
+### Source 4 — nixpkgs nvidia-x11/default.nix (nixos-unstable, April 2026)
+https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/os-specific/linux/nvidia-x11/default.nix
+
+- Production driver: **595.58.03** (confirms driver version progression)
+- `legacy_470`: **470.256.02** — actively maintained with patches for kernels up to **6.15**
+- `dc_580` (580.126.09) and `dc_590` (590.48.01) are **datacenter** drivers, not consumer
+  legacy branches. There is **no consumer `legacy_580` package**.
+- Kepler support through `legacy_470` is confirmed to remain in nixos-unstable.
+
+**For nixos-25.11** (the channel used by this flake): the production driver was
+likely in the 575–585.x range. `legacy_535` should still be available, but the
+implementation subagent must verify before depending on it.
+
+### Source 5 — NVIDIA Official Legacy GPU List
+https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/
+
+Confirms Kepler GPUs (GeForce 600/700) were dropped from production drivers in
+the 525.x cycle and require `legacy_470`. Fermi dropped earlier and requires
+`legacy_390`.
+
+### Source 6 — NixOS community flake patterns (GitHub)
+
+Multiple NixOS community flakes use inline module overrides to expose separate
+`nixosConfigurations` outputs for different hardware variants without duplicating
+host config files:
+
+```nix
+nixosConfigurations.vexos-desktop-nvidia-legacy470 = nixpkgs.lib.nixosSystem {
+  inherit system;
+  modules = commonModules ++ [
+    ./hosts/desktop-nvidia.nix
+    { vexos.gpu.nvidiaDriverVariant = "legacy_470"; }
+  ];
+  specialArgs = { inherit inputs; };
+};
+```
+
+This is the standard pattern and avoids any host file duplication.
 
 ---
 
-## 4. Proposed Solution
+## 4. Proposed Solution Architecture
 
-### 4.1 Approach
+### 4.1 Design Decision: Additional Flake Outputs
 
-Add a NixOS option `vexos.gpu.nvidiaDriverVariant` to `modules/gpu/nvidia.nix`. This option
-selects both the driver package (`hardware.nvidia.package`) and whether open kernel modules are
-used (`hardware.nvidia.open`). The `nvidia-vaapi-driver` package is conditionally included only
-for the `"latest"` variant.
+**Chosen:** Add separate `nixosConfigurations` outputs for each legacy variant
+using an inline single-attribute module override in `flake.nix`.
 
-The default remains `"latest"` — preserving exact current behavior for Turing+ users.
+**Rejected alternatives:**
+- **NixOS specialisations:** Users would need to select a non-default boot entry
+  every rebuild. The base system would still use the latest driver, failing on
+  legacy hardware.
+- **Per-host local override in `/etc/nixos/flake.nix`:** Too complex; requires
+  understanding the NixOS module system; no discoverable UX.
 
-### 4.2 Option definition
+### 4.2 New Flake Outputs
 
+| Flake output                        | Variant         | Target hardware                          |
+|-------------------------------------|-----------------|------------------------------------------|
+| `vexos-desktop-nvidia`              | `"latest"`      | Turing (RTX 20xx / GTX 16xx) and newer  |
+| `vexos-desktop-nvidia-legacy535`    | `"legacy_535"`  | Maxwell/Pascal/Volta — optional LTS      |
+| `vexos-desktop-nvidia-legacy470`    | `"legacy_470"`  | Kepler — GTX 600/700 (**required**)      |
+| `vexos-desktop-nvidia-legacy390`    | `"legacy_390"`  | Fermi — GTX 400/500 (**required**)       |
+| `vexos-htpc-nvidia-legacy470`       | `"legacy_470"`  | HTPC Kepler                              |
+| `vexos-htpc-nvidia-legacy390`       | `"legacy_390"`  | HTPC Fermi                               |
+| `vexos-stateless-nvidia-legacy470`  | `"legacy_470"`  | Stateless Kepler                         |
+| `vexos-stateless-nvidia-legacy390`  | `"legacy_390"`  | Stateless Fermi                          |
+
+Server role (`vexos-server-nvidia-*`) is **out of scope**: server builds use
+headless datacenter drivers, not consumer legacy GPU drivers; the server host
+already defaults to `"latest"` which covers any practical headless CUDA/compute
+use case within the supported driver range.
+
+### 4.3 Documentation Fix in `modules/gpu/nvidia.nix`
+
+The current option description for `"legacy_535"` incorrectly implies Maxwell,
+Pascal, and Volta GPUs **require** the 535.x branch. This must be corrected.
+
+**Current (incorrect):**
 ```
-Option name:  vexos.gpu.nvidiaDriverVariant
-Type:         lib.types.enum [ "latest" "legacy_535" "legacy_470" "legacy_390" ]
-Default:      "latest"
+"legacy_535" — 535.x LTS branch; proprietary modules required.
+               Use for Maxwell (GTX 750/Ti), Pascal (GTX 1050–1080 Ti), and Volta (Titan V).
 ```
 
-| Value | Driver package | `open` | `nvidia-vaapi-driver` |
-|---|---|---|---|
-| `"latest"` | `nvidiaPackages.stable` | `true` | included |
-| `"legacy_535"` | `nvidiaPackages.legacy_535` | `false` | excluded |
-| `"legacy_470"` | `nvidiaPackages.legacy_470` | `false` | excluded |
-| `"legacy_390"` | `nvidiaPackages.legacy_390` | `false` | excluded |
+**Corrected:**
+```
+"legacy_535" — 535.x LTS branch; proprietary modules; open = false.
+               Optional stable alternative for Maxwell (GTX 750+), Pascal (GTX 1050–1080 Ti),
+               and Volta (Titan V) who prefer a proven LTS driver over current production.
+               These GPUs work equally well with "latest"; this variant is NOT required.
+```
 
-### 4.3 Full replacement for `modules/gpu/nvidia.nix`
-
+Also update the file header comment to match:
 ```nix
-# modules/gpu/nvidia.nix
-# NVIDIA proprietary drivers with multi-generation support.
-# Import this in hosts/nvidia.nix — do NOT use alongside gpu/amd.nix or gpu/vm.nix.
-#
-# Set vexos.gpu.nvidiaDriverVariant in your host config to match your GPU generation:
-#   "latest"     — Turing (RTX 20xx / GTX 16xx) and newer  [default]
-#   "legacy_535" — Maxwell / Pascal / Volta (GTX 750–1080 Ti, Titan V)
-#   "legacy_470" — Kepler (GeForce 600 / 700 series)
-#   "legacy_390" — Fermi  (GeForce 400 / 500 series)
-{ config, pkgs, lib, ... }:
-
-let
-  variant = config.vexos.gpu.nvidiaDriverVariant;
-
-  driverPackage =
-    if variant == "latest"      then config.boot.kernelPackages.nvidiaPackages.stable
-    else if variant == "legacy_535" then config.boot.kernelPackages.nvidiaPackages.legacy_535
-    else if variant == "legacy_470" then config.boot.kernelPackages.nvidiaPackages.legacy_470
-    else if variant == "legacy_390" then config.boot.kernelPackages.nvidiaPackages.legacy_390
-    else abort "vexos.gpu.nvidiaDriverVariant: unknown value '${variant}'";
-
-  # Open kernel modules require Turing (RTX 20xx / GTX 16xx) or newer.
-  # All legacy variants must use proprietary closed modules.
-  useOpen = variant == "latest";
-
-in
-{
-  options.vexos.gpu.nvidiaDriverVariant = lib.mkOption {
-    type = lib.types.enum [ "latest" "legacy_535" "legacy_470" "legacy_390" ];
-    default = "latest";
-    description = ''
-      NVIDIA driver branch to use. Choose based on your GPU generation:
-
-        "latest"     — stable (570.x) branch; open kernel modules for Turing (RTX 20xx / GTX 16xx+).
-                       This is the correct choice for all RTX 20/30/40 series and GTX 16xx cards.
-        "legacy_535" — 535.x LTS branch; proprietary modules required.
-                       Use for Maxwell (GTX 750/Ti), Pascal (GTX 1050–1080 Ti), and Volta (Titan V).
-        "legacy_470" — 470.x branch; proprietary modules required.
-                       Use for Kepler GPUs: GeForce 600 and 700 series.
-        "legacy_390" — 390.x branch; proprietary modules required.
-                       Use for Fermi GPUs: GeForce 400 and 500 series.
-    '';
-  };
-
-  config = {
-    services.xserver.videoDrivers = [ "nvidia" ];
-
-    hardware.nvidia = {
-      # Open kernel modules: supported only on Turing (RTX 20xx / GTX 16xx) and newer.
-      # All legacy variants must use proprietary closed modules (open = false).
-      open = useOpen;
-
-      # KMS: required for Wayland and reliable suspend/resume on all variants.
-      modesetting.enable = true;
-
-      powerManagement = {
-        enable = false;       # set true if suspend/resume causes GPU lockups
-        finegrained = false;  # set true for PRIME Turing+ discrete laptops only
-      };
-
-      package = driverPackage;
-    };
-
-    # nvidia-vaapi-driver provides VA-API via NVDEC.
-    # NVDEC support is present only on Turing (RTX 20xx) and newer.
-    # Excluded for all legacy variants to avoid broken hardware acceleration.
-    hardware.graphics.extraPackages = lib.mkIf useOpen (
-      with pkgs; [ nvidia-vaapi-driver ]
-    );
-  };
-}
-```
-
-### 4.4 Usage: setting the variant in a host config
-
-**Default (no change required for existing Turing+ setups — `hosts/nvidia.nix` is unchanged):**
-
-```nix
-# hosts/nvidia.nix — existing file, no edits required for "latest"
-{ ... }:
-{
-  imports = [
-    ../configuration.nix
-    ../modules/gpu/nvidia.nix
-    ../modules/asus.nix
-  ];
-  # vexos.gpu.nvidiaDriverVariant defaults to "latest"
-}
-```
-
-**Example for a Pascal card (GTX 1070) — add one line to `hosts/nvidia.nix`:**
-
-```nix
-{ ... }:
-{
-  imports = [
-    ../configuration.nix
-    ../modules/gpu/nvidia.nix
-    ../modules/asus.nix
-  ];
-  vexos.gpu.nvidiaDriverVariant = "legacy_535";
-}
-```
-
-**Example for a Kepler card (GTX 760):**
-
-```nix
-  vexos.gpu.nvidiaDriverVariant = "legacy_470";
-```
-
-**Example for a Fermi card (GTX 580):**
-
-```nix
-  vexos.gpu.nvidiaDriverVariant = "legacy_390";
+#   "latest"     — Stable (570.x+) branch; open kernel modules; supports Maxwell (GTX 750+)
+#                  through Ada/Hopper. Correct choice for GTX 750+, RTX 20/30/40xx and newer.
+#   "legacy_535" — 535.x LTS branch; proprietary modules; open = false.
+#                  Optional LTS alternative for Maxwell/Pascal/Volta. NOT architecturally required.
+#   "legacy_470" — 470.x branch; proprietary modules. REQUIRED for Kepler: GTX 600/700 series.
+#   "legacy_390" — 390.x branch; proprietary modules. REQUIRED for Fermi: GTX 400/500 series.
 ```
 
 ---
 
 ## 5. Implementation Steps
 
-### Step 1 — Replace `modules/gpu/nvidia.nix`
+### Step 1 — Update `modules/gpu/nvidia.nix` (documentation only)
 
-Replace the entire content of `modules/gpu/nvidia.nix` with the code in Section 4.3.
+Correct the `"legacy_535"` description in the option block and the file header.
+The module logic itself is unchanged — do NOT modify the Nix expressions.
 
-No other files require changes for the default (`"latest"`) behavior.
+### Step 2 — Update `flake.nix` (primary change)
 
-### Step 2 — No changes to `hosts/nvidia.nix` for default behavior
+**Insert after the existing `vexos-desktop-nvidia` block:**
 
-The current `hosts/nvidia.nix` imports `modules/gpu/nvidia.nix` and adds no gpu-variant
-setting. Because `vexos.gpu.nvidiaDriverVariant` defaults to `"latest"`, this is a
-**non-breaking change** — existing systems continue to work identically.
+```nix
+# ── NVIDIA Legacy LTS build (Maxwell/Pascal/Volta — optional 535.x LTS) ─────
+# sudo nixos-rebuild switch --flake .#vexos-desktop-nvidia-legacy535
+nixosConfigurations.vexos-desktop-nvidia-legacy535 = nixpkgs.lib.nixosSystem {
+  inherit system;
+  modules = commonModules ++ [
+    ./hosts/desktop-nvidia.nix
+    { vexos.gpu.nvidiaDriverVariant = "legacy_535"; }
+  ];
+  specialArgs = { inherit inputs; };
+};
 
-### Step 3 — Document the option in `README.md` (optional but recommended)
+# ── NVIDIA Legacy Kepler build (GTX 600/700 series — requires 470.x) ─────────
+# sudo nixos-rebuild switch --flake .#vexos-desktop-nvidia-legacy470
+nixosConfigurations.vexos-desktop-nvidia-legacy470 = nixpkgs.lib.nixosSystem {
+  inherit system;
+  modules = commonModules ++ [
+    ./hosts/desktop-nvidia.nix
+    { vexos.gpu.nvidiaDriverVariant = "legacy_470"; }
+  ];
+  specialArgs = { inherit inputs; };
+};
 
-Add a note to the NVIDIA section of the README explaining how to override the driver variant
-for legacy GPUs.
+# ── NVIDIA Legacy Fermi build (GTX 400/500 series — requires 390.x) ──────────
+# sudo nixos-rebuild switch --flake .#vexos-desktop-nvidia-legacy390
+nixosConfigurations.vexos-desktop-nvidia-legacy390 = nixpkgs.lib.nixosSystem {
+  inherit system;
+  modules = commonModules ++ [
+    ./hosts/desktop-nvidia.nix
+    { vexos.gpu.nvidiaDriverVariant = "legacy_390"; }
+  ];
+  specialArgs = { inherit inputs; };
+};
+```
+
+**Insert after the existing `vexos-stateless-nvidia` block:**
+
+```nix
+# ── Stateless NVIDIA Legacy Kepler build ─────────────────────────────────────
+# sudo nixos-rebuild switch --flake .#vexos-stateless-nvidia-legacy470
+nixosConfigurations.vexos-stateless-nvidia-legacy470 = nixpkgs.lib.nixosSystem {
+  inherit system;
+  modules = commonModules ++ [
+    ./hosts/stateless-nvidia.nix
+    impermanence.nixosModules.impermanence
+    { vexos.gpu.nvidiaDriverVariant = "legacy_470"; }
+  ];
+  specialArgs = { inherit inputs; };
+};
+
+# ── Stateless NVIDIA Legacy Fermi build ──────────────────────────────────────
+# sudo nixos-rebuild switch --flake .#vexos-stateless-nvidia-legacy390
+nixosConfigurations.vexos-stateless-nvidia-legacy390 = nixpkgs.lib.nixosSystem {
+  inherit system;
+  modules = commonModules ++ [
+    ./hosts/stateless-nvidia.nix
+    impermanence.nixosModules.impermanence
+    { vexos.gpu.nvidiaDriverVariant = "legacy_390"; }
+  ];
+  specialArgs = { inherit inputs; };
+};
+```
+
+**Insert after the existing `vexos-htpc-nvidia` block:**
+
+```nix
+# ── HTPC NVIDIA Legacy Kepler build ──────────────────────────────────────────
+# sudo nixos-rebuild switch --flake .#vexos-htpc-nvidia-legacy470
+nixosConfigurations.vexos-htpc-nvidia-legacy470 = nixpkgs.lib.nixosSystem {
+  inherit system;
+  modules = minimalModules ++ [
+    ./hosts/htpc-nvidia.nix
+    { vexos.gpu.nvidiaDriverVariant = "legacy_470"; }
+  ];
+  specialArgs = { inherit inputs; };
+};
+
+# ── HTPC NVIDIA Legacy Fermi build ───────────────────────────────────────────
+# sudo nixos-rebuild switch --flake .#vexos-htpc-nvidia-legacy390
+nixosConfigurations.vexos-htpc-nvidia-legacy390 = nixpkgs.lib.nixosSystem {
+  inherit system;
+  modules = minimalModules ++ [
+    ./hosts/htpc-nvidia.nix
+    { vexos.gpu.nvidiaDriverVariant = "legacy_390"; }
+  ];
+  specialArgs = { inherit inputs; };
+};
+```
+
+> **Note on `legacy_535` availability:** Before adding the
+> `vexos-desktop-nvidia-legacy535` (and any htpc/stateless `legacy_535`)
+> outputs, the implementation subagent MUST verify that
+> `config.boot.kernelPackages.nvidiaPackages.legacy_535` exists in nixos-25.11.
+> - If available: add the output and the HTPC/stateless equivalents.
+> - If removed: omit the `legacy_535` outputs and remove `"legacy_535"` from
+>   the `lib.types.enum` in `modules/gpu/nvidia.nix` to prevent option
+>   evaluation errors.
+
+### Step 3 — Update `template/etc-nixos-flake.nix`
+
+In the "Desktop role" section of the header comment, add documentation for the
+legacy NVIDIA rebuild commands:
+
+```
+#      NVIDIA GPU (desktop role):
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia              (RTX 20xx / GTX 16xx and newer)
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy535    (Maxwell/Pascal/Volta — LTS alt.)
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy470    (Kepler — GTX 600/700)
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy390    (Fermi  — GTX 400/500)
+```
+
+Replace the existing single-line `#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia`
+with the expanded block above.
 
 ---
 
-## 6. NixOS Option Names and Nix Syntax Reference
+## 6. Files to be Modified
 
-| Purpose | NixOS option / expression |
-|---|---|
-| Select proprietary closed modules | `hardware.nvidia.open = false;` |
-| Select open kernel modules (Turing+) | `hardware.nvidia.open = true;` |
-| Use the stable (latest) driver | `hardware.nvidia.package = config.boot.kernelPackages.nvidiaPackages.stable;` |
-| Use legacy 535 driver | `hardware.nvidia.package = config.boot.kernelPackages.nvidiaPackages.legacy_535;` |
-| Use legacy 470 driver | `hardware.nvidia.package = config.boot.kernelPackages.nvidiaPackages.legacy_470;` |
-| Use legacy 390 driver | `hardware.nvidia.package = config.boot.kernelPackages.nvidiaPackages.legacy_390;` |
-| Conditional extraPackages | `hardware.graphics.extraPackages = lib.mkIf <condition> (with pkgs; [ ... ]);` |
-| Declare a custom option | `lib.mkOption { type = lib.types.enum [ ... ]; default = "..."; description = "..."; }` |
-| Separate options from config | Use `options = { ... };` and `config = { ... };` blocks (required when declaring options) |
+| File                            | Change type    | Description                                              |
+|---------------------------------|----------------|----------------------------------------------------------|
+| `modules/gpu/nvidia.nix`        | Documentation  | Correct `"legacy_535"` description; update header comment |
+| `flake.nix`                     | Feature        | Add 6–8 new `nixosConfigurations` outputs for legacy variants |
+| `template/etc-nixos-flake.nix`  | Documentation  | Document new legacy rebuild commands                     |
 
-> **Note on `options` / `config` split:** When a NixOS module declares both `options` and `config`
-> at the top level, those keys must be at the root of the attribute set returned by the module
-> function. The current `modules/gpu/nvidia.nix` does not declare options, so its content is
-> implicitly all `config`. The replacement module uses the explicit `options`/`config` split.
+No host files need modification. No new files need to be created.
 
 ---
 
 ## 7. Risks and Mitigations
 
 | Risk | Severity | Mitigation |
-|---|---|---|
-| `legacy_340` not included | Low | `legacy_340` is broken on kernel ≥ 6.7 (the CachyOS/Bazzite kernels used in this flake are 6.12+). Including it would produce an always-broken option. Not offered. |
-| `open = true` on a non-Turing card causes build/boot failure | High | Resolved by the variant→open mapping. The `"latest"` path keeps `open = true`; all others force `open = false`. |
-| `nvidia-vaapi-driver` on pre-Turing causes non-functional VA-API stack | Medium | Resolved by the `lib.mkIf useOpen` guard — excluded for all legacy variants. |
-| `legacy_535` user on a Maxwell card also works with `stable` + `open = false` | Low | Both are valid. `legacy_535` is provided for users who explicitly need the 535 LTS branch (e.g., driver stability preference or Vulkan extension compatibility). The `stable` path (with `open = false` manually set) is NOT the default for legacy cards; users should set the explicit variant. |
-| `options`/`config` split breaks if another module also uses `vexos.gpu` namespace | Medium | No existing module in the repo declares any `vexos.*` options. If a shared options module is introduced later, the `vexos.gpu.nvidiaDriverVariant` option can be migrated there. |
-| `nix flake check` fails if `legacy_470` package is not evaluable on the current kernel | Low | nixpkgs carries compatibility patches for `legacy_470` on recent kernels (6.12 patch is present in nixos-25.05). The option is lazy-evaluated — only evaluated when `vexos.gpu.nvidiaDriverVariant = "legacy_470"` is set. Default `"latest"` builds are unaffected. |
+|------|----------|------------|
+| `legacy_535` removed from nixos-25.11 | Medium | Implementation subagent verifies first; if absent, omits those outputs and removes enum value |
+| `legacy_340` not included | None | Confirmed `broken = kernel.kernelAtLeast "6.7"` in nixpkgs; out of scope |
+| Adding 6–8 outputs slows `nix flake check` | Low | All outputs share the same module tree and closure; incremental evaluation is fast |
+| `hardware.nvidia.open = false` + `legacy_470` fails on newer kernels | Low | nixpkgs carries kernel patches for `legacy_470` up to 6.15 (verified in nixos-unstable); modesetting still enabled |
+| VA-API missing for Kepler/Fermi builds | None | Already excluded via `lib.mkIf useOpen`; `libva-vdpau-driver` in `modules/gpu.nix` provides VDPAU fallback |
+| Template references undocumented targets | None (mitigated) | Template updated in Step 3 |
 
 ---
 
-## 8. Files to Modify
+## 8. Validation Checklist
 
-| File | Action |
-|---|---|
-| `modules/gpu/nvidia.nix` | Full replacement (see Section 4.3) |
-| `hosts/nvidia.nix` | No change required for default behavior |
-| `README.md` | Optional: document the new option |
+After implementation, the reviewer must verify:
 
----
-
-## 9. Verification Steps
-
-After implementation, run:
-
-```bash
-# Validate flake evaluation (must pass for all three outputs)
-nix flake check
-
-# Dry-build the AMD output to confirm it is unaffected
-sudo nixos-rebuild dry-build --flake .#vexos-amd
-
-# Dry-build the NVIDIA output (exercises the new options path with default "latest")
-sudo nixos-rebuild dry-build --flake .#vexos-nvidia
-
-# Dry-build the VM output to confirm it is unaffected
-sudo nixos-rebuild dry-build --flake .#vexos-vm
-```
-
-To verify the legacy variant evaluates correctly without a physical legacy GPU:
-
-```bash
-# Temporarily set vexos.gpu.nvidiaDriverVariant = "legacy_470" in hosts/nvidia.nix,
-# then run:
-sudo nixos-rebuild dry-build --flake .#vexos-nvidia
-# Confirm it selects nvidiaPackages.legacy_470 and open = false.
-# Restore the default "latest" afterward.
-```
+- [ ] `nix flake check` passes (all new outputs evaluate without error)
+- [ ] `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia` passes (no regression on default output)
+- [ ] `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia-legacy470` passes
+- [ ] `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia-legacy390` passes
+- [ ] `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia-legacy535` passes (only if `legacy_535` available)
+- [ ] The `"legacy_535"` option description no longer implies Maxwell/Pascal/Volta require it
+- [ ] `hardware-configuration.nix` is NOT committed to the repo
+- [ ] `system.stateVersion` is unchanged
 
 ---
 
-## 10. Sources Consulted
+## Summary
 
-1. NixOS Wiki — NVIDIA (Legacy branches section):
-   https://wiki.nixos.org/wiki/NVIDIA#Legacy_branches
-2. nixpkgs `nvidia-x11/default.nix` (nixos-25.05 branch) — listing all available package
-   attributes and driver versions:
-   https://github.com/NixOS/nixpkgs/blob/nixos-25.05/pkgs/os-specific/linux/nvidia-x11/default.nix
-3. NVIDIA official legacy GPU support list:
-   https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/
-4. NixOS Wiki — NVIDIA (Beta/production branches section, open module requirements):
-   https://wiki.nixos.org/wiki/NVIDIA#Beta_production_branches
-5. NixOS `hardware.nvidia` module source (nixpkgs):
-   https://github.com/NixOS/nixpkgs/blob/nixos-25.05/nixos/modules/hardware/nvidia.nix
-6. NVIDIA developer blog — Open GPU Kernel Modules announcement (Turing+ requirement):
-   https://developer.nvidia.com/blog/nvidia-transitions-fully-towards-open-source-gpu-kernel-modules/
+### What the current `modules/gpu/nvidia.nix` contains (Phase 1 — complete)
+
+The module correctly implements `vexos.gpu.nvidiaDriverVariant` with four
+variants (`"latest"`, `"legacy_535"`, `"legacy_470"`, `"legacy_390"`), proper
+`open` module selection, and conditional `nvidia-vaapi-driver` inclusion.
+The module logic is correct and requires no changes.
+
+### The remaining problem (Phase 2 — this spec)
+
+No dedicated flake outputs exist for legacy NVIDIA driver variants. The sole
+`vexos-desktop-nvidia` output always uses the production driver (570.x+), which
+does not support Kepler (GTX 600/700) or Fermi (GTX 400/500) GPUs. Users with
+legacy hardware get a system that builds successfully but fails to initialize
+the GPU at boot.
+
+### The fix
+
+Add named `nixosConfigurations` outputs in `flake.nix` for each legacy variant
+(`legacy470`, `legacy390`, optionally `legacy535`) for the desktop, stateless,
+and HTPC roles. Each output reuses the existing host file with a single inline
+module that overrides `vexos.gpu.nvidiaDriverVariant`. No host files need to
+change. Update the template to document the new rebuild commands.
+
+**Exact spec file path:** `/home/nimda/Projects/vexos-nix/.github/docs/subagent_docs/nvidia_legacy_drivers_spec.md`

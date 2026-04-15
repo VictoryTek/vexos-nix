@@ -2,9 +2,11 @@
 # NVIDIA proprietary drivers with multi-generation support.
 # Import this in hosts/nvidia.nix — do NOT use alongside gpu/amd.nix or gpu/vm.nix.
 #
-# Set vexos.gpu.nvidiaDriverVariant in your host config to match your GPU generation:
-#   "latest"     — Turing (RTX 20xx / GTX 16xx) and newer  [default]
-#   "legacy_535" — Maxwell / Pascal / Volta (GTX 750–1080 Ti, Titan V)
+# Set vexos.gpu.nvidiaDriverVariant in your host config to select a driver branch:
+#   "latest"     — Stable (570.x+) branch; open kernel modules; supports Maxwell (GTX 750+)
+#                  through Ada/Hopper. Correct choice for GTX 750+, RTX 20/30/40xx and newer.
+#   "legacy_535" — 535.x LTS branch; proprietary modules; open = false.
+#                  Optional LTS alternative for Maxwell/Pascal/Volta. NOT architecturally required.
 #   "legacy_470" — Kepler (GeForce 600 / 700 series)
 #   "legacy_390" — Fermi  (GeForce 400 / 500 series)
 { config, pkgs, lib, ... }:
@@ -34,8 +36,10 @@ in
 
         "latest"     — stable (570.x) branch; open kernel modules for Turing (RTX 20xx / GTX 16xx+).
                        This is the correct choice for all RTX 20/30/40 series and GTX 16xx cards.
-        "legacy_535" — 535.x LTS branch; proprietary modules required.
-                       Use for Maxwell (GTX 750/Ti), Pascal (GTX 1050–1080 Ti), and Volta (Titan V).
+        "legacy_535" — 535.x LTS branch; proprietary modules; open = false.
+                       Optional stable alternative for Maxwell (GTX 750+), Pascal (GTX 1050–1080 Ti),
+                       and Volta (Titan V) who prefer a proven LTS driver over current production.
+                       These GPUs work equally well with "latest"; this variant is NOT required.
         "legacy_470" — 470.x branch; proprietary modules required.
                        Use for Kepler GPUs: GeForce 600 and 700 series.
         "legacy_390" — 390.x branch; proprietary modules required.

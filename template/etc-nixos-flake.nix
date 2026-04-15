@@ -13,6 +13,9 @@
 #      Desktop role (full gaming/workstation stack):
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-amd
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy535    (Maxwell/Pascal/Volta — LTS alt.)
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy470    (Kepler — GTX 600/700)
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy390    (Fermi  — GTX 400/500)
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-intel
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-vm
 #

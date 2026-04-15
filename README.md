@@ -44,6 +44,8 @@ The running config writes `/etc/nixos/vexos-variant` (a one-word file, e.g. `vex
 |---|---|
 | `vexos-desktop-amd` | AMD GPU (RADV, ROCm, LACT) |
 | `vexos-desktop-nvidia` | NVIDIA GPU (proprietary, open kernel modules) |
+| `vexos-desktop-nvidia-legacy470` | NVIDIA Kepler legacy — GeForce 600/700 series (470.x driver) |
+| `vexos-desktop-nvidia-legacy390` | NVIDIA Fermi legacy — GeForce 400/500 series (390.x driver) |
 | `vexos-desktop-intel` | Intel iGPU or Arc dGPU |
 | `vexos-desktop-vm` | QEMU/KVM or VirtualBox guest |
 
@@ -53,6 +55,8 @@ The running config writes `/etc/nixos/vexos-variant` (a one-word file, e.g. `vex
 |---|---|
 | `vexos-stateless-amd` | AMD GPU, minimal stack |
 | `vexos-stateless-nvidia` | NVIDIA GPU, minimal stack |
+| `vexos-stateless-nvidia-legacy470` | NVIDIA Kepler legacy — GeForce 600/700 series, minimal stack |
+| `vexos-stateless-nvidia-legacy390` | NVIDIA Fermi legacy — GeForce 400/500 series, minimal stack |
 | `vexos-stateless-intel` | Intel iGPU or Arc dGPU, minimal stack |
 | `vexos-stateless-vm` | QEMU/KVM or VirtualBox guest, minimal stack |
 
@@ -77,6 +81,8 @@ curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/i
 |---|---|
 | `vexos-htpc-amd` | AMD GPU |
 | `vexos-htpc-nvidia` | NVIDIA GPU |
+| `vexos-htpc-nvidia-legacy470` | NVIDIA Kepler legacy — GeForce 600/700 series |
+| `vexos-htpc-nvidia-legacy390` | NVIDIA Fermi legacy — GeForce 400/500 series |
 | `vexos-htpc-intel` | Intel iGPU or Arc dGPU |
 | `vexos-htpc-vm` | QEMU/KVM or VirtualBox guest |
 
@@ -147,12 +153,16 @@ sudo nix --extra-experimental-features 'nix-command flakes' flake update --flake
 # Desktop variants
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-amd
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy470
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy390
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-intel
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-vm
 
 # Stateless variants
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-amd
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-nvidia
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-nvidia-legacy470
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-nvidia-legacy390
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-intel
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-vm
 
@@ -165,6 +175,8 @@ sudo nixos-rebuild switch --flake /etc/nixos#vexos-server-vm
 # HTPC variants
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-amd
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-nvidia
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-nvidia-legacy470
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-nvidia-legacy390
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-intel
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-vm
 ```  
