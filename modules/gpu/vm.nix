@@ -28,6 +28,9 @@
   # VM btrfs layout is not snapper-compatible — disable btrfs/snapper integration.
   vexos.btrfs.enable = false;
 
+  # scx requires kernel >= 6.12; VM is pinned to 6.6 LTS — disable SCX scheduler.
+  vexos.scx.enable = false;
+
   # VMs rely on hypervisor memory management — no disk swap file needed.
   vexos.swap.enable = false;
 

@@ -19,6 +19,16 @@
       '';
     };
 
+    vexos.scx.enable = lib.mkOption {
+      type    = lib.types.bool;
+      default = true;
+      description = ''
+        Enable the scx CPU scheduler (scx_lavd) for gaming desktops.
+        Requires kernel >= 6.12 with sched_ext support. Set to false on
+        VM guests or any host running a kernel older than 6.12.
+      '';
+    };
+
     vexos.swap.enable = lib.mkOption {
       type    = lib.types.bool;
       default = true;
@@ -105,14 +115,19 @@
         "w /sys/kernel/mm/transparent_hugepage/defrag   - - - - defer+madvise"
       ];
 
-      # ── scx CPU scheduler (LAVD / BORE via scx_sched) ───────────────────
-      # scx_lavd is the SteamOS/Bazzite scheduler for gaming desktops.
-      # Requires sched_ext support (zen 6.12+, lqx 6.12+, upstream 6.14+).
+    }
+
+    # ── scx CPU scheduler (opt-out via vexos.scx.enable = false) ─────────
+    # scx_lavd is the SteamOS/Bazzite scheduler for gaming desktops.
+    # Requires sched_ext support (zen 6.12+, lqx 6.12+, upstream 6.14+).
+    # Disabled automatically on VM guests (kernel 6.6 LTS, below minimum).
+    #
+    (lib.mkIf config.vexos.scx.enable {
       services.scx = {
         enable    = true;
         scheduler = "scx_lavd";
       };
-    }
+    })
 
     # ── Swap file (opt-out via vexos.swap.enable = false) ─────────────────
     # Persistent 8 GiB disk-backed swap at /var/lib/swapfile. Complements ZRAM:
