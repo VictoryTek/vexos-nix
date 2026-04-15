@@ -67,8 +67,9 @@ jobs:
       - name: nix flake check — evaluate all configurations (no build)
         # --no-build: evaluate derivations without building packages
         # --impure:   allow access to /etc/nixos/hardware-configuration.nix
-        # --show-trace: print full Nix evaluation stack on failure
-        run: nix flake check --no-build --impure --show-trace
+        # --show-trace is intentionally omitted: it produces traces so large
+        # that GitHub Actions truncates them before the actual error is visible.
+        run: nix flake check --no-build --impure
 
       - name: Verify hardware-configuration.nix is not tracked in git
         run: |
