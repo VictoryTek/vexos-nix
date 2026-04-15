@@ -25,10 +25,40 @@
       ];
     };
 
+    "org/gnome/desktop/interface" = {
+      clock-format = "12h";
+      cursor-size  = 24;
+      cursor-theme = "Bibata-Modern-Classic";
+      icon-theme   = "kora";
+    };
+
+    "org/gnome/desktop/wm/preferences" = {
+      button-layout = "appmenu:minimize,maximize,close";
+    };
+
     "org/gnome/desktop/background" = {
       picture-uri      = "file:///home/nimda/Pictures/Wallpapers/vex-bb-light.jxl";
       picture-uri-dark = "file:///home/nimda/Pictures/Wallpapers/vex-bb-dark.jxl";
       picture-options  = "zoom";
+    };
+
+    "org/gnome/shell/extensions/dash-to-dock" = {
+      dock-position = "LEFT";
+    };
+
+    "org/fedorahosted/background-logo-extension" = {
+      logo-file         = "/run/current-system/sw/share/pixmaps/vex-background-logo.svg";
+      logo-file-dark    = "/run/current-system/sw/share/pixmaps/vex-background-logo-dark.svg";
+      logo-always-visible = true;
+    };
+
+    "org/gnome/desktop/screensaver" = {
+      lock-enabled = false;
+      lock-delay   = lib.gvariant.mkUint32 0;
+    };
+
+    "org/gnome/session" = {
+      idle-delay = lib.gvariant.mkUint32 300;  # 5 min inactivity
     };
 
     "org/gnome/settings-daemon/plugins/power" = {
