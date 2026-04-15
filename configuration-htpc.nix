@@ -80,6 +80,7 @@
     "org.gimp.GIMP"
     "com.ranfdev.DistroShelf"
     "com.mattjakeman.ExtensionManager"  # puzzle-piece icon; not needed on HTPC
+    "com.vysp3r.ProtonPlus"             # Wine/Proton manager; no gaming role on HTPC
   ];
 
   # ---------- Branding ----------

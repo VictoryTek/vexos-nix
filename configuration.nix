@@ -115,6 +115,12 @@
     "electron-36.9.5"
   ];
 
+  # ---------- Desktop-only tools ----------
+  # gnome-boxes: virtual machine manager — useful on a full desktop, not on HTPC/server.
+  environment.systemPackages = with pkgs; [
+    unstable.gnome-boxes
+  ];
+
   # ---------- State version ----------
   # This value determines the NixOS release from which the default
   # settings for stateful data (like file locations) were taken.

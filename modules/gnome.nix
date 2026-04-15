@@ -130,7 +130,6 @@
     unstable.gnome-tweaks                               # GNOME customisation GUI
     unstable.gnome-extension-manager                   # Install/manage GNOME Shell extensions
     unstable.dconf-editor                               # Low-level GNOME settings editor
-    unstable.gnome-boxes                                # Virtual machine manager
 
     # GNOME Shell extensions
     unstable.gnomeExtensions.appindicator               # System tray icons
