@@ -76,6 +76,21 @@
       unstableOverlayModule
       { environment.systemPackages = [ up.packages.x86_64-linux.default ]; }
     ];
+
+    # Home Manager: HTPC-specific user environment (wallpapers, dconf wallpaper settings).
+    htpcHomeManagerModule = {
+      imports = [ home-manager.nixosModules.home-manager ];
+      home-manager = {
+        useGlobalPkgs    = true;
+        useUserPackages  = true;
+        extraSpecialArgs = { inherit inputs; };
+        users.nimda      = import ./home-htpc.nix;
+        backupFileExtension = "backup";
+      };
+    };
+
+    # Modules for HTPC role — minimal + home-manager for wallpaper/theming.
+    htpcModules = minimalModules ++ [ htpcHomeManagerModule ];
   in
   {
     # ── AMD GPU build ────────────────────────────────────────────────────────
@@ -236,7 +251,7 @@
     # sudo nixos-rebuild switch --flake .#vexos-htpc-amd
     nixosConfigurations.vexos-htpc-amd = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = minimalModules ++ [ ./hosts/htpc-amd.nix ];
+      modules = htpcModules ++ [ ./hosts/htpc-amd.nix ];
       specialArgs = { inherit inputs; };
     };
 
@@ -244,7 +259,7 @@
     # sudo nixos-rebuild switch --flake .#vexos-htpc-nvidia
     nixosConfigurations.vexos-htpc-nvidia = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = minimalModules ++ [ ./hosts/htpc-nvidia.nix ];
+      modules = htpcModules ++ [ ./hosts/htpc-nvidia.nix ];
       specialArgs = { inherit inputs; };
     };
 
@@ -252,7 +267,7 @@
     # sudo nixos-rebuild switch --flake .#vexos-htpc-nvidia-legacy535
     nixosConfigurations.vexos-htpc-nvidia-legacy535 = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = minimalModules ++ [
+      modules = htpcModules ++ [
         ./hosts/htpc-nvidia.nix
         { vexos.gpu.nvidiaDriverVariant = "legacy_535"; }
       ];
@@ -263,7 +278,7 @@
     # sudo nixos-rebuild switch --flake .#vexos-htpc-nvidia-legacy470
     nixosConfigurations.vexos-htpc-nvidia-legacy470 = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = minimalModules ++ [
+      modules = htpcModules ++ [
         ./hosts/htpc-nvidia.nix
         { vexos.gpu.nvidiaDriverVariant = "legacy_470"; }
       ];
@@ -274,7 +289,7 @@
     # sudo nixos-rebuild switch --flake .#vexos-htpc-intel
     nixosConfigurations.vexos-htpc-intel = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = minimalModules ++ [ ./hosts/htpc-intel.nix ];
+      modules = htpcModules ++ [ ./hosts/htpc-intel.nix ];
       specialArgs = { inherit inputs; };
     };
 
@@ -282,7 +297,7 @@
     # sudo nixos-rebuild switch --flake .#vexos-htpc-vm
     nixosConfigurations.vexos-htpc-vm = nixpkgs.lib.nixosSystem {
       inherit system;
-      modules = minimalModules ++ [ ./hosts/htpc-vm.nix ];
+      modules = htpcModules ++ [ ./hosts/htpc-vm.nix ];
       specialArgs = { inherit inputs; };
     };
 
@@ -373,7 +388,17 @@
 
       # HTPC stack: media-centre focused, no gaming/development/virtualization.
       htpcBase = { ... }: {
-        imports = [ ./configuration-htpc.nix ];
+        imports = [
+          home-manager.nixosModules.home-manager
+          ./configuration-htpc.nix
+        ];
+        home-manager = {
+          useGlobalPkgs    = true;
+          useUserPackages  = true;
+          extraSpecialArgs = { inherit inputs; };
+          users.nimda      = import ./home-htpc.nix;
+          backupFileExtension = "backup";
+        };
         nixpkgs.overlays = [
           (final: prev: {
             unstable = import nixpkgs-unstable {

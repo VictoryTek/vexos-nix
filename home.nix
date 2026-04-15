@@ -151,8 +151,8 @@
 
   # ── Wallpapers ─────────────────────────────────────────────────────────────
   # Copied from the repo into ~/Pictures/Wallpapers/ at each activation.
-  home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/vex-bb-light.jxl;
-  home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/vex-bb-dark.jxl;
+  home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/desktop/vex-bb-light.jxl;
+  home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/desktop/vex-bb-dark.jxl;
 
   # ── GNOME dconf settings ────────────────────────────────────────────────
   # Written directly into the user's dconf binary db during home-manager activation.
