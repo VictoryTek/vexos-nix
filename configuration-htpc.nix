@@ -81,6 +81,15 @@
     "com.ranfdev.DistroShelf"
     "com.mattjakeman.ExtensionManager"  # puzzle-piece icon; not needed on HTPC
     "com.vysp3r.ProtonPlus"             # Wine/Proton manager; no gaming role on HTPC
+    "net.lutris.Lutris"                 # gaming launcher; not applicable on a streaming HTPC
+    "org.prismlauncher.PrismLauncher"   # Minecraft launcher; not needed
+    "io.github.pol_rivero.github-desktop-plus" # Desktop Plus; not useful for streaming HTPC
+  ];
+
+  vexos.flatpak.extraApps = [
+    "io.freetubeapp.FreeTube"          # Privacy-respecting YouTube client
+    "tv.plex.PlexDesktop"              # Plex media client
+    "com.github.unrud.VideoDownloader" # Video downloader
   ];
 
   # ---------- Branding ----------
@@ -92,7 +101,10 @@
   # ---------- Icons ----------
   # Install Kora icon theme system-wide and set it as the default via a
   # system-level dconf database so GNOME picks it up without home-manager.
-  environment.systemPackages = [ pkgs.kora-icon-theme ];
+  environment.systemPackages = with pkgs; [
+    kora-icon-theme
+    ghostty
+  ];
   programs.dconf.profiles.user.databases = [
     {
       settings."org/gnome/desktop/interface".icon-theme = "kora";

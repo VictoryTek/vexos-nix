@@ -27,15 +27,21 @@ let
     "com.github.wwmm.easyeffects"
   ];
 
-  appsToInstall = lib.filter
+  appsToInstall = (lib.filter
     (a: !builtins.elem a config.vexos.flatpak.excludeApps)
-    defaultApps;
+    defaultApps) ++ config.vexos.flatpak.extraApps;
 in
 {
   options.vexos.flatpak.excludeApps = lib.mkOption {
     type        = lib.types.listOf lib.types.str;
     default     = [];
     description = "Flatpak app IDs to skip during first-boot installation.";
+  };
+
+  options.vexos.flatpak.extraApps = lib.mkOption {
+    type        = lib.types.listOf lib.types.str;
+    default     = [];
+    description = "Role-specific Flatpak app IDs to install in addition to the defaults.";
   };
 
   config = {
