@@ -128,8 +128,9 @@
   environment.systemPackages = with pkgs; [
     # GNOME tooling
     unstable.gnome-tweaks                               # GNOME customisation GUI
-    unstable.gnome-extension-manager                   # Install/manage GNOME Shell extensions
     unstable.dconf-editor                               # Low-level GNOME settings editor
+    # NOTE: gnome-extension-manager is installed in configuration.nix (desktop only).
+    # HTPC does not need an extension manager app.
 
     # GNOME Shell extensions
     unstable.gnomeExtensions.appindicator               # System tray icons

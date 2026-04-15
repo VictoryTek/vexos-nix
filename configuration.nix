@@ -113,6 +113,7 @@
   # gnome-boxes: virtual machine manager — useful on a full desktop, not on HTPC/server.
   environment.systemPackages = with pkgs; [
     unstable.gnome-boxes
+    unstable.gnome-extension-manager  # Install/manage GNOME Shell extensions (desktop only)
   ];
 
   # ---------- State version ----------

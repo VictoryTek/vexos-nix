@@ -30,6 +30,12 @@ let
   appsToInstall = (lib.filter
     (a: !builtins.elem a config.vexos.flatpak.excludeApps)
     defaultApps) ++ config.vexos.flatpak.extraApps;
+
+  # Short hash of the desired app list, baked in at Nix evaluation time.
+  # When excludeApps or extraApps changes the hash changes, causing the
+  # stamp path to change and the service to re-run and sync.
+  appsListHash = builtins.substring 0 16
+    (builtins.hashString "sha256" (lib.concatStringsSep "," appsToInstall));
 in
 {
   options.vexos.flatpak.excludeApps = lib.mkOption {
@@ -83,10 +89,24 @@ in
     requires    = [ "flatpak-add-flathub.service" ];
     path        = [ pkgs.flatpak ];
     script = ''
-      if [ -f /var/lib/flatpak/.apps-installed ]; then exit 0; fi
+      # Hash of the desired app list baked in at build time.
+      # Changes when excludeApps or extraApps changes — triggers a sync.
+      STAMP="/var/lib/flatpak/.apps-installed-${appsListHash}"
+      if [ -f "$STAMP" ]; then exit 0; fi
 
       FAILED=0
 
+      # ── Remove excluded apps that may still be installed from a prior config ──
+      for app in \
+        ${lib.concatMapStringsSep " \\\n        " (a: a) config.vexos.flatpak.excludeApps}
+      do
+        if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
+          echo "flatpak: uninstalling excluded app $app"
+          flatpak uninstall --noninteractive --assumeyes "$app" || true
+        fi
+      done
+
+      # ── Install desired apps ───────────────────────────────────────────────
       for app in \
         ${lib.concatMapStringsSep " \\\n        " (a: a) appsToInstall}
       do
@@ -102,8 +122,10 @@ in
       done
 
       if [ "$FAILED" -eq 0 ]; then
-        touch /var/lib/flatpak/.apps-installed
-        echo "flatpak: all apps installed successfully"
+        # Remove old stamps (previous app-list hashes) and write the current one
+        rm -f /var/lib/flatpak/.apps-installed /var/lib/flatpak/.apps-installed-*
+        touch "$STAMP"
+        echo "flatpak: sync complete"
       else
         echo "flatpak: one or more apps failed — will retry on next start"
         exit 1

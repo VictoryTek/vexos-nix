@@ -107,7 +107,36 @@
   ];
   programs.dconf.profiles.user.databases = [
     {
-      settings."org/gnome/desktop/interface".icon-theme = "kora";
+      settings."org/gnome/desktop/interface" = {
+        icon-theme   = "kora";
+        clock-format = "12h";
+      };
+      # Enable GNOME Shell extensions at the system level (no home-manager on HTPC).
+      # gamemode-shell-extension is omitted — programs.gamemode is not enabled here.
+      settings."org/gnome/shell" = {
+        enabled-extensions = [
+          "appindicatorsupport@rgcjonas.gmail.com"
+          "dash-to-dock@micxgx.gmail.com"
+          "AlphabeticalAppGrid@stuarthayhurst"
+          "gnome-ui-tune@itstime.tech"
+          "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
+          "steal-my-focus-window@steal-my-focus-window"
+          "tailscale-status@maxgallup.github.com"
+          "caffeine@patapon.info"
+          "restartto@tiagoporsch.github.io"
+          "blur-my-shell@aunetx"
+          "background-logo@fedorahosted.org"
+        ];
+        favorite-apps = [
+          "app.zen_browser.zen.desktop"
+          "brave-browser.desktop"
+          "tv.plex.PlexDesktop.desktop"
+          "io.freetubeapp.FreeTube.desktop"
+          "com.mitchellh.ghostty.desktop"
+          "org.gnome.Nautilus.desktop"
+          "io.github.up.desktop"
+        ];
+      };
     }
   ];
 
