@@ -24,10 +24,6 @@
     capSysNice = true; # lets gamescope renice itself for lower latency
   };
 
-  # ── MangoHud (in-game performance overlay) ────────────────────────────────
-  # Enable per-game with: mangohud %command% in Steam launch options.
-  programs.mangohud.enable = true;
-
   # ── GameMode — performance daemon (CPU/GPU boost on game start) ───────────
   programs.gamemode = {
     enable = true;
@@ -51,6 +47,7 @@
     umu-launcher    # Proton launcher for non-Steam games
 
     # Display / overlay
+    mangohud        # In-game performance overlay; use mangohud %command% in Steam launch options
     vkbasalt        # Vulkan post-processing layer (CAS, FXAA, etc.)
 
     # Wine (Staging + Wow64 multilib)
