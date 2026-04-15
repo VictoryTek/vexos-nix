@@ -8,6 +8,7 @@
     ./modules/gpu.nix
     ./modules/flatpak.nix
     ./modules/network.nix
+    ./modules/packages.nix
     ./modules/development.nix
     ./modules/virtualization.nix
     ./modules/branding.nix

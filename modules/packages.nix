@@ -1,12 +1,15 @@
 # modules/packages.nix
-# Base system packages for non-desktop roles (server, htpc, stateless).
-# Desktop role uses modules/development.nix instead (which includes these plus dev tools).
+# Base system packages shared across all roles (desktop, htpc, server, stateless).
+# Desktop additionally imports modules/development.nix for dev-specific tooling.
 { pkgs, ... }:
 {
   environment.systemPackages = with pkgs; [
 
     # ── Browser ───────────────────────────────────────────────────────────────
     brave                                              # Chromium-based browser
+
+    # ── Build / task runner ───────────────────────────────────────────────────
+    just                                               # Command runner (justfile)
 
     # ── System utilities ──────────────────────────────────────────────────────
     btop                                               # Terminal process viewer

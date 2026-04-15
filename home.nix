@@ -31,8 +31,8 @@
     bat
     eza
     fzf
-    just
     wl-clipboard  # Wayland clipboard CLI (wl-copy / wl-paste)
+    # NOTE: just is installed system-wide via modules/packages.nix.
 
     # Themes (must be Nix — consumed by gtk.iconTheme / home.pointerCursor)
     bibata-cursors
@@ -40,12 +40,11 @@
 
     # System utilities
     fastfetch
-    btop
-    inxi
     blivet-gui
+    # NOTE: btop and inxi are installed system-wide via modules/packages.nix.
 
     # NOTE: pavucontrol and protonplus are installed via Flatpak (see modules/flatpak.nix).
-    # brave is installed as a Nix package (see modules/development.nix).
+    # brave is installed as a Nix package (see modules/packages.nix).
   ];
 
   # ── Shell ──────────────────────────────────────────────────────────────────

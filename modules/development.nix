@@ -52,11 +52,5 @@
     # ── Go ────────────────────────────────────────────────────────────────────
     go                                            # Go programming language
 
-    # ── Base system utilities ─────────────────────────────────────────────────
-    brave                                         # Chromium-based browser
-    git                                           # Version control
-    curl                                          # HTTP / transfer CLI
-    wget                                          # File downloader
-
   ];
 }
