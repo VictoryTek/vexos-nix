@@ -73,6 +73,15 @@
   # Set once at install time — do not change after initial deployment.
   system.stateVersion = "25.11";
 
+  # ---------- Flatpak ----------
+  # Exclude apps that are desktop/creative tools or extension management
+  # utilities with no place in a media-centre role.
+  vexos.flatpak.excludeApps = [
+    "org.gimp.GIMP"
+    "com.ranfdev.DistroShelf"
+    "com.mattjakeman.ExtensionManager"  # puzzle-piece icon; not needed on HTPC
+  ];
+
   # ---------- Branding ----------
   # Override branding.nix's lib.mkDefault "VexOS Desktop" (priority 1000).
   # Using mkOverride 500 so host files can still use plain assignments (priority 100)

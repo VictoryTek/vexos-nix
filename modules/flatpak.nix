@@ -1,6 +1,41 @@
 # modules/flatpak.nix
 { config, pkgs, lib, ... }:
+let
+  # Default Flatpak apps installed on first boot.
+  # Roles can exclude apps by setting vexos.flatpak.excludeApps.
+  defaultApps = [
+    "com.bitwarden.desktop"
+    "io.github.pol_rivero.github-desktop-plus"
+    "com.github.tchx84.Flatseal"
+    "it.mijorus.gearlever"
+    "org.gimp.GIMP"
+    "io.missioncenter.MissionCenter"
+    "org.onlyoffice.desktopeditors"
+    "org.prismlauncher.PrismLauncher"
+    "com.simplenote.Simplenote"
+    "io.github.flattool.Warehouse"
+    "app.zen_browser.zen"
+    "com.mattjakeman.ExtensionManager"
+    "com.rustdesk.RustDesk"
+    "io.github.kolunmi.Bazaar"
+    "org.pulseaudio.pavucontrol"
+    "com.vysp3r.ProtonPlus"
+    "net.lutris.Lutris"
+    "com.ranfdev.DistroShelf"
+  ];
+
+  appsToInstall = lib.filter
+    (a: !builtins.elem a config.vexos.flatpak.excludeApps)
+    defaultApps;
+in
 {
+  options.vexos.flatpak.excludeApps = lib.mkOption {
+    type        = lib.types.listOf lib.types.str;
+    default     = [];
+    description = "Flatpak app IDs to skip during first-boot installation.";
+  };
+
+  config = {
   services.flatpak.enable = true;
 
   # Add Flathub remote on first boot only (stamp: /var/lib/flatpak/.flathub-added).
@@ -44,24 +79,7 @@
       FAILED=0
 
       for app in \
-        com.bitwarden.desktop \
-        io.github.pol_rivero.github-desktop-plus \
-        com.github.tchx84.Flatseal \
-        it.mijorus.gearlever \
-        org.gimp.GIMP \
-        io.missioncenter.MissionCenter \
-        org.onlyoffice.desktopeditors \
-        org.prismlauncher.PrismLauncher \
-        com.simplenote.Simplenote \
-        io.github.flattool.Warehouse \
-        app.zen_browser.zen \
-        com.mattjakeman.ExtensionManager \
-        com.rustdesk.RustDesk \
-        io.github.kolunmi.Bazaar \
-        org.pulseaudio.pavucontrol \
-        com.vysp3r.ProtonPlus \
-        net.lutris.Lutris \
-        com.ranfdev.DistroShelf
+        ${lib.concatMapStringsSep " \\\n        " (a: a) appsToInstall}
       do
         if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
           echo "flatpak: $app already installed, skipping"
@@ -101,4 +119,5 @@
       "$HOME/.local/share/flatpak/exports/share"
     ];
   };
+  }; # end config
 }
