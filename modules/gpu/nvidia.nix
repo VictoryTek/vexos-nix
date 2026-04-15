@@ -48,6 +48,9 @@ in
   };
 
   config = {
+    # NVIDIA proprietary drivers require explicit license acceptance.
+    nixpkgs.config.nvidia.acceptLicense = true;
+
     services.xserver.videoDrivers = [ "nvidia" ];
 
     hardware.nvidia = {
