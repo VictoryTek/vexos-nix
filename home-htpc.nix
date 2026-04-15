@@ -66,10 +66,6 @@
       sleep-inactive-battery-type = "nothing";
     };
 
-    "org/gnome/desktop/screensaver" = {
-      lock-enabled = false;
-    };
-
     "org/gnome/desktop/app-folders" = {
       folder-children = [ "Office" "Utilities" "System" ];
     };
