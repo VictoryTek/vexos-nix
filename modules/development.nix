@@ -21,13 +21,7 @@
     uv                                            # Fast Python package & project manager
     ruff                                          # Python linter & formatter
 
-    # ── Rust ──────────────────────────────────────────────────────────────────
-    rustfmt                                       # Rust code formatter
-    clippy                                        # Rust linter
-    rustup                                        # Rust toolchain manager (rustc, cargo, clippy)
-
     # ── TypeScript / Node ─────────────────────────────────────────────────────
-    nodejs                                        # Node.js runtime + npm
     nodePackages.typescript                       # TypeScript compiler (tsc)
     pnpm                                          # Fast, disk-efficient Node package manager
     bun                                           # All-in-one JS/TS runtime & bundler
@@ -45,19 +39,24 @@
     git-lfs                                       # Git Large File Storage
     jq                                            # JSON processor / pretty-printer
     yq-go                                         # YAML / TOML / XML processor
-    direnv                                        # Per-directory environment variables
     pre-commit                                    # Git hook framework
     sqlite                                        # Embedded SQL database + CLI
     httpie                                        # Human-friendly HTTP client
     mkcert                                        # Locally-trusted dev TLS certificates
+
+    # ── Nix tooling ───────────────────────────────────────────────────────────
+    nil                                           # Nix LSP server
+    nixpkgs-fmt                                   # Nix code formatter
+    nix-output-monitor                            # Enhanced nix build output (nom)
+
+    # ── Go ────────────────────────────────────────────────────────────────────
+    go                                            # Go programming language
 
     # ── Base system utilities ─────────────────────────────────────────────────
     brave                                         # Chromium-based browser
     git                                           # Version control
     curl                                          # HTTP / transfer CLI
     wget                                          # File downloader
-    inxi                                          # System information tool
-    htop                                          # Interactive process viewer
 
   ];
 }

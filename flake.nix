@@ -10,12 +10,6 @@
     # pin unstable to the stable revision, defeating its purpose.
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    # nix-gaming: low-latency PipeWire module, SteamOS platform optimisations, Wine-GE packages
-    nix-gaming = {
-      url = "github:fufexan/nix-gaming";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     # home-manager: optional, for user-level dotfiles (future use)
     home-manager = {
       url = "github:nix-community/home-manager/release-25.11";
@@ -34,7 +28,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nix-gaming, home-manager, impermanence, up, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, impermanence, up, ... }@inputs:
   let
     system = "x86_64-linux";
 
@@ -298,10 +292,8 @@
     # needs to leave /etc/nixos.
     nixosModules = {
       # Full stack: desktop + gaming + audio + performance + controllers + network + flatpak
-      # Also bundles nix-gaming low-latency PipeWire and Steam platform optimisations.
       base = { ... }: {
         imports = [
-          nix-gaming.nixosModules.pipewireLowLatency
           home-manager.nixosModules.home-manager
           ./configuration.nix
         ];
@@ -326,7 +318,6 @@
       # Suitable for a clean daily-driver focused on stateless and basic productivity.
       statelessBase = { lib, ... }: {
         imports = [
-          nix-gaming.nixosModules.pipewireLowLatency
           home-manager.nixosModules.home-manager
           impermanence.nixosModules.impermanence
           ./configuration-stateless.nix

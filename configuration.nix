@@ -109,12 +109,6 @@
   # ---------- Unfree packages (required for Steam, NVIDIA, proton-ge-bin) ----------
   nixpkgs.config.allowUnfree = true;
 
-  # ---------- Permitted insecure packages ----------
-  # electron: required by Heroic Games Launcher; permit until nixpkgs ships a newer version.
-  nixpkgs.config.permittedInsecurePackages = [
-    "electron-36.9.5"
-  ];
-
   # ---------- Desktop-only tools ----------
   # gnome-boxes: virtual machine manager — useful on a full desktop, not on HTPC/server.
   environment.systemPackages = with pkgs; [

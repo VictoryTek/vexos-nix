@@ -24,9 +24,6 @@
     # Terminal emulator
     ghostty
 
-    # Communication
-    # discord  # temporarily disabled — work network blocks download
-
     # Terminal utilities
     tree
     ripgrep
@@ -34,8 +31,8 @@
     bat
     eza
     fzf
-    tmux
     just
+    wl-clipboard  # Wayland clipboard CLI (wl-copy / wl-paste)
 
     # Themes (must be Nix — consumed by gtk.iconTheme / home.pointerCursor)
     bibata-cursors
@@ -48,7 +45,7 @@
     blivet-gui
 
     # NOTE: pavucontrol and protonplus are installed via Flatpak (see modules/flatpak.nix).
-    # brave is installed as a Nix package (see modules/packages.nix).
+    # brave is installed as a Nix package (see modules/development.nix).
   ];
 
   # ── Shell ──────────────────────────────────────────────────────────────────
@@ -76,6 +73,24 @@
   };
 
   xdg.configFile."starship.toml".source = ./files/starship.toml;
+
+  # ── Direnv (per-directory environments) ────────────────────────────────────
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
+  };
+
+  # ── Tmux terminal multiplexer ──────────────────────────────────────────────
+  programs.tmux = {
+    enable       = true;
+    mouse        = true;
+    terminal     = "tmux-256color";
+    prefix       = "C-a";
+    baseIndex    = 1;
+    escapeTime   = 0;
+    historyLimit = 10000;
+    keyMode      = "vi";
+  };
 
   # ── Justfile ───────────────────────────────────────────────────────────────
   # Deploy the repo's justfile to ~/justfile so 'just' works from home dir.
@@ -136,10 +151,9 @@
 
   # ── Wallpapers ─────────────────────────────────────────────────────────────
   # Copied from the repo into ~/Pictures/Wallpapers/ at each activation.
-  # JXL format requires a gdk-pixbuf loader; GNOME on NixOS may need jxl-pixbuf-loader
-  # added to environment.systemPackages in modules/desktop.nix if wallpapers don't appear.
   home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/vex-bb-light.jxl;
   home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/vex-bb-dark.jxl;
+
   # ── GNOME dconf settings ────────────────────────────────────────────────
   # Written directly into the user's dconf binary db during home-manager activation.
   # These override system-level defaults and are the authoritative source for all
@@ -169,7 +183,6 @@
         "io.github.up.desktop"
         "org.gnome.Boxes.desktop"
         "code.desktop"
-        "discord.desktop"
       ];
     };
 
@@ -268,7 +281,6 @@
         "org.gnome.baobab.desktop"
         "org.gnome.DiskUtility.desktop"
         "org.gnome.font-viewer.desktop"
-        "htop.desktop"
         "org.gnome.Logs.desktop"
         "btrfs-assistant.desktop"
         "org.gnome.SystemMonitor.desktop"

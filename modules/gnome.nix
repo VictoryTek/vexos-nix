@@ -126,6 +126,9 @@
 
   # ── GNOME tooling & Shell extensions ─────────────────────────────────────
   environment.systemPackages = with pkgs; [
+    # JXL image support for GNOME (gdk-pixbuf loader for JPEG XL wallpapers)
+    jxl-pixbuf-loader
+
     # GNOME tooling
     unstable.gnome-tweaks                               # GNOME customisation GUI
     unstable.gnome-extension-manager                   # Install/manage GNOME Shell extensions

@@ -22,6 +22,9 @@ let
     "com.vysp3r.ProtonPlus"
     "net.lutris.Lutris"
     "com.ranfdev.DistroShelf"
+    "org.gnome.World.PikaBackup"
+    "com.usebottles.bottles"
+    "com.github.wwmm.easyeffects"
   ];
 
   appsToInstall = lib.filter

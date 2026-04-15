@@ -1,6 +1,7 @@
 # modules/gaming.nix
-# Gaming stack: Steam, Proton, Lutris, Heroic, Bottles, MangoHud, Gamescope,
-# GameMode, Wine/Proton tooling, OBS VkCapture, Distrobox, Input Remapper.
+# Gaming stack: Steam, Proton, MangoHud, Gamescope, GameMode,
+# Wine/Proton tooling, Distrobox.
+# Lutris, ProtonPlus, and Bottles are installed via Flatpak (see modules/flatpak.nix).
 { config, pkgs, lib, ... }:
 {
   # ── Steam ─────────────────────────────────────────────────────────────────
@@ -23,6 +24,10 @@
     capSysNice = true; # lets gamescope renice itself for lower latency
   };
 
+  # ── MangoHud (in-game performance overlay) ────────────────────────────────
+  # Enable per-game with: mangohud %command% in Steam launch options.
+  programs.mangohud.enable = true;
+
   # ── GameMode — performance daemon (CPU/GPU boost on game start) ───────────
   programs.gamemode = {
     enable = true;
@@ -41,9 +46,6 @@
 
   # ── Gaming utilities ──────────────────────────────────────────────────────
   environment.systemPackages = with pkgs; [
-    # Performance overlay — enable per-game with: mangohud %command% in Steam launch options
-    ## mangohud
-
     # Proton / Wine tooling
     protontricks    # winetricks wrapper for Steam games
     umu-launcher    # Proton launcher for non-Steam games
@@ -60,14 +62,9 @@
     # Container tooling (Distrobox for running other distro environments)
     distrobox
 
-    # NOTE: lutris and ProtonPlus are installed via Flatpak
-    # (net.lutris.Lutris and com.vysp3r.ProtonPlus in modules/flatpak.nix).
+    # NOTE: lutris, ProtonPlus, and Bottles are installed via Flatpak
+    # (net.lutris.Lutris, com.vysp3r.ProtonPlus, and com.usebottles.bottles in modules/flatpak.nix).
   ];
-
-  # ── Input Remapper daemon ─────────────────────────────────────────────────
-  # Use the NixOS service module instead of a manual systemd service definition
-  # to avoid conflicts with the packaged service file.
-  ##services.input-remapper.enable = true;
 
   # ── Controllers ───────────────────────────────────────────────────────────
   # Gamepad and controller support: Xbox (xone/xpadneo), Nintendo Switch,

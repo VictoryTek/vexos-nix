@@ -115,12 +115,6 @@
   # ---------- Unfree packages (required for Steam, NVIDIA, proton-ge-bin) ----------
   nixpkgs.config.allowUnfree = true;
 
-  # ---------- Permitted insecure packages ----------
-  # electron: required by Heroic Games Launcher; permit until nixpkgs ships a newer version.
-  nixpkgs.config.permittedInsecurePackages = [
-    "electron-36.9.5"
-  ];
-
   # ---------- State version ----------
   # This value determines the NixOS release from which the default
   # settings for stateful data (like file locations) were taken.

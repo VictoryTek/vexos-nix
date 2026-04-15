@@ -53,10 +53,6 @@
         "quiet"
         "splash"
         "loglevel=3"
-
-        # CPU vulnerability mitigations — kept enabled (safe default).
-        # Uncomment below ONLY if performance is critical and security trade-off is accepted:
-        # "mitigations=off"
       ];
 
       # ── Plymouth (graphical boot splash) ────────────────────────────────
@@ -96,6 +92,10 @@
 
         # SysRq — useful for emergency system recovery during gaming lockups
         "kernel.sysrq" = 1;
+
+        # Maximum memory map areas per process — required by Proton/Wine anti-cheat
+        # (EAC, BattlEye). 2147483642 is MAX_INT-5, the value set by SteamOS/Bazzite.
+        "vm.max_map_count" = 2147483642;
       };
 
       # ── Transparent Huge Pages ───────────────────────────────────────────
@@ -107,13 +107,11 @@
 
       # ── scx CPU scheduler (LAVD / BORE via scx_sched) ───────────────────
       # scx_lavd is the SteamOS/Bazzite scheduler for gaming desktops.
-      # Requires sched_ext support (zen 6.12+, lqx 6.12+).
-      # Uncomment after confirming kernel and package availability:
-      #
-      # services.scx = {
-      #   enable    = true;
-      #   scheduler = "scx_lavd"; # or "scx_rusty", "scx_bpfland"
-      # };
+      # Requires sched_ext support (zen 6.12+, lqx 6.12+, upstream 6.14+).
+      services.scx = {
+        enable    = true;
+        scheduler = "scx_lavd";
+      };
     }
 
     # ── Swap file (opt-out via vexos.swap.enable = false) ─────────────────
