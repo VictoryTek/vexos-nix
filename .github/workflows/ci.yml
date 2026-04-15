@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  actions: write   # Required by cache-nix-action to save Nix store cache
 
 jobs:
   flake-check:
@@ -45,6 +46,16 @@ jobs:
           # when fetching flake inputs (nixpkgs, nix-gaming, home-manager, etc.)
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Cache Nix store
+        uses: nix-community/cache-nix-action@v6
+        with:
+          # Key includes flake.lock hash — cache is invalidated on any input change
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          # Fall back to any previous cache for this OS to get a warm store
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          # Cap store size before saving to stay within GitHub's 10 GiB cache limit
+          gc-max-store-size-linux: 8589934592  # 8 GiB
+
       - name: Create stub hardware-configuration.nix for CI
         run: |
           # This stub satisfies the flake's commonModules import of
@@ -69,7 +80,9 @@ jobs:
         # --impure:   allow access to /etc/nixos/hardware-configuration.nix
         # --show-trace is intentionally omitted: it produces traces so large
         # that GitHub Actions truncates them before the actual error is visible.
-        run: nix flake check --no-build --impure
+        # timeout 25m: hard-kill nix if it hangs, producing a clean failure
+        # instead of silently blocking until the job timeout kills the runner.
+        run: timeout 25m nix flake check --no-build --impure
 
       - name: Verify hardware-configuration.nix is not tracked in git
         run: |
