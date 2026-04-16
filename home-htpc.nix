@@ -6,6 +6,32 @@
   home.username    = "nimda";
   home.homeDirectory = "/home/nimda";
 
+  # ── Shell ──────────────────────────────────────────────────────────────────
+  programs.bash = {
+    enable = true;
+    shellAliases = {
+      ll  = "ls -la";
+      ".." = "cd ..";
+
+      # Tailscale shortcuts
+      ts   = "tailscale";
+      tss  = "tailscale status";
+      tsip = "tailscale ip";
+
+      # System service shortcuts
+      sshstatus = "systemctl status sshd";
+      smbstatus = "systemctl status smbd";
+    };
+  };
+
+  # ── Starship prompt ────────────────────────────────────────────────────────
+  programs.starship = {
+    enable = true;
+    enableBashIntegration = true;
+  };
+
+  xdg.configFile."starship.toml".source = ./files/starship.toml;
+
   # ── Wallpapers ─────────────────────────────────────────────────────────────
   # Copied from the repo into ~/Pictures/Wallpapers/ at each activation.
   home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/htpc/vex-bb-light.jxl;
@@ -114,6 +140,15 @@
         "org.gnome.SystemMonitor.desktop"
       ];
     };
+  };
+
+  # ── Hidden app grid entries ────────────────────────────────────────────────
+  # These packages cannot be safely removed (they are required dependencies),
+  # so their .desktop files are masked to keep them out of the app grid.
+  xdg.desktopEntries."org.gnome.Extensions" = {
+    name      = "Extensions";
+    noDisplay = true;
+    settings.Hidden = "true";
   };
 
   home.stateVersion = "24.05";

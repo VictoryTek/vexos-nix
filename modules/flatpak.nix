@@ -94,6 +94,18 @@ in
 
       FAILED=0
 
+      # ── Remove globally banned apps ──────────────────────────────────────────
+      # Apps that must never be present on any role. These are uninstalled
+      # unconditionally, regardless of excludeApps.
+      for app in \
+        com.github.wwmm.easyeffects
+      do
+        if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
+          echo "flatpak: uninstalling banned app $app"
+          flatpak uninstall --noninteractive --assumeyes "$app" || true
+        fi
+      done
+
       # ── Remove excluded apps that may still be installed from a prior config ──
       for app in \
         ${lib.concatMapStringsSep " \\\n        " (a: a) config.vexos.flatpak.excludeApps}
