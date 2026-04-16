@@ -19,6 +19,9 @@
   time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
 
+  # ---------- Branding ----------
+  vexos.branding.role = "server";
+
   # ---------- Users ----------
   users.users.nimda = {
     isNormalUser = true;

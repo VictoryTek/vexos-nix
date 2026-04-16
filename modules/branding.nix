@@ -6,29 +6,34 @@
 # This module only sets the theme and logo (branding concerns).
 { pkgs, lib, config, ... }:
 let
+  role        = config.vexos.branding.role;
+  pixmapsDir  = ../files/pixmaps + "/${role}";
+  bgLogosDir  = ../files/background_logos + "/${role}";
+  plymouthDir = ../files/plymouth + "/${role}";
+
   vexosLogos = pkgs.runCommand "vexos-logos" {} ''
     mkdir -p $out/share/pixmaps
 
     # Primary brand logo (deployed under two names)
-    cp ${../files/pixmaps/vex.png}                   $out/share/pixmaps/vex.png
-    cp ${../files/pixmaps/vex.png}                   $out/share/pixmaps/distributor-logo.png
+    cp ${pixmapsDir}/vex.png                    $out/share/pixmaps/vex.png
+    cp ${pixmapsDir}/vex.png                    $out/share/pixmaps/distributor-logo.png
 
     # White variant (dark-background logo — used by GDM and GNOME About dialog)
-    cp ${../files/pixmaps/system-logo-white.png}     $out/share/pixmaps/system-logo-white.png
+    cp ${pixmapsDir}/system-logo-white.png      $out/share/pixmaps/system-logo-white.png
 
     # Size/format variants — renamed from fedora- to vex- at install time.
     # Source files retain their original names in git (preserving origin context).
-    cp ${../files/pixmaps/fedora-gdm-logo.png}       $out/share/pixmaps/vex-gdm-logo.png
-    cp ${../files/pixmaps/fedora-logo-small.png}     $out/share/pixmaps/vex-logo-small.png
-    cp ${../files/pixmaps/fedora-logo-sprite.png}    $out/share/pixmaps/vex-logo-sprite.png
-    cp ${../files/pixmaps/fedora-logo-sprite.svg}    $out/share/pixmaps/vex-logo-sprite.svg
-    cp ${../files/pixmaps/fedora-logo.png}           $out/share/pixmaps/vex-logo.png
-    cp ${../files/pixmaps/fedora_logo_med.png}       $out/share/pixmaps/vex-logo-med.png
-    cp ${../files/pixmaps/fedora_whitelogo_med.png}  $out/share/pixmaps/vex-whitelogo-med.png
+    cp ${pixmapsDir}/fedora-gdm-logo.png        $out/share/pixmaps/vex-gdm-logo.png
+    cp ${pixmapsDir}/fedora-logo-small.png      $out/share/pixmaps/vex-logo-small.png
+    cp ${pixmapsDir}/fedora-logo-sprite.png     $out/share/pixmaps/vex-logo-sprite.png
+    cp ${pixmapsDir}/fedora-logo-sprite.svg     $out/share/pixmaps/vex-logo-sprite.svg
+    cp ${pixmapsDir}/fedora-logo.png            $out/share/pixmaps/vex-logo.png
+    cp ${pixmapsDir}/fedora_logo_med.png        $out/share/pixmaps/vex-logo-med.png
+    cp ${pixmapsDir}/fedora_whitelogo_med.png   $out/share/pixmaps/vex-whitelogo-med.png
 
     # Background Logo extension — light and dark SVG variants
-    cp ${../files/background_logos/fedora_lightbackground.svg} $out/share/pixmaps/vex-background-logo.svg
-    cp ${../files/background_logos/fedora_darkbackground.svg}  $out/share/pixmaps/vex-background-logo-dark.svg
+    cp ${bgLogosDir}/fedora_lightbackground.svg $out/share/pixmaps/vex-background-logo.svg
+    cp ${bgLogosDir}/fedora_darkbackground.svg  $out/share/pixmaps/vex-background-logo-dark.svg
   '';
 
   # Hicolor icon entries for the "vexos-logo" icon name.
@@ -41,14 +46,14 @@ let
   } ''
     # Scalable SVG — GTK4 prefers scalable for icon-name lookups
     mkdir -p $out/share/icons/hicolor/scalable/apps
-    cp ${../files/pixmaps/fedora-logo-sprite.svg} \
+    cp ${pixmapsDir}/fedora-logo-sprite.svg \
        $out/share/icons/hicolor/scalable/apps/vexos-logo.svg
 
     # Raster PNGs at common sizes
     for size in 16 24 32 48 64 72 96 128 256 512 1024; do
       dir=$out/share/icons/hicolor/''${size}x''${size}/apps
       mkdir -p "$dir"
-      cp ${../files/pixmaps/fedora-logo-sprite.png} "$dir/vexos-logo.png"
+      cp ${pixmapsDir}/fedora-logo-sprite.png "$dir/vexos-logo.png"
     done
 
     # index.theme is required by gtk-update-icon-cache
@@ -59,13 +64,20 @@ let
   '';
 in
 {
+  options.vexos.branding.role = lib.mkOption {
+    type        = lib.types.enum [ "desktop" "htpc" "server" "stateless" ];
+    default     = "desktop";
+    description = "Role-specific subdirectory to use for branding pixmaps and background logos.";
+  };
+
+  config = {
   # ── Plymouth boot splash ──────────────────────────────────────────────────
   # Switch from bgrt (ACPI firmware splash, does not display boot.plymouth.logo)
   # to spinner (displays boot.plymouth.logo as a centered watermark).
   # lib.mkDefault allows a host-level override, e.g. in hosts/vm.nix:
   #   boot.plymouth.theme = lib.mkForce "text";
   boot.plymouth.theme = lib.mkDefault "spinner";
-  boot.plymouth.logo  = ../files/plymouth/watermark.png;
+  boot.plymouth.logo  = plymouthDir + "/watermark.png";
 
   # ── OS identity (os-release, GRUB/systemd-boot labels, hostnamectl) ────────
   # distroName: overrides NAME= and PRETTY_NAME= in /etc/os-release AND the
@@ -104,7 +116,7 @@ in
   # ── GDM login-screen logo (optional) ─────────────────────────────────────
   # Nix store paths change on every rebuild; a dconf string value must point
   # to a stable path. Deploy the logo to /etc/ first, then reference it.
-  environment.etc."vexos/gdm-logo.png".source = ../files/pixmaps/fedora-gdm-logo.png;
+  environment.etc."vexos/gdm-logo.png".source = pixmapsDir + "/fedora-gdm-logo.png";
 
   # Sets org.gnome.login-screen.logo in the GDM system dconf profile.
   # If nix flake check reports a conflict with an existing gdm dconf profile
@@ -158,4 +170,5 @@ in
       ${pkgs.gnused}/bin/sed -i -E 's/\(Generation ([0-9]+) VexOS [A-Za-z]+ ([A-Za-z]+ [0-9]+\.[0-9]+)\)/(Generation \1 \2)/' "$f"
     done
   '';
+  };
 }

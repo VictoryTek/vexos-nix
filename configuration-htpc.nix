@@ -97,6 +97,7 @@
   # Using mkOverride 500 so host files can still use plain assignments (priority 100)
   # to set more specific names like "VexOS HTPC AMD" when needed.
   system.nixos.distroName = lib.mkOverride 500 "VexOS HTPC";
+  vexos.branding.role = "htpc";
 
   # ---------- Icons ----------
   # Install Kora icon theme system-wide and set it as the default via a
