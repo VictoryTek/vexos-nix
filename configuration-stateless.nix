@@ -115,11 +115,6 @@
   # ---------- Unfree packages (required for Steam, NVIDIA, proton-ge-bin) ----------
   nixpkgs.config.allowUnfree = true;
 
-  # ---------- Flatpak ----------
-  vexos.flatpak.excludeApps = [
-    "com.github.wwmm.easyeffects" # removed — not needed
-  ];
-
   # ---------- State version ----------
   # This value determines the NixOS release from which the default
   # settings for stateful data (like file locations) were taken.

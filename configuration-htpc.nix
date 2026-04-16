@@ -84,7 +84,6 @@
     "net.lutris.Lutris"                 # gaming launcher; not applicable on a streaming HTPC
     "org.prismlauncher.PrismLauncher"   # Minecraft launcher; not needed
     "io.github.pol_rivero.github-desktop-plus" # Desktop Plus; not useful for streaming HTPC
-    "com.github.wwmm.easyeffects" # removed — not needed
   ];
 
   vexos.flatpak.extraApps = [

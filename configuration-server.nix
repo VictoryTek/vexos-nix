@@ -68,11 +68,6 @@
   # ---------- Nixpkgs ----------
   nixpkgs.config.allowUnfree = true;
 
-  # ---------- Flatpak ----------
-  vexos.flatpak.excludeApps = [
-    "com.github.wwmm.easyeffects" # removed — not needed
-  ];
-
   # ---------- State version ----------
   # Set once at install time — do not change after initial deployment.
   system.stateVersion = "25.11";
