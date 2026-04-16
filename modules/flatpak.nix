@@ -23,7 +23,6 @@ let
     "net.lutris.Lutris"
     "com.ranfdev.DistroShelf"
     "org.gnome.World.PikaBackup"
-    "com.usebottles.bottles"
   ];
 
   appsToInstall = (lib.filter

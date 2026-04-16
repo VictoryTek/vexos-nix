@@ -43,6 +43,7 @@
     sqlite                                        # Embedded SQL database + CLI
     httpie                                        # Human-friendly HTTP client
     mkcert                                        # Locally-trusted dev TLS certificates
+    gcc                                           # C/C++ compiler (for native modules, etc.)
 
     # ── Nix tooling ───────────────────────────────────────────────────────────
     nil                                           # Nix LSP server
