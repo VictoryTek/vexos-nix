@@ -260,7 +260,7 @@
         "io.github.flattool.Warehouse.desktop"
         "io.missioncenter.MissionCenter.desktop"
         "com.github.tchx84.Flatseal.desktop"
-        "com.gnome.World.PikaBackup.desktop"
+        "org.gnome.World.PikaBackup.desktop"
       ];
     };
 
