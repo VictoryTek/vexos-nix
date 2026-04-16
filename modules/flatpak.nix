@@ -24,7 +24,6 @@ let
     "com.ranfdev.DistroShelf"
     "org.gnome.World.PikaBackup"
     "com.usebottles.bottles"
-    "com.github.wwmm.easyeffects"
   ];
 
   appsToInstall = (lib.filter
