@@ -129,7 +129,7 @@
     # GNOME tooling
     unstable.gnome-tweaks                               # GNOME customisation GUI
     unstable.dconf-editor                               # Low-level GNOME settings editor
-    # NOTE: gnome-extension-manager is installed in configuration.nix (desktop only).
+    # NOTE: gnome-extension-manager is installed in configuration-desktop.nix (desktop only).
     # HTPC does not need an extension manager app.
 
     # GNOME Shell extensions

@@ -142,6 +142,29 @@
     };
   };
 
+  # ── Cursor (X11 + Wayland) ─────────────────────────────────────────────────
+  # Writes env vars, xcursor, and .icons/default.
+  # GTK cursor is handled below to prevent activation-script conflicts.
+  home.pointerCursor = {
+    name    = "Bibata-Modern-Classic";
+    package = pkgs.bibata-cursors;
+    size    = 24;
+  };
+
+  # ── GTK theming ────────────────────────────────────────────────────────────
+  # Both iconTheme and cursorTheme declared together to prevent conflicts
+  # between Home Manager's pointer-cursor activation scripts and dconf settings.
+  gtk.enable = true;
+  gtk.iconTheme = {
+    name    = "kora";
+    package = pkgs.kora-icon-theme;
+  };
+  gtk.cursorTheme = {
+    name    = "Bibata-Modern-Classic";
+    package = pkgs.bibata-cursors;
+    size    = 24;
+  };
+
   # ── Hidden app grid entries ────────────────────────────────────────────────
   # These packages cannot be safely removed (they are required dependencies),
   # so their .desktop files are masked to keep them out of the app grid.

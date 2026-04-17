@@ -15,7 +15,7 @@
 { lib, ... }:
 {
   imports = [
-    ../configuration.nix
+    ../configuration-desktop.nix
     ../modules/gpu/vm.nix
   ];
 

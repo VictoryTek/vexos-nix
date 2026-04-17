@@ -115,11 +115,11 @@ fi
 echo ""
 
 # ---------- CHECK 4: system.stateVersion present (HARD) ----------------------
-echo "[4/9] Verifying system.stateVersion in configuration.nix..."
-if grep -q 'system\.stateVersion' configuration.nix; then
-  pass "system.stateVersion is present in configuration.nix"
+echo "[4/9] Verifying system.stateVersion in configuration-desktop.nix..."
+if grep -q 'system\.stateVersion' configuration-desktop.nix; then
+  pass "system.stateVersion is present in configuration-desktop.nix"
 else
-  fail "system.stateVersion is missing from configuration.nix"
+  fail "system.stateVersion is missing from configuration-desktop.nix"
   EXIT_CODE=1
 fi
 echo ""

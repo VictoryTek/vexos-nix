@@ -345,7 +345,7 @@
       base = { ... }: {
         imports = [
           home-manager.nixosModules.home-manager
-          ./configuration.nix
+          ./configuration-desktop.nix
         ];
         home-manager = {
           useGlobalPkgs    = true;

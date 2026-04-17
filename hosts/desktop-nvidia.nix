@@ -4,7 +4,7 @@
 { lib, ... }:
 {
   imports = [
-    ../configuration.nix
+    ../configuration-desktop.nix
     ../modules/gpu/nvidia.nix
     ../modules/asus.nix
   ];

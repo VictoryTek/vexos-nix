@@ -103,12 +103,15 @@
   # Install Kora icon theme system-wide and set it as the default via a
   # system-level dconf database so GNOME picks it up without home-manager.
   environment.systemPackages = with pkgs; [
+    bibata-cursors
     kora-icon-theme
     ghostty
   ];
   programs.dconf.profiles.user.databases = [
     {
       settings."org/gnome/desktop/interface" = {
+        cursor-theme = "Bibata-Modern-Classic";
+        cursor-size  = 24;
         icon-theme   = "kora";
         clock-format = "12h";
       };
