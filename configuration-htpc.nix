@@ -132,8 +132,8 @@
           "background-logo@fedorahosted.org"
         ];
         favorite-apps = [
-          "app.zen_browser.zen.desktop"
           "brave-browser.desktop"
+          "app.zen_browser.zen.desktop"
           "tv.plex.PlexDesktop.desktop"
           "io.freetubeapp.FreeTube.desktop"
           "com.mitchellh.ghostty.desktop"
