@@ -2,6 +2,32 @@
 # GNOME desktop: GDM Wayland, XDG portals, fonts, Ozone env var, printing, Bluetooth,
 # GNOME tooling, and GNOME Shell extensions.
 { config, pkgs, lib, ... }:
+let
+  # ── GNOME Flatpak app lists ────────────────────────────────────────────────
+  # Apps installed on every role.
+  gnomeBaseApps = [
+    "org.gnome.TextEditor"
+    "org.gnome.Loupe"
+    "org.gnome.Papers"
+    "org.gnome.Totem"
+  ];
+
+  # Apps installed only on the Desktop role.
+  gnomeDesktopOnlyApps = [
+    "org.gnome.Calculator"
+    "org.gnome.Calendar"
+  ];
+
+  # Final list for this role.
+  gnomeAppsToInstall =
+    gnomeBaseApps
+    ++ lib.optionals (config.vexos.branding.role == "desktop") gnomeDesktopOnlyApps;
+
+  # Short hash of the app list — changes when the list changes, invalidating
+  # the old stamp so the service re-runs and syncs (same pattern as flatpak.nix).
+  gnomeAppsHash = builtins.substring 0 16
+    (builtins.hashString "sha256" (lib.concatStringsSep "," gnomeAppsToInstall));
+in
 {
   # ── GNOME stack sourced from nixpkgs-unstable ──────────────────────────────
   # Replaces the GNOME desktop shell and its default-shipped applications with
@@ -25,9 +51,10 @@
       gnome-disk-utility     = u.gnome-disk-utility;
       baobab                 = u.baobab;             # Disk Usage Analyzer
       gnome-software         = u.gnome-software;
-      # NOTE: gnome-text-editor, gnome-system-monitor, gnome-calculator,
-      # gnome-calendar, loupe, evince/papers, and totem are installed via
-      # Flatpak (see modules/flatpak.nix) to avoid local compilation.
+      # NOTE: gnome-text-editor, gnome-system-monitor, loupe, evince/papers, and
+      # totem are installed via Flatpak on all roles; gnome-calculator and
+      # gnome-calendar are installed via Flatpak on the desktop role only.
+      # (see modules/flatpak.nix) to avoid local compilation.
     })
 
     # The GNOME Extensions app (org.gnome.Extensions) cannot be removed via
@@ -148,9 +175,9 @@
   ];
 
   # ── GNOME default app Flatpaks ────────────────────────────────────────────
-  # Installs GNOME apps from Flathub on first boot only
-  # (stamp: /var/lib/flatpak/.gnome-apps-installed).
-  # After initial install, Up manages updates.
+  # Installs GNOME apps from Flathub on first boot (stamp is role+app-list-hash based).
+  # Calculator and Calendar are desktop role only; TextEditor, Loupe, Papers,
+  # and Totem are installed on all roles.  After initial install, Up manages updates.
   systemd.services.flatpak-install-gnome-apps = {
     description = "Install GNOME Flatpak apps (once)";
     wantedBy    = [ "multi-user.target" ];
@@ -158,15 +185,24 @@
     requires    = [ "flatpak-add-flathub.service" ];
     path        = [ pkgs.flatpak ];
     script = ''
-      if [ -f /var/lib/flatpak/.gnome-apps-installed ]; then exit 0; fi
+      STAMP="/var/lib/flatpak/.gnome-apps-installed-${gnomeAppsHash}"
+      if [ -f "$STAMP" ]; then exit 0; fi
+
+      ${lib.optionalString (config.vexos.branding.role != "desktop") ''
+      # Migration: uninstall desktop-only apps from non-desktop roles.
+      for app in ${lib.concatStringsSep " " gnomeDesktopOnlyApps}; do
+        if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
+          echo "flatpak: removing desktop-only app $app (role: ${config.vexos.branding.role})"
+          flatpak uninstall --noninteractive --assumeyes "$app" || true
+        fi
+      done
+      ''}
       flatpak install --noninteractive --assumeyes flathub \
-        org.gnome.TextEditor \
-        org.gnome.Calculator \
-        org.gnome.Calendar \
-        org.gnome.Loupe \
-        org.gnome.Papers \
-        org.gnome.Totem
-      touch /var/lib/flatpak/.gnome-apps-installed
+        ${lib.concatStringsSep " \\\n        " gnomeAppsToInstall}
+
+      rm -f /var/lib/flatpak/.gnome-apps-installed \
+            /var/lib/flatpak/.gnome-apps-installed-*
+      touch "$STAMP"
     '';
     serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
   };

@@ -40,7 +40,7 @@
   dconf.settings = {
     "org/gnome/shell" = {
       favorite-apps = [
-        "com.brave.Browser.desktop"
+        "brave-browser.desktop"
         "app.zen_browser.zen.desktop"
         "tv.plex.PlexDesktop.desktop"
         "io.freetubeapp.FreeTube.desktop"
