@@ -80,16 +80,16 @@ Package Manager(s): **Nix (nix CLI / nix flake)**
 
 Repository Notes:  
 - Key Directories:  
-  - `.` (repo root) — `flake.nix`, `configuration.nix`, and future module files  
+  - `.` (repo root) — `flake.nix`, `configuration-desktop.nix`, and future module files  
   - `/etc/nixos/` — host-generated `hardware-configuration.nix` (NOT tracked in this repo)  
   - `.github/docs/subagent_docs/` — subagent specification and review documents  
 - Architecture Pattern: **Thin Flake — `hardware-configuration.nix` is delegated to the host at `/etc/nixos/` and imported by reference; all tracked configuration lives in flat Nix modules at the repo root**  
 - Special Constraints:  
   - The flake defines four outputs: `vexos-desktop-amd`, `vexos-desktop-nvidia`, `vexos-desktop-intel`, `vexos-desktop-vm`  
-  - Host configs live in `hosts/` and import `configuration.nix` + the appropriate `modules/gpu/` variant  
+  - Host configs live in `hosts/` and import `configuration-desktop.nix` + the appropriate `modules/gpu/` variant  
   - GPU-brand-specific configuration lives in `modules/gpu/{amd,nvidia,vm}.nix`  
   - `hardware-configuration.nix` MUST NOT be added to this repository; it is generated per-host by `nixos-generate-config`  
-  - `system.stateVersion` in `configuration.nix` MUST NOT be changed after initial installation  
+  - `system.stateVersion` in `configuration-desktop.nix` MUST NOT be changed after initial installation  
   - All rebuild commands must target one of `.#vexos-desktop-amd`, `.#vexos-desktop-nvidia`, `.#vexos-desktop-intel`, or `.#vexos-desktop-vm`  
   - `nix flake check` must pass before any change is considered complete  
   - Flake inputs must maintain `nixpkgs.follows` for any new inputs to avoid duplicate nixpkgs  
@@ -575,7 +575,7 @@ The Orchestrator MUST:
      - `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia`
      - `sudo nixos-rebuild dry-build --flake .#vexos-desktop-vm`
      - Verification that `hardware-configuration.nix` is not tracked in git
-     - Verification that `system.stateVersion` is present in configuration.nix
+     - Verification that `system.stateVersion` is present in configuration-desktop.nix
 
 2. Spawn Implementation subagent:
    - Create scripts/preflight.sh (and/or ps1)
