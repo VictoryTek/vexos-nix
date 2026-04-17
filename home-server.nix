@@ -117,8 +117,8 @@
   };
 
   # ── Wallpapers ─────────────────────────────────────────────────────────────
-  home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/desktop/vex-bb-light.jxl;
-  home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/desktop/vex-bb-dark.jxl;
+  home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/server/vex-bb-light.jxl;
+  home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/server/vex-bb-dark.jxl;
 
   # ── GNOME dconf settings ────────────────────────────────────────────────
   dconf.settings = {
@@ -190,7 +190,6 @@
     "org/gnome/desktop/app-folders/folders/Office" = {
       name = "Office";
       apps = [
-        "org.onlyoffice.desktopeditors.desktop"
         "org.gnome.TextEditor.desktop"
         "org.gnome.Papers.desktop"
       ];
@@ -199,7 +198,6 @@
     "org/gnome/desktop/app-folders/folders/Utilities" = {
       name = "Utilities";
       apps = [
-        "com.mattjakeman.ExtensionManager.desktop"
         "it.mijorus.gearlever.desktop"
         "org.gnome.tweaks.desktop"
         "io.github.flattool.Warehouse.desktop"

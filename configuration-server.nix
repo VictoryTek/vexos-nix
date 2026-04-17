@@ -20,6 +20,8 @@
   i18n.defaultLocale = "en_US.UTF-8";
 
   # ---------- Branding ----------
+  # Override branding.nix's lib.mkDefault "VexOS Desktop" (priority 1000).
+  system.nixos.distroName = lib.mkOverride 500 "VexOS Server";
   vexos.branding.role = "server";
 
   # ---------- Users ----------
@@ -74,6 +76,20 @@
   # ---------- State version ----------
   # Set once at install time — do not change after initial deployment.
   system.stateVersion = "25.11";
+
+  # ---------- Flatpak ----------
+  # Exclude apps that are desktop/gaming/creative tools with no place
+  # in a server role.
+  vexos.flatpak.excludeApps = [
+    "org.gimp.GIMP"
+    "com.ranfdev.DistroShelf"
+    "com.mattjakeman.ExtensionManager"
+    "com.vysp3r.ProtonPlus"
+    "net.lutris.Lutris"
+    "org.prismlauncher.PrismLauncher"
+    "io.github.pol_rivero.github-desktop-plus"
+    "org.onlyoffice.desktopeditors"
+  ];
 
   # ---------- Server role placeholder ----------
   # This configuration is intentionally minimal. Add server-specific
