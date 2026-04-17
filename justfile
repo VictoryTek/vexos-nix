@@ -144,6 +144,16 @@ switch role="" variant="" flake="":
     _flake_dir=$(just _resolve-flake-dir "${TARGET}" "${FLAKE_OVERRIDE}")
     sudo nixos-rebuild switch --flake "${_flake_dir}#${TARGET}"
 
+    echo ""
+    echo "Switch complete."
+    echo ""
+    printf "Reboot now? [y/N]: "
+    read -r REBOOT_ANSWER || true
+    case "${REBOOT_ANSWER,,}" in
+        y|yes) echo "Rebooting..."; sudo systemctl reboot ;;
+        *)     echo "Skipped — reboot manually when ready." ;;
+    esac
+
 # Dry-run build without switching — useful for testing config changes.
 # Example: just build desktop amd
 build role variant flake="":
