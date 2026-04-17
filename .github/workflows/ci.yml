@@ -40,10 +40,10 @@ jobs:
           fi
           echo "PASS: hardware-configuration.nix is not tracked"
 
-      - name: Verify system.stateVersion present in configuration.nix
+      - name: Verify system.stateVersion present in configuration-desktop.nix
         run: |
-          if ! grep -q 'system\.stateVersion' configuration.nix; then
-            echo "FAIL: system.stateVersion missing from configuration.nix"
+          if ! grep -q 'system\.stateVersion' configuration-desktop.nix; then
+            echo "FAIL: system.stateVersion missing from configuration-desktop.nix"
             exit 1
           fi
           echo "PASS: system.stateVersion is present"
