@@ -16,6 +16,7 @@ let
   gnomeDesktopOnlyApps = [
     "org.gnome.Calculator"
     "org.gnome.Calendar"
+    "org.gnome.Snapshot"
   ];
 
   # Final list for this role.
@@ -149,6 +150,9 @@ in
     rhythmbox
     totem         # Flatpak org.gnome.Totem is installed instead (auto-updated by Up)
     showtime      # GNOME 49 video player ("Video Player") — duplicate of Flatpak Totem
+    gnome-calculator  # Flatpak org.gnome.Calculator installed on desktop only
+    gnome-calendar    # Flatpak org.gnome.Calendar installed on desktop only
+    snapshot          # GNOME Camera — Flatpak org.gnome.Snapshot installed on desktop only
   ];
 
   # ── GNOME tooling & Shell extensions ─────────────────────────────────────
