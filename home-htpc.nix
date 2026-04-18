@@ -3,6 +3,8 @@
 # Manages HTPC-specific wallpapers, GNOME dconf wallpaper settings, and media-centre defaults.
 { config, pkgs, lib, inputs, ... }:
 {
+  imports = [ ./home/gnome-common.nix ];
+
   home.username    = "nimda";
   home.homeDirectory = "/home/nimda";
 
@@ -39,6 +41,20 @@
 
   dconf.settings = {
     "org/gnome/shell" = {
+      enabled-extensions = [
+        "appindicatorsupport@rgcjonas.gmail.com"
+        "dash-to-dock@micxgx.gmail.com"
+        "AlphabeticalAppGrid@stuarthayhurst"
+        # gamemode-shell-extension omitted — programs.gamemode not enabled on htpc
+        "gnome-ui-tune@itstime.tech"
+        "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
+        "steal-my-focus-window@steal-my-focus-window"
+        "tailscale-status@maxgallup.github.com"
+        "caffeine@patapon.info"
+        "restartto@tiagoporsch.github.io"
+        "blur-my-shell@aunetx"
+        "background-logo@fedorahosted.org"
+      ];
       favorite-apps = [
         "brave-browser.desktop"
         "app.zen_browser.zen.desktop"
@@ -51,40 +67,9 @@
       ];
     };
 
-    "org/gnome/desktop/interface" = {
-      clock-format = "12h";
-      cursor-size  = 24;
-      cursor-theme = "Bibata-Modern-Classic";
-      icon-theme   = "kora";
-    };
-
-    "org/gnome/desktop/wm/preferences" = {
-      button-layout = "appmenu:minimize,maximize,close";
-    };
-
     "org/gnome/desktop/background" = {
       picture-uri      = "file:///home/nimda/Pictures/Wallpapers/vex-bb-light.jxl";
       picture-uri-dark = "file:///home/nimda/Pictures/Wallpapers/vex-bb-dark.jxl";
-      picture-options  = "zoom";
-    };
-
-    "org/gnome/shell/extensions/dash-to-dock" = {
-      dock-position = "LEFT";
-    };
-
-    "org/fedorahosted/background-logo-extension" = {
-      logo-file         = "/run/current-system/sw/share/pixmaps/vex-background-logo.svg";
-      logo-file-dark    = "/run/current-system/sw/share/pixmaps/vex-background-logo-dark.svg";
-      logo-always-visible = true;
-    };
-
-    "org/gnome/desktop/screensaver" = {
-      lock-enabled = false;
-      lock-delay   = lib.gvariant.mkUint32 0;
-    };
-
-    "org/gnome/session" = {
-      idle-delay = lib.gvariant.mkUint32 300;  # 5 min inactivity
     };
 
     "org/gnome/settings-daemon/plugins/power" = {
@@ -140,29 +125,6 @@
         "org.gnome.SystemMonitor.desktop"
       ];
     };
-  };
-
-  # ── Cursor (X11 + Wayland) ─────────────────────────────────────────────────
-  # Writes env vars, xcursor, and .icons/default.
-  # GTK cursor is handled below to prevent activation-script conflicts.
-  home.pointerCursor = {
-    name    = "Bibata-Modern-Classic";
-    package = pkgs.bibata-cursors;
-    size    = 24;
-  };
-
-  # ── GTK theming ────────────────────────────────────────────────────────────
-  # Both iconTheme and cursorTheme declared together to prevent conflicts
-  # between Home Manager's pointer-cursor activation scripts and dconf settings.
-  gtk.enable = true;
-  gtk.iconTheme = {
-    name    = "kora";
-    package = pkgs.kora-icon-theme;
-  };
-  gtk.cursorTheme = {
-    name    = "Bibata-Modern-Classic";
-    package = pkgs.bibata-cursors;
-    size    = 24;
   };
 
   # ── Hidden app grid entries ────────────────────────────────────────────────

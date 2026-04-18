@@ -4,6 +4,8 @@
 # No gaming, no dev-language tooling. Focus: sysadmin utilities and remote management.
 { config, pkgs, lib, inputs, ... }:
 {
+  imports = [ ./home/gnome-common.nix ];
+
   home.username    = "nimda";
   home.homeDirectory = "/home/nimda";
 
@@ -21,10 +23,6 @@
     fzf
     wl-clipboard  # Wayland clipboard CLI (wl-copy / wl-paste)
     # NOTE: just is installed system-wide via modules/packages.nix.
-
-    # Themes (must be Nix — consumed by gtk.iconTheme / home.pointerCursor)
-    bibata-cursors
-    kora-icon-theme
 
     # System utilities
     fastfetch
@@ -97,25 +95,6 @@
     QT_QPA_PLATFORM    = "wayland;xcb";
   };
 
-  # ── Cursor (X11 + Wayland) ─────────────────────────────────────────────────
-  home.pointerCursor = {
-    name    = "Bibata-Modern-Classic";
-    package = pkgs.bibata-cursors;
-    size    = 24;
-  };
-
-  # ── GTK theming ────────────────────────────────────────────────────────────
-  gtk.enable = true;
-  gtk.iconTheme = {
-    name    = "kora";
-    package = pkgs.kora-icon-theme;
-  };
-  gtk.cursorTheme = {
-    name    = "Bibata-Modern-Classic";
-    package = pkgs.bibata-cursors;
-    size    = 24;
-  };
-
   # ── Wallpapers ─────────────────────────────────────────────────────────────
   home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/server/vex-bb-light.jxl;
   home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/server/vex-bb-dark.jxl;
@@ -147,40 +126,9 @@
       ];
     };
 
-    "org/gnome/desktop/interface" = {
-      clock-format = "12h";
-      cursor-size  = 24;
-      cursor-theme = "Bibata-Modern-Classic";
-      icon-theme   = "kora";
-    };
-
-    "org/gnome/desktop/wm/preferences" = {
-      button-layout = "appmenu:minimize,maximize,close";
-    };
-
     "org/gnome/desktop/background" = {
       picture-uri      = "file:///home/nimda/Pictures/Wallpapers/vex-bb-light.jxl";
       picture-uri-dark = "file:///home/nimda/Pictures/Wallpapers/vex-bb-dark.jxl";
-      picture-options  = "zoom";
-    };
-
-    "org/gnome/shell/extensions/dash-to-dock" = {
-      dock-position = "LEFT";
-    };
-
-    "org/fedorahosted/background-logo-extension" = {
-      logo-file         = "/run/current-system/sw/share/pixmaps/vex-background-logo.svg";
-      logo-file-dark    = "/run/current-system/sw/share/pixmaps/vex-background-logo-dark.svg";
-      logo-always-visible = true;
-    };
-
-    "org/gnome/desktop/screensaver" = {
-      lock-enabled = false;
-      lock-delay   = lib.gvariant.mkUint32 0;
-    };
-
-    "org/gnome/session" = {
-      idle-delay = lib.gvariant.mkUint32 300;
     };
 
     "org/gnome/desktop/app-folders" = {
