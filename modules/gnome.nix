@@ -89,12 +89,82 @@ in
   programs.dconf.enable = true;
 
   # Declare the user dconf profile so NixOS generates /etc/dconf/profile/user.
-  # This makes the lookup chain declarative: user-db:user (home-manager writes
-  # to ~/.config/dconf/user).  Add system-db entries here if system-level
-  # defaults or lock overrides are needed in the future.
+  # The lookup chain is: user-db:user (home-manager) → the system database below.
+  # System database is written during nixos-rebuild switch and is available before
+  # any user session starts — critical for autoLogin where GNOME reads dconf at
+  # session start before home-manager's user activation service completes.
   programs.dconf.profiles.user = {
     enableUserDb = true;
-    databases    = [];
+    databases = [
+      {
+        settings = let
+          role = config.vexos.branding.role;
+          # Extensions shared by all roles (no gamemode).
+          commonExtensions = [
+            "appindicatorsupport@rgcjonas.gmail.com"
+            "dash-to-dock@micxgx.gmail.com"
+            "AlphabeticalAppGrid@stuarthayhurst"
+            "gnome-ui-tune@itstime.tech"
+            "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
+            "steal-my-focus-window@steal-my-focus-window"
+            "tailscale-status@maxgallup.github.com"
+            "caffeine@patapon.info"
+            "restartto@tiagoporsch.github.io"
+            "blur-my-shell@aunetx"
+            "background-logo@fedorahosted.org"
+          ];
+          # Desktop role adds the GameMode indicator.
+          enabledExtensions =
+            if role == "desktop"
+            then commonExtensions ++ [ "gamemodeshellextension@trsnaqe.com" ]
+            else commonExtensions;
+        in {
+          # ── GNOME Shell ─────────────────────────────────────────────────
+          "org/gnome/shell" = {
+            enabled-extensions = enabledExtensions;
+          };
+
+          # ── Wallpaper (stable Nix store path via branding.nix) ──────────
+          # vexos-wallpapers package deploys the role-specific wallpaper to
+          # /run/current-system/sw/share/backgrounds/vexos/ at build time.
+          "org/gnome/desktop/background" = {
+            picture-uri      = "file:///run/current-system/sw/share/backgrounds/vexos/vex-bb-light.jxl";
+            picture-uri-dark = "file:///run/current-system/sw/share/backgrounds/vexos/vex-bb-dark.jxl";
+            picture-options  = "zoom";
+          };
+
+          # ── Interface (cursor, icon, clock) ────────────────────────────
+          "org/gnome/desktop/interface" = {
+            cursor-theme = "Bibata-Modern-Classic";
+            cursor-size  = 24;
+            icon-theme   = "kora";
+            clock-format = "12h";
+          };
+
+          # ── Window manager ──────────────────────────────────────────────
+          "org/gnome/desktop/wm/preferences" = {
+            button-layout = "appmenu:minimize,maximize,close";
+          };
+
+          # ── Dock ────────────────────────────────────────────────────────
+          "org/gnome/shell/extensions/dash-to-dock" = {
+            dock-position = "LEFT";
+          };
+
+          # ── Background logo extension ───────────────────────────────────
+          "org/fedorahosted/background-logo-extension" = {
+            logo-file           = "/run/current-system/sw/share/pixmaps/vex-background-logo.svg";
+            logo-file-dark      = "/run/current-system/sw/share/pixmaps/vex-background-logo-dark.svg";
+            logo-always-visible = true;
+          };
+
+          # ── Screensaver / session ───────────────────────────────────────
+          "org/gnome/desktop/screensaver" = {
+            lock-enabled = false;
+          };
+        };
+      }
+    ];
   };
 
   # ── GDM display manager ───────────────────────────────────────────────────
@@ -162,6 +232,12 @@ in
     unstable.dconf-editor                               # Low-level GNOME settings editor
     # NOTE: gnome-extension-manager is installed in configuration-desktop.nix (desktop only).
     # HTPC does not need an extension manager app.
+
+    # Cursor and icon theme packages — must be in system packages so the
+    # system dconf profile (programs.dconf.profiles.user.databases) can
+    # reference them before home-manager activation completes.
+    bibata-cursors
+    kora-icon-theme
 
     # GNOME Shell extensions
     unstable.gnomeExtensions.appindicator               # System tray icons

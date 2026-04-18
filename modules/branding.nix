@@ -6,10 +6,11 @@
 # This module only sets the theme and logo (branding concerns).
 { pkgs, lib, config, ... }:
 let
-  role        = config.vexos.branding.role;
-  pixmapsDir  = ../files/pixmaps + "/${role}";
-  bgLogosDir  = ../files/background_logos + "/${role}";
-  plymouthDir = ../files/plymouth + "/${role}";
+  role          = config.vexos.branding.role;
+  pixmapsDir    = ../files/pixmaps + "/${role}";
+  bgLogosDir    = ../files/background_logos + "/${role}";
+  plymouthDir   = ../files/plymouth + "/${role}";
+  wallpapersDir = ../wallpapers + "/${role}";
 
   vexosLogos = pkgs.runCommand "vexos-logos" {} ''
     mkdir -p $out/share/pixmaps
@@ -62,6 +63,15 @@ let
 
     gtk-update-icon-cache -f -t $out/share/icons/hicolor
   '';
+
+  # Role-specific wallpapers deployed to a stable Nix store path so the system
+  # dconf profile can reference them without relying on home-manager activation.
+  # Path available immediately after nixos-rebuild switch, before any session starts.
+  vexosWallpapers = pkgs.runCommand "vexos-wallpapers" {} ''
+    mkdir -p $out/share/backgrounds/vexos
+    cp ${wallpapersDir}/vex-bb-light.jxl $out/share/backgrounds/vexos/vex-bb-light.jxl
+    cp ${wallpapersDir}/vex-bb-dark.jxl  $out/share/backgrounds/vexos/vex-bb-dark.jxl
+  '';
 in
 {
   options.vexos.branding.role = lib.mkOption {
@@ -111,7 +121,7 @@ in
   # Deploys branding files into /run/current-system/sw/share/pixmaps/.
   # XDG_DATA_DIRS includes /run/current-system/sw/share on NixOS, so all
   # GLib/GTK applications find these via standard g_get_system_data_dirs().
-  environment.systemPackages = [ vexosLogos vexosIcons ];
+  environment.systemPackages = [ vexosLogos vexosIcons vexosWallpapers ];
 
   # ── GDM login-screen logo (optional) ─────────────────────────────────────
   # Nix store paths change on every rebuild; a dconf string value must point

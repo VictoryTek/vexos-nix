@@ -50,10 +50,13 @@
       button-layout = "appmenu:minimize,maximize,close";
     };
 
-    # picture-options is the same on every role; URIs are role-specific and
-    # declared in each home file under the same schema path (merges safely).
+    # Wallpaper: use the stable Nix store path from branding.nix's vexosWallpapers
+    # package so the value matches the system dconf database entry exactly.
+    # The role-specific wallpaper is deployed to this path at build time.
     "org/gnome/desktop/background" = {
-      picture-options = "zoom";
+      picture-options  = "zoom";
+      picture-uri      = "file:///run/current-system/sw/share/backgrounds/vexos/vex-bb-light.jxl";
+      picture-uri-dark = "file:///run/current-system/sw/share/backgrounds/vexos/vex-bb-dark.jxl";
     };
 
     "org/gnome/shell/extensions/dash-to-dock" = {

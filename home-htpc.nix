@@ -67,11 +67,6 @@
       ];
     };
 
-    "org/gnome/desktop/background" = {
-      picture-uri      = "file:///home/nimda/Pictures/Wallpapers/vex-bb-light.jxl";
-      picture-uri-dark = "file:///home/nimda/Pictures/Wallpapers/vex-bb-dark.jxl";
-    };
-
     "org/gnome/settings-daemon/plugins/power" = {
       sleep-inactive-ac-type      = "nothing";
       sleep-inactive-battery-type = "nothing";
