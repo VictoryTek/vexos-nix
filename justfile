@@ -253,8 +253,7 @@ services: _require-server-role
     set -euo pipefail
     SVC_FILE="/etc/nixos/server-services.nix"
     if [ ! -f "$SVC_FILE" ]; then
-        echo "No services have been enabled yet."
-        echo "Copy the template to get started: sudo cp template/server-services.nix /etc/nixos/"
+        echo "No services have been enabled yet. Run 'just enable <service>' to get started."
         exit 0
     fi
     echo ""
