@@ -136,7 +136,7 @@ in
           # ── Interface (cursor, icon, clock) ────────────────────────────
           "org/gnome/desktop/interface" = {
             cursor-theme = "Bibata-Modern-Classic";
-            cursor-size  = 24;
+            cursor-size  = lib.gvariant.mkInt32 24;
             icon-theme   = "kora";
             clock-format = "12h";
           };
