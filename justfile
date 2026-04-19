@@ -183,16 +183,11 @@ update:
     #!/usr/bin/env bash
     set -euo pipefail
     target=$(cat /etc/nixos/vexos-variant 2>/dev/null) || { echo "error: /etc/nixos/vexos-variant not found — run a build first"; exit 1; }
-    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-    _jf_dir=$(dirname "$_jf_real")
-    if [ ! -f "$_jf_dir/flake.nix" ]; then
-        for _d in /etc/nixos "$HOME/Projects/vexos-nix"; do
-            if [ -f "$_d/flake.nix" ]; then _jf_dir="$_d"; break; fi
-        done
-    fi
-    cd "$_jf_dir"
-    nix flake update
-    sudo nixos-rebuild switch --flake "$_jf_dir"#"${target}"
+    # Always update /etc/nixos/flake.lock — that is the thin wrapper whose
+    # lock pins the vexos-nix GitHub commit.  The repo clone's own flake.lock
+    # is irrelevant for end-user updates.
+    sudo nix flake update --flake /etc/nixos
+    sudo nixos-rebuild switch --flake /etc/nixos#"${target}"
 
 # Roll back to the previous NixOS generation and set it as the boot default.
 rollback:
