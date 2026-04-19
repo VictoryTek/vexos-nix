@@ -233,7 +233,7 @@ rollforward:
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "docker jellyfin plex papermc immich vaultwarden nextcloud forgejo syncthing cockpit uptime-kuma stirling-pdf audiobookshelf homepage caddy arr adguard home-assistant"
+_server_service_names := "docker jellyfin plex audiobookshelf tautulli overseerr jellyseerr arr komga kavita papermc nextcloud syncthing immich forgejo vaultwarden nginx caddy traefik adguard headscale cockpit uptime-kuma homepage grafana scrutiny ntfy mealie rustdesk home-assistant stirling-pdf"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -301,9 +301,18 @@ enable service: _require-server-role
 
     if [ ! -f "$SVC_FILE" ]; then
         echo "Creating $SVC_FILE from template..."
-        _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-        _jf_dir=$(dirname "$_jf_real")
-        sudo cp "$_jf_dir/template/server-services.nix" "$SVC_FILE"
+        TEMPLATE_SRC=""
+        for _candidate in "{{justfile_directory()}}" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
+            if [ -f "$_candidate/template/server-services.nix" ]; then
+                TEMPLATE_SRC="$_candidate/template/server-services.nix"
+                break
+            fi
+        done
+        if [ -z "$TEMPLATE_SRC" ]; then
+            echo "error: cannot find template/server-services.nix in any known location" >&2
+            exit 1
+        fi
+        sudo cp "$TEMPLATE_SRC" "$SVC_FILE"
     fi
 
     # The option uses dots as-is (e.g. uptime-kuma stays uptime-kuma)
