@@ -21,9 +21,8 @@ in
     services.headscale = {
       enable = true;
       port = cfg.port;
+      serverUrl = "http://0.0.0.0:${toString cfg.port}";
       settings = {
-        server_url = "http://localhost:${toString cfg.port}";
-        listen_addr = "0.0.0.0:${toString cfg.port}";
         metrics_listen_addr = "127.0.0.1:9090";
         log.level = "info";
       };

@@ -12,8 +12,10 @@ in
   config = lib.mkIf cfg.enable {
     services.mealie = {
       enable = true;
+      listenAddress = "0.0.0.0";
       port = 9000; # Default port: 9000
-      openFirewall = true;
     };
+
+    networking.firewall.allowedTCPPorts = [ 9000 ];
   };
 }

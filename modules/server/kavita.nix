@@ -13,8 +13,10 @@ in
   config = lib.mkIf cfg.enable {
     services.kavita = {
       enable = true;
+      port = 5000;
       tokenKeyFile = "/var/lib/kavita/token-key"; # Must exist; generate with: openssl rand -base64 32 > /var/lib/kavita/token-key
-      openFirewall = true; # Default port: 5000
     };
+
+    networking.firewall.allowedTCPPorts = [ 5000 ];
   };
 }
