@@ -9,7 +9,8 @@ default:
     if [[ "$variant" == *server* ]]; then
         echo ""
         echo "Available recipes (server role):"
-        echo "    services             List server service modules and their status"
+        echo "    list-services        List all available server service modules"
+        echo "    services             List enabled/disabled status of server service modules"
         echo "    enable <service>     Enable a server service module"
         echo "    disable <service>    Disable a server service module"
     fi
@@ -245,6 +246,19 @@ _require-server-role:
         echo "       current variant: ${variant:-unknown}"
         exit 1
     fi
+
+# List all available server service modules (catalog view, no role required).
+list-services:
+    #!/usr/bin/env bash
+    echo ""
+    echo "Available server service modules:"
+    echo ""
+    for svc in {{_server_service_names}}; do
+        printf "  %s\n" "$svc"
+    done
+    echo ""
+    echo "Use 'just enable <service>' to enable a module on a server host."
+    echo ""
 
 # List all server services and their enabled/disabled status.
 [private]
