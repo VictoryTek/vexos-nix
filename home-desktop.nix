@@ -168,7 +168,7 @@
         "org.prismlauncher.PrismLauncher.desktop"
         "net.lutris.Lutris.desktop"
         "steam.desktop"
-        "com.hypixel.HypixelLauncher.desktop"
+        "com.hypixel.HytaleLauncher.desktop"
       ];
     };
 
@@ -177,7 +177,7 @@
       apps = [
         "com.vysp3r.ProtonPlus.desktop"
         "protontricks.desktop"
-        "vesktoptop.desktop"
+        "vesktop.desktop"
         "discord.desktop"
       ];
     };
