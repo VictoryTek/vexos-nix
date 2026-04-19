@@ -10,6 +10,7 @@
     ./modules/network.nix
     ./modules/packages.nix
     ./modules/system.nix
+    ./modules/server       # Optional server services (vexos.server.*.enable)
   ];
 
   # ---------- Bootloader ----------

@@ -125,7 +125,11 @@
     ];
 
     # Modules for server role — minimal + server-specific home-manager.
-    serverModules = minimalModules ++ [ serverHomeManagerModule ];
+    # Optionally loads /etc/nixos/server-services.nix for modular service toggles.
+    serverServicesModule =
+      let path = /etc/nixos/server-services.nix;
+      in if builtins.pathExists path then [ path ] else [];
+    serverModules = minimalModules ++ [ serverHomeManagerModule ] ++ serverServicesModule;
   in
   {
     # ── AMD GPU build ────────────────────────────────────────────────────────

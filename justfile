@@ -222,3 +222,127 @@ rollforward:
     sudo nix-env --profile /nix/var/nix/profiles/system --switch-generation "$next"
     sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
     echo "Now on generation: ${next}"
+
+# ── Server Services Management ───────────────────────────────────────────────
+# These recipes manage /etc/nixos/server-services.nix on the server role.
+# Run `just services` to see available modules and their status.
+
+# Available server service module names.
+_server_service_names := "docker jellyfin plex papermc immich vaultwarden nextcloud forgejo syncthing cockpit uptime-kuma stirling-pdf audiobookshelf homepage caddy arr adguard home-assistant"
+
+# Guard: abort if the current host is not running a server variant.
+[private]
+_require-server-role:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [[ "$variant" != *server* ]]; then
+        echo "error: server service recipes are only available on the server role."
+        echo "       current variant: ${variant:-unknown}"
+        exit 1
+    fi
+
+# List all server services and their enabled/disabled status.
+services: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SVC_FILE="/etc/nixos/server-services.nix"
+    if [ ! -f "$SVC_FILE" ]; then
+        echo "No server-services.nix found at $SVC_FILE"
+        echo "Copy the template: sudo cp template/server-services.nix /etc/nixos/"
+        exit 1
+    fi
+    echo ""
+    echo "Server services (/etc/nixos/server-services.nix):"
+    echo ""
+    for svc in {{_server_service_names}}; do
+        nix_name=$(echo "$svc" | sed 's/-/_/g')
+        # Handle both dash and underscore names in the file
+        if grep -qP "vexos\.server\.(${svc}|${nix_name})\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+            printf "  \033[32m✓\033[0m %s\n" "$svc"
+        else
+            printf "  \033[90m✗\033[0m %s\n" "$svc"
+        fi
+    done
+    echo ""
+
+# Enable a server service module.  Usage: just enable docker
+enable service: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SVC_FILE="/etc/nixos/server-services.nix"
+    SERVICE="{{service}}"
+
+    VALID_SERVICES="{{_server_service_names}}"
+    if ! echo "$VALID_SERVICES" | tr ' ' '\n' | grep -qx "$SERVICE"; then
+        echo "error: unknown service '$SERVICE'"
+        echo "available: $VALID_SERVICES"
+        exit 1
+    fi
+
+    if [ ! -f "$SVC_FILE" ]; then
+        echo "Creating $SVC_FILE from template..."
+        _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+        _jf_dir=$(dirname "$_jf_real")
+        sudo cp "$_jf_dir/template/server-services.nix" "$SVC_FILE"
+    fi
+
+    # The option uses dots as-is (e.g. uptime-kuma stays uptime-kuma)
+    OPTION="vexos.server.${SERVICE}.enable"
+
+    if grep -q "${OPTION}\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+        echo "$SERVICE is already enabled."
+        exit 0
+    fi
+
+    # If a commented-out or false line exists, replace it
+    if grep -qP "^\s*#?\s*${OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+        sudo sed -i -E "s|^(\s*)#?\s*(${OPTION//./\\.})\s*=\s*(true\|false)\s*;|\1${OPTION} = true;|" "$SVC_FILE"
+    else
+        # Insert before the closing brace
+        sudo sed -i "s|}|  ${OPTION} = true;\n}|" "$SVC_FILE"
+    fi
+
+    echo "✓ Enabled: $SERVICE"
+    echo "  → Run 'just rebuild' or 'just switch server <gpu>' to apply."
+
+# Disable a server service module.  Usage: just disable docker
+disable service: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SVC_FILE="/etc/nixos/server-services.nix"
+    SERVICE="{{service}}"
+
+    VALID_SERVICES="{{_server_service_names}}"
+    if ! echo "$VALID_SERVICES" | tr ' ' '\n' | grep -qx "$SERVICE"; then
+        echo "error: unknown service '$SERVICE'"
+        echo "available: $VALID_SERVICES"
+        exit 1
+    fi
+
+    if [ ! -f "$SVC_FILE" ]; then
+        echo "No server-services.nix found. Nothing to disable."
+        exit 0
+    fi
+
+    OPTION="vexos.server.${SERVICE}.enable"
+
+    if ! grep -qP "${OPTION//./\\.}\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+        echo "$SERVICE is already disabled."
+        exit 0
+    fi
+
+    sudo sed -i -E "s|(${OPTION//./\\.})\s*=\s*true;|\1 = false;|" "$SVC_FILE"
+
+    echo "✗ Disabled: $SERVICE"
+    echo "  → Run 'just rebuild' or 'just switch server <gpu>' to apply."
+
+# Rebuild the system using the current variant.
+rebuild:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    target=$(cat /etc/nixos/vexos-variant 2>/dev/null) || { echo "error: /etc/nixos/vexos-variant not found — run a build first"; exit 1; }
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    _jf_dir=$(dirname "$_jf_real")
+    _flake_dir=$(just _resolve-flake-dir "${target}" "")
+    sudo nixos-rebuild switch --flake "${_flake_dir}#${target}"

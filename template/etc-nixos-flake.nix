@@ -68,6 +68,8 @@
 
   outputs = { self, vexos-nix, nixpkgs }:
   let
+    lib = nixpkgs.lib;
+
     # ── Bootloader ──────────────────────────────────────────────────────────
     # EFI / systemd-boot (default — suitable for all modern bare-metal and VM installs).
     # Replace with the BIOS/GRUB stanza from the header comment if needed.
@@ -119,7 +121,24 @@
     mkHtpcVariant = _mkVariantWith vexos-nix.nixosModules.htpcBase;
 
     # Server role: headless stack.
-    mkServerVariant = _mkVariantWith vexos-nix.nixosModules.serverBase;
+    mkServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules =
+        let
+          modules = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
+          # Optional server-services.nix for modular service toggles.
+          servicesFile = ./server-services.nix;
+          hasServices = builtins.pathExists servicesFile;
+        in
+        [
+          { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
+          bootloaderModule
+          ./hardware-configuration.nix
+          vexos-nix.nixosModules.serverBase
+        ]
+        ++ modules
+        ++ lib.optional hasServices servicesFile;
+    };
 
   in
   {
