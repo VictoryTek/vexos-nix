@@ -59,6 +59,10 @@
     # Container tooling (Distrobox for running other distro environments)
     distrobox
 
+    # Communication
+    vesktop         # feature-rich Discord client (Vencord-based)
+    discord         # official Discord client
+
     # NOTE: lutris, ProtonPlus, and Bottles are installed via Flatpak
     # (net.lutris.Lutris, com.vysp3r.ProtonPlus, and com.usebottles.bottles in modules/flatpak.nix).
   ];
