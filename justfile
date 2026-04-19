@@ -3,7 +3,16 @@
 # List all available recipes (default when running `just` with no arguments).
 [private]
 default:
-    @just --list
+    #!/usr/bin/env bash
+    just --list
+    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [[ "$variant" == *server* ]]; then
+        echo ""
+        echo "Available recipes (server role):"
+        echo "    services             List server service modules and their status"
+        echo "    enable <service>     Enable a server service module"
+        echo "    disable <service>    Disable a server service module"
+    fi
 
 # Print the active role and GPU variant (e.g. vexos-desktop-amd).
 variant:
@@ -238,6 +247,7 @@ _require-server-role:
     fi
 
 # List all server services and their enabled/disabled status.
+[private]
 services: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -262,6 +272,7 @@ services: _require-server-role
     echo ""
 
 # Enable a server service module.  Usage: just enable docker
+[private]
 enable service: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -302,6 +313,7 @@ enable service: _require-server-role
     echo "  → Run 'just rebuild' or 'just switch server <gpu>' to apply."
 
 # Disable a server service module.  Usage: just disable docker
+[private]
 disable service: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
