@@ -253,9 +253,9 @@ services: _require-server-role
     set -euo pipefail
     SVC_FILE="/etc/nixos/server-services.nix"
     if [ ! -f "$SVC_FILE" ]; then
-        echo "No server-services.nix found at $SVC_FILE"
-        echo "Copy the template: sudo cp template/server-services.nix /etc/nixos/"
-        exit 1
+        echo "No services have been enabled yet."
+        echo "Copy the template to get started: sudo cp template/server-services.nix /etc/nixos/"
+        exit 0
     fi
     echo ""
     echo "Server services (/etc/nixos/server-services.nix):"
