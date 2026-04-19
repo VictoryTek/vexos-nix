@@ -447,7 +447,17 @@
 
       # Server stack: headless, no gaming/development/virtualization.
       serverBase = { ... }: {
-        imports = [ ./configuration-server.nix ];
+        imports = [
+          home-manager.nixosModules.home-manager
+          ./configuration-server.nix
+        ];
+        home-manager = {
+          useGlobalPkgs    = true;
+          useUserPackages  = true;
+          extraSpecialArgs = { inherit inputs; };
+          users.nimda      = import ./home-server.nix;
+          backupFileExtension = "backup";
+        };
         nixpkgs.overlays = [
           (final: prev: {
             unstable = import nixpkgs-unstable {
