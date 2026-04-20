@@ -83,6 +83,50 @@
   # ── Justfile ───────────────────────────────────────────────────────────────
   home.file."justfile".source = ./justfile;
 
+  # ── PhotoGIMP orphan cleanup ───────────────────────────────────────────────
+  # Removes any leftover PhotoGIMP desktop entry or icon overrides from a
+  # previous desktop-role Home Manager generation or manual PhotoGIMP install.
+  # The photogimp.nix module is never imported on stateless; all its cleanup
+  # activations are gated behind photogimp.enable = true and never fire here.
+  # This activation removes BOTH real files AND symlinks (unlike the cleanup in
+  # photogimp.nix which only removes real files).
+  home.activation.cleanupPhotogimpOrphans =
+    lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+      DESKTOP_FILE="$HOME/.local/share/applications/org.gimp.GIMP.desktop"
+      if [ -e "$DESKTOP_FILE" ] || [ -L "$DESKTOP_FILE" ]; then
+        $VERBOSE_ECHO "Stateless: removing orphaned PhotoGIMP desktop entry"
+        $DRY_RUN_CMD rm -f "$DESKTOP_FILE"
+      fi
+
+      for size in 16x16 32x32 48x48 64x64 128x128 256x256 512x512; do
+        ICON_FILE="$HOME/.local/share/icons/hicolor/$size/apps/photogimp.png"
+        if [ -e "$ICON_FILE" ] || [ -L "$ICON_FILE" ]; then
+          $VERBOSE_ECHO "Stateless: removing orphaned PhotoGIMP icon $size"
+          $DRY_RUN_CMD rm -f "$ICON_FILE"
+        fi
+      done
+
+      for stray in \
+        "$HOME/.local/share/icons/hicolor/photogimp.png" \
+        "$HOME/.local/share/icons/hicolor/256x256/256x256.png"; do
+        if [ -e "$stray" ] || [ -L "$stray" ]; then
+          $VERBOSE_ECHO "Stateless: removing stray PhotoGIMP file $stray"
+          $DRY_RUN_CMD rm -f "$stray"
+        fi
+      done
+
+      APP_DIR="$HOME/.local/share/applications"
+      ICON_DIR="$HOME/.local/share/icons/hicolor"
+      if [ -d "$APP_DIR" ]; then
+        $VERBOSE_ECHO "Stateless: refreshing desktop database after PhotoGIMP cleanup"
+        $DRY_RUN_CMD ${pkgs.desktop-file-utils}/bin/update-desktop-database "$APP_DIR"
+      fi
+      if [ -d "$ICON_DIR" ]; then
+        $VERBOSE_ECHO "Stateless: refreshing icon cache after PhotoGIMP cleanup"
+        $DRY_RUN_CMD ${pkgs.gtk3}/bin/gtk-update-icon-cache -f -t "$ICON_DIR"
+      fi
+    '';
+
   # ── Hidden app grid entries ────────────────────────────────────────────────
   xdg.desktopEntries."org.gnome.Extensions" = {
     name      = "Extensions";
@@ -130,6 +174,7 @@
       favorite-apps = [
         "brave-browser.desktop"
         "app.zen_browser.zen.desktop"
+        "torbrowser.desktop"
         "org.gnome.Nautilus.desktop"
         "com.mitchellh.ghostty.desktop"
         "io.github.up.desktop"
