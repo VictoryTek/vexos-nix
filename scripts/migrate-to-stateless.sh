@@ -300,6 +300,51 @@ while [ -z "$VARIANT" ]; do
   esac
 done
 
+# ---------- Prompt: nimda user password -------------------------------------
+CUSTOM_PASSWORD_SET=false
+HASHED_PW=""
+
+if command -v openssl &>/dev/null; then
+  echo ""
+  echo -e "${BOLD}Set a login password for the nimda user:${RESET}"
+  echo -e "${YELLOW}  Press Enter twice to keep the default password ('vexos').${RESET}"
+  echo -e "${YELLOW}  Note: the password resets to this value on every reboot (by design).${RESET}"
+  echo ""
+  while true; do
+    printf "  Password (hidden): "
+    read -rs PW </dev/tty
+    echo ""
+    if [ -z "$PW" ]; then
+      echo -e "${YELLOW}  No password entered — keeping default 'vexos'.${RESET}"
+      break
+    fi
+    printf "  Confirm password:  "
+    read -rs PW2 </dev/tty
+    echo ""
+    if [ "$PW" = "$PW2" ]; then
+      HASHED_PW=$(printf '%s' "$PW" | openssl passwd -6 -stdin)
+      CUSTOM_PASSWORD_SET=true
+      echo -e "${GREEN}  ✓ Password accepted.${RESET}"
+      break
+    else
+      echo -e "${RED}  Passwords do not match. Try again.${RESET}"
+    fi
+  done
+  if $CUSTOM_PASSWORD_SET; then
+    echo ""
+    echo -e "${BOLD}Writing /etc/nixos/stateless-user-override.nix...${RESET}"
+    tee /etc/nixos/stateless-user-override.nix > /dev/null << NIXEOF
+{ lib, ... }: {
+  users.users.nimda.initialHashedPassword = lib.mkOverride 50 "${HASHED_PW}";
+  users.users.nimda.initialPassword       = lib.mkForce null;
+}
+NIXEOF
+    echo -e "${GREEN}  ✓ /etc/nixos/stateless-user-override.nix written.${RESET}"
+  fi
+else
+  echo -e "${YELLOW}  openssl not found — skipping password setup (default 'vexos' will be used).${RESET}"
+fi
+
 # ---------- nixos-rebuild boot -----------------------------------------------
 # CRITICAL: Use 'boot' instead of 'switch'.
 # 'switch' would activate the stateless config immediately, restarting the
@@ -338,6 +383,8 @@ cp /etc/nixos/flake.lock    "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null || 
 cp /etc/nixos/hardware-configuration.nix "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null && \
   echo -e "  ${GREEN}✓ hardware-configuration.nix persisted${RESET}" || \
   echo -e "  ${YELLOW}⚠ hardware-configuration.nix not found${RESET}"
+cp /etc/nixos/stateless-user-override.nix "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null && \
+  echo -e "  ${GREEN}✓ stateless-user-override.nix persisted${RESET}" || true
 echo -e "${GREEN}  ✓ Config files persisted to @persist.${RESET}"
 umount "${BTRFS_MOUNT}"
 rmdir "${BTRFS_MOUNT}" 2>/dev/null || true
@@ -358,12 +405,17 @@ echo "     /nix and /persistent survive reboots. Everything else is ephemeral."
 echo ""
 echo -e "${BOLD}Default login credentials after reboot:${RESET}"
 echo -e "  Username: ${CYAN}nimda${RESET}"
-echo -e "  Password: ${CYAN}vexos${RESET}"
+if $CUSTOM_PASSWORD_SET; then
+  echo -e "  Password: ${CYAN}(your chosen password)${RESET}"
+else
+  echo -e "  Password: ${CYAN}vexos (default)${RESET}"
+fi
 echo ""
 echo -e "${YELLOW}Note: Passwords changed at runtime do NOT persist across reboots.${RESET}"
-echo -e "${YELLOW}      The password always resets to 'vexos' on every boot (by design).${RESET}"
-echo -e "${YELLOW}      To set a permanent password, update initialPassword in${RESET}"
-echo -e "${YELLOW}      configuration-stateless.nix and rebuild.${RESET}"
+echo -e "${YELLOW}      The password resets to the configured value on every boot (by design).${RESET}"
+if ! $CUSTOM_PASSWORD_SET; then
+  echo -e "${YELLOW}      To set a custom password, re-run scripts/migrate-to-stateless.sh.${RESET}"
+fi
 echo ""
 echo -e "${YELLOW}Note: After rebooting into stateless mode, the original / data on${RESET}"
 echo -e "${YELLOW}the Btrfs partition remains but is not mounted. You can reclaim${RESET}"

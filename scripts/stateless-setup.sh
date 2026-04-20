@@ -113,6 +113,40 @@ while [ -z "$VARIANT" ]; do
   esac
 done
 
+# ---------- Prompt: nimda user password -------------------------------------
+CUSTOM_PASSWORD_SET=false
+HASHED_PW=""
+
+if command -v openssl &>/dev/null; then
+  echo ""
+  echo -e "${BOLD}Set a login password for the nimda user:${RESET}"
+  echo -e "${YELLOW}  Press Enter twice to keep the default password ('vexos').${RESET}"
+  echo -e "${YELLOW}  Note: the password resets to this value on every reboot (by design).${RESET}"
+  echo ""
+  while true; do
+    printf "  Password (hidden): "
+    read -rs PW </dev/tty
+    echo ""
+    if [ -z "$PW" ]; then
+      echo -e "${YELLOW}  No password entered — keeping default 'vexos'.${RESET}"
+      break
+    fi
+    printf "  Confirm password:  "
+    read -rs PW2 </dev/tty
+    echo ""
+    if [ "$PW" = "$PW2" ]; then
+      HASHED_PW=$(printf '%s' "$PW" | openssl passwd -6 -stdin)
+      CUSTOM_PASSWORD_SET=true
+      echo -e "${GREEN}  ✓ Password accepted.${RESET}"
+      break
+    else
+      echo -e "${RED}  Passwords do not match. Try again.${RESET}"
+    fi
+  done
+else
+  echo -e "${YELLOW}  openssl not found — skipping password setup (default 'vexos' will be used).${RESET}"
+fi
+
 # ---------- Hostname (auto-set, same as all other roles) --------------------
 HOSTNAME="vexos"
 
@@ -175,6 +209,19 @@ echo -e "${BOLD}Downloading vexos-nix template flake to /mnt/etc/nixos/...${RESE
 sudo curl -fsSL "${TEMPLATE_URL}" -o /mnt/etc/nixos/flake.nix
 echo -e "${GREEN}✓ /mnt/etc/nixos/flake.nix downloaded.${RESET}"
 
+# ---------- Write stateless-user-override.nix (if custom password was set) --
+if $CUSTOM_PASSWORD_SET; then
+  echo ""
+  echo -e "${BOLD}Writing stateless-user-override.nix with custom password...${RESET}"
+  sudo tee /mnt/etc/nixos/stateless-user-override.nix > /dev/null << NIXEOF
+{ lib, ... }: {
+  users.users.nimda.initialHashedPassword = lib.mkOverride 50 "${HASHED_PW}";
+  users.users.nimda.initialPassword       = lib.mkForce null;
+}
+NIXEOF
+  echo -e "${GREEN}  ✓ /mnt/etc/nixos/stateless-user-override.nix written.${RESET}"
+fi
+
 # ---------- Git-track the flake so Nix uses git+file: not path:+narHash ------
 # Without git tracking, `nixos-install` locks /mnt/etc/nixos as a path: flake
 # with a narHash.  Writing the lock file then changes the directory content,
@@ -206,6 +253,7 @@ sudo mkdir -p /mnt/persistent/etc/nixos
 sudo cp /mnt/etc/nixos/hardware-configuration.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/flake.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/flake.lock /mnt/persistent/etc/nixos/ 2>/dev/null || true
+sudo cp /mnt/etc/nixos/stateless-user-override.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 echo -e "${GREEN}✓ NixOS config files persisted.${RESET}"
 
 echo ""
@@ -219,12 +267,17 @@ echo "  2. Reboot: sudo reboot"
 echo ""
 echo -e "${BOLD}Default login credentials:${RESET}"
 echo -e "  Username: ${CYAN}nimda${RESET}"
-echo -e "  Password: ${CYAN}vexos${RESET}"
+if $CUSTOM_PASSWORD_SET; then
+  echo -e "  Password: ${CYAN}(your chosen password)${RESET}"
+else
+  echo -e "  Password: ${CYAN}vexos (default)${RESET}"
+fi
 echo ""
 echo -e "${YELLOW}Note: Passwords changed at runtime do NOT persist across reboots.${RESET}"
-echo -e "${YELLOW}      The password always resets to 'vexos' on every boot (by design).${RESET}"
-echo -e "${YELLOW}      To change the permanent password, update initialPassword in${RESET}"
-echo -e "${YELLOW}      configuration-stateless.nix and rebuild.${RESET}"
+echo -e "${YELLOW}      The password resets to the configured value on every boot (by design).${RESET}"
+if ! $CUSTOM_PASSWORD_SET; then
+  echo -e "${YELLOW}      To set a custom password, re-run stateless-setup.sh.${RESET}"
+fi
 echo ""
 printf "Reboot now? [y/N] "
 read -r REBOOT_CHOICE </dev/tty
