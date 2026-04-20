@@ -12,6 +12,9 @@
 
   # ── User packages ──────────────────────────────────────────────────────────
   home.packages = with pkgs; [
+    # Privacy browser
+    tor-browser  # Routes traffic through the Tor network (Tails-like stateless role)
+
     # Terminal emulator
     ghostty
 
@@ -177,6 +180,11 @@
         "btrfs-assistant.desktop"
         "org.gnome.SystemMonitor.desktop"
       ];
+    };
+
+    "org/gnome/desktop/interface" = {
+      color-scheme = "prefer-dark";
+      accent-color = "teal";
     };
   };
 

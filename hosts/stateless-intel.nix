@@ -21,4 +21,5 @@
   # fail to build against linuxPackages_latest (kernel 6.12+).
   virtualisation.virtualbox.guest.enable = lib.mkForce false;
   system.nixos.distroName = "VexOS Stateless Intel";
+  vexos.variant = "vexos-stateless-intel";
 }

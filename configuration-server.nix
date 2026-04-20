@@ -84,7 +84,6 @@
   vexos.flatpak.excludeApps = [
     "org.gimp.GIMP"
     "com.ranfdev.DistroShelf"
-    "com.mattjakeman.ExtensionManager"
     "com.vysp3r.ProtonPlus"
     "net.lutris.Lutris"
     "org.prismlauncher.PrismLauncher"

@@ -43,6 +43,7 @@
       clock-format = "12h";
       cursor-theme = "Bibata-Modern-Classic";
       icon-theme   = "kora";
+      color-scheme = "prefer-dark";
     };
 
     "org/gnome/desktop/wm/preferences" = {

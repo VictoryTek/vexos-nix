@@ -18,4 +18,5 @@
   networking.hostName = lib.mkDefault "vexos";
 
   system.nixos.distroName = "VexOS Stateless VM";
+  vexos.variant = "vexos-stateless-vm";
 }

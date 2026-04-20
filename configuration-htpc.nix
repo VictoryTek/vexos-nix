@@ -79,11 +79,11 @@
   vexos.flatpak.excludeApps = [
     "org.gimp.GIMP"
     "com.ranfdev.DistroShelf"
-    "com.mattjakeman.ExtensionManager"  # puzzle-piece icon; not needed on HTPC
     "com.vysp3r.ProtonPlus"             # Wine/Proton manager; no gaming role on HTPC
     "net.lutris.Lutris"                 # gaming launcher; not applicable on a streaming HTPC
     "org.prismlauncher.PrismLauncher"   # Minecraft launcher; not needed
     "io.github.pol_rivero.github-desktop-plus" # Desktop Plus; not useful for streaming HTPC
+    "org.onlyoffice.desktopeditors"     # OnlyOffice; not needed on a streaming HTPC
   ];
 
   vexos.flatpak.extraApps = [
@@ -114,6 +114,8 @@
         cursor-size  = lib.gvariant.mkInt32 24;
         icon-theme   = "kora";
         clock-format = "12h";
+        color-scheme = "prefer-dark";
+        accent-color = "orange";
       };
       # Enable GNOME Shell extensions at the system level (no home-manager on HTPC).
       # gamemode-shell-extension is omitted — programs.gamemode is not enabled here.

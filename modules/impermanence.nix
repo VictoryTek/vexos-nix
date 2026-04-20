@@ -12,7 +12,7 @@
 #   Fresh install from ISO: run scripts/stateless-setup.sh (formats disk, calls nixos-install).
 #   Existing system migration: run scripts/migrate-to-stateless.sh (in-place Btrfs subvol setup).
 # No LUKS — disk layout is plain Btrfs with @nix and @persist subvolumes.
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.vexos.impermanence;
@@ -65,6 +65,18 @@ in
       '';
     };
 
+  };
+
+  options.vexos.variant = lib.mkOption {
+    type        = lib.types.str;
+    default     = "";
+    description = ''
+      Active build variant name (e.g. "vexos-stateless-amd").
+      When set and vexos.impermanence.enable = true, the value is written
+      directly to /persistent/etc/nixos/vexos-variant at activation time,
+      bypassing the timing race between the NixOS etc activation and the
+      impermanence bind mount for /etc/nixos.
+    '';
   };
 
   config = lib.mkIf cfg.enable {
@@ -209,6 +221,22 @@ in
       #     { directory = ".ssh";   mode = "0700"; }
       #   ];
       #   users.nimda.files = [ ".config/monitors.xml" ];
+    };
+
+    # ── Variant file persistence (write directly to persistent subvolume) ─────
+    # When vexos.variant is set, write the variant name to the persistent
+    # subvolume path directly, bypassing the bind-mount timing race between
+    # NixOS etc activation and the impermanence mount for /etc/nixos.
+    # /persistent is mounted in initrd (before systemd stage 2) and is always
+    # available when activationScripts run.
+    system.activationScripts.vexosVariant = lib.mkIf (config.vexos.variant != "") {
+      deps = [ "etc" ];
+      text = ''
+        PERSIST_DIR="${cfg.persistentPath}/etc/nixos"
+        ${pkgs.coreutils}/bin/mkdir -p "$PERSIST_DIR"
+        ${pkgs.coreutils}/bin/printf '%s' '${config.vexos.variant}' \
+          > "$PERSIST_DIR/vexos-variant"
+      '';
     };
 
   };

@@ -360,8 +360,10 @@ enable service: _require-server-role
 
     if [ ! -f "$SVC_FILE" ]; then
         echo "Creating $SVC_FILE from template..."
+        _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+        _jf_dir=$(dirname "$_jf_real")
         TEMPLATE_SRC=""
-        for _candidate in "{{justfile_directory()}}" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
+        for _candidate in "$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
             if [ -f "$_candidate/template/server-services.nix" ]; then
                 TEMPLATE_SRC="$_candidate/template/server-services.nix"
                 break

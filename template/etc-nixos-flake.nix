@@ -95,12 +95,19 @@
           modules = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
         in
         [
-          # Write the active variant as a declarative file so it survives stateless
-          # reboots.  environment.etc creates a symlink whose target lives in
-          # the ephemeral /etc/static; activationScripts run after impermanence
-          # bind mounts /persistent/etc/nixos → /etc/nixos, so the write lands
-          # in persistent storage as a real file.
-          { environment.etc."nixos/vexos-variant".text = "${variant}"; }
+          # Write the active variant name directly to the persistent Btrfs subvolume
+          # at /persistent/etc/nixos/vexos-variant.  Using activationScripts instead
+          # of environment.etc avoids the timing race where the NixOS etc activation
+          # runs before the impermanence bind mount for /etc/nixos is established.
+          # /persistent is mounted in initrd and is always available at activation time.
+          {
+            system.activationScripts.vexosVariant = ''
+              # Write variant directly to persistent subvolume, bypassing bind-mount timing
+              PERSIST_DIR="/persistent/etc/nixos"
+              mkdir -p "$PERSIST_DIR"
+              printf '%s' '${variant}' > "$PERSIST_DIR/vexos-variant"
+            '';
+          }
 
           bootloaderModule
 
@@ -135,7 +142,14 @@
           hasUserOverride  = builtins.pathExists userOverrideFile;
         in
         [
-          { environment.etc."nixos/vexos-variant".text = "${variant}"; }
+          {
+            system.activationScripts.vexosVariant = ''
+              # Write variant directly to persistent subvolume, bypassing bind-mount timing
+              PERSIST_DIR="/persistent/etc/nixos"
+              mkdir -p "$PERSIST_DIR"
+              printf '%s' '${variant}' > "$PERSIST_DIR/vexos-variant"
+            '';
+          }
           bootloaderModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.statelessBase
@@ -158,7 +172,14 @@
           hasServices = builtins.pathExists servicesFile;
         in
         [
-          { environment.etc."nixos/vexos-variant".text = "${variant}"; }
+          {
+            system.activationScripts.vexosVariant = ''
+              # Write variant directly to persistent subvolume, bypassing bind-mount timing
+              PERSIST_DIR="/persistent/etc/nixos"
+              mkdir -p "$PERSIST_DIR"
+              printf '%s' '${variant}' > "$PERSIST_DIR/vexos-variant"
+            '';
+          }
           bootloaderModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.serverBase

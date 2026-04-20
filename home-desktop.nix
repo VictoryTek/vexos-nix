@@ -226,7 +226,10 @@
         "org.gnome.SystemMonitor.desktop"
       ];
     };
-  };
+    "org/gnome/desktop/interface" = {
+      color-scheme = "prefer-dark";
+      accent-color = "blue";
+    };  };
   # ── State version ──────────────────────────────────────────────────────────
   # Do NOT change after first activation — tracks the HM release at initial install.
   home.stateVersion = "24.05";

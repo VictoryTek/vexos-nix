@@ -140,6 +140,7 @@
     "org/gnome/desktop/app-folders/folders/Utilities" = {
       name = "Utilities";
       apps = [
+        "com.mattjakeman.ExtensionManager.desktop"
         "it.mijorus.gearlever.desktop"
         "org.gnome.tweaks.desktop"
         "io.github.flattool.Warehouse.desktop"
@@ -169,6 +170,11 @@
         "btrfs-assistant.desktop"
         "org.gnome.SystemMonitor.desktop"
       ];
+    };
+
+    "org/gnome/desktop/interface" = {
+      color-scheme = "prefer-dark";
+      accent-color = "yellow";
     };
   };
 

@@ -81,6 +81,7 @@ in
 
   # ── GNOME desktop ─────────────────────────────────────────────────────────
   services.xserver.enable = true;
+  services.xserver.excludePackages = lib.mkDefault [ pkgs.xterm ];
   services.desktopManager.gnome.enable = true;
 
   # Explicitly enable dconf so the GIO dconf module is loaded and
@@ -100,6 +101,12 @@ in
       {
         settings = let
           role = config.vexos.branding.role;
+          accentColor = {
+            desktop   = "blue";
+            htpc      = "orange";
+            server    = "yellow";
+            stateless = "teal";
+          }.${role};
           # Extensions shared by all roles (no gamemode).
           commonExtensions = [
             "appindicatorsupport@rgcjonas.gmail.com"
@@ -139,6 +146,8 @@ in
             cursor-theme = "Bibata-Modern-Classic";
             icon-theme   = "kora";
             clock-format = "12h";
+            color-scheme = "prefer-dark";
+            accent-color = accentColor;
           };
 
           # ── Window manager ──────────────────────────────────────────────
@@ -232,8 +241,7 @@ in
     # GNOME tooling
     unstable.gnome-tweaks                               # GNOME customisation GUI
     unstable.dconf-editor                               # Low-level GNOME settings editor
-    # NOTE: gnome-extension-manager is installed in configuration-desktop.nix (desktop only).
-    # HTPC does not need an extension manager app.
+    unstable.gnome-extension-manager                    # Install/manage GNOME Shell extensions
 
     # Cursor and icon theme packages — must be in system packages so the
     # system dconf profile (programs.dconf.profiles.user.databases) can

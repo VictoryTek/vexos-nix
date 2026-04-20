@@ -79,7 +79,6 @@
     "org/gnome/desktop/app-folders/folders/Office" = {
       name = "Office";
       apps = [
-        "org.onlyoffice.desktopeditors.desktop"
         "org.gnome.TextEditor.desktop"
       ];
     };
@@ -119,7 +118,10 @@
         "org.gnome.SystemMonitor.desktop"
       ];
     };
-  };
+    "org/gnome/desktop/interface" = {
+      color-scheme = "prefer-dark";
+      accent-color = "orange";
+    };  };
 
   # ── Hidden app grid entries ────────────────────────────────────────────────
   # These packages cannot be safely removed (they are required dependencies),
