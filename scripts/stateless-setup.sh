@@ -89,18 +89,6 @@ while [ -z "$DISK" ]; do
   DISK="$DISK_INPUT"
 done
 
-# ---------- Confirm disk selection by re-typing -----------------------------
-echo ""
-echo -e "${RED}${BOLD}  !! POINT OF NO RETURN !!${RESET}"
-echo -e "${YELLOW}  ALL DATA on ${DISK} will be permanently destroyed.${RESET}"
-echo ""
-printf "To confirm, type the device path again exactly: "
-read -r DISK_CONFIRM </dev/tty
-if [ "$DISK_CONFIRM" != "$DISK" ]; then
-  echo -e "${RED}Confirmation does not match. Aborting.${RESET}"
-  exit 1
-fi
-
 # ---------- Prompt: GPU variant ---------------------------------------------
 echo ""
 echo -e "${BOLD}Select your GPU variant:${RESET}"
@@ -142,12 +130,15 @@ echo "  Hostname:   ${HOSTNAME}"
 echo "  LUKS:       disabled (no encryption)"
 echo "  Flake target: vexos-stateless-${VARIANT}"
 echo ""
-printf "Proceed with installation? This will ERASE ${DISK}. [yes/N] "
+printf "Proceed with installation? This will ERASE ${DISK}. [y/N] "
 read -r PROCEED </dev/tty
-if [ "${PROCEED}" != "yes" ]; then
-  echo "Aborting."
-  exit 0
-fi
+case "${PROCEED,,}" in
+  y|yes) ;;
+  *)
+    echo "Aborting."
+    exit 0
+    ;;
+esac
 
 # ---------- Download disko template -----------------------------------------
 echo ""

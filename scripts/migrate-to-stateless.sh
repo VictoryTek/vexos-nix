@@ -150,13 +150,7 @@ rmdir "${BTRFS_MOUNT}" 2>/dev/null || true
 
 if $EXISTING_NIX || $EXISTING_PERSIST; then
   echo ""
-  echo -e "${YELLOW}One or more target subvolumes already exist.${RESET}"
-  printf "Continue anyway? Existing subvolumes will be SKIPPED. [yes/N] "
-  read -r CONTINUE_EXISTING </dev/tty
-  if [ "${CONTINUE_EXISTING}" != "yes" ]; then
-    echo "Aborting."
-    exit 0
-  fi
+  echo -e "${YELLOW}One or more target subvolumes already exist — they will be SKIPPED.${RESET}"
 fi
 echo ""
 
@@ -172,12 +166,15 @@ echo -e "${YELLOW}${BOLD}  This will modify /etc/nixos/hardware-configuration.ni
 echo -e "${YELLOW}  A backup will be saved to: ${HW_CONFIG_BAK}${RESET}"
 echo ""
 
-printf "Proceed with migration? [yes/N] "
+printf "Proceed with migration? [y/N] "
 read -r PROCEED </dev/tty
-if [ "${PROCEED}" != "yes" ]; then
-  echo "Aborting."
-  exit 0
-fi
+case "${PROCEED,,}" in
+  y|yes) ;;
+  *)
+    echo "Aborting."
+    exit 0
+    ;;
+esac
 
 # ---------- Mount raw Btrfs --------------------------------------------------
 echo ""
@@ -302,21 +299,6 @@ while [ -z "$VARIANT" ]; do
       ;;
   esac
 done
-
-# ---------- Summary before rebuild ------------------------------------------
-echo ""
-echo -e "${BOLD}Ready to rebuild:${RESET}"
-echo "  Target: /etc/nixos#vexos-stateless-${VARIANT}"
-echo ""
-printf "Run nixos-rebuild boot now? [yes/N] "
-read -r DO_REBUILD </dev/tty
-if [ "${DO_REBUILD}" != "yes" ]; then
-  echo ""
-  echo -e "${YELLOW}Skipping rebuild. Run manually when ready (use 'boot', not 'switch'):${RESET}"
-  echo "  sudo nixos-rebuild boot --flake /etc/nixos#vexos-stateless-${VARIANT}"
-  echo ""
-  exit 0
-fi
 
 # ---------- nixos-rebuild boot -----------------------------------------------
 # CRITICAL: Use 'boot' instead of 'switch'.
