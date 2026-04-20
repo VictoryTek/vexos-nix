@@ -113,13 +113,17 @@ jobs:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache Nix store
-        uses: nix-community/cache-nix-action@v6
+        uses: nix-community/cache-nix-action@v7
         with:
           # Per-group primary key; restore-prefix falls back to any warmed cache
           # from a prior run of any group — nixpkgs store paths are shared.
           primary-key: nix-${{ runner.os }}-${{ matrix.group }}-${{ hashFiles('flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
-          gc-max-store-size-linux: 8589934592  # 8 GiB
+          gc-max-store-size-linux: 8G
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-last-accessed: P7D
+          purge-primary-key: never
 
       - name: Create stub hardware-configuration.nix for CI
         run: |
