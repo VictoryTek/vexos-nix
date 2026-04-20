@@ -134,7 +134,6 @@
       name = "Office";
       apps = [
         "org.gnome.TextEditor.desktop"
-        "org.gnome.Papers.desktop"
       ];
     };
 

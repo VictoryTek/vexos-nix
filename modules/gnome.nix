@@ -8,7 +8,6 @@ let
   gnomeBaseApps = [
     "org.gnome.TextEditor"
     "org.gnome.Loupe"
-    "org.gnome.Papers"
     "org.gnome.Totem"
   ];
 
@@ -16,6 +15,7 @@ let
   gnomeDesktopOnlyApps = [
     "org.gnome.Calculator"
     "org.gnome.Calendar"
+    "org.gnome.Papers"
     "org.gnome.Snapshot"
   ];
 
@@ -52,9 +52,10 @@ in
       gnome-disk-utility     = u.gnome-disk-utility;
       baobab                 = u.baobab;             # Disk Usage Analyzer
       gnome-software         = u.gnome-software;
-      # NOTE: gnome-text-editor, gnome-system-monitor, loupe, evince/papers, and
-      # totem are installed via Flatpak on all roles; gnome-calculator and
-      # gnome-calendar are installed via Flatpak on the desktop role only.
+      # NOTE: gnome-text-editor, gnome-system-monitor, loupe, and totem are
+      # installed via Flatpak on all roles; gnome-calculator, gnome-calendar,
+      # evince/papers, and gnome-snapshot are installed via Flatpak on the
+      # desktop role only.
       # (see modules/flatpak.nix) to avoid local compilation.
     })
 
@@ -222,6 +223,8 @@ in
     gnome-calculator  # Flatpak org.gnome.Calculator installed on desktop only
     gnome-calendar    # Flatpak org.gnome.Calendar installed on desktop only
     snapshot          # GNOME Camera — Flatpak org.gnome.Snapshot installed on desktop only
+  ] ++ lib.optionals (config.vexos.branding.role != "desktop") [
+    papers            # Flatpak org.gnome.Papers installed on desktop only
   ];
 
   # ── GNOME tooling & Shell extensions ─────────────────────────────────────
