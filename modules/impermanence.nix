@@ -169,9 +169,11 @@ in
 
           # Thin flake wrapper + hardware-configuration.nix must survive reboots
           # so that `just rebuild`, `just update`, and `nixos-rebuild` work after
-          # boot without re-downloading the config.  vexos-variant is recreated by
-          # environment.etc on every activation; flake.nix and hardware-configuration
-          # are NOT managed by environment.etc and would otherwise be lost on reboot.
+          # boot without re-downloading the config.  vexos-variant is written as a
+          # plain file by system.activationScripts (in the /etc/nixos wrapper flake)
+          # on every activation after impermanence bind-mounts this directory, so it
+          # lands in persistent storage.  flake.nix and hardware-configuration are
+          # NOT managed that way and would be lost on reboot without this entry.
           "/etc/nixos"
 
           # Everything below is intentionally OMITTED for the stateless role:

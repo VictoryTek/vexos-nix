@@ -95,8 +95,14 @@
           modules = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
         in
         [
-          # Persist the active variant so vexos-updater can read it automatically.
-          { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
+          # Write the active variant as a plain file so it survives stateless
+          # reboots.  environment.etc creates a symlink whose target lives in
+          # the ephemeral /etc/static; activationScripts run after impermanence
+          # bind mounts /persistent/etc/nixos → /etc/nixos, so the write lands
+          # in persistent storage as a real file.
+          { system.activationScripts.vexos-variant = ''
+              printf '%s\n' "${variant}" > /etc/nixos/vexos-variant
+            ''; }
 
           bootloaderModule
 
@@ -131,7 +137,9 @@
           hasUserOverride  = builtins.pathExists userOverrideFile;
         in
         [
-          { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
+          { system.activationScripts.vexos-variant = ''
+              printf '%s\n' "${variant}" > /etc/nixos/vexos-variant
+            ''; }
           bootloaderModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.statelessBase
@@ -154,7 +162,9 @@
           hasServices = builtins.pathExists servicesFile;
         in
         [
-          { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
+          { system.activationScripts.vexos-variant = ''
+              printf '%s\n' "${variant}" > /etc/nixos/vexos-variant
+            ''; }
           bootloaderModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.serverBase

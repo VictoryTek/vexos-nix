@@ -200,7 +200,58 @@ build role variant flake="":
 update:
     #!/usr/bin/env bash
     set -euo pipefail
-    target=$(cat /etc/nixos/vexos-variant 2>/dev/null) || { echo "error: /etc/nixos/vexos-variant not found — run a build first"; exit 1; }
+    target=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+
+    if [ -z "$target" ]; then
+        ROLE=""
+        VARIANT=""
+
+        echo ""
+        echo "vexos-variant not found (stateless reboot?) — select target manually."
+        echo ""
+        echo "Select role:"
+        echo "  1) desktop"
+        echo "  2) stateless"
+        echo "  3) htpc"
+        echo "  4) server"
+        echo ""
+        while [ -z "$ROLE" ]; do
+            printf "Choice [1-4] or name: "
+            read -r INPUT
+            case "${INPUT,,}" in
+                1|desktop)   ROLE="desktop"   ;;
+                2|stateless) ROLE="stateless" ;;
+                3|htpc)      ROLE="htpc"      ;;
+                4|server)    ROLE="server"    ;;
+                *) echo "Invalid — enter 1-4 or desktop/stateless/htpc/server" ;;
+            esac
+        done
+
+        echo ""
+        echo "Select GPU variant:"
+        echo "  1) amd"
+        echo "  2) nvidia"
+        echo "  3) intel"
+        echo "  4) vm"
+        echo ""
+        while [ -z "$VARIANT" ]; do
+            printf "Choice [1-4] or name: "
+            read -r INPUT
+            case "${INPUT,,}" in
+                1|amd)    VARIANT="amd"    ;;
+                2|nvidia) VARIANT="nvidia" ;;
+                3|intel)  VARIANT="intel"  ;;
+                4|vm)     VARIANT="vm"     ;;
+                *) echo "Invalid — enter 1-4 or amd/nvidia/intel/vm" ;;
+            esac
+        done
+
+        target="vexos-${ROLE}-${VARIANT}"
+    fi
+
+    echo ""
+    echo "Updating flake inputs and switching to: ${target}"
+    echo ""
     # Always update /etc/nixos/flake.lock — that is the thin wrapper whose
     # lock pins the vexos-nix GitHub commit.  The repo clone's own flake.lock
     # is irrelevant for end-user updates.
