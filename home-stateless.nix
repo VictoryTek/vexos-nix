@@ -4,11 +4,8 @@
 { config, pkgs, lib, inputs, ... }:
 {
   imports = [
-    ./home/photogimp.nix
     ./home/gnome-common.nix
   ];
-
-  photogimp.enable = true;
 
   home.username    = "nimda";
   home.homeDirectory = "/home/nimda";

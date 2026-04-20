@@ -93,7 +93,12 @@ in
   # distroName: overrides NAME= and PRETTY_NAME= in /etc/os-release AND the
   # primary label in both GRUB and systemd-boot boot menu entries.
   # Marked internal=true in NixOS but fully supported for override.
-  system.nixos.distroName = lib.mkDefault "VexOS Desktop";
+  system.nixos.distroName = lib.mkDefault (
+    if config.vexos.branding.role == "stateless" then "VexOS Stateless"
+    else if config.vexos.branding.role == "server" then "VexOS Server"
+    else if config.vexos.branding.role == "htpc" then "VexOS HTPC"
+    else "VexOS Desktop"
+  );
   system.nixos.label      = "25.11";
 
   # distroId: overrides ID= in /etc/os-release.  When set to anything other

@@ -8,7 +8,6 @@ let
     "io.github.pol_rivero.github-desktop-plus"
     "com.github.tchx84.Flatseal"
     "it.mijorus.gearlever"
-    "org.gimp.GIMP"
     "io.missioncenter.MissionCenter"
     "org.onlyoffice.desktopeditors"
     "org.prismlauncher.PrismLauncher"
