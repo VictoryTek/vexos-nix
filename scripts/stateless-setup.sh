@@ -125,11 +125,8 @@ while [ -z "$VARIANT" ]; do
   esac
 done
 
-# ---------- Prompt: hostname -------------------------------------------------
-echo ""
-printf "Enter hostname [vexos]: "
-read -r HOSTNAME_INPUT </dev/tty
-HOSTNAME="${HOSTNAME_INPUT:-vexos}"
+# ---------- Hostname (auto-set, same as all other roles) --------------------
+HOSTNAME="vexos"
 
 # ---------- LUKS: always disabled -------------------------------------------
 # VexOS stateless role does not use disk encryption.

@@ -303,34 +303,32 @@ while [ -z "$VARIANT" ]; do
   esac
 done
 
-# ---------- Hostname prompt --------------------------------------------------
-echo ""
-printf "Enter hostname [vexos]: "
-read -r HOSTNAME_INPUT </dev/tty
-HOSTNAME="${HOSTNAME_INPUT:-vexos}"
-
 # ---------- Summary before rebuild ------------------------------------------
 echo ""
 echo -e "${BOLD}Ready to rebuild:${RESET}"
 echo "  Target: /etc/nixos#vexos-stateless-${VARIANT}"
-echo "  Hostname: ${HOSTNAME}"
 echo ""
-printf "Run nixos-rebuild switch now? [yes/N] "
+printf "Run nixos-rebuild boot now? [yes/N] "
 read -r DO_REBUILD </dev/tty
 if [ "${DO_REBUILD}" != "yes" ]; then
   echo ""
-  echo -e "${YELLOW}Skipping rebuild. Run manually when ready:${RESET}"
-  echo "  sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-${VARIANT}"
+  echo -e "${YELLOW}Skipping rebuild. Run manually when ready (use 'boot', not 'switch'):${RESET}"
+  echo "  sudo nixos-rebuild boot --flake /etc/nixos#vexos-stateless-${VARIANT}"
   echo ""
   exit 0
 fi
 
-# ---------- nixos-rebuild switch --------------------------------------------
+# ---------- nixos-rebuild boot -----------------------------------------------
+# CRITICAL: Use 'boot' instead of 'switch'.
+# 'switch' would activate the stateless config immediately, restarting the
+# display manager and killing this script before the /nix → @nix copy below.
+# 'boot' installs the new generation as the next boot target without activating
+# it, keeping the current session alive so the nix copy can complete.
 echo ""
-echo -e "${BOLD}Running nixos-rebuild switch...${RESET}"
+echo -e "${BOLD}Running nixos-rebuild boot (activates on next reboot)...${RESET}"
 echo -e "${YELLOW}This may take a while on first run.${RESET}"
 echo ""
-nixos-rebuild switch --flake "/etc/nixos#vexos-stateless-${VARIANT}"
+nixos-rebuild boot --flake "/etc/nixos#vexos-stateless-${VARIANT}"
 
 # ---------- Sync /nix → @nix (after rebuild, captures new closure) -----------
 # This MUST happen after nixos-rebuild so the stateless-vm system closure

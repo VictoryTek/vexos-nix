@@ -75,25 +75,34 @@ done
 # ---------- Stateless role: auto-detect context and invoke correct script ----
 if [ "$ROLE" = "stateless" ]; then
   ROOT_FSTYPE=$(findmnt -n -o FSTYPE / 2>/dev/null || true)
-  if [ "$ROOT_FSTYPE" = "tmpfs" ]; then
+  # Distinguish live ISO (tmpfs + no /nix mount) from running stateless system
+  # (tmpfs + /nix mounted on btrfs subvol @nix).
+  NIX_FSTYPE=$(findmnt -n -o FSTYPE /nix 2>/dev/null || true)
+  if [ "$ROOT_FSTYPE" = "tmpfs" ] && [ "$NIX_FSTYPE" = "btrfs" ]; then
+    # Already running a stateless (impermanence) system — just rebuild with new variant.
+    # Fall through to GPU selection and nixos-rebuild switch below.
+    echo ""
+    echo -e "${CYAN}Stateless system detected — will switch variant via nixos-rebuild.${RESET}"
+  elif [ "$ROOT_FSTYPE" = "tmpfs" ]; then
     # Running from NixOS live ISO — full disk setup
     echo ""
     echo -e "${CYAN}Live ISO detected — launching stateless disk setup (erases target disk)...${RESET}"
     echo ""
     curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh | bash
+    exit 0
   else
     # Running on an existing NixOS install — in-place Btrfs migration
     echo ""
     echo -e "${CYAN}Existing install detected — launching in-place stateless migration...${RESET}"
     echo ""
     curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/migrate-to-stateless.sh | sudo bash
+    exit 0
   fi
-  exit 0
 fi
 
 # ---------- GPU variant selection --------------------------------------------
 VARIANT=""
-if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ]; then
+if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || [ "$ROLE" = "stateless" ]; then
   echo ""
   echo -e "${BOLD}Select your GPU variant:${RESET}"
   echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
