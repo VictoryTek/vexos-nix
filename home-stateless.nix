@@ -106,8 +106,8 @@
   };
 
   # ── Wallpapers ─────────────────────────────────────────────────────────────
-  home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/desktop/vex-bb-light.jxl;
-  home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/desktop/vex-bb-dark.jxl;
+  home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/stateless/vex-bb-light.jxl;
+  home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/stateless/vex-bb-dark.jxl;
 
   # ── GNOME dconf settings ────────────────────────────────────────────────
   dconf.settings = {
