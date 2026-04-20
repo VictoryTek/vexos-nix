@@ -167,6 +167,13 @@ in
           # Without this, NixOS cannot reliably verify UIDs across activations.
           "/var/lib/nixos"
 
+          # Thin flake wrapper + hardware-configuration.nix must survive reboots
+          # so that `just rebuild`, `just update`, and `nixos-rebuild` work after
+          # boot without re-downloading the config.  vexos-variant is recreated by
+          # environment.etc on every activation; flake.nix and hardware-configuration
+          # are NOT managed by environment.etc and would otherwise be lost on reboot.
+          "/etc/nixos"
+
           # Everything below is intentionally OMITTED for the stateless role:
           #
           # NetworkManager connections — WiFi/VPN credentials are NOT saved.

@@ -204,15 +204,36 @@ sudo nixos-install \
   --no-root-passwd \
   --flake "/mnt/etc/nixos#${FLAKE_TARGET}"
 
+# ---------- Persist nixos config to /persistent -----------------------------
+# /mnt/etc/nixos is on the ephemeral tmpfs root and will be wiped on first
+# reboot.  Copy the thin flake and hardware config to the @persist subvolume
+# so they are available via the /etc/nixos bind mount on every future boot
+# (see modules/impermanence.nix — /etc/nixos is in the persistence list).
+echo ""
+echo -e "${BOLD}Persisting NixOS config files to /persistent...${RESET}"
+sudo mkdir -p /mnt/persistent/etc/nixos
+sudo cp /mnt/etc/nixos/hardware-configuration.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
+sudo cp /mnt/etc/nixos/flake.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
+sudo cp /mnt/etc/nixos/flake.lock /mnt/persistent/etc/nixos/ 2>/dev/null || true
+echo -e "${GREEN}✓ NixOS config files persisted.${RESET}"
+
 echo ""
 echo -e "${GREEN}${BOLD}============================================================${RESET}"
 echo -e "${GREEN}${BOLD}  ✓ VexOS Stateless installation complete!${RESET}"
 echo -e "${GREEN}${BOLD}============================================================${RESET}"
 echo ""
 echo -e "${BOLD}Next steps:${RESET}"
-echo "  1. Set a root password if needed:  nixos-enter --root /mnt -- passwd"
-echo "  2. Remove the live ISO from your boot device."
-echo "  3. Reboot: sudo reboot"
+echo "  1. Remove the live ISO from your boot device."
+echo "  2. Reboot: sudo reboot"
+echo ""
+echo -e "${BOLD}Default login credentials:${RESET}"
+echo -e "  Username: ${CYAN}nimda${RESET}"
+echo -e "  Password: ${CYAN}vexos${RESET}"
+echo ""
+echo -e "${YELLOW}Note: Passwords changed at runtime do NOT persist across reboots.${RESET}"
+echo -e "${YELLOW}      The password always resets to 'vexos' on every boot (by design).${RESET}"
+echo -e "${YELLOW}      To change the permanent password, update initialPassword in${RESET}"
+echo -e "${YELLOW}      configuration-stateless.nix and rebuild.${RESET}"
 echo ""
 printf "Reboot now? [y/N] "
 read -r REBOOT_CHOICE </dev/tty

@@ -13,6 +13,14 @@ default:
         echo "    services             List enabled/disabled status of server service modules"
         echo "    enable <service>     Enable a server service module"
         echo "    disable <service>    Disable a server service module"
+    elif [[ "$variant" == *stateless* ]]; then
+        echo ""
+        echo "Active role: stateless (ephemeral / tmpfs root)"
+        echo ""
+        echo "Reminder:"
+        echo "    Login password resets to 'vexos' on every reboot (by design)."
+        echo "    To change permanently, update initialPassword in"
+        echo "    configuration-stateless.nix and rebuild."
     fi
 
 # Print the active role and GPU variant (e.g. vexos-desktop-amd).

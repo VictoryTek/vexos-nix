@@ -342,6 +342,21 @@ mkdir -p "${BTRFS_MOUNT}"
 mount -o subvolid=5 "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}" 2>/dev/null || \
   mount "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}"
 cp -a --reflink=always /nix/. "${BTRFS_MOUNT}/@nix/"
+# Persist nixos config into @persist subvolume ---------------------------------
+# /etc/nixos must be pre-populated in @persist so that after first stateless
+# boot, the impermanence bind-mount (/persistent/etc/nixos → /etc/nixos)
+# exposes flake.nix and hardware-configuration.nix for `just rebuild`/`just update`.
+echo ""
+echo -e "${BOLD}Persisting NixOS config files to @persist...${RESET}"
+mkdir -p "${BTRFS_MOUNT}/@persist/etc/nixos"
+cp /etc/nixos/flake.nix     "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null && \
+  echo -e "  ${GREEN}✓ flake.nix persisted${RESET}" || \
+  echo -e "  ${YELLOW}⚠ flake.nix not found — re-download after reboot${RESET}"
+cp /etc/nixos/flake.lock    "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null || true
+cp /etc/nixos/hardware-configuration.nix "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null && \
+  echo -e "  ${GREEN}✓ hardware-configuration.nix persisted${RESET}" || \
+  echo -e "  ${YELLOW}⚠ hardware-configuration.nix not found${RESET}"
+echo -e "${GREEN}  ✓ Config files persisted to @persist.${RESET}"
 umount "${BTRFS_MOUNT}"
 rmdir "${BTRFS_MOUNT}" 2>/dev/null || true
 echo -e "${GREEN}  ✓ /nix synced to @nix${RESET}"
@@ -358,6 +373,15 @@ echo "       sudo reboot"
 echo ""
 echo "  2. After reboot, / will be a fresh tmpfs on every boot."
 echo "     /nix and /persistent survive reboots. Everything else is ephemeral."
+echo ""
+echo -e "${BOLD}Default login credentials after reboot:${RESET}"
+echo -e "  Username: ${CYAN}nimda${RESET}"
+echo -e "  Password: ${CYAN}vexos${RESET}"
+echo ""
+echo -e "${YELLOW}Note: Passwords changed at runtime do NOT persist across reboots.${RESET}"
+echo -e "${YELLOW}      The password always resets to 'vexos' on every boot (by design).${RESET}"
+echo -e "${YELLOW}      To set a permanent password, update initialPassword in${RESET}"
+echo -e "${YELLOW}      configuration-stateless.nix and rebuild.${RESET}"
 echo ""
 echo -e "${YELLOW}Note: After rebooting into stateless mode, the original / data on${RESET}"
 echo -e "${YELLOW}the Btrfs partition remains but is not mounted. You can reclaim${RESET}"
