@@ -9,10 +9,11 @@ default:
     if [[ "$variant" == *server* ]]; then
         echo ""
         echo "Available recipes (server role):"
-        echo "    list-services        List all available server service modules"
-        echo "    services             List enabled/disabled status of server service modules"
-        echo "    enable <service>     Enable a server service module"
-        echo "    disable <service>    Disable a server service module"
+        echo "    list-services              List all available server service modules"
+        echo "    service-info [service]     Show ports and URLs for enabled (or specified) services"
+        echo "    services                   List enabled/disabled status of server service modules"
+        echo "    enable <service>           Enable a server service module"
+        echo "    disable <service>          Disable a server service module"
     elif [[ "$variant" == *stateless* ]]; then
         echo ""
         echo "Active role: stateless (ephemeral / tmpfs root)"
@@ -319,6 +320,86 @@ list-services:
     echo "Use 'just enable <service>' to enable a module on a server host."
     echo ""
 
+# Show access info for server services — ports, URLs, and key notes.
+# With no argument shows all currently enabled services; with a name shows that service.
+# Usage:  just service-info            — all enabled services
+#         just service-info jellyfin   — specific service
+service-info service="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SERVICE="{{service}}"
+
+    _info() {
+      case "$1" in
+        adguard)         printf "  %-18s  Web UI  http://<server-ip>:3080   |  DNS on :53\n"                           "$1" ;;
+        arr)             printf "  %-18s  SABnzbd :8080  Sonarr :8989  Radarr :7878  Lidarr :8686  Prowlarr :9696\n"   "$1" ;;
+        audiobookshelf)  printf "  %-18s  Web UI  http://<server-ip>:8234\n"                                           "$1" ;;
+        caddy)           printf "  %-18s  Ports :80, :443\n"                                                           "$1" ;;
+        cockpit)         printf "  %-18s  Web UI  http://<server-ip>:9090\n"                                           "$1" ;;
+        docker)          printf "  %-18s  No web UI — docker / docker compose CLI\n"                                   "$1" ;;
+        forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000   ⚠ conflicts with grafana\n"                "$1" ;;
+        grafana)         printf "  %-18s  Web UI  http://<server-ip>:3000   ⚠ conflicts with forgejo\n"                "$1" ;;
+        headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
+        home-assistant)  printf "  %-18s  Web UI  http://<server-ip>:8123\n"                                           "$1" ;;
+        homepage)        printf "  %-18s  Web UI  http://<server-ip>:3010   (requires docker)\n"                       "$1" ;;
+        immich)          printf "  %-18s  Web UI  http://<server-ip>:2283\n"                                           "$1" ;;
+        jellyfin)        printf "  %-18s  Web UI  http://<server-ip>:8096\n"                                           "$1" ;;
+        jellyseerr)      printf "  %-18s  Web UI  http://<server-ip>:5055   ⚠ conflicts with overseerr\n"              "$1" ;;
+        kavita)          printf "  %-18s  Web UI  http://<server-ip>:5000\n"                                           "$1" ;;
+        komga)           printf "  %-18s  Web UI  http://<server-ip>:8090\n"                                           "$1" ;;
+        mealie)          printf "  %-18s  Web UI  http://<server-ip>:9000\n"                                           "$1" ;;
+        nextcloud)       printf "  %-18s  Web UI  http://nextcloud.local     (Nginx frontend)\n"                       "$1" ;;
+        nginx)           printf "  %-18s  Ports :80, :443\n"                                                           "$1" ;;
+        ntfy)            printf "  %-18s  Web UI  http://<server-ip>:2586\n"                                           "$1" ;;
+        overseerr)       printf "  %-18s  Web UI  http://<server-ip>:5055   ⚠ conflicts with jellyseerr\n"             "$1" ;;
+        papermc)         printf "  %-18s  Port :25565 (Minecraft TCP/UDP)\n"                                           "$1" ;;
+        plex)            printf "  %-18s  Web UI  http://<server-ip>:32400/web\n"                                      "$1" ;;
+        rustdesk)        printf "  %-18s  Ports :21115-21117 / :21118-21119 (no web UI)\n"                             "$1" ;;
+        scrutiny)        printf "  %-18s  Web UI  http://<server-ip>:8080   ⚠ conflicts with arr/traefik dashboard\n" "$1" ;;
+        stirling-pdf)    printf "  %-18s  Web UI  http://<server-ip>:8080   ⚠ conflicts with arr/scrutiny\n"           "$1" ;;
+        syncthing)       printf "  %-18s  Web UI  http://<server-ip>:8384\n"                                           "$1" ;;
+        tautulli)        printf "  %-18s  Web UI  http://<server-ip>:8181\n"                                           "$1" ;;
+        traefik)         printf "  %-18s  Ports :80, :443  |  Dashboard http://<server-ip>:8080/dashboard/\n"         "$1" ;;
+        uptime-kuma)     printf "  %-18s  Web UI  http://<server-ip>:3001\n"                                           "$1" ;;
+        vaultwarden)     printf "  %-18s  Web UI  http://<server-ip>:8222   |  Admin .../admin\n"                      "$1" ;;
+        *)               printf "  %-18s  (no info available)\n"                                                       "$1" ;;
+      esac
+    }
+
+    if [ -n "$SERVICE" ]; then
+        VALID_SERVICES="{{_server_service_names}}"
+        if ! echo "$VALID_SERVICES" | tr ' ' '\n' | grep -qx "$SERVICE"; then
+            echo "error: unknown service '$SERVICE'"
+            echo "available: $VALID_SERVICES"
+            exit 1
+        fi
+        echo ""
+        _info "$SERVICE"
+        echo ""
+    else
+        SVC_FILE="/etc/nixos/server-services.nix"
+        if [ ! -f "$SVC_FILE" ]; then
+            echo ""
+            echo "No services enabled yet — run 'just enable <service>' to get started."
+            echo ""
+            exit 0
+        fi
+        echo ""
+        echo "Enabled services:"
+        echo ""
+        FOUND=0
+        for svc in {{_server_service_names}}; do
+            if grep -qF "vexos.server.${svc}.enable = true;" "$SVC_FILE" 2>/dev/null; then
+                _info "$svc"
+                FOUND=1
+            fi
+        done
+        if [ "$FOUND" -eq 0 ]; then
+            echo "  (none enabled)"
+        fi
+        echo ""
+    fi
+
 # List all server services and their enabled/disabled status.
 [private]
 services: _require-server-role
@@ -613,12 +694,12 @@ disable service: _require-server-role
 
     OPTION="vexos.server.${SERVICE}.enable"
 
-    if ! grep -qP "${OPTION//./\\.}\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+    if ! grep -qF "${OPTION} = true;" "$SVC_FILE" 2>/dev/null; then
         echo "$SERVICE is already disabled."
         exit 0
     fi
 
-    sudo sed -i -E "s|(${OPTION//./\\.})\s*=\s*true;|\1 = false;|" "$SVC_FILE"
+    sudo sed -i "s/${OPTION//./\\.} = true;/${OPTION//./\\.} = false;/" "$SVC_FILE"
 
     echo "✗ Disabled: $SERVICE"
     echo "  → Run 'just rebuild' or 'just switch server <gpu>' to apply."
