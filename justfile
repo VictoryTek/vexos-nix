@@ -397,6 +397,199 @@ enable service: _require-server-role
 
     echo "✓ Enabled: $SERVICE"
     echo "  → Run 'just rebuild' or 'just switch server <gpu>' to apply."
+    echo ""
+    case "$SERVICE" in
+      adguard)
+        echo "  Service:  adguardhome.service"
+        echo "  Web UI:   http://<server-ip>:3080"
+        echo "  DNS:      Listens on port 53 — point your router's DNS at this server after enabling."
+        ;;
+      arr)
+        echo "  Services: sabnzbd.service  sonarr.service  radarr.service  lidarr.service  prowlarr.service"
+        echo "  Web UIs:"
+        echo "    SABnzbd  → http://<server-ip>:8080"
+        echo "    Sonarr   → http://<server-ip>:8989"
+        echo "    Radarr   → http://<server-ip>:7878"
+        echo "    Lidarr   → http://<server-ip>:8686"
+        echo "    Prowlarr → http://<server-ip>:9696"
+        echo "  About:    Full *arr media automation stack — SABnzbd downloads, Sonarr/Radarr/Lidarr manage libraries, Prowlarr proxies indexers."
+        ;;
+      audiobookshelf)
+        echo "  Service:  audiobookshelf.service"
+        echo "  Web UI:   http://<server-ip>:8234"
+        echo "  About:    Self-hosted audiobook and podcast streaming server with progress sync and mobile app support."
+        ;;
+      caddy)
+        echo "  Service:  caddy.service"
+        echo "  Ports:    :80 (redirects to HTTPS), :443"
+        echo "  About:    Reverse proxy with automatic HTTPS via Let's Encrypt. Configure virtual hosts in the module or a Caddyfile."
+        ;;
+      cockpit)
+        echo "  Service:  cockpit.service"
+        echo "  Web UI:   http://<server-ip>:9090"
+        echo "  About:    Web-based Linux server admin console — manage services, storage, networking, and terminal sessions from a browser."
+        echo "  Login:    Use your normal Linux user credentials."
+        ;;
+      docker)
+        echo "  Service:  docker.service"
+        echo "  No web UI — manage containers via 'docker' / 'docker compose' on the CLI."
+        echo "  About:    Docker container runtime with Compose. Includes a weekly 'docker system prune' timer."
+        echo "  Note:     The nimda user is added to the docker group automatically."
+        ;;
+      forgejo)
+        echo "  Service:  forgejo.service"
+        echo "  Web UI:   http://<server-ip>:3000"
+        echo "  About:    Lightweight self-hosted Git forge (Gitea fork) — issues, pull requests, CI. Registration is disabled by default."
+        echo "  Warning:  Port 3000 conflicts with Grafana — enable only one."
+        ;;
+      grafana)
+        echo "  Service:  grafana.service"
+        echo "  Web UI:   http://<server-ip>:3000"
+        echo "  About:    Metrics and observability dashboard. Pair with Prometheus to graph system and application metrics."
+        echo "  Login:    Default admin / admin — change on first login."
+        echo "  Warning:  Port 3000 conflicts with Forgejo — enable only one."
+        ;;
+      headscale)
+        echo "  Service:  headscale.service"
+        echo "  Web UI:   http://<server-ip>:8085"
+        echo "  About:    Self-hosted Tailscale control server for a WireGuard mesh VPN without Tailscale's coordination servers."
+        echo "  CLI:      Manage nodes with 'headscale' on the server."
+        ;;
+      home-assistant)
+        echo "  Service:  home-assistant.service"
+        echo "  Web UI:   http://<server-ip>:8123"
+        echo "  About:    Home automation platform with Zigbee (ZHA), ESPHome, weather, and thousands of smart home integrations."
+        echo "  Note:     First run launches an onboarding wizard to create the admin account."
+        ;;
+      homepage)
+        echo "  Container: homepage (NixOS OCI container)"
+        echo "  Web UI:    http://<server-ip>:3010"
+        echo "  About:     Customisable self-hosted service dashboard with status widgets and bookmarks. Requires Docker to be enabled."
+        ;;
+      immich)
+        echo "  Service:  immich-server.service"
+        echo "  Web UI:   http://<server-ip>:2283"
+        echo "  About:    Self-hosted photo and video backup (Google Photos alternative) with mobile apps and face recognition."
+        echo "  Note:     Install the Immich mobile app and point it at http://<server-ip>:2283."
+        ;;
+      jellyfin)
+        echo "  Service:  jellyfin.service"
+        echo "  Web UI:   http://<server-ip>:8096"
+        echo "  About:    Free, open-source media server for streaming movies, TV, music, and photos to any device."
+        echo "  Note:     First run launches a setup wizard to add media libraries and create the admin account."
+        ;;
+      jellyseerr)
+        echo "  Service:  jellyseerr.service"
+        echo "  Web UI:   http://<server-ip>:5055"
+        echo "  About:    Media request and discovery manager for Jellyfin. Routes requests to Radarr/Sonarr."
+        echo "  Warning:  Port 5055 conflicts with Overseerr — enable only one."
+        ;;
+      kavita)
+        echo "  Service:  kavita.service"
+        echo "  Web UI:   http://<server-ip>:5000"
+        echo "  About:    Self-hosted digital reading server for ebooks (EPUB/PDF), comics (CBZ/CBR), and manga with OPDS feed support."
+        echo "  Note:     Create the admin account on first visit, then add library folders."
+        ;;
+      komga)
+        echo "  Service:  komga.service"
+        echo "  Web UI:   http://<server-ip>:8090"
+        echo "  About:    Self-hosted comics and manga server with a built-in web reader and OPDS feed."
+        echo "  Note:     Create the admin account on first visit, then add library folders."
+        ;;
+      mealie)
+        echo "  Service:  mealie.service"
+        echo "  Web UI:   http://<server-ip>:9000"
+        echo "  About:    Self-hosted recipe manager and meal planner with ingredient parsing and recipe import from URLs."
+        echo "  Login:    Default changeme@example.com / MyPassword — change immediately after first login."
+        ;;
+      nextcloud)
+        echo "  Service:  phpfpm-nextcloud.service (fronted by Nginx)"
+        echo "  Web UI:   http://nextcloud.local"
+        echo "  About:    Self-hosted file sync, calendar (CalDAV), and contacts (CardDAV) — Google Drive / OneDrive alternative."
+        echo "  Note:     Add a DNS entry or /etc/hosts record pointing 'nextcloud.local' to this server's IP."
+        echo "  CLI:      sudo -u nextcloud nextcloud-occ"
+        ;;
+      nginx)
+        echo "  Service:  nginx.service"
+        echo "  Ports:    :80, :443"
+        echo "  About:    High-performance web server and reverse proxy with HSTS, TLS 1.2+, and recommended cipher suite hardening."
+        ;;
+      ntfy)
+        echo "  Service:  ntfy-sh.service"
+        echo "  Web UI:   http://<server-ip>:2586"
+        echo "  About:    Self-hosted push notification server. Send alerts to phones or scripts via simple HTTP PUT/POST."
+        echo "  Example:  curl -d 'message' http://<server-ip>:2586/mytopic"
+        ;;
+      overseerr)
+        echo "  Service:  overseerr.service"
+        echo "  Web UI:   http://<server-ip>:5055"
+        echo "  About:    Media request management frontend for Plex — routes requests to Radarr and Sonarr."
+        echo "  Warning:  Port 5055 conflicts with Jellyseerr — enable only one."
+        ;;
+      papermc)
+        echo "  Service:  minecraft-server.service"
+        echo "  Port:     25565 (TCP/UDP) — open in your firewall/router for external access."
+        echo "  About:    High-performance PaperMC Minecraft Java Edition server (Spigot fork with plugin support)."
+        echo "  Monitor:  journalctl -fu minecraft-server"
+        ;;
+      plex)
+        echo "  Service:  plex.service"
+        echo "  Web UI:   http://<server-ip>:32400/web"
+        echo "  About:    Proprietary media server with apps on virtually every platform. Supports hardware transcoding with Plex Pass."
+        echo "  Note:     Claim your server at plex.tv/claim on first setup (requires a free Plex account)."
+        ;;
+      rustdesk)
+        echo "  Service:  rustdesk-server.service"
+        echo "  No web UI — configure RustDesk clients to use this server's IP as the custom relay/ID server."
+        echo "  Ports:    TCP 21115–21117 (signal + relay), WebSocket 21118–21119"
+        echo "  About:    Self-hosted relay and signal server for RustDesk remote desktop — no dependency on RustDesk's public servers."
+        ;;
+      scrutiny)
+        echo "  Service:  scrutiny.service"
+        echo "  Web UI:   http://<server-ip>:8080"
+        echo "  About:    Hard drive health dashboard powered by S.M.A.R.T. data with alerts on failing metrics."
+        echo "  Warning:  Port 8080 conflicts with SABnzbd (arr) and the Traefik dashboard — check for conflicts."
+        ;;
+      stirling-pdf)
+        echo "  Container: stirling-pdf (NixOS OCI container)"
+        echo "  Web UI:    http://<server-ip>:8080"
+        echo "  About:     Web-based PDF toolbox — merge, split, rotate, compress, OCR, watermark, and convert. All processing is local."
+        echo "  Warning:   Port 8080 conflicts with SABnzbd (arr) and Scrutiny — check for conflicts."
+        ;;
+      syncthing)
+        echo "  Service:  syncthing.service"
+        echo "  Web UI:   http://<server-ip>:8384  (or http://localhost:8384 on the server)"
+        echo "  About:    Continuous peer-to-peer file sync for the nimda user — no cloud intermediary required."
+        echo "  Note:     Add remote devices by exchanging device IDs in the web UI."
+        ;;
+      tautulli)
+        echo "  Service:  tautulli.service"
+        echo "  Web UI:   http://<server-ip>:8181"
+        echo "  About:    Monitoring, statistics, and notification service for Plex — tracks play history and usage analytics."
+        echo "  Note:     Connect to Plex by entering your Plex token in Settings → Plex Media Server."
+        ;;
+      traefik)
+        echo "  Service:   traefik.service"
+        echo "  Ports:     :80 (HTTP), :443 (HTTPS)"
+        echo "  Dashboard: http://<server-ip>:8080/dashboard/"
+        echo "  About:     Cloud-native reverse proxy with automatic Let's Encrypt TLS and Docker label-based route discovery."
+        echo "  Warning:   Dashboard port 8080 conflicts with SABnzbd (arr) and Scrutiny — adjust if running alongside them."
+        ;;
+      uptime-kuma)
+        echo "  Container: uptime-kuma (NixOS OCI container)"
+        echo "  Web UI:    http://<server-ip>:3001"
+        echo "  About:     Self-hosted uptime monitoring with a public status page — monitors HTTP, TCP, DNS, and more."
+        echo "  Note:      Create the admin account on first visit, then add monitors."
+        ;;
+      vaultwarden)
+        echo "  Service:  vaultwarden.service"
+        echo "  Web UI:   http://<server-ip>:8222"
+        echo "  Admin:    http://<server-ip>:8222/admin  (set ADMIN_TOKEN in the environment file to enable)"
+        echo "  About:    Lightweight Bitwarden-compatible password manager. Use any official Bitwarden client — point it at this server."
+        echo "  Warning:  Put Vaultwarden behind a TLS reverse proxy (Caddy/Nginx/Traefik) before exposing outside your local network."
+        ;;
+    esac
+    echo ""
 
 # Disable a server service module.  Usage: just disable docker
 [private]
