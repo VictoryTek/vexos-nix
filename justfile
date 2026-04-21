@@ -12,6 +12,7 @@ default:
         echo "    list-services              List all available server service modules"
         echo "    service-info [service]     Show ports and URLs for enabled (or specified) services"
         echo "    services                   List enabled/disabled status of server service modules"
+        echo "    status <service>           Show systemctl status and HTTP reachability for a service"
         echo "    enable <service>           Enable a server service module"
         echo "    disable <service>          Disable a server service module"
     elif [[ "$variant" == *stateless* ]]; then
@@ -399,6 +400,86 @@ service-info service="":
         fi
         echo ""
     fi
+
+# Show systemctl status and HTTP reachability for a server service.
+# Usage: just status jellyfin
+status service: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SERVICE="{{service}}"
+
+    VALID_SERVICES="{{_server_service_names}}"
+    if ! echo "$VALID_SERVICES" | tr ' ' '\n' | grep -qx "$SERVICE"; then
+        echo "error: unknown service '$SERVICE'"
+        echo "available: $VALID_SERVICES"
+        exit 1
+    fi
+
+    # Map service → systemd unit(s) and HTTP check URL(s)
+    # Format for UNITS: space-separated unit names (without .service)
+    # Format for URLS:  space-separated http://localhost:<port> entries (empty = no HTTP check)
+    case "$SERVICE" in
+      adguard)        UNITS="adguardhome";          URLS="http://localhost:3080" ;;
+      arr)            UNITS="sabnzbd sonarr radarr lidarr prowlarr";
+                      URLS="http://localhost:8080 http://localhost:8989 http://localhost:7878 http://localhost:8686 http://localhost:9696" ;;
+      audiobookshelf) UNITS="audiobookshelf";       URLS="http://localhost:8234" ;;
+      caddy)          UNITS="caddy";                URLS="http://localhost:80" ;;
+      cockpit)        UNITS="cockpit";              URLS="http://localhost:9090" ;;
+      docker)         UNITS="docker";               URLS="" ;;
+      forgejo)        UNITS="forgejo";              URLS="http://localhost:3000" ;;
+      grafana)        UNITS="grafana";              URLS="http://localhost:3000" ;;
+      headscale)      UNITS="headscale";            URLS="http://localhost:8085" ;;
+      home-assistant) UNITS="home-assistant";       URLS="http://localhost:8123" ;;
+      homepage)       UNITS="docker-homepage";      URLS="http://localhost:3010" ;;
+      immich)         UNITS="immich-server";        URLS="http://localhost:2283" ;;
+      jellyfin)       UNITS="jellyfin";             URLS="http://localhost:8096" ;;
+      jellyseerr)     UNITS="jellyseerr";           URLS="http://localhost:5055" ;;
+      kavita)         UNITS="kavita";               URLS="http://localhost:5000" ;;
+      komga)          UNITS="komga";                URLS="http://localhost:8090" ;;
+      mealie)         UNITS="mealie";               URLS="http://localhost:9000" ;;
+      nextcloud)      UNITS="phpfpm-nextcloud nginx"; URLS="http://localhost:80" ;;
+      nginx)          UNITS="nginx";                URLS="http://localhost:80" ;;
+      ntfy)           UNITS="ntfy";                 URLS="http://localhost:2586" ;;
+      overseerr)      UNITS="overseerr";            URLS="http://localhost:5055" ;;
+      papermc)        UNITS="papermc";              URLS="" ;;
+      plex)           UNITS="plexmediaserver";      URLS="http://localhost:32400/web" ;;
+      rustdesk)       UNITS="rustdesk-server hbbr hbbs"; URLS="" ;;
+      scrutiny)       UNITS="scrutiny";             URLS="http://localhost:8080" ;;
+      stirling-pdf)   UNITS="stirling-pdf";         URLS="http://localhost:8080" ;;
+      syncthing)      UNITS="syncthing";            URLS="http://localhost:8384" ;;
+      tautulli)       UNITS="tautulli";             URLS="http://localhost:8181" ;;
+      traefik)        UNITS="traefik";              URLS="http://localhost:8080/dashboard/" ;;
+      uptime-kuma)    UNITS="uptime-kuma";          URLS="http://localhost:3001" ;;
+      vaultwarden)    UNITS="vaultwarden";          URLS="http://localhost:8222" ;;
+      *)              UNITS="$SERVICE";             URLS="" ;;
+    esac
+
+    # systemctl status for each unit
+    for unit in $UNITS; do
+        echo ""
+        echo "── systemctl status ${unit}.service ──────────────────────────"
+        systemctl status "${unit}.service" --no-pager --lines=10 || true
+    done
+
+    # HTTP reachability check for each URL
+    if [ -n "$URLS" ]; then
+        echo ""
+        echo "── HTTP reachability ─────────────────────────────────────────"
+        for url in $URLS; do
+            printf "  %-45s  " "$url"
+            http_code=$(curl -o /dev/null -s -w "%{http_code}" --max-time 3 "$url" 2>/dev/null || echo "unreachable")
+            if [[ "$http_code" =~ ^[0-9]+$ ]]; then
+                if [[ "$http_code" -lt 400 ]]; then
+                    printf "\033[32m%s\033[0m\n" "$http_code OK"
+                else
+                    printf "\033[33m%s\033[0m\n" "$http_code"
+                fi
+            else
+                printf "\033[31m%s\033[0m\n" "$http_code"
+            fi
+        done
+    fi
+    echo ""
 
 # List all server services and their enabled/disabled status.
 [private]
