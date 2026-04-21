@@ -185,4 +185,7 @@ sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-vm
 
 ```bash
 sudo nixos-rebuild switch --rollback
+
+Set Nixos back to default configuration:
+sudo rm -f /etc/nixos/flake.nix /etc/nixos/flake.lock && sudo nixos-generate-config --root / && sudo nixos-rebuild switch
 ```
