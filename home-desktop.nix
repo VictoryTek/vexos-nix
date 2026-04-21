@@ -229,7 +229,7 @@
       ];
     };
     "org/gnome/desktop/interface" = {
-      color-scheme = "prefer-dark";
+      #color-scheme = "prefer-dark";
       accent-color = "blue";
     };  };
   # ── State version ──────────────────────────────────────────────────────────
