@@ -628,7 +628,7 @@ rebuild:
     #!/usr/bin/env bash
     set -euo pipefail
     target=$(cat /etc/nixos/vexos-variant 2>/dev/null) || { echo "error: /etc/nixos/vexos-variant not found — run a build first"; exit 1; }
-    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-    _jf_dir=$(dirname "$_jf_real")
-    _flake_dir=$(just _resolve-flake-dir "${target}" "")
-    sudo nixos-rebuild switch --flake "${_flake_dir}#${target}"
+    echo ""
+    echo "Rebuilding ${target}..."
+    echo ""
+    sudo nixos-rebuild switch --flake "/etc/nixos#${target}"
