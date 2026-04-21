@@ -35,6 +35,12 @@ let
     (builtins.hashString "sha256" (lib.concatStringsSep "," appsToInstall));
 in
 {
+  options.vexos.flatpak.enable = lib.mkOption {
+    type        = lib.types.bool;
+    default     = true;
+    description = "Enable Flatpak support and first-boot app installation. Set to false on VMs or resource-constrained hosts.";
+  };
+
   options.vexos.flatpak.excludeApps = lib.mkOption {
     type        = lib.types.listOf lib.types.str;
     default     = [];
@@ -47,7 +53,7 @@ in
     description = "Role-specific Flatpak app IDs to install in addition to the defaults.";
   };
 
-  config = {
+  config = lib.mkIf config.vexos.flatpak.enable {
   services.flatpak.enable = true;
 
   # Add Flathub remote on first boot only (stamp: /var/lib/flatpak/.flathub-added).
@@ -90,6 +96,15 @@ in
       # Changes when excludeApps or extraApps changes — triggers a sync.
       STAMP="/var/lib/flatpak/.apps-installed-${appsListHash}"
       if [ -f "$STAMP" ]; then exit 0; fi
+
+      # Require at least 2 GB free before attempting installs.
+      # Exit 0 (not 1) so the switch doesn't fail — stamp is not written,
+      # so the service will retry on the next boot.
+      AVAIL_MB=$(df /var/lib/flatpak --output=avail -BM 2>/dev/null | tail -1 | tr -d 'M ' || echo 0)
+      if [ "$AVAIL_MB" -lt 2048 ]; then
+        echo "flatpak: only ''${AVAIL_MB} MB free — need 2048 MB; skipping this boot"
+        exit 0
+      fi
 
       FAILED=0
 

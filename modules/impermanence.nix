@@ -179,6 +179,11 @@ in
           # Without this, NixOS cannot reliably verify UIDs across activations.
           "/var/lib/nixos"
 
+          # Flatpak app/runtime store, Flathub remote registration, and install
+          # stamps.  Without persistence, / is a tmpfs so flatpak has no real
+          # disk space to write to, and every reboot triggers a full reinstall.
+          "/var/lib/flatpak"
+
           # Thin flake wrapper + hardware-configuration.nix must survive reboots
           # so that `just rebuild`, `just update`, and `nixos-rebuild` work after
           # boot without re-downloading the config.  vexos-variant is written as a
