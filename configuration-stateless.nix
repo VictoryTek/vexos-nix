@@ -118,6 +118,18 @@
   # ---------- Unfree packages (required for Steam, NVIDIA, proton-ge-bin) ----------
   nixpkgs.config.allowUnfree = true;
 
+  # ---------- Privacy browser ----------
+  # tor-browser is a system package (not HM user package) so it lands in
+  # /run/current-system/sw/share/applications/ — always visible to GNOME
+  # regardless of Home Manager activation timing on the fresh tmpfs home.
+  environment.systemPackages = [ pkgs.tor-browser ];
+
+  # ---------- Flatpak ----------
+  # Prevent GIMP from being installed on stateless. It is never in
+  # defaultApps but may be present from a manual install or prior session.
+  # The excludeApps removal loop in flatpak-install-apps will purge it.
+  vexos.flatpak.excludeApps = [ "org.gimp.GIMP" ];
+
   # ---------- State version ----------
   # This value determines the NixOS release from which the default
   # settings for stateful data (like file locations) were taken.

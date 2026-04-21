@@ -12,8 +12,8 @@
 
   # ── User packages ──────────────────────────────────────────────────────────
   home.packages = with pkgs; [
-    # Privacy browser
-    tor-browser  # Routes traffic through the Tor network (Tails-like stateless role)
+    # NOTE: tor-browser is installed system-wide in configuration-stateless.nix
+    # so it appears in the GNOME app grid regardless of HM activation timing.
 
     # Terminal emulator
     ghostty
