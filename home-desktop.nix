@@ -169,6 +169,8 @@
         "net.lutris.Lutris.desktop"
         "steam.desktop"
         "com.hypixel.HytaleLauncher.desktop"
+        "Ryujinx.desktop"
+        "com.libretro.RetroArch.desktop"
       ];
     };
 
