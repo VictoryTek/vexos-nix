@@ -72,6 +72,7 @@
 
   # ── Justfile ───────────────────────────────────────────────────────────────
   home.file."justfile".source = ./justfile;
+  home.file."template/server-services.nix".source = ./template/server-services.nix;
 
   # ── Hidden app grid entries ────────────────────────────────────────────────
   xdg.desktopEntries."org.gnome.Extensions" = {

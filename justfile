@@ -360,8 +360,10 @@ enable service: _require-server-role
 
     if [ ! -f "$SVC_FILE" ]; then
         echo "Creating $SVC_FILE from template..."
-        _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-        _jf_dir=$(dirname "$_jf_real")
+        # {{justfile_directory()}} is the unresolved symlink dir (~), so
+        # ~/template/server-services.nix is deployed by home-server.nix.
+        # Fall back to the repo checkout locations for dev machines.
+        _jf_dir="{{justfile_directory()}}"
         TEMPLATE_SRC=""
         for _candidate in "$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
             if [ -f "$_candidate/template/server-services.nix" ]; then
@@ -371,6 +373,7 @@ enable service: _require-server-role
         done
         if [ -z "$TEMPLATE_SRC" ]; then
             echo "error: cannot find template/server-services.nix in any known location" >&2
+            echo "searched: $_jf_dir /etc/nixos $HOME/Projects/vexos-nix" >&2
             exit 1
         fi
         sudo cp "$TEMPLATE_SRC" "$SVC_FILE"
