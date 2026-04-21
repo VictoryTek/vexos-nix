@@ -254,6 +254,7 @@ sudo cp /mnt/etc/nixos/hardware-configuration.nix /mnt/persistent/etc/nixos/ 2>/
 sudo cp /mnt/etc/nixos/flake.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/flake.lock /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/stateless-user-override.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
+printf '%s' "vexos-stateless-${VARIANT}" | sudo tee /mnt/persistent/etc/nixos/vexos-variant > /dev/null
 echo -e "${GREEN}✓ NixOS config files persisted.${RESET}"
 
 echo ""

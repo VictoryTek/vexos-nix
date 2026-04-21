@@ -385,6 +385,8 @@ cp /etc/nixos/hardware-configuration.nix "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>
   echo -e "  ${YELLOW}⚠ hardware-configuration.nix not found${RESET}"
 cp /etc/nixos/stateless-user-override.nix "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null && \
   echo -e "  ${GREEN}✓ stateless-user-override.nix persisted${RESET}" || true
+printf '%s' "vexos-stateless-${VARIANT}" > "${BTRFS_MOUNT}/@persist/etc/nixos/vexos-variant"
+echo -e "  ${GREEN}✓ vexos-variant persisted${RESET}"
 echo -e "${GREEN}  ✓ Config files persisted to @persist.${RESET}"
 umount "${BTRFS_MOUNT}"
 rmdir "${BTRFS_MOUNT}" 2>/dev/null || true
