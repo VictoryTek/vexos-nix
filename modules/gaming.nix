@@ -59,6 +59,10 @@
     # Container tooling (Distrobox for running other distro environments)
     distrobox
 
+    # Emulation
+    ryubing         # Nintendo Switch emulator (Ryujinx fork)
+    retroarch       # multi-system emulator frontend
+
     # Communication
     vesktop         # feature-rich Discord client (Vencord-based)
     discord         # official Discord client

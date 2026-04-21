@@ -188,6 +188,7 @@ sudo nix \
   --extra-experimental-features 'nix-command flakes' \
   run 'github:nix-community/disko/latest' -- \
   --mode destroy,format,mount \
+  --yes-wipe-all-disks \
   "${DISKO_TMP}" \
   --arg disk "\"${DISK}\"" \
   --arg enableLuks "${LUKS_BOOL}"
