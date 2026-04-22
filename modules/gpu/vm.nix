@@ -29,7 +29,7 @@
   vexos.btrfs.enable = false;
 
   # scx requires kernel >= 6.12; VM is pinned to 6.6 LTS — disable SCX scheduler.
-  vexos.scx.enable = false;
+  services.scx.enable = lib.mkForce false;
 
   # VMs rely on hypervisor memory management — no disk swap file needed.
   vexos.swap.enable = false;

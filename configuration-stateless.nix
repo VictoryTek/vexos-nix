@@ -7,9 +7,11 @@
     ./modules/gpu.nix
     ./modules/flatpak.nix
     ./modules/network.nix
+    ./modules/network-desktop.nix   # samba CLI
     ./modules/packages-common.nix
     ./modules/packages-desktop.nix
     ./modules/branding.nix
+    ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix
     ./modules/impermanence.nix
   ];

@@ -6,14 +6,19 @@
     ./modules/gaming.nix
     ./modules/audio.nix
     ./modules/gpu.nix
+    ./modules/gpu-gaming.nix        # 32-bit libs, vulkan-tools, mesa-demos
     ./modules/flatpak.nix
+    ./modules/flatpak-desktop.nix   # desktop-only Flatpak apps via extraApps
     ./modules/network.nix
+    ./modules/network-desktop.nix   # samba CLI
     ./modules/packages-common.nix
     ./modules/packages-desktop.nix
     ./modules/development.nix
     ./modules/virtualization.nix
     ./modules/branding.nix
+    ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix
+    ./modules/system-gaming.nix     # gaming kernel params, THP, SCX
   ];
 
   # ---------- Bootloader ----------
@@ -32,10 +37,6 @@
   # ---------- Branding ----------
   vexos.branding.role          = "desktop";
   boot.plymouth.enable         = true;   # graphical boot splash
-
-  # ---------- Gaming ----------
-  vexos.system.gaming           = true;  # enable gaming kernel tuning + SCX LAVD
-  hardware.graphics.enable32Bit = true;  # Steam/Proton 32-bit libraries
 
   # ---------- Users ----------
   users.users.nimda = {

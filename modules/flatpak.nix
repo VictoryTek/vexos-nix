@@ -17,20 +17,9 @@ let
     "org.gnome.World.PikaBackup"
   ];
 
-  # Apps installed only on the desktop role (gaming, development, productivity).
-  desktopOnlyApps = [
-    "io.github.pol_rivero.github-desktop-plus"
-    "org.onlyoffice.desktopeditors"
-    "org.prismlauncher.PrismLauncher"
-    "com.vysp3r.ProtonPlus"
-    "net.lutris.Lutris"
-    "com.ranfdev.DistroShelf"
-  ];
-
   appsToInstall = (lib.filter
     (a: !builtins.elem a config.vexos.flatpak.excludeApps)
-    (defaultApps
-      ++ lib.optionals (config.vexos.branding.role == "desktop") desktopOnlyApps))
+    defaultApps)
   ++ config.vexos.flatpak.extraApps;
 
   # Short hash of the desired app list, baked in at Nix evaluation time.

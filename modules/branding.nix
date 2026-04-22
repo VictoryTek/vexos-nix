@@ -10,7 +10,6 @@ let
   pixmapsDir    = ../files/pixmaps + "/${role}";
   bgLogosDir    = ../files/background_logos + "/${role}";
   plymouthDir   = ../files/plymouth + "/${role}";
-  wallpapersDir = ../wallpapers + "/${role}";
 
   vexosLogos = pkgs.runCommand "vexos-logos" {} ''
     mkdir -p $out/share/pixmaps
@@ -64,26 +63,12 @@ let
     gtk-update-icon-cache -f -t $out/share/icons/hicolor
   '';
 
-  # Role-specific wallpapers deployed to a stable Nix store path so the system
-  # dconf profile can reference them without relying on home-manager activation.
-  # Path available immediately after nixos-rebuild switch, before any session starts.
-  vexosWallpapers = pkgs.runCommand "vexos-wallpapers" {} ''
-    mkdir -p $out/share/backgrounds/vexos
-    cp ${wallpapersDir}/vex-bb-light.jxl $out/share/backgrounds/vexos/vex-bb-light.jxl
-    cp ${wallpapersDir}/vex-bb-dark.jxl  $out/share/backgrounds/vexos/vex-bb-dark.jxl
-  '';
 in
 {
   options.vexos.branding.role = lib.mkOption {
     type        = lib.types.enum [ "desktop" "htpc" "server" "stateless" ];
     default     = "desktop";
     description = "Role-specific subdirectory to use for branding pixmaps and background logos.";
-  };
-
-  options.vexos.branding.hasDisplay = lib.mkOption {
-    type        = lib.types.bool;
-    default     = true;
-    description = "Set false on headless roles (no display manager, no wallpapers, no GDM config).";
   };
 
   config = {
@@ -132,42 +117,7 @@ in
   # Deploys branding files into /run/current-system/sw/share/pixmaps/.
   # XDG_DATA_DIRS includes /run/current-system/sw/share on NixOS, so all
   # GLib/GTK applications find these via standard g_get_system_data_dirs().
-  environment.systemPackages = [ vexosLogos vexosIcons ]
-    ++ lib.optionals config.vexos.branding.hasDisplay [ vexosWallpapers ];
-
-  # ── GDM login-screen logo (optional) ─────────────────────────────────────
-  # Nix store paths change on every rebuild; a dconf string value must point
-  # to a stable path. Deploy the logo to /etc/ first, then reference it.
-  environment.etc = lib.mkIf config.vexos.branding.hasDisplay {
-    "vexos/gdm-logo.png".source = pixmapsDir + "/fedora-gdm-logo.png";
-  };
-
-  # Sets org.gnome.login-screen.logo in the GDM system dconf profile.
-  # If nix flake check reports a conflict with an existing gdm dconf profile
-  # (set by the GNOME NixOS module), remove this block and use a
-  # programs.dconf.packages entry or defer to home-manager instead.
-  # GDM login-screen logo via the NixOS dconf profiles API.
-  # NOTE: Defining programs.dconf.profiles.gdm here overrides the GDM
-  # package's built-in /share/dconf/profile/gdm (which includes user-db:user
-  # and a file-db pointing to greeter-dconf-defaults).  lib.mkDefault on
-  # enableUserDb prevents an evaluation conflict if the GDM NixOS module ever
-  # sets this option explicitly in a future nixpkgs release.
-  programs.dconf.profiles.gdm = lib.mkIf config.vexos.branding.hasDisplay {
-    enableUserDb = lib.mkDefault false;  # GDM system account — no per-user db
-    databases = [
-      # TODO: Re-include GDM's own greeter defaults (auto-suspend, a11y, etc.)
-      # once the correct passthru attribute for the pre-compiled db is confirmed.
-      # Candidates: pkgs.gdm.dconfDb or pkgs.gdm (verify against nixpkgs source).
-      # Omitting for now — the primary branding goal (logo) is preserved below.
-      {
-        settings = {
-          "org/gnome/login-screen" = {
-            logo = "/etc/vexos/gdm-logo.png";
-          };
-        };
-      }
-    ];
-  };
+  environment.systemPackages = [ vexosLogos vexosIcons ];
 
   # ── Boot menu entry cleanup ───────────────────────────────────────────────
   # Post-process systemd-boot .conf entries after each rebuild to shorten the

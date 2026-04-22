@@ -19,21 +19,10 @@
     ];
   };
 
-  # 32-bit graphics packages — Steam/Proton only; activated by hardware.graphics.enable32Bit.
-  hardware.graphics.extraPackages32 = lib.mkIf config.hardware.graphics.enable32Bit
-    (with pkgs.pkgsi686Linux; [
-      libva
-      libva-vdpau-driver
-      mesa
-    ]);
-
-  # ── Video codec and Vulkan utilities ──────────────────────────────────────
+  # ── Video codec and Vulkan utilities ───────────────────────────────────
   environment.systemPackages = with pkgs; [
     ffmpeg-full   # full codec support: H264, HEVC, AV1, VP9, etc.
     libva-utils   # vainfo — verify VA-API acceleration
     vulkan-loader # Vulkan runtime loader
-  ] ++ lib.optionals config.vexos.system.gaming [
-    vulkan-tools  # vulkaninfo — desktop diagnostic
-    mesa-demos    # glxinfo, glxgears — OpenGL/Vulkan renderer info
   ];
 }

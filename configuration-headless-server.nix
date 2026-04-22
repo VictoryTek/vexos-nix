@@ -22,7 +22,6 @@
   # (pixmaps, background logos, Plymouth watermark, wallpapers).
   # Override distroName to distinguish from the GUI server role.
   vexos.branding.role     = "server";
-  vexos.branding.hasDisplay = false;  # no display manager, no wallpapers, no GDM
   system.nixos.distroName = lib.mkOverride 500 "VexOS Headless Server";
 
   # ---------- Users ----------

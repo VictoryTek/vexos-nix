@@ -94,6 +94,19 @@ Repository Notes:
   - `nix flake check` must pass before any change is considered complete  
   - Flake inputs must maintain `nixpkgs.follows` for any new inputs to avoid duplicate nixpkgs  
 
+## Module Architecture Pattern
+
+This project uses **Option B: Common base + role additions**. All agents MUST follow this pattern when adding or modifying modules.
+
+**Rules:**
+
+- **Universal base file** (`modules/foo.nix`): Contains only settings that apply to ALL roles that import it. NO `lib.mkIf` guards inside that gate content by role, display flag, or gaming flag.
+- **Role-specific addition file** (`modules/foo-desktop.nix`, `modules/foo-gaming.nix`, etc.): Contains only additions for that specific role or feature. Imported only by `configuration-*.nix` files for roles that need it. NO conditional logic inside.
+- A `configuration-*.nix` expresses its role **entirely through its import list** — if a file is imported, all its content applies unconditionally.
+- When adding new content that only applies to some roles: create a new `modules/<subsystem>-<qualifier>.nix` file; do NOT add a `lib.mkIf` guard to an existing shared file.
+- Existing `lib.mkIf` guards in shared modules are tech debt to be eliminated. Do not add new ones.
+- Naming convention: `modules/<subsystem>.nix` for universal base; `modules/<subsystem>-<qualifier>.nix` for role/feature additions (e.g. `system-gaming.nix`, `gpu-desktop.nix`, `branding-display.nix`).
+
 ---
 
 # Standard Workflow
