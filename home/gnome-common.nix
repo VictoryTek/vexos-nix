@@ -78,5 +78,9 @@
       idle-delay = lib.gvariant.mkUint32 300;
     };
 
+    "org/gnome/settings-daemon/plugins/housekeeping" = {
+      donation-reminder-enabled = false;
+    };
+
   };
 }

@@ -171,7 +171,10 @@ in
           "org/gnome/desktop/screensaver" = {
             lock-enabled = false;
           };
-        };
+          # ── Housekeeping ────────────────────────────────────────────────
+          "org/gnome/settings-daemon/plugins/housekeeping" = {
+            donation-reminder-enabled = false;
+          };        };
       }
     ];
   };
