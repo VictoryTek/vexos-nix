@@ -162,7 +162,7 @@ switch role="" variant="" flake="":
     echo "Switching to: ${TARGET}"
     echo ""
     _flake_dir=$(just _resolve-flake-dir "${TARGET}" "${FLAKE_OVERRIDE}")
-    sudo nixos-rebuild switch --flake "${_flake_dir}#${TARGET}"
+    sudo nixos-rebuild switch --flake "path:${_flake_dir}#${TARGET}"
 
     echo ""
     echo "Switch complete."
@@ -196,7 +196,7 @@ build role variant flake="":
     TARGET="vexos-{{role}}-{{variant}}"
     FLAKE_OVERRIDE="{{flake}}"
     _flake_dir=$(just _resolve-flake-dir "${TARGET}" "${FLAKE_OVERRIDE}")
-    sudo nixos-rebuild build --flake "${_flake_dir}#${TARGET}"
+    sudo nixos-rebuild build --flake "path:${_flake_dir}#${TARGET}"
 
 # Update all flake inputs, then rebuild and switch using the current variant.
 update:
@@ -257,8 +257,8 @@ update:
     # Always update /etc/nixos/flake.lock — that is the thin wrapper whose
     # lock pins the vexos-nix GitHub commit.  The repo clone's own flake.lock
     # is irrelevant for end-user updates.
-    sudo nix flake update --flake /etc/nixos
-    sudo nixos-rebuild switch --flake /etc/nixos#"${target}"
+    sudo nix flake update --flake path:/etc/nixos
+    sudo nixos-rebuild switch --flake path:/etc/nixos#"${target}"
 
 # Roll back to the previous NixOS generation and set it as the boot default.
 rollback:
@@ -793,4 +793,4 @@ rebuild:
     echo ""
     echo "Rebuilding ${target}..."
     echo ""
-    sudo nixos-rebuild switch --flake "/etc/nixos#${target}"
+    sudo nixos-rebuild switch --flake "path:/etc/nixos#${target}"
