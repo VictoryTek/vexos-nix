@@ -101,7 +101,7 @@
       };
     };
 
-    # Home Manager: Server-specific user environment (shell/theming, no gaming/dev).
+    # Home Manager: GUI Server-specific user environment (shell/theming, no gaming/dev).
     serverHomeManagerModule = {
       imports = [ home-manager.nixosModules.home-manager ];
       home-manager = {
@@ -124,7 +124,7 @@
       { environment.systemPackages = [ up.packages.x86_64-linux.default ]; }
     ];
 
-    # Modules for server role — minimal + server-specific home-manager.
+    # Modules for GUI Server role — minimal + server-specific home-manager.
     # Optionally loads /etc/nixos/server-services.nix for modular service toggles.
     serverServicesModule =
       let path = /etc/nixos/server-services.nix;
@@ -271,7 +271,7 @@
       specialArgs = { inherit inputs; };
     };
 
-    # ── Server AMD build ─────────────────────────────────────────────────────
+    # ── GUI Server AMD build ──────────────────────────────────────────────────
     # sudo nixos-rebuild switch --flake .#vexos-server-amd
     nixosConfigurations.vexos-server-amd = nixpkgs.lib.nixosSystem {
       inherit system;
@@ -279,7 +279,7 @@
       specialArgs = { inherit inputs; };
     };
 
-    # ── Server NVIDIA build ──────────────────────────────────────────────────
+    # ── GUI Server NVIDIA build ────────────────────────────────────────────────
     # sudo nixos-rebuild switch --flake .#vexos-server-nvidia
     nixosConfigurations.vexos-server-nvidia = nixpkgs.lib.nixosSystem {
       inherit system;
@@ -287,7 +287,7 @@
       specialArgs = { inherit inputs; };
     };
 
-    # ── Server Intel build ───────────────────────────────────────────────────
+    # ── GUI Server Intel build ───────────────────────────────────────────────
     # sudo nixos-rebuild switch --flake .#vexos-server-intel
     nixosConfigurations.vexos-server-intel = nixpkgs.lib.nixosSystem {
       inherit system;
@@ -295,7 +295,7 @@
       specialArgs = { inherit inputs; };
     };
 
-    # ── Server VM build ──────────────────────────────────────────────────────
+    # ── GUI Server VM build ────────────────────────────────────────────────────
     # sudo nixos-rebuild switch --flake .#vexos-server-vm
     nixosConfigurations.vexos-server-vm = nixpkgs.lib.nixosSystem {
       inherit system;

@@ -1,5 +1,5 @@
 # home-server.nix
-# Home Manager configuration for user "nimda" — Server role.
+# Home Manager configuration for user "nimda" — GUI Server role.
 # Shell environment, theming, and GNOME settings for a server with a GNOME desktop.
 # No gaming, no dev-language tooling. Focus: sysadmin utilities and remote management.
 { config, pkgs, lib, inputs, ... }:

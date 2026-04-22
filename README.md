@@ -66,7 +66,7 @@ To install the stateless role, run the standard install script — it automatica
 curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh | bash
 ```
 
-### Server role — GUI service stack
+### GUI Server role — GNOME desktop + service stack
 
 | Variant | Use for |
 |---|---|
@@ -74,6 +74,15 @@ curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/i
 | `vexos-server-nvidia` | NVIDIA GPU |
 | `vexos-server-intel` | Intel iGPU or Arc dGPU |
 | `vexos-server-vm` | QEMU/KVM or VirtualBox guest |
+
+### Headless Server role — CLI only service stack
+
+| Variant | Use for |
+|---|---|
+| `vexos-headless-server-amd` | AMD GPU |
+| `vexos-headless-server-nvidia` | NVIDIA GPU |
+| `vexos-headless-server-intel` | Intel iGPU or Arc dGPU |
+| `vexos-headless-server-vm` | QEMU/KVM or VirtualBox guest |
 
 ### HTPC role — media centre build
 
@@ -97,6 +106,7 @@ sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-amd
 # Switch to another role
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-amd
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-server-amd
+sudo nixos-rebuild switch --flake /etc/nixos#vexos-headless-server-amd
 sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-amd
 ```
 

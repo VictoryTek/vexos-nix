@@ -8,7 +8,7 @@ default:
     variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
     if [[ "$variant" == *server* ]]; then
         echo ""
-        echo "Available recipes (server role):"
+        echo "Available recipes (GUI Server / Headless Server roles):"
         echo "    list-services              List all available server service modules"
         echo "    service-info [service]     Show ports and URLs for enabled (or specified) services"
         echo "    services                   List enabled/disabled status of server service modules"
@@ -565,7 +565,7 @@ enable service: _require-server-role
     fi
 
     echo "✓ Enabled: $SERVICE"
-    echo "  → Run 'just rebuild' or 'just switch server <gpu>' to apply."
+    echo "  → Run 'just rebuild' to apply."
     echo ""
     case "$SERVICE" in
       adguard)
@@ -790,7 +790,7 @@ disable service: _require-server-role
     sudo sed -i "s/${OPTION//./\\.} = true;/${OPTION//./\\.} = false;/" "$SVC_FILE"
 
     echo "✗ Disabled: $SERVICE"
-    echo "  → Run 'just rebuild' or 'just switch server <gpu>' to apply."
+    echo "  → Run 'just rebuild' to apply."
 
 # Rebuild the system using the current variant.
 rebuild:

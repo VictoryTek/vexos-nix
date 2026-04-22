@@ -10,10 +10,11 @@
 #   bash scripts/install.sh
 #
 # Supported roles (expand this list as new roles are added to the flake):
-#   desktop — Gaming/workstation (AMD, NVIDIA, Intel, VM)
-#   stateless — Minimal/clean build, no gaming/dev/virt/ASUS modules (AMD, NVIDIA, Intel, VM)
-#   htpc    — (coming soon)
-#   server  — (coming soon)
+#   desktop         — Gaming/workstation (AMD, NVIDIA, Intel, VM)
+#   stateless       — Minimal/clean build (no gaming/dev/virt/ASUS modules) (AMD, NVIDIA, Intel, VM)
+#   htpc            — Home theatre PC (AMD, NVIDIA, Intel, VM)
+#   server          — GUI server / self-hosted services (AMD, NVIDIA, Intel, VM)
+#   headless-server — CLI-only server, no desktop environment (AMD, NVIDIA, Intel, VM)
 #
 # SECURITY NOTICE:
 #   This script is fetched from raw.githubusercontent.com and executed directly.
@@ -54,7 +55,7 @@ echo -e "${BOLD}Select your role:${RESET}"
 echo "  1) Desktop — Full gaming / workstation stack"
 echo "  2) Stateless — Minimal build (no gaming / dev / virt / ASUS)"
 echo "  3) HTPC    — Home theatre PC"
-echo "  4) Server  — GUI server (self-hosted services)"
+echo "  4) Server  — Server (GUI or Headless)"
 echo ""
 
 ROLE=""
@@ -62,15 +63,41 @@ while [ -z "$ROLE" ]; do
   printf "Enter choice [1-4] or name (desktop / stateless / htpc / server): "
   read -r INPUT </dev/tty
   case "${INPUT,,}" in
-    1|desktop) ROLE="desktop" ;;
+    1|desktop)  ROLE="desktop"  ;;
     2|stateless) ROLE="stateless" ;;
-    3|htpc)    ROLE="htpc"    ;;
-    4|server)  ROLE="server"  ;;
+    3|htpc)     ROLE="htpc"     ;;
+    4|server)   ROLE="server"   ;;
     *)
       echo -e "${RED}Invalid selection '${INPUT}'. Choose 1-4 or a role name.${RESET}"
       ;;
   esac
 done
+
+# ---------- Server sub-type selection ----------------------------------------
+if [ "$ROLE" = "server" ]; then
+  echo ""
+  echo -e "${BOLD}Select server type:${RESET}"
+  echo "  1) Headless Server — CLI only, no desktop environment"
+  echo "  2) GUI Server      — GNOME desktop environment"
+  echo ""
+
+  SERVER_TYPE=""
+  while [ -z "$SERVER_TYPE" ]; do
+    printf "Enter choice [1-2] or name (headless / gui): "
+    read -r INPUT </dev/tty
+    case "${INPUT,,}" in
+      1|headless) SERVER_TYPE="headless" ;;
+      2|gui)      SERVER_TYPE="gui"     ;;
+      *)
+        echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
+        ;;
+    esac
+  done
+
+  if [ "$SERVER_TYPE" = "headless" ]; then
+    ROLE="headless-server"
+  fi
+fi
 
 # ---------- Stateless role: auto-detect context and invoke correct script ----
 if [ "$ROLE" = "stateless" ]; then
@@ -102,7 +129,7 @@ fi
 
 # ---------- GPU variant selection --------------------------------------------
 VARIANT=""
-if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || [ "$ROLE" = "stateless" ]; then
+if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || [ "$ROLE" = "headless-server" ] || [ "$ROLE" = "stateless" ]; then
   echo ""
   echo -e "${BOLD}Select your GPU variant:${RESET}"
   echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
