@@ -4,8 +4,9 @@
 # Import this in hosts/vm.nix.
 { config, lib, pkgs, ... }:
 {
-  # Pin to Linux 6.6 LTS — VirtualBox Guest Additions 7.2.4 is incompatible with Linux 6.19
-  # (drm_fb_helper_alloc_info was removed). 6.6 LTS is maintained until Dec 2026.
+  # Pin to Linux 6.6 LTS — VirtualBox Guest Additions 7.2.4 is incompatible with Linux 6.19+
+  # (drm_fb_helper_alloc_info was removed); linuxPackages_latest is currently 7.0.
+  # 6.6 LTS is maintained until Dec 2026.
   # lib.mkForce overrides the default set by modules/performance.nix.
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages_6_6;
 

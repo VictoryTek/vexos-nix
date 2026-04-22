@@ -3,8 +3,8 @@
 # Import this in hosts/nvidia.nix — do NOT use alongside gpu/amd.nix or gpu/vm.nix.
 #
 # Set vexos.gpu.nvidiaDriverVariant in your host config to select a driver branch:
-#   "latest"     — Stable (570.x+) branch; open kernel modules; supports Maxwell (GTX 750+)
-#                  through Ada/Hopper. Correct choice for GTX 750+, RTX 20/30/40xx and newer.
+#   "latest"     — Stable (580.x+) branch; open kernel modules; supports Maxwell (GTX 750+)
+#                  through Ada/Hopper/Blackwell. Correct choice for GTX 750+, RTX 20/30/40/50xx and newer.
 #   "legacy_535" — 535.x LTS branch; proprietary modules; open = false.
 #                  Optional LTS alternative for Maxwell/Pascal/Volta. NOT architecturally required.
 #   "legacy_470" — Kepler (GeForce 600 / 700 series)
@@ -33,8 +33,8 @@ in
     description = ''
       NVIDIA driver branch to use. Choose based on your GPU generation:
 
-        "latest"     — stable (570.x) branch; open kernel modules for Turing (RTX 20xx / GTX 16xx+).
-                       This is the correct choice for all RTX 20/30/40 series and GTX 16xx cards.
+        "latest"     — stable (580.x+) branch; open kernel modules for Turing (RTX 20xx / GTX 16xx+) and newer.
+                       This is the correct choice for all RTX 20/30/40/50 series and GTX 16xx cards.
         "legacy_535" — 535.x LTS branch; proprietary modules; open = false.
                        Optional stable alternative for Maxwell (GTX 750+), Pascal (GTX 1050–1080 Ti),
                        and Volta (Titan V) who prefer a proven LTS driver over current production.

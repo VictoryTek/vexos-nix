@@ -84,6 +84,12 @@ jobs:
               vexos-server-nvidia
               vexos-server-intel
               vexos-server-vm
+          - group: headless-server
+            configs: >-
+              vexos-headless-server-amd
+              vexos-headless-server-nvidia
+              vexos-headless-server-intel
+              vexos-headless-server-vm
           - group: htpc
             configs: >-
               vexos-htpc-amd
