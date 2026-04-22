@@ -309,6 +309,7 @@ _require-server-role:
     fi
 
 # List all available server service modules (catalog view, no role required).
+[private]
 list-services:
     #!/usr/bin/env bash
     echo ""
@@ -325,6 +326,7 @@ list-services:
 # With no argument shows all currently enabled services; with a name shows that service.
 # Usage:  just service-info            — all enabled services
 #         just service-info jellyfin   — specific service
+[private]
 service-info service="":
     #!/usr/bin/env bash
     set -euo pipefail
