@@ -166,20 +166,15 @@
       system = "x86_64-linux";
       modules =
         let
-          modules = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
-          # Optional server-services.nix for modular service toggles.
+          modules     = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
+          # Optional per-machine service toggles — written by `just enable <service>`.
           servicesFile = ./server-services.nix;
-          hasServices = builtins.pathExists servicesFile;
+          hasServices  = builtins.pathExists servicesFile;
         in
         [
-          {
-            system.activationScripts.vexosVariant = ''
-              # Write variant directly to persistent subvolume, bypassing bind-mount timing
-              PERSIST_DIR="/persistent/etc/nixos"
-              mkdir -p "$PERSIST_DIR"
-              printf '%s' '${variant}' > "$PERSIST_DIR/vexos-variant"
-            '';
-          }
+          # Persist the active variant name so vexos-updater and `just rebuild` can read it.
+          # The server role does not use impermanence, so environment.etc is correct here.
+          { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
           bootloaderModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.serverBase
