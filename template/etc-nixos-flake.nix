@@ -164,6 +164,7 @@
     # Headless server role: CLI only, no desktop environment.
     mkHeadlessServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
+      specialArgs = { inputs = vexos-nix.inputs; };
       modules =
         let
           modules     = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
@@ -183,6 +184,7 @@
     # Server role: GUI server stack.
     mkServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
+      specialArgs = { inputs = vexos-nix.inputs; };
       modules =
         let
           modules     = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
