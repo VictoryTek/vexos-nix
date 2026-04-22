@@ -452,11 +452,11 @@ status service: _require-server-role
       plex)           UNITS="plexmediaserver";      URLS="http://localhost:32400/web" ;;
       rustdesk)       UNITS="rustdesk-server hbbr hbbs"; URLS="" ;;
       scrutiny)       UNITS="scrutiny";             URLS="http://localhost:8080" ;;
-      stirling-pdf)   UNITS="stirling-pdf";         URLS="http://localhost:8080" ;;
+      stirling-pdf)   UNITS="docker-stirling-pdf";   URLS="http://localhost:8080" ;;
       syncthing)      UNITS="syncthing";            URLS="http://localhost:8384" ;;
       tautulli)       UNITS="tautulli";             URLS="http://localhost:8181" ;;
       traefik)        UNITS="traefik";              URLS="http://localhost:8080/dashboard/" ;;
-      uptime-kuma)    UNITS="uptime-kuma";          URLS="http://localhost:3001" ;;
+      uptime-kuma)    UNITS="docker-uptime-kuma";   URLS="http://localhost:3001" ;;
       vaultwarden)    UNITS="vaultwarden";          URLS="http://localhost:8222" ;;
       *)              UNITS="$SERVICE";             URLS="" ;;
     esac

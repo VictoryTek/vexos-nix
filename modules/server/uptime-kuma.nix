@@ -23,7 +23,6 @@ in
       image = "louislam/uptime-kuma:1";
       ports = [ "${toString cfg.port}:3001" ];
       volumes = [ "uptime-kuma-data:/app/data" ];
-      extraOptions = [ "--restart=unless-stopped" ];
     };
 
     networking.firewall.allowedTCPPorts = [ cfg.port ];

@@ -26,7 +26,6 @@ in
         "homepage-config:/app/config"
         "/var/run/docker.sock:/var/run/docker.sock:ro"
       ];
-      extraOptions = [ "--restart=unless-stopped" ];
     };
 
     networking.firewall.allowedTCPPorts = [ cfg.port ];

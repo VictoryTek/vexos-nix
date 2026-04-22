@@ -26,7 +26,6 @@ in
         "stirling-pdf-data:/usr/share/tessdata"
         "stirling-pdf-config:/configs"
       ];
-      extraOptions = [ "--restart=unless-stopped" ];
     };
 
     networking.firewall.allowedTCPPorts = [ cfg.port ];
