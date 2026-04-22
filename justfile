@@ -122,16 +122,18 @@ switch role="" variant="" flake="":
         echo "  2) stateless"
         echo "  3) htpc"
         echo "  4) server"
+        echo "  5) headless-server"
         echo ""
         while [ -z "$ROLE" ]; do
-            printf "Choice [1-4] or name: "
+            printf "Choice [1-5] or name: "
             read -r INPUT
             case "${INPUT,,}" in
-                1|desktop) ROLE="desktop" ;;
-                2|stateless) ROLE="stateless" ;;
-                3|htpc)    ROLE="htpc"    ;;
-                4|server)  ROLE="server"  ;;
-                *) echo "Invalid — enter 1-4 or desktop/stateless/htpc/server" ;;
+                1|desktop)         ROLE="desktop"         ;;
+                2|stateless)       ROLE="stateless"       ;;
+                3|htpc)            ROLE="htpc"            ;;
+                4|server)          ROLE="server"          ;;
+                5|headless-server) ROLE="headless-server" ;;
+                *) echo "Invalid — enter 1-5 or desktop/stateless/htpc/server/headless-server" ;;
             esac
         done
     fi
@@ -216,16 +218,18 @@ update:
         echo "  2) stateless"
         echo "  3) htpc"
         echo "  4) server"
+        echo "  5) headless-server"
         echo ""
         while [ -z "$ROLE" ]; do
-            printf "Choice [1-4] or name: "
+            printf "Choice [1-5] or name: "
             read -r INPUT
             case "${INPUT,,}" in
-                1|desktop)   ROLE="desktop"   ;;
-                2|stateless) ROLE="stateless" ;;
-                3|htpc)      ROLE="htpc"      ;;
-                4|server)    ROLE="server"    ;;
-                *) echo "Invalid — enter 1-4 or desktop/stateless/htpc/server" ;;
+                1|desktop)          ROLE="desktop"          ;;
+                2|stateless)        ROLE="stateless"        ;;
+                3|htpc)             ROLE="htpc"             ;;
+                4|server)           ROLE="server"           ;;
+                5|headless-server)  ROLE="headless-server"  ;;
+                *) echo "Invalid — enter 1-5 or desktop/stateless/htpc/server/headless-server" ;;
             esac
         done
 

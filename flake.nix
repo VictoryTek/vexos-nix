@@ -130,6 +130,23 @@
       let path = /etc/nixos/server-services.nix;
       in if builtins.pathExists path then [ path ] else [];
     serverModules = minimalModules ++ [ serverHomeManagerModule ] ++ serverServicesModule;
+
+    # Home Manager: Headless Server-specific user environment (shell tools only, no GNOME).
+    headlessServerHomeManagerModule = {
+      imports = [ home-manager.nixosModules.home-manager ];
+      home-manager = {
+        useGlobalPkgs    = true;
+        useUserPackages  = true;
+        extraSpecialArgs = { inherit inputs; };
+        users.nimda      = import ./home-headless-server.nix;
+        backupFileExtension = "backup";
+      };
+    };
+
+    # Modules for headless server role — minimal + headless-server-specific home-manager.
+    # Reuses serverServicesModule so /etc/nixos/server-services.nix opt-in services
+    # work identically on both the GUI server and headless server roles.
+    headlessServerModules = minimalModules ++ [ headlessServerHomeManagerModule ] ++ serverServicesModule;
   in
   {
     # ── AMD GPU build ────────────────────────────────────────────────────────
@@ -283,6 +300,38 @@
     nixosConfigurations.vexos-server-vm = nixpkgs.lib.nixosSystem {
       inherit system;
       modules = serverModules ++ [ ./hosts/server-vm.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── Headless Server AMD build ──────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-headless-server-amd
+    nixosConfigurations.vexos-headless-server-amd = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = headlessServerModules ++ [ ./hosts/headless-server-amd.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── Headless Server NVIDIA build ───────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-headless-server-nvidia
+    nixosConfigurations.vexos-headless-server-nvidia = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = headlessServerModules ++ [ ./hosts/headless-server-nvidia.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── Headless Server Intel build ────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-headless-server-intel
+    nixosConfigurations.vexos-headless-server-intel = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = headlessServerModules ++ [ ./hosts/headless-server-intel.nix ];
+      specialArgs = { inherit inputs; };
+    };
+
+    # ── Headless Server VM build ───────────────────────────────────────────────
+    # sudo nixos-rebuild switch --flake .#vexos-headless-server-vm
+    nixosConfigurations.vexos-headless-server-vm = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = headlessServerModules ++ [ ./hosts/headless-server-vm.nix ];
       specialArgs = { inherit inputs; };
     };
 
@@ -460,6 +509,31 @@
           useUserPackages  = true;
           extraSpecialArgs = { inherit inputs; };
           users.nimda      = import ./home-server.nix;
+          backupFileExtension = "backup";
+        };
+        nixpkgs.overlays = [
+          (final: prev: {
+            unstable = import nixpkgs-unstable {
+              inherit (final) config;
+              inherit (final.stdenv.hostPlatform) system;
+            };
+          })
+        ];
+        environment.systemPackages = [ up.packages.x86_64-linux.default ];
+      };
+
+      # Headless server stack: no GUI, no audio, no Flatpak.
+      # Suitable for production servers accessed via SSH.
+      headlessServerBase = { ... }: {
+        imports = [
+          home-manager.nixosModules.home-manager
+          ./configuration-headless-server.nix
+        ];
+        home-manager = {
+          useGlobalPkgs    = true;
+          useUserPackages  = true;
+          extraSpecialArgs = { inherit inputs; };
+          users.nimda      = import ./home-headless-server.nix;
           backupFileExtension = "backup";
         };
         nixpkgs.overlays = [
