@@ -26,6 +26,11 @@
       url = "github:VictoryTek/Up";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # proxmox-nixos: Proxmox VE hypervisor on NixOS. Used by modules/server/proxmox.nix.
+    # Do NOT add inputs.proxmox-nixos.inputs.nixpkgs.follows = "nixpkgs" — the upstream
+    # flake manages its own nixpkgs-stable pin; overriding it breaks package builds.
+    proxmox-nixos.url = "github:SaumonNet/proxmox-nixos";
   };
 
   outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, impermanence, up, ... }@inputs:

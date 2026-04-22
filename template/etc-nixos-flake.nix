@@ -161,6 +161,25 @@
     # HTPC role: media-centre stack.
     mkHtpcVariant = _mkVariantWith vexos-nix.nixosModules.htpcBase;
 
+    # Headless server role: CLI only, no desktop environment.
+    mkHeadlessServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules =
+        let
+          modules     = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
+          servicesFile = ./server-services.nix;
+          hasServices  = builtins.pathExists servicesFile;
+        in
+        [
+          { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
+          bootloaderModule
+          ./hardware-configuration.nix
+          vexos-nix.nixosModules.headlessServerBase
+        ]
+        ++ modules
+        ++ lib.optional hasServices servicesFile;
+    };
+
     # Server role: GUI server stack.
     mkServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
@@ -209,6 +228,12 @@
       vexos-server-nvidia = mkServerVariant "vexos-server-nvidia" vexos-nix.nixosModules.gpuNvidia;
       vexos-server-intel  = mkServerVariant "vexos-server-intel"  vexos-nix.nixosModules.gpuIntel;
       vexos-server-vm     = mkServerVariant "vexos-server-vm"     vexos-nix.nixosModules.gpuVm;
+
+      # ── Headless Server role — CLI only service stack ─────────────────────
+      vexos-headless-server-amd    = mkHeadlessServerVariant "vexos-headless-server-amd"    vexos-nix.nixosModules.gpuAmd;
+      vexos-headless-server-nvidia = mkHeadlessServerVariant "vexos-headless-server-nvidia" vexos-nix.nixosModules.gpuNvidia;
+      vexos-headless-server-intel  = mkHeadlessServerVariant "vexos-headless-server-intel"  vexos-nix.nixosModules.gpuIntel;
+      vexos-headless-server-vm     = mkHeadlessServerVariant "vexos-headless-server-vm"     vexos-nix.nixosModules.gpuVm;
     };
   };
 }

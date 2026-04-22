@@ -9,7 +9,8 @@
 #   komga, kavita, papermc, nextcloud, syncthing, immich, forgejo,
 #   vaultwarden, nginx, caddy, traefik, adguard, headscale,
 #   cockpit, uptime-kuma, homepage, grafana, scrutiny, ntfy,
-#   mealie, rustdesk, home-assistant, stirling-pdf
+#   mealie, rustdesk, home-assistant, stirling-pdf,
+#   proxmox
 {
   # ── Container Runtime ────────────────────────────────────────────────────
   # vexos.server.docker.enable = false;
@@ -76,4 +77,6 @@
 
   # ── PDF Tools ────────────────────────────────────────────────────────────
   # vexos.server.stirling-pdf.enable = false;
-}
+  # ── Virtualisation ────────────────────────────────────────────────────────────
+  # vexos.server.proxmox.enable = false;              # Web UI https://<ip>:8006 — ⚠ experimental
+  # vexos.server.proxmox.ipAddress = "";              # Required: set to this host's IP address}

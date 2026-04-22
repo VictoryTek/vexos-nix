@@ -50,6 +50,6 @@
     # ── Automation & Smart Home ──────────────────────────────────────────────
     ./home-assistant.nix
     # ── PDF Tools ────────────────────────────────────────────────────────────
-    ./stirling-pdf.nix
-  ];
+    ./stirling-pdf.nix    # ── Virtualisation ─────────────────────────────────────────────────────────
+    ./proxmox.nix  ];
 }

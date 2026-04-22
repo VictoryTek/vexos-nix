@@ -298,7 +298,7 @@ rollforward:
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "docker jellyfin plex audiobookshelf tautulli overseerr jellyseerr arr komga kavita papermc nextcloud syncthing immich forgejo vaultwarden nginx caddy traefik adguard headscale cockpit uptime-kuma homepage grafana scrutiny ntfy mealie rustdesk home-assistant stirling-pdf"
+_server_service_names := "docker jellyfin plex audiobookshelf tautulli overseerr jellyseerr arr komga kavita papermc nextcloud syncthing immich forgejo vaultwarden nginx caddy traefik adguard headscale cockpit uptime-kuma homepage grafana scrutiny ntfy mealie rustdesk home-assistant stirling-pdf proxmox"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -756,6 +756,16 @@ enable service: _require-server-role
         echo "  Admin:    http://<server-ip>:8222/admin  (set ADMIN_TOKEN in the environment file to enable)"
         echo "  About:    Lightweight Bitwarden-compatible password manager. Use any official Bitwarden client — point it at this server."
         echo "  Warning:  Put Vaultwarden behind a TLS reverse proxy (Caddy/Nginx/Traefik) before exposing outside your local network."
+        ;;
+      proxmox)
+        echo "  Service:  pve-manager.service (+ pvedaemon, pveproxy, pvestatd)"
+        echo "  Web UI:   https://<server-ip>:8006"
+        echo "  About:    Proxmox VE open-source hypervisor — manage KVM virtual machines and LXC containers from a web UI."
+        echo "  Source:   https://github.com/SaumonNet/proxmox-nixos"
+        echo "  ⚠  Experimental. Not recommended for production machines."
+        echo "  ⚠  You must also set vexos.server.proxmox.ipAddress to this host's IP in server-services.nix."
+        echo "  Cache:    nix.settings.substituters = [ \"https://cache.saumon.network/proxmox-nixos\" ]"
+        echo "            nix.settings.trusted-public-keys = [ \"proxmox-nixos:D9RYSWpQQC/msZUWphOY2I5RLH5Dd6yQcaHIuug7dWM=\" ]"
         ;;
     esac
     echo ""

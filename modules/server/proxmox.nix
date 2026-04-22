@@ -1,0 +1,53 @@
+# modules/server/proxmox.nix
+# Proxmox VE — open-source virtualisation platform (KVM VMs + LXC containers).
+# Source: https://github.com/SaumonNet/proxmox-nixos
+#
+# Binary cache (avoids rebuilding Proxmox packages from source):
+#   nix.settings.substituters       = [ "https://cache.saumon.network/proxmox-nixos" ];
+#   nix.settings.trusted-public-keys = [ "proxmox-nixos:D9RYSWpQQC/msZUWphOY2I5RLH5Dd6yQcaHIuug7dWM=" ];
+#
+# ⚠ Experimental — not recommended for production machines.
+# ⚠ The proxmox-nixos overlay is applied to nixpkgs when this service is enabled.
+#   Do not enable alongside roles that would conflict with Proxmox kernel/networking changes.
+#
+# Impermanence note: if running on the stateless role, add /var/lib/pve-cluster
+# to your persistence directories to survive reboots with the cluster config intact.
+{ config, lib, inputs, ... }:
+let
+  cfg = config.vexos.server.proxmox;
+in
+{
+  # Unconditionally import the upstream module so NixOS can evaluate the
+  # services.proxmox-ve options even when enable = false.
+  imports = [ inputs.proxmox-nixos.nixosModules.proxmox-ve ];
+
+  options.vexos.server.proxmox = {
+    enable = lib.mkEnableOption "Proxmox VE hypervisor";
+
+    ipAddress = lib.mkOption {
+      type        = lib.types.str;
+      default     = "";
+      description = ''
+        IP address of this host. Used by Proxmox VE for cluster communication
+        and the web-UI TLS certificate. Must be set when enable = true.
+      '';
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = cfg.ipAddress != "";
+        message   = "vexos.server.proxmox.ipAddress must be set to this host's IP address when vexos.server.proxmox.enable = true.";
+      }
+    ];
+
+    # Apply the proxmox-nixos overlay so the Proxmox packages are present in pkgs.
+    nixpkgs.overlays = [ inputs.proxmox-nixos.overlays.x86_64-linux ];
+
+    services.proxmox-ve = {
+      enable    = true;
+      ipAddress = cfg.ipAddress;
+    };
+  };
+}
