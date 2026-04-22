@@ -161,7 +161,7 @@
     # HTPC role: media-centre stack.
     mkHtpcVariant = _mkVariantWith vexos-nix.nixosModules.htpcBase;
 
-    # Server role: headless stack.
+    # Server role: GUI server stack.
     mkServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules =
@@ -204,7 +204,7 @@
       vexos-htpc-intel  = mkHtpcVariant "vexos-htpc-intel"  vexos-nix.nixosModules.gpuIntel;
       vexos-htpc-vm     = mkHtpcVariant "vexos-htpc-vm"     vexos-nix.nixosModules.gpuVm;
 
-      # ── Server role — headless stack ─────────────────────────────────────
+      # ── Server role — GUI server stack ────────────────────────────────────
       vexos-server-amd    = mkServerVariant "vexos-server-amd"    vexos-nix.nixosModules.gpuAmd;
       vexos-server-nvidia = mkServerVariant "vexos-server-nvidia" vexos-nix.nixosModules.gpuNvidia;
       vexos-server-intel  = mkServerVariant "vexos-server-intel"  vexos-nix.nixosModules.gpuIntel;

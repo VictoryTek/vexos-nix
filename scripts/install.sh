@@ -54,7 +54,7 @@ echo -e "${BOLD}Select your role:${RESET}"
 echo "  1) Desktop — Full gaming / workstation stack"
 echo "  2) Stateless — Minimal build (no gaming / dev / virt / ASUS)"
 echo "  3) HTPC    — Home theatre PC"
-echo "  4) Server  — Headless server"
+echo "  4) Server  — GUI server (self-hosted services)"
 echo ""
 
 ROLE=""

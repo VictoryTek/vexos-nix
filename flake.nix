@@ -449,7 +449,7 @@
         environment.systemPackages = [ up.packages.x86_64-linux.default ];
       };
 
-      # Server stack: headless, no gaming/development/virtualization.
+      # Server stack: GUI server, no gaming/development/virtualization.
       serverBase = { ... }: {
         imports = [
           home-manager.nixosModules.home-manager
