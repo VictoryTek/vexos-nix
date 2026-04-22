@@ -405,6 +405,7 @@ service-info service="":
 
 # Show systemctl status and HTTP reachability for a server service.
 # Usage: just status jellyfin
+[private]
 status service: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
