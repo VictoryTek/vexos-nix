@@ -5,7 +5,7 @@
     ./modules/gpu.nix
     ./modules/branding.nix
     ./modules/network.nix
-    ./modules/packages.nix
+    ./modules/packages-common.nix
     ./modules/system.nix
     ./modules/server       # Optional server services (vexos.server.*.enable)
   ];
@@ -21,18 +21,9 @@
   # Reuse the "server" role to pick up existing server/ branding assets
   # (pixmaps, background logos, Plymouth watermark, wallpapers).
   # Override distroName to distinguish from the GUI server role.
-  vexos.branding.role = "server";
+  vexos.branding.role     = "server";
+  vexos.branding.hasDisplay = false;  # no display manager, no wallpapers, no GDM
   system.nixos.distroName = lib.mkOverride 500 "VexOS Headless Server";
-
-  # ---------- Headless overrides ----------
-  # Disable 32-bit graphics support (no Steam/Proton on a headless server;
-  # gpu.nix sets enable32Bit = true for desktop gaming use).
-  hardware.graphics.enable32Bit = lib.mkForce false;
-
-  # Disable the SCX LAVD gaming CPU scheduler — scx_lavd is tuned for
-  # low-latency desktop/gaming workloads; a throughput-oriented server
-  # should use the kernel's default CFS scheduler.
-  vexos.scx.enable = false;
 
   # ---------- Users ----------
   users.users.nimda = {

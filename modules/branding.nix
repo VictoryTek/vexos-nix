@@ -80,6 +80,12 @@ in
     description = "Role-specific subdirectory to use for branding pixmaps and background logos.";
   };
 
+  options.vexos.branding.hasDisplay = lib.mkOption {
+    type        = lib.types.bool;
+    default     = true;
+    description = "Set false on headless roles (no display manager, no wallpapers, no GDM config).";
+  };
+
   config = {
   # ── Plymouth boot splash ──────────────────────────────────────────────────
   # Switch from bgrt (ACPI firmware splash, does not display boot.plymouth.logo)
@@ -126,12 +132,15 @@ in
   # Deploys branding files into /run/current-system/sw/share/pixmaps/.
   # XDG_DATA_DIRS includes /run/current-system/sw/share on NixOS, so all
   # GLib/GTK applications find these via standard g_get_system_data_dirs().
-  environment.systemPackages = [ vexosLogos vexosIcons vexosWallpapers ];
+  environment.systemPackages = [ vexosLogos vexosIcons ]
+    ++ lib.optionals config.vexos.branding.hasDisplay [ vexosWallpapers ];
 
   # ── GDM login-screen logo (optional) ─────────────────────────────────────
   # Nix store paths change on every rebuild; a dconf string value must point
   # to a stable path. Deploy the logo to /etc/ first, then reference it.
-  environment.etc."vexos/gdm-logo.png".source = pixmapsDir + "/fedora-gdm-logo.png";
+  environment.etc = lib.mkIf config.vexos.branding.hasDisplay {
+    "vexos/gdm-logo.png".source = pixmapsDir + "/fedora-gdm-logo.png";
+  };
 
   # Sets org.gnome.login-screen.logo in the GDM system dconf profile.
   # If nix flake check reports a conflict with an existing gdm dconf profile
@@ -143,7 +152,7 @@ in
   # and a file-db pointing to greeter-dconf-defaults).  lib.mkDefault on
   # enableUserDb prevents an evaluation conflict if the GDM NixOS module ever
   # sets this option explicitly in a future nixpkgs release.
-  programs.dconf.profiles.gdm = {
+  programs.dconf.profiles.gdm = lib.mkIf config.vexos.branding.hasDisplay {
     enableUserDb = lib.mkDefault false;  # GDM system account — no per-user db
     databases = [
       # TODO: Re-include GDM's own greeter defaults (auto-suspend, a11y, etc.)

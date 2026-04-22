@@ -7,7 +7,8 @@
     ./modules/gpu.nix
     ./modules/flatpak.nix
     ./modules/network.nix
-    ./modules/packages.nix
+    ./modules/packages-common.nix
+    ./modules/packages-desktop.nix
     ./modules/branding.nix
     ./modules/system.nix
     ./modules/impermanence.nix
@@ -27,7 +28,8 @@
   i18n.defaultLocale = "en_US.UTF-8";
 
   # ---------- Branding ----------
-  vexos.branding.role = "stateless";
+  vexos.branding.role  = "stateless";
+  boot.plymouth.enable = true;   # graphical boot splash
 
   # ---------- Users ----------
   users.users.nimda = {

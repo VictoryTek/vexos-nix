@@ -1,16 +1,12 @@
 # modules/flatpak.nix
 { config, pkgs, lib, ... }:
 let
-  # Default Flatpak apps installed on first boot.
-  # Roles can exclude apps by setting vexos.flatpak.excludeApps.
+  # Apps installed on every display role (all roles that import flatpak.nix).
   defaultApps = [
     "com.bitwarden.desktop"
-    "io.github.pol_rivero.github-desktop-plus"
     "com.github.tchx84.Flatseal"
     "it.mijorus.gearlever"
     "io.missioncenter.MissionCenter"
-    "org.onlyoffice.desktopeditors"
-    "org.prismlauncher.PrismLauncher"
     "com.simplenote.Simplenote"
     "io.github.flattool.Warehouse"
     "app.zen_browser.zen"
@@ -18,15 +14,24 @@ let
     "com.rustdesk.RustDesk"
     "io.github.kolunmi.Bazaar"
     "org.pulseaudio.pavucontrol"
+    "org.gnome.World.PikaBackup"
+  ];
+
+  # Apps installed only on the desktop role (gaming, development, productivity).
+  desktopOnlyApps = [
+    "io.github.pol_rivero.github-desktop-plus"
+    "org.onlyoffice.desktopeditors"
+    "org.prismlauncher.PrismLauncher"
     "com.vysp3r.ProtonPlus"
     "net.lutris.Lutris"
     "com.ranfdev.DistroShelf"
-    "org.gnome.World.PikaBackup"
   ];
 
   appsToInstall = (lib.filter
     (a: !builtins.elem a config.vexos.flatpak.excludeApps)
-    defaultApps) ++ config.vexos.flatpak.extraApps;
+    (defaultApps
+      ++ lib.optionals (config.vexos.branding.role == "desktop") desktopOnlyApps))
+  ++ config.vexos.flatpak.extraApps;
 
   # Short hash of the desired app list, baked in at Nix evaluation time.
   # When excludeApps or extraApps changes the hash changes, causing the

@@ -8,7 +8,8 @@
     ./modules/branding.nix
     ./modules/flatpak.nix
     ./modules/network.nix
-    ./modules/packages.nix
+    ./modules/packages-common.nix
+    ./modules/packages-desktop.nix
     ./modules/system.nix
     ./modules/server       # Optional server services (vexos.server.*.enable)
   ];
@@ -23,7 +24,8 @@
   # ---------- Branding ----------
   # Override branding.nix's lib.mkDefault "VexOS Desktop" (priority 1000).
   system.nixos.distroName = lib.mkOverride 500 "VexOS Server";
-  vexos.branding.role = "server";
+  vexos.branding.role  = "server";
+  boot.plymouth.enable = true;   # graphical boot splash
 
   # ---------- Users ----------
   users.users.nimda = {
@@ -79,16 +81,9 @@
   system.stateVersion = "25.11";
 
   # ---------- Flatpak ----------
-  # Exclude apps that are desktop/gaming/creative tools with no place
-  # in a server role.
+  # GIMP is not desired on a server role.
   vexos.flatpak.excludeApps = [
     "org.gimp.GIMP"
-    "com.ranfdev.DistroShelf"
-    "com.vysp3r.ProtonPlus"
-    "net.lutris.Lutris"
-    "org.prismlauncher.PrismLauncher"
-    "io.github.pol_rivero.github-desktop-plus"
-    "org.onlyoffice.desktopeditors"
   ];
 
   # ---------- Server role placeholder ----------

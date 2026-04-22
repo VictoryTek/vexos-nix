@@ -54,6 +54,7 @@
   # No inbound firewall ports needed — client-only (outbound to TCP 445).
   environment.systemPackages = with pkgs; [
     cifs-utils  # mount.cifs — mount SMB/CIFS shares from CLI or fstab
+  ] ++ lib.optionals config.vexos.branding.hasDisplay [
     samba       # smbclient — browse/test SMB shares; also provides nmblookup
   ];
 }

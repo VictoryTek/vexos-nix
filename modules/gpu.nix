@@ -7,7 +7,7 @@
   # ── Common graphics ───────────────────────────────────────────────────────
   hardware.graphics = {
     enable = true;
-    enable32Bit = true; # required for Steam/Proton 32-bit applications
+    enable32Bit = lib.mkDefault false; # set true on desktop for Steam/Proton 32-bit
 
     # Base VA-API and VDPAU acceleration packages (all builds)
     extraPackages = with pkgs; [
@@ -17,20 +17,23 @@
       intel-media-driver  # iHD VA-API driver (Intel 8th gen+); harmless on AMD/NVIDIA
       mesa                # includes RADV (AMD Vulkan) and llvmpipe
     ];
+  };
 
-    extraPackages32 = with pkgs.pkgsi686Linux; [
+  # 32-bit graphics packages — Steam/Proton only; activated by hardware.graphics.enable32Bit.
+  hardware.graphics.extraPackages32 = lib.mkIf config.hardware.graphics.enable32Bit
+    (with pkgs.pkgsi686Linux; [
       libva
       libva-vdpau-driver
       mesa
-    ];
-  };
+    ]);
 
   # ── Video codec and Vulkan utilities ──────────────────────────────────────
   environment.systemPackages = with pkgs; [
-    ffmpeg-full  # full codec support: H264, HEVC, AV1, VP9, etc.
-    libva-utils  # vainfo — verify VA-API acceleration
-    vulkan-tools # vulkaninfo
-    vulkan-loader
-    mesa-demos   # glxinfo, glxgears — OpenGL / Vulkan renderer info
+    ffmpeg-full   # full codec support: H264, HEVC, AV1, VP9, etc.
+    libva-utils   # vainfo — verify VA-API acceleration
+    vulkan-loader # Vulkan runtime loader
+  ] ++ lib.optionals config.vexos.system.gaming [
+    vulkan-tools  # vulkaninfo — desktop diagnostic
+    mesa-demos    # glxinfo, glxgears — OpenGL/Vulkan renderer info
   ];
 }

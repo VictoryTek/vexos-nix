@@ -8,7 +8,8 @@
     ./modules/gpu.nix
     ./modules/flatpak.nix
     ./modules/network.nix
-    ./modules/packages.nix
+    ./modules/packages-common.nix
+    ./modules/packages-desktop.nix
     ./modules/development.nix
     ./modules/virtualization.nix
     ./modules/branding.nix
@@ -29,7 +30,12 @@
   i18n.defaultLocale = "en_US.UTF-8";
 
   # ---------- Branding ----------
-  vexos.branding.role = "desktop";
+  vexos.branding.role          = "desktop";
+  boot.plymouth.enable         = true;   # graphical boot splash
+
+  # ---------- Gaming ----------
+  vexos.system.gaming           = true;  # enable gaming kernel tuning + SCX LAVD
+  hardware.graphics.enable32Bit = true;  # Steam/Proton 32-bit libraries
 
   # ---------- Users ----------
   users.users.nimda = {

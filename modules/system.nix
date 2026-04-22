@@ -19,6 +19,15 @@
       '';
     };
 
+    vexos.system.gaming = lib.mkOption {
+      type        = lib.types.bool;
+      default     = false;
+      description = ''
+        Enable gaming-optimised kernel parameters, CPU scheduler (SCX LAVD),
+        and Proton/Wine compatibility tunables. Set to true on desktop and gaming roles.
+      '';
+    };
+
     vexos.scx.enable = lib.mkOption {
       type    = lib.types.bool;
       default = true;
@@ -49,24 +58,14 @@
 
       # ── Kernel parameters ───────────────────────────────────────────────
       boot.kernelParams = [
-        # Full preemption — lowest desktop/gaming latency
-        "preempt=full"
-
-        # Disable split-lock detection for better Wine/Proton compatibility
-        "split_lock_detect=off"
-
         # I/O scheduler: Kyber is low-latency; well suited for NVMe SSDs.
         # Override per-device via udev if mixing SSDs and HDDs.
         "elevator=kyber"
-
-        # Clean boot experience (matches Bazzite)
-        "quiet"
-        "splash"
-        "loglevel=3"
       ];
 
       # ── Plymouth (graphical boot splash) ────────────────────────────────
-      boot.plymouth.enable = true;
+      # Display roles set boot.plymouth.enable = true in their config.
+      boot.plymouth.enable = lib.mkDefault false;
 
       # ── ZRAM swap ────────────────────────────────────────────────────────
       # Compressed in-RAM swap (matches Bazzite). lz4 gives best speed/ratio.
@@ -102,27 +101,43 @@
 
         # SysRq — useful for emergency system recovery during gaming lockups
         "kernel.sysrq" = 1;
-
-        # Maximum memory map areas per process — required by Proton/Wine anti-cheat
-        # (EAC, BattlEye). 2147483642 is MAX_INT-5, the value set by SteamOS/Bazzite.
-        "vm.max_map_count" = 2147483642;
       };
 
-      # ── Transparent Huge Pages ───────────────────────────────────────────
+    }
+
+    # ── Gaming-specific tuning (opt-in via vexos.system.gaming = true) ────
+    (lib.mkIf config.vexos.system.gaming {
+      boot.kernelParams = [
+        # Full preemption — lowest desktop/gaming latency
+        "preempt=full"
+
+        # Disable split-lock detection for better Wine/Proton compatibility
+        "split_lock_detect=off"
+
+        # Clean boot experience (matches Bazzite)
+        "quiet"
+        "splash"
+        "loglevel=3"
+      ];
+
+      # Maximum memory map areas per process — required by Proton/Wine anti-cheat
+      # (EAC, BattlEye). 2147483642 is MAX_INT-5, the value set by SteamOS/Bazzite.
+      boot.kernel.sysctl."vm.max_map_count" = 2147483642;
+
+      # ── Transparent Huge Pages ─────────────────────────────────────────
       # madvise: allocate THP only when applications explicitly request it.
       systemd.tmpfiles.rules = [
         "w /sys/kernel/mm/transparent_hugepage/enabled - - - - madvise"
         "w /sys/kernel/mm/transparent_hugepage/defrag   - - - - defer+madvise"
       ];
+    })
 
-    }
-
-    # ── scx CPU scheduler (opt-out via vexos.scx.enable = false) ─────────
+    # ── scx CPU scheduler — active only when gaming + scx enabled ─────────
     # scx_lavd is the SteamOS/Bazzite scheduler for gaming desktops.
     # Requires sched_ext support (zen 6.12+, lqx 6.12+, upstream 6.14+).
     # Disabled automatically on VM guests (kernel 6.6 LTS, below minimum).
     #
-    (lib.mkIf config.vexos.scx.enable {
+    (lib.mkIf (config.vexos.system.gaming && config.vexos.scx.enable) {
       services.scx = {
         enable    = true;
         scheduler = "scx_lavd";

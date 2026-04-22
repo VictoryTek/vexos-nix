@@ -7,7 +7,8 @@
     ./modules/gpu.nix
     ./modules/flatpak.nix
     ./modules/network.nix
-    ./modules/packages.nix
+    ./modules/packages-common.nix
+    ./modules/packages-desktop.nix
     ./modules/branding.nix
     ./modules/system.nix
   ];
@@ -78,12 +79,6 @@
   # utilities with no place in a media-centre role.
   vexos.flatpak.excludeApps = [
     "org.gimp.GIMP"
-    "com.ranfdev.DistroShelf"
-    "com.vysp3r.ProtonPlus"             # Wine/Proton manager; no gaming role on HTPC
-    "net.lutris.Lutris"                 # gaming launcher; not applicable on a streaming HTPC
-    "org.prismlauncher.PrismLauncher"   # Minecraft launcher; not needed
-    "io.github.pol_rivero.github-desktop-plus" # Desktop Plus; not useful for streaming HTPC
-    "org.onlyoffice.desktopeditors"     # OnlyOffice; not needed on a streaming HTPC
   ];
 
   vexos.flatpak.extraApps = [
@@ -97,7 +92,8 @@
   # Using mkOverride 500 so host files can still use plain assignments (priority 100)
   # to set more specific names like "VexOS HTPC AMD" when needed.
   system.nixos.distroName = lib.mkOverride 500 "VexOS HTPC";
-  vexos.branding.role = "htpc";
+  vexos.branding.role  = "htpc";
+  boot.plymouth.enable = true;   # graphical boot splash
 
   # ---------- Icons ----------
   # Install Kora icon theme system-wide and set it as the default via a
