@@ -1,4 +1,13 @@
+
+<div align="center">
+   <img src="files/pixmaps/desktop/system-logo-white.png" alt="vexos-nix logo" width="350"/>
+</div>
+
+<div align="center">
+
 # vexos-nix
+
+</div>
 
 Personal NixOS config (GNOME, PipeWire, latest kernel). 
 Comes in seven roles:
@@ -8,7 +17,7 @@ Comes in seven roles:
 **HTPC** (media center build). 
 No cloning required — `/etc/nixos` is the only working directory you need.
 
-Each role utilizes "just" to give a varity of options, simply type "just" in a terminal to see the options.
+Each role utilizes "just" to give a variety of options. Simply type "just" in a terminal to see the options.
 
 
 ## Fresh install
@@ -43,7 +52,11 @@ The running config writes `/etc/nixos/vexos-variant` (a one-line file, e.g. `vex
 
 You can switch between variants (and roles) at any time — no reinstall required. Simply rebuild with the new variant target using "just":
 
-https://github.com/VictoryTek/vexos-nix/blob/main/files/background_logos/desktop/fedora_darkbackground.svg
+
+<div align="center">
+   <img src="files/background_logos/desktop/fedora_darkbackground.svg" alt="Desktop Role Logo" width="300"/>
+</div>
+
 ### Desktop role — full gaming/workstation stack
 
 | Variant | Use for |
@@ -58,7 +71,11 @@ https://github.com/VictoryTek/vexos-nix/blob/main/files/background_logos/desktop
 just switch vexos-desktop-(gpu-choice)
 
 
-https://github.com/VictoryTek/vexos-nix/blob/main/files/background_logos/stateless/fedora_darkbackground.svg
+
+<div align="center">
+   <img src="files/background_logos/stateless/fedora_darkbackground.svg" alt="Stateless Role Logo" width="300"/>
+</div>
+
 ### Stateless role — minimal build (no gaming / dev / virt / ASUS)
 
 | Variant | Use for |
@@ -73,7 +90,11 @@ https://github.com/VictoryTek/vexos-nix/blob/main/files/background_logos/statele
 just switch vexos-stateless-(gpu-choice)
 
 
-https://github.com/VictoryTek/vexos-nix/blob/main/files/background_logos/server/fedora_darkbackground.svg
+
+<div align="center">
+   <img src="files/background_logos/server/fedora_darkbackground.svg" alt="Server Role Logo" width="300"/>
+</div>
+
 ### GUI Server role — GNOME desktop + service stack
 
 | Variant | Use for |
@@ -95,7 +116,11 @@ https://github.com/VictoryTek/vexos-nix/blob/main/files/background_logos/server/
 just switch vexos-server-(gpu-choice)
 
 
-https://github.com/VictoryTek/vexos-nix/blob/main/files/background_logos/htpc/fedora_darkbackground.svg
+
+<div align="center">
+   <img src="files/background_logos/htpc/fedora_darkbackground.svg" alt="HTPC Role Logo" width="300"/>
+</div>
+
 ### HTPC role — media centre build
 
 | Variant | Use for |
