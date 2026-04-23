@@ -72,14 +72,16 @@
 
       unstableOverlayModule
       homeManagerModule
-      { environment.systemPackages = [ up.packages.x86_64-linux.default ]; }
+      upModule
     ];
+
+    # GUI update app — only for roles with a display (desktop, htpc, GUI server, stateless)
+    upModule = { environment.systemPackages = [ up.packages.x86_64-linux.default ]; };
 
     # Modules for server/htpc roles — no home-manager
     minimalModules = [
       /etc/nixos/hardware-configuration.nix
       unstableOverlayModule
-      { environment.systemPackages = [ up.packages.x86_64-linux.default ]; }
     ];
 
     # Home Manager: HTPC-specific user environment (wallpapers, dconf wallpaper settings).
@@ -119,14 +121,14 @@
     };
 
     # Modules for HTPC role — minimal + home-manager for wallpaper/theming.
-    htpcModules = minimalModules ++ [ htpcHomeManagerModule ];
+    htpcModules = minimalModules ++ [ upModule htpcHomeManagerModule ];
 
     # Modules for stateless role — base stack + stateless-specific home-manager.
     statelessModules = [
       /etc/nixos/hardware-configuration.nix
       unstableOverlayModule
       statelessHomeManagerModule
-      { environment.systemPackages = [ up.packages.x86_64-linux.default ]; }
+      upModule
     ];
 
     # Modules for GUI Server role — minimal + server-specific home-manager.
@@ -134,7 +136,7 @@
     serverServicesModule =
       let path = /etc/nixos/server-services.nix;
       in if builtins.pathExists path then [ path ] else [];
-    serverModules = minimalModules ++ [ serverHomeManagerModule ] ++ serverServicesModule;
+    serverModules = minimalModules ++ [ upModule serverHomeManagerModule ] ++ serverServicesModule;
 
     # Home Manager: Headless Server-specific user environment (shell tools only, no GNOME).
     headlessServerHomeManagerModule = {

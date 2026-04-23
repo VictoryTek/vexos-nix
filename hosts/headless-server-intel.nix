@@ -5,7 +5,7 @@
 {
   imports = [
     ../configuration-headless-server.nix
-    ../modules/gpu/intel.nix
+    ../modules/gpu/intel-headless.nix
   ];
 
   virtualisation.virtualbox.guest.enable = lib.mkForce false;
