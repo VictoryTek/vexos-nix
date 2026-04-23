@@ -18,6 +18,7 @@
 
   # VirtualBox guest additions — shared folders, clipboard, auto-resize, drag & drop
   virtualisation.virtualbox.guest.enable = true;
+  virtualisation.virtualbox.guest.dragAndDrop = true;
 
   # Load virtio-gpu and QXL display drivers early
   boot.initrd.kernelModules = [ "virtio_gpu" ];
