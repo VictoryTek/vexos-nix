@@ -1,6 +1,6 @@
 
 <div align="center">
-   <img src="files/pixmaps/desktop/system-logo-white.png" alt="vexos-nix logo" width="340"/>
+   <img src="files/pixmaps/desktop/system-logo-white.png" alt="vexos-nix logo" width="220" style="height:auto;"/>
 </div>
 
 <div align="center">
