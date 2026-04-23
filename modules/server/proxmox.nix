@@ -17,9 +17,10 @@ let
   cfg = config.vexos.server.proxmox;
 in
 {
-  # Unconditionally import the upstream module so NixOS can evaluate the
-  # services.proxmox-ve options even when enable = false.
-  imports = [ inputs.proxmox-nixos.nixosModules.proxmox-ve ];
+  # Note: inputs.proxmox-nixos.nixosModules.proxmox-ve is imported at the
+  # flake level (serverBase / headlessServerBase) to avoid infinite recursion
+  # — using `inputs` in `imports` here triggers _module.args evaluation before
+  # config is available.
 
   options.vexos.server.proxmox = {
     enable = lib.mkEnableOption "Proxmox VE hypervisor";

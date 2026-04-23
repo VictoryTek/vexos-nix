@@ -524,6 +524,9 @@
         imports = [
           home-manager.nixosModules.home-manager
           ./configuration-server.nix
+          # Import here (not in modules/server/proxmox.nix) to avoid infinite
+          # recursion — `imports` cannot safely reference _module.args.
+          inputs.proxmox-nixos.nixosModules.proxmox-ve
         ];
         home-manager = {
           useGlobalPkgs    = true;
@@ -549,6 +552,9 @@
         imports = [
           home-manager.nixosModules.home-manager
           ./configuration-headless-server.nix
+          # Import here (not in modules/server/proxmox.nix) to avoid infinite
+          # recursion — `imports` cannot safely reference _module.args.
+          inputs.proxmox-nixos.nixosModules.proxmox-ve
         ];
         home-manager = {
           useGlobalPkgs    = true;
