@@ -81,11 +81,11 @@
   # utilities with no place in a media-centre role.
   vexos.flatpak.excludeApps = [
     "org.gimp.GIMP"
+    "org.onlyoffice.desktopeditors"  # desktop-only app; clean up if left over from pre-split config
   ];
 
   vexos.flatpak.extraApps = [
     "io.freetubeapp.FreeTube"          # Privacy-respecting YouTube client
-    "tv.plex.PlexDesktop"              # Plex media client
     "com.github.unrud.VideoDownloader" # Video downloader
   ];
 
@@ -104,6 +104,7 @@
     bibata-cursors
     kora-icon-theme
     ghostty
+    unstable.plex-desktop  # Plex media client (nixpkgs-unstable)
   ];
   programs.dconf.profiles.user.databases = [
     {
@@ -134,7 +135,7 @@
         favorite-apps = [
           "brave-browser.desktop"
           "app.zen_browser.zen.desktop"
-          "tv.plex.PlexDesktop.desktop"
+          "plex-desktop.desktop"
           "io.freetubeapp.FreeTube.desktop"
           "com.mitchellh.ghostty.desktop"
           "org.gnome.Nautilus.desktop"
