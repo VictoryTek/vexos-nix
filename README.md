@@ -86,7 +86,7 @@ just switch vexos-desktop-(gpu-choice)
 | `vexos-stateless-nvidia-legacy390` | NVIDIA Fermi legacy — GeForce 400/500 series, minimal stack |
 | `vexos-stateless-intel` | Intel iGPU or Arc dGPU, minimal stack |
 | `vexos-stateless-vm` | QEMU/KVM or VirtualBox guest, minimal stack |
-```
+
 just switch vexos-stateless-(gpu-choice)
 
 
