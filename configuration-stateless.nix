@@ -131,8 +131,19 @@
   # ---------- Flatpak ----------
   # Prevent GIMP from being installed on stateless. It is never in
   # defaultApps but may be present from a manual install or prior session.
-  # The excludeApps removal loop in flatpak-install-apps will purge it.
-  vexos.flatpak.excludeApps = [ "org.gimp.GIMP" ];
+  # Desktop-role extras are also excluded so they are actively uninstalled
+  # if this machine was previously running the desktop configuration and
+  # /var/lib/flatpak (persisted by impermanence) carries stale installs.
+  vexos.flatpak.excludeApps = [
+    "org.gimp.GIMP"
+    # Desktop-role gaming / utility flatpaks
+    "org.prismlauncher.PrismLauncher"
+    "com.vysp3r.ProtonPlus"
+    "net.lutris.Lutris"
+    # Desktop-role dev / misc flatpaks
+    "io.github.pol_rivero.github-desktop-plus"
+    "com.ranfdev.DistroShelf"
+  ];
 
   # ---------- State version ----------
   # This value determines the NixOS release from which the default

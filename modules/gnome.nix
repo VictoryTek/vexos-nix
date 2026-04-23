@@ -126,10 +126,52 @@ in
             if role == "desktop"
             then commonExtensions ++ [ "gamemodeshellextension@trsnaqe.com" ]
             else commonExtensions;
+          # Role-specific dock favorites. Defined here so they are present in
+          # the system dconf database before home-manager activation runs —
+          # critical on the stateless role where the user dconf db starts empty
+          # on every boot due to impermanence (autoLogin fires before HM writes
+          # ~/.config/dconf/user).
+          favApps = {
+            desktop   = [
+              "brave-browser.desktop"
+              "app.zen_browser.zen.desktop"
+              "org.gnome.Nautilus.desktop"
+              "com.mitchellh.ghostty.desktop"
+              "io.github.up.desktop"
+              "org.gnome.Boxes.desktop"
+              "code.desktop"
+            ];
+            stateless = [
+              "brave-browser.desktop"
+              "torbrowser.desktop"
+              "app.zen_browser.zen.desktop"
+              "org.gnome.Nautilus.desktop"
+              "com.mitchellh.ghostty.desktop"
+              "io.github.up.desktop"
+            ];
+            htpc = [
+              "brave-browser.desktop"
+              "app.zen_browser.zen.desktop"
+              "tv.plex.PlexDesktop.desktop"
+              "io.freetubeapp.FreeTube.desktop"
+              "org.gnome.Nautilus.desktop"
+              "io.github.up.desktop"
+              "com.mitchellh.ghostty.desktop"
+              "system-update.desktop"
+            ];
+            server = [
+              "brave-browser.desktop"
+              "app.zen_browser.zen.desktop"
+              "org.gnome.Nautilus.desktop"
+              "com.mitchellh.ghostty.desktop"
+              "io.github.up.desktop"
+            ];
+          }.${role};
         in {
           # ── GNOME Shell ─────────────────────────────────────────────────
           "org/gnome/shell" = {
             enabled-extensions = enabledExtensions;
+            favorite-apps = favApps;
           };
 
           # ── Wallpaper (stable Nix store path via branding.nix) ──────────
