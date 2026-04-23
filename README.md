@@ -1,6 +1,6 @@
 
 <div align="center">
-   <img src="files/pixmaps/desktop/system-logo-white.png" alt="vexos-nix logo" width="350"/>
+   <img src="files/pixmaps/desktop/system-logo-white.png" alt="vexos-nix logo" width="340"/>
 </div>
 
 <div align="center">
@@ -68,7 +68,9 @@ You can switch between variants (and roles) at any time — no reinstall require
 | `vexos-desktop-intel` | Intel iGPU or Arc dGPU |
 | `vexos-desktop-vm` | QEMU/KVM or VirtualBox guest |
 
-just switch vexos-desktop-(gpu-choice)
+> just switch vexos-desktop-(gpu-choice)
+
+
 
 
 
@@ -87,7 +89,9 @@ just switch vexos-desktop-(gpu-choice)
 | `vexos-stateless-intel` | Intel iGPU or Arc dGPU, minimal stack |
 | `vexos-stateless-vm` | QEMU/KVM or VirtualBox guest, minimal stack |
 
-just switch vexos-stateless-(gpu-choice)
+> just switch vexos-stateless-(gpu-choice)
+
+
 
 
 
@@ -113,7 +117,9 @@ just switch vexos-stateless-(gpu-choice)
 | `vexos-headless-server-intel` | Intel iGPU or Arc dGPU |
 | `vexos-headless-server-vm` | QEMU/KVM or VirtualBox guest |
 
-just switch vexos-server-(gpu-choice)
+> just switch vexos-server-(gpu-choice)
+
+
 
 
 
@@ -132,7 +138,7 @@ just switch vexos-server-(gpu-choice)
 | `vexos-htpc-intel` | Intel iGPU or Arc dGPU |
 | `vexos-htpc-vm` | QEMU/KVM or VirtualBox guest |
 
-just switch vexos-htpc-(gpu-choice)
+> just switch vexos-htpc-(gpu-choice)
 
 
 > **Switching GPU drivers?** A reboot is recommended after switching between AMD, NVIDIA, and Intel variants so the kernel modules load cleanly.
