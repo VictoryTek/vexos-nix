@@ -472,6 +472,20 @@
         imports = [ ./modules/gpu/intel.nix ];
         virtualisation.virtualbox.guest.enable = lib.mkForce false;
       };
+
+      # Headless server GPU modules: compute/VA-API without early KMS / display init.
+      gpuAmdHeadless = { lib, ... }: {
+        imports = [ ./modules/gpu/amd-headless.nix ];
+        virtualisation.virtualbox.guest.enable = lib.mkForce false;
+      };
+      gpuNvidiaHeadless = { lib, ... }: {
+        imports = [ ./modules/gpu/nvidia-headless.nix ];
+        virtualisation.virtualbox.guest.enable = lib.mkForce false;
+      };
+      gpuIntelHeadless = { lib, ... }: {
+        imports = [ ./modules/gpu/intel-headless.nix ];
+        virtualisation.virtualbox.guest.enable = lib.mkForce false;
+      };
       gpuVm = { ... }: {
         imports = [ ./modules/gpu/vm.nix ];
       };
@@ -551,7 +565,7 @@
             };
           })
         ];
-        environment.systemPackages = [ up.packages.x86_64-linux.default ];
+        # up (GUI update app) intentionally omitted — headless servers have no display.
       };
     };
   };

@@ -232,9 +232,10 @@
       vexos-server-vm     = mkServerVariant "vexos-server-vm"     vexos-nix.nixosModules.gpuVm;
 
       # ── Headless Server role — CLI only service stack ─────────────────────
-      vexos-headless-server-amd    = mkHeadlessServerVariant "vexos-headless-server-amd"    vexos-nix.nixosModules.gpuAmd;
-      vexos-headless-server-nvidia = mkHeadlessServerVariant "vexos-headless-server-nvidia" vexos-nix.nixosModules.gpuNvidia;
-      vexos-headless-server-intel  = mkHeadlessServerVariant "vexos-headless-server-intel"  vexos-nix.nixosModules.gpuIntel;
+      # Uses headless GPU modules (no early KMS / display init, no LACT GUI tool).
+      vexos-headless-server-amd    = mkHeadlessServerVariant "vexos-headless-server-amd"    vexos-nix.nixosModules.gpuAmdHeadless;
+      vexos-headless-server-nvidia = mkHeadlessServerVariant "vexos-headless-server-nvidia" vexos-nix.nixosModules.gpuNvidiaHeadless;
+      vexos-headless-server-intel  = mkHeadlessServerVariant "vexos-headless-server-intel"  vexos-nix.nixosModules.gpuIntelHeadless;
       vexos-headless-server-vm     = mkHeadlessServerVariant "vexos-headless-server-vm"     vexos-nix.nixosModules.gpuVm;
     };
   };

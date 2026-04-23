@@ -17,6 +17,13 @@
   time.timeZone = "America/Chicago";
   i18n.defaultLocale = "en_US.UTF-8";
 
+  # ---------- Console ----------
+  # Load the console font in stage 1 (initrd) before the GPU driver takes over
+  # the EFI framebuffer.  Without earlySetup, the DRM framebuffer console
+  # initialises at a native resolution with no font loaded, producing a black
+  # screen with only a blinking hardware cursor on any attached display.
+  console.earlySetup = true;
+
   # ---------- Branding ----------
   # Reuse the "server" role to pick up existing server/ branding assets
   # (pixmaps, background logos, Plymouth watermark, wallpapers).
