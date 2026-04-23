@@ -12,7 +12,7 @@
 Personal NixOS config (GNOME, PipeWire, latest kernel). 
 Comes in seven roles:
 **Desktop** (full gaming/workstation stack), 
-**Stateless** (minimal daily-driver), 
+**Stateless** (impermanent, minimal build, security-focused), 
 **Server** (GUI & Headless service stack), 
 **HTPC** (media center build). 
 No cloning required — `/etc/nixos` is the only working directory you need.
