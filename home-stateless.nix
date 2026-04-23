@@ -173,8 +173,8 @@
       ];
       favorite-apps = [
         "brave-browser.desktop"
-        "app.zen_browser.zen.desktop"
         "torbrowser.desktop"
+        "app.zen_browser.zen.desktop"
         "org.gnome.Nautilus.desktop"
         "com.mitchellh.ghostty.desktop"
         "io.github.up.desktop"
