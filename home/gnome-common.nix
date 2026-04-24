@@ -83,4 +83,18 @@
     };
 
   };
+
+  # ── Default browser ────────────────────────────────────────────────────────
+  # Declaratively registers Brave as the XDG MIME default for all web schemes
+  # so that link-opens from any app use Brave regardless of role or rebuild.
+  xdg.mimeApps = {
+    enable = true;
+    defaultApplications = {
+      "x-scheme-handler/http"  = [ "brave-browser.desktop" ];
+      "x-scheme-handler/https" = [ "brave-browser.desktop" ];
+      "text/html"              = [ "brave-browser.desktop" ];
+      "application/xhtml+xml"  = [ "brave-browser.desktop" ];
+      "x-scheme-handler/ftp"   = [ "brave-browser.desktop" ];
+    };
+  };
 }
