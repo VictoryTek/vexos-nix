@@ -136,7 +136,9 @@
     serverServicesModule =
       let path = /etc/nixos/server-services.nix;
       in if builtins.pathExists path then [ path ] else [];
-    serverModules = minimalModules ++ [ upModule serverHomeManagerModule ] ++ serverServicesModule;
+    # inputs.proxmox-nixos.nixosModules.proxmox-ve must be here (not in modules/server/proxmox.nix)
+    # to avoid infinite recursion — `imports` cannot safely reference _module.args.
+    serverModules = minimalModules ++ [ upModule serverHomeManagerModule inputs.proxmox-nixos.nixosModules.proxmox-ve ] ++ serverServicesModule;
 
     # Home Manager: Headless Server-specific user environment (shell tools only, no GNOME).
     headlessServerHomeManagerModule = {
@@ -153,7 +155,9 @@
     # Modules for headless server role — minimal + headless-server-specific home-manager.
     # Reuses serverServicesModule so /etc/nixos/server-services.nix opt-in services
     # work identically on both the GUI server and headless server roles.
-    headlessServerModules = minimalModules ++ [ headlessServerHomeManagerModule ] ++ serverServicesModule;
+    # inputs.proxmox-nixos.nixosModules.proxmox-ve must be here (not in modules/server/proxmox.nix)
+    # to avoid infinite recursion — `imports` cannot safely reference _module.args.
+    headlessServerModules = minimalModules ++ [ headlessServerHomeManagerModule inputs.proxmox-nixos.nixosModules.proxmox-ve ] ++ serverServicesModule;
   in
   {
     # ── AMD GPU build ────────────────────────────────────────────────────────
