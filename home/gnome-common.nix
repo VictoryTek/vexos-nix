@@ -84,9 +84,10 @@
 
   };
 
-  # ── Default browser ────────────────────────────────────────────────────────
-  # Declaratively registers Brave as the XDG MIME default for all web schemes
-  # so that link-opens from any app use Brave regardless of role or rebuild.
+  # ── MIME associations ──────────────────────────────────────────────────────
+  # Declaratively registers Brave as the XDG MIME default for all web schemes.
+  # force = true on both paths ensures Home Manager never stalls on activation
+  # when GNOME has already written these files to disk (or a stale .backup exists).
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
@@ -97,4 +98,6 @@
       "x-scheme-handler/ftp"   = [ "brave-browser.desktop" ];
     };
   };
+  xdg.configFile."mimeapps.list".force = true;
+  xdg.dataFile."applications/mimeapps.list".force = true;
 }
