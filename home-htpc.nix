@@ -132,5 +132,9 @@
     settings.Hidden = "true";
   };
 
+  # ── Justfile ───────────────────────────────────────────────────────────────
+  # Deploy the repo's justfile to ~/justfile so 'just' works from home dir.
+  home.file."justfile".source = ./justfile;
+
   home.stateVersion = "24.05";
 }
