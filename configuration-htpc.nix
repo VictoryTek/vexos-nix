@@ -14,6 +14,7 @@
     ./modules/branding.nix
     ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix
+    ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on HTPC
   ];
 
   # ---------- Bootloader ----------
@@ -124,7 +125,7 @@
       settings."org/gnome/shell" = {
         enabled-extensions = [
           "appindicatorsupport@rgcjonas.gmail.com"
-          "dash-to-dock@micxgx.gmail.com"
+          # "dash-to-dock@micxgx.gmail.com"  # disabled: autohide broken
           "AlphabeticalAppGrid@stuarthayhurst"
           "gnome-ui-tune@itstime.tech"
           "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"

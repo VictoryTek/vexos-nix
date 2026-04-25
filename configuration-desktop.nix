@@ -19,6 +19,7 @@
     ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix
     ./modules/system-gaming.nix     # gaming kernel params, THP, SCX
+    ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on desktop
   ];
 
   # ---------- Bootloader ----------

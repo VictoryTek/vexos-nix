@@ -59,9 +59,9 @@
       picture-uri-dark = "file:///run/current-system/sw/share/backgrounds/vexos/vex-bb-dark.jxl";
     };
 
-    "org/gnome/shell/extensions/dash-to-dock" = {
-      dock-position = "LEFT";
-    };
+    # "org/gnome/shell/extensions/dash-to-dock" = {
+    #   dock-position = "LEFT";
+    # };
 
     "org/fedorahosted/background-logo-extension" = {
       logo-file           = "/run/current-system/sw/share/pixmaps/vex-background-logo.svg";

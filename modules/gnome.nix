@@ -113,7 +113,7 @@ in
           # Extensions shared by all roles (no gamemode).
           commonExtensions = [
             "appindicatorsupport@rgcjonas.gmail.com"
-            "dash-to-dock@micxgx.gmail.com"
+            # "dash-to-dock@micxgx.gmail.com"  # disabled: autohide broken
             "AlphabeticalAppGrid@stuarthayhurst"
             "gnome-ui-tune@itstime.tech"
             "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
@@ -201,9 +201,9 @@ in
           };
 
           # ── Dock ────────────────────────────────────────────────────────
-          "org/gnome/shell/extensions/dash-to-dock" = {
-            dock-position = "LEFT";
-          };
+          # "org/gnome/shell/extensions/dash-to-dock" = {
+          #   dock-position = "LEFT";
+          # };
 
           # ── Background logo extension ───────────────────────────────────
           "org/fedorahosted/background-logo-extension" = {
@@ -299,7 +299,7 @@ in
 
     # GNOME Shell extensions
     unstable.gnomeExtensions.appindicator               # System tray icons
-    unstable.gnomeExtensions.dash-to-dock               # macOS-style dock
+    # unstable.gnomeExtensions.dash-to-dock             # macOS-style dock — disabled: autohide broken
     unstable.gnomeExtensions.alphabetical-app-grid      # Sort app grid alphabetically
     unstable.gnomeExtensions.gamemode-shell-extension   # GameMode status indicator
     unstable.gnomeExtensions.gnome-40-ui-improvements   # UI tweaks

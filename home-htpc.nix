@@ -43,7 +43,7 @@
     "org/gnome/shell" = {
       enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
-        "dash-to-dock@micxgx.gmail.com"
+        # "dash-to-dock@micxgx.gmail.com"  # disabled: autohide broken
         "AlphabeticalAppGrid@stuarthayhurst"
         # gamemode-shell-extension omitted — programs.gamemode not enabled on htpc
         "gnome-ui-tune@itstime.tech"
