@@ -300,49 +300,39 @@ while [ -z "$VARIANT" ]; do
   esac
 done
 
-# ---------- Prompt: nimda user password -------------------------------------
+# ---------- Preserve existing nimda password ---------------------------------
+# Read the current shadow hash so the pre-migration password carries forward
+# into the stateless build.  The stateless role uses users.mutableUsers = false,
+# which means /etc/shadow is regenerated from the Nix config on every activation.
+# Capturing the existing hash and writing it to stateless-user-override.nix
+# (persisted to @persist/etc/nixos/) preserves the password across reboots,
+# matching the behaviour of all other vexos roles.
 CUSTOM_PASSWORD_SET=false
 HASHED_PW=""
 
-if command -v openssl &>/dev/null; then
+echo ""
+echo -e "${BOLD}Preserving existing nimda login password...${RESET}"
+EXISTING_HASH=$(getent shadow nimda 2>/dev/null | cut -d: -f2 || true)
+# A valid yescrypt/SHA-512 hash starts with $ — "!" or "*" means locked/unset.
+if [[ "${EXISTING_HASH}" == '$'* ]]; then
+  HASHED_PW="${EXISTING_HASH}"
+  CUSTOM_PASSWORD_SET=true
+  echo -e "${GREEN}  ✓ Password hash found — your existing password will work after reboot.${RESET}"
+else
+  echo -e "${YELLOW}  No password hash for nimda found in /etc/shadow (locked or no password set).${RESET}"
+  echo -e "${YELLOW}  The default login password will be 'vexos'. Run 'passwd' after first boot to change it.${RESET}"
+fi
+
+if $CUSTOM_PASSWORD_SET; then
   echo ""
-  echo -e "${BOLD}Set a login password for the nimda user:${RESET}"
-  echo -e "${YELLOW}  Press Enter twice to keep the default password ('vexos').${RESET}"
-  echo -e "${YELLOW}  Note: the password resets to this value on every reboot (by design).${RESET}"
-  echo ""
-  while true; do
-    printf "  Password (hidden): "
-    read -rs PW </dev/tty
-    echo ""
-    if [ -z "$PW" ]; then
-      echo -e "${YELLOW}  No password entered — keeping default 'vexos'.${RESET}"
-      break
-    fi
-    printf "  Confirm password:  "
-    read -rs PW2 </dev/tty
-    echo ""
-    if [ "$PW" = "$PW2" ]; then
-      HASHED_PW=$(printf '%s' "$PW" | openssl passwd -6 -stdin)
-      CUSTOM_PASSWORD_SET=true
-      echo -e "${GREEN}  ✓ Password accepted.${RESET}"
-      break
-    else
-      echo -e "${RED}  Passwords do not match. Try again.${RESET}"
-    fi
-  done
-  if $CUSTOM_PASSWORD_SET; then
-    echo ""
-    echo -e "${BOLD}Writing /etc/nixos/stateless-user-override.nix...${RESET}"
-    tee /etc/nixos/stateless-user-override.nix > /dev/null << NIXEOF
+  echo -e "${BOLD}Writing /etc/nixos/stateless-user-override.nix...${RESET}"
+  tee /etc/nixos/stateless-user-override.nix > /dev/null << NIXEOF
 { lib, ... }: {
   users.users.nimda.initialHashedPassword = lib.mkOverride 50 "${HASHED_PW}";
   users.users.nimda.initialPassword       = lib.mkForce null;
 }
 NIXEOF
-    echo -e "${GREEN}  ✓ /etc/nixos/stateless-user-override.nix written.${RESET}"
-  fi
-else
-  echo -e "${YELLOW}  openssl not found — skipping password setup (default 'vexos' will be used).${RESET}"
+  echo -e "${GREEN}  ✓ /etc/nixos/stateless-user-override.nix written.${RESET}"
 fi
 
 # ---------- nixos-rebuild boot -----------------------------------------------
@@ -405,19 +395,17 @@ echo ""
 echo "  2. After reboot, / will be a fresh tmpfs on every boot."
 echo "     /nix and /persistent survive reboots. Everything else is ephemeral."
 echo ""
-echo -e "${BOLD}Default login credentials after reboot:${RESET}"
+echo -e "${BOLD}Login credentials after reboot:${RESET}"
 echo -e "  Username: ${CYAN}nimda${RESET}"
 if $CUSTOM_PASSWORD_SET; then
-  echo -e "  Password: ${CYAN}(your chosen password)${RESET}"
+  echo -e "  Password: ${CYAN}(same as before migration)${RESET}"
 else
-  echo -e "  Password: ${CYAN}vexos (default)${RESET}"
+  echo -e "  Password: ${CYAN}vexos (default — no existing hash found)${RESET}"
 fi
 echo ""
 echo -e "${YELLOW}Note: Passwords changed at runtime do NOT persist across reboots.${RESET}"
-echo -e "${YELLOW}      The password resets to the configured value on every boot (by design).${RESET}"
-if ! $CUSTOM_PASSWORD_SET; then
-  echo -e "${YELLOW}      To set a custom password, re-run scripts/migrate-to-stateless.sh.${RESET}"
-fi
+echo -e "${YELLOW}      To update the persistent password, edit stateless-user-override.nix${RESET}"
+echo -e "${YELLOW}      in /persistent/etc/nixos/ and rebuild: just rebuild${RESET}"
 echo ""
 echo -e "${YELLOW}Note: After rebooting into stateless mode, the original / data on${RESET}"
 echo -e "${YELLOW}the Btrfs partition remains but is not mounted. You can reclaim${RESET}"

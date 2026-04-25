@@ -37,8 +37,11 @@
   users.users.nimda = {
     isNormalUser    = true;
     description     = "nimda";
-    # Default session password — changes at runtime do NOT persist across reboots
-    # because users.mutableUsers = false and / is a tmpfs (set by impermanence module).
+    # Fallback password — only used when no stateless-user-override.nix exists in
+    # /etc/nixos.  migrate-to-stateless.sh reads the pre-migration hash from
+    # /etc/shadow and writes it to that override file so the original password
+    # carries forward.  stateless-setup.sh prompts for one.  "vexos" is only
+    # seen on a completely unconfigured first run where neither script ran.
     initialPassword = "vexos";
     extraGroups = [
       "wheel"
