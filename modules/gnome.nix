@@ -345,6 +345,13 @@ in
         fi
       done
       ''}
+      ${lib.optionalString (config.vexos.branding.role == "htpc") ''
+      # Migration: uninstall Totem on HTPC — mpv is the designated player.
+      if flatpak list --app --columns=application 2>/dev/null | grep -qx "org.gnome.Totem"; then
+        echo "flatpak: removing org.gnome.Totem (htpc role uses mpv)"
+        flatpak uninstall --noninteractive --assumeyes org.gnome.Totem || true
+      fi
+      ''}
       flatpak install --noninteractive --assumeyes flathub \
         ${lib.concatStringsSep " \\\n        " gnomeAppsToInstall}
 

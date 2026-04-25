@@ -148,14 +148,4 @@
     }
   ];
 
-  # ---------- Auto-login ----------
-  # Set-top-box style: boot straight to the GNOME session without a login screen.
-  services.displayManager.autoLogin = {
-    enable = true;
-    user   = "nimda";
-  };
-  # Prevent the GDM autologin TTY conflict that causes a login loop.
-  # https://github.com/NixOS/nixpkgs/issues/103746
-  systemd.services."getty@tty1".enable  = false;
-  systemd.services."autovt@tty1".enable = false;
 }
