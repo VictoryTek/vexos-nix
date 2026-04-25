@@ -159,7 +159,22 @@
     };
 
     # HTPC role: media-centre stack.
-    mkHtpcVariant = _mkVariantWith vexos-nix.nixosModules.htpcBase;
+    # HTPC does not use impermanence, so environment.etc is correct here
+    # (same pattern as mkServerVariant — NOT the /persistent activationScript path).
+    mkHtpcVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      specialArgs = { inputs = vexos-nix.inputs; };
+      modules =
+        let
+          modules = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
+        in
+        [
+          { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
+          bootloaderModule
+          ./hardware-configuration.nix
+          vexos-nix.nixosModules.htpcBase
+        ] ++ modules;
+    };
 
     # Headless server role: CLI only, no desktop environment.
     mkHeadlessServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {

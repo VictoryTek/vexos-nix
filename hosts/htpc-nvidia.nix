@@ -8,6 +8,7 @@
     ../modules/gpu/nvidia.nix
   ];
 
+  environment.etc."nixos/vexos-variant".text = "vexos-htpc-nvidia\n";
   virtualisation.virtualbox.guest.enable = lib.mkForce false;
   system.nixos.distroName = "VexOS HTPC NVIDIA";
 }
