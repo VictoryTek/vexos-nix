@@ -58,7 +58,7 @@
       favorite-apps = [
         "brave-browser.desktop"
         "app.zen_browser.zen.desktop"
-        "tv.plex.PlexDesktop.desktop"
+        "plex-desktop.desktop"
         "io.freetubeapp.FreeTube.desktop"
         "org.gnome.Nautilus.desktop"
         "io.github.up.desktop"
@@ -131,15 +131,6 @@
     noDisplay = true;
     settings.Hidden = "true";
   };
-  # plex-desktop is a nixpkgs system package (installed in environment.systemPackages
-  # in configuration-htpc.nix). It must stay there for the dock to work, but it
-  # should not appear in the app grid — access via the dock only.
-  xdg.desktopEntries."plex-desktop" = {
-    name      = "Plex";
-    noDisplay = true;
-    settings.Hidden = "true";
-  };
-
   # ── Justfile ───────────────────────────────────────────────────────────────
   # Deploy the repo's justfile to ~/justfile so 'just' works from home dir.
   home.file."justfile".source = ./justfile;

@@ -138,7 +138,7 @@
         favorite-apps = [
           "brave-browser.desktop"
           "app.zen_browser.zen.desktop"
-          "plex-desktop.desktop"
+          "plex-desktop.desktop"  # unstable.plex-desktop nixpkgs package
           "io.freetubeapp.FreeTube.desktop"
           "com.mitchellh.ghostty.desktop"
           "org.gnome.Nautilus.desktop"
