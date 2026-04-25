@@ -10,6 +10,7 @@
     ./modules/network-desktop.nix   # samba CLI
     ./modules/packages-common.nix
     ./modules/packages-desktop.nix
+    ./modules/packages-htpc.nix     # GStreamer codecs, VLC, mpv, libcec
     ./modules/branding.nix
     ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix
@@ -71,6 +72,8 @@
 
   # ---------- Nixpkgs ----------
   nixpkgs.config.allowUnfree = true;
+  # Enable Widevine CDM for Brave (DRM-protected streaming: Netflix, Prime, Disney+).
+  nixpkgs.config.chromium.enableWidevineCdm = true;
 
   # ---------- State version ----------
   # Set once at install time — do not change after initial deployment.
@@ -145,8 +148,14 @@
     }
   ];
 
-  # ---------- HTPC role placeholder ----------
-  # This configuration is intentionally minimal. Add media centre services,
-  # codec support, remote control input, and display configuration here
-  # when fleshing out.
+  # ---------- Auto-login ----------
+  # Set-top-box style: boot straight to the GNOME session without a login screen.
+  services.displayManager.autoLogin = {
+    enable = true;
+    user   = "nimda";
+  };
+  # Prevent the GDM autologin TTY conflict that causes a login loop.
+  # https://github.com/NixOS/nixpkgs/issues/103746
+  systemd.services."getty@tty1".enable  = false;
+  systemd.services."autovt@tty1".enable = false;
 }
