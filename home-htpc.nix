@@ -58,7 +58,7 @@
       favorite-apps = [
         "brave-browser.desktop"
         "app.zen_browser.zen.desktop"
-        "plex-desktop.desktop"
+        "tv.plex.PlexDesktop.desktop"
         "io.freetubeapp.FreeTube.desktop"
         "org.gnome.Nautilus.desktop"
         "io.github.up.desktop"
