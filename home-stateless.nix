@@ -128,6 +128,14 @@
     '';
 
   # ── Hidden app grid entries ────────────────────────────────────────────────
+  # org.gimp.GIMP: GIMP is explicitly excluded from stateless Flatpak installs,
+  # but may be present in /persistent/var/lib/flatpak from a previous session or
+  # role migration. This entry hides it unconditionally from the app grid even if
+  # it is installed, complementing the flatpak excludeApps uninstall mechanism.
+  xdg.desktopEntries."org.gimp.GIMP" = {
+    name      = "GIMP";
+    noDisplay = true;
+  };
   xdg.desktopEntries."org.gnome.Extensions" = {
     name      = "Extensions";
     noDisplay = true;
