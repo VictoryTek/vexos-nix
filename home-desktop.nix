@@ -226,6 +226,7 @@
         "org.gnome.Logs.desktop"
         "btrfs-assistant.desktop"
         "org.gnome.SystemMonitor.desktop"
+        "com.system76.Popsicle.desktop"
       ];
     };
     "org/gnome/desktop/interface" = {
