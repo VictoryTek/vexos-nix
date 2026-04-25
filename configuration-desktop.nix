@@ -122,8 +122,10 @@
 
   # ---------- Desktop-only tools ----------
   # gnome-boxes: virtual machine manager — useful on a full desktop, not on HTPC/server.
+  # popsicle: USB ISO flasher — desktop-specific, not needed on HTPC/server roles.
   environment.systemPackages = with pkgs; [
     unstable.gnome-boxes
+    popsicle
   ];
 
   # ---------- State version ----------

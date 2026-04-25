@@ -4,7 +4,6 @@
 { pkgs, ... }:
 {
   environment.systemPackages = with pkgs; [
-    brave     # Chromium-based browser
-    popsicle  # USB flashing tool
+    brave  # Chromium-based browser
   ];
 }

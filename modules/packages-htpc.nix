@@ -6,8 +6,8 @@
 {
   environment.systemPackages = with pkgs; [
     # ── Media players ─────────────────────────────────────────────────────
-    vlc   # Comprehensive player; handles virtually every container and codec
-    mpv   # Lightweight GPU-accelerated player
+    # mpv: best HTPC player — GPU-accelerated (VA-API), ffmpeg-backed, zero overhead
+    mpv
 
     # ── GStreamer full plugin set ─────────────────────────────────────────
     # Required for GNOME media apps (Totem), web browsers, and any

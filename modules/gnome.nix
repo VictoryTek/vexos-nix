@@ -20,8 +20,11 @@ let
   ];
 
   # Final list for this role.
+  # Totem (GNOME Videos) is excluded on htpc — mpv is the designated player there.
   gnomeAppsToInstall =
-    gnomeBaseApps
+    (lib.filter
+      (a: !(config.vexos.branding.role == "htpc" && a == "org.gnome.Totem"))
+      gnomeBaseApps)
     ++ lib.optionals (config.vexos.branding.role == "desktop") gnomeDesktopOnlyApps;
 
   # Short hash of the app list — changes when the list changes, invalidating
@@ -152,7 +155,7 @@ in
             htpc = [
               "brave-browser.desktop"
               "app.zen_browser.zen.desktop"
-              "tv.plex.PlexDesktop.desktop"
+              "plex-desktop.desktop"             # nixpkgs plex-desktop package
               "io.freetubeapp.FreeTube.desktop"
               "org.gnome.Nautilus.desktop"
               "io.github.up.desktop"
