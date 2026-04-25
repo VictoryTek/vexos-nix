@@ -22,11 +22,12 @@ let
     defaultApps)
   ++ config.vexos.flatpak.extraApps;
 
-  # Short hash of the desired app list, baked in at Nix evaluation time.
-  # When excludeApps or extraApps changes the hash changes, causing the
-  # stamp path to change and the service to re-run and sync.
+  # Short hash of the desired app list + excluded apps, baked in at Nix
+  # evaluation time.  Including excludeApps in the hash ensures the stamp
+  # changes whenever an app is added to the exclude list — even if that app
+  # was never in defaultApps — so the service re-runs and uninstalls it.
   appsListHash = builtins.substring 0 16
-    (builtins.hashString "sha256" (lib.concatStringsSep "," appsToInstall));
+    (builtins.hashString "sha256" (lib.concatStringsSep "," (appsToInstall ++ config.vexos.flatpak.excludeApps)));
 in
 {
   options.vexos.flatpak.enable = lib.mkOption {
