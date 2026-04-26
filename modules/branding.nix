@@ -7,9 +7,14 @@
 { pkgs, lib, config, ... }:
 let
   role          = config.vexos.branding.role;
-  pixmapsDir    = ../files/pixmaps + "/${role}";
-  bgLogosDir    = ../files/background_logos + "/${role}";
-  plymouthDir   = ../files/plymouth + "/${role}";
+  # Asset directory name used for pixmaps/background_logos/plymouth lookups.
+  # The "headless-server" role reuses the existing files/.../server/ assets,
+  # so it maps to "server" here while remaining a distinct role identity
+  # everywhere else (distroName override, downstream behaviour, etc.).
+  assetRole     = if role == "headless-server" then "server" else role;
+  pixmapsDir    = ../files/pixmaps + "/${assetRole}";
+  bgLogosDir    = ../files/background_logos + "/${assetRole}";
+  plymouthDir   = ../files/plymouth + "/${assetRole}";
 
   vexosLogos = pkgs.runCommand "vexos-logos" {} ''
     mkdir -p $out/share/pixmaps
@@ -66,7 +71,7 @@ let
 in
 {
   options.vexos.branding.role = lib.mkOption {
-    type        = lib.types.enum [ "desktop" "htpc" "server" "stateless" ];
+    type        = lib.types.enum [ "desktop" "htpc" "server" "stateless" "headless-server" ];
     default     = "desktop";
     description = "Role-specific subdirectory to use for branding pixmaps and background logos.";
   };

@@ -39,10 +39,11 @@
   services.xserver.enable = lib.mkForce false;
 
   # ---------- Branding ----------
-  # Reuse the "server" role to pick up existing server/ branding assets
-  # (pixmaps, background logos, Plymouth watermark, wallpapers).
+  # Use the "headless-server" role; branding.nix maps it to the existing
+  # files/.../server/ asset directories via its `assetRole` let-binding,
+  # so no asset duplication is required while keeping role identity distinct.
   # Override distroName to distinguish from the GUI server role.
-  vexos.branding.role     = "server";
+  vexos.branding.role     = "headless-server";
   system.nixos.distroName = lib.mkOverride 500 "VexOS Headless Server";
 
   # ---------- Users ----------
