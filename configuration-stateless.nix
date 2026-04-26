@@ -15,41 +15,22 @@
     ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix
     ./modules/impermanence.nix
+    ./modules/nix.nix
+    ./modules/locale.nix
+    ./modules/users.nix
   ];
-
-  # ---------- Bootloader ----------
-  # NOT configured here — bootloader is host-specific hardware configuration.
-  # Set it once in your local /etc/nixos/flake.nix using the bootloaderModule
-  # section provided in the template (template/etc-nixos-flake.nix).
-
-  # ---------- Networking (base) ----------
-  networking.hostName = lib.mkDefault "vexos";
-  # networking.networkmanager is managed in modules/network.nix
-
-  # ---------- Time / Locale ----------
-  time.timeZone = "America/Chicago";
-  i18n.defaultLocale = "en_US.UTF-8";
 
   # ---------- Branding ----------
   vexos.branding.role  = "stateless";
   boot.plymouth.enable = true;   # graphical boot splash
 
   # ---------- Users ----------
-  users.users.nimda = {
-    isNormalUser    = true;
-    description     = "nimda";
-    # Fallback password — only used when no stateless-user-override.nix exists in
-    # /etc/nixos.  migrate-to-stateless.sh reads the pre-migration hash from
-    # /etc/shadow and writes it to that override file so the original password
-    # carries forward.  stateless-setup.sh prompts for one.  "vexos" is only
-    # seen on a completely unconfigured first run where neither script ran.
-    initialPassword = "vexos";
-    extraGroups = [
-      "wheel"
-      "networkmanager"
-      "audio"     # for raw ALSA access (optional alongside PipeWire)
-    ];
-  };
+  # Fallback password — only used when no stateless-user-override.nix exists in
+  # /etc/nixos.  migrate-to-stateless.sh reads the pre-migration hash from
+  # /etc/shadow and writes it to that override file so the original password
+  # carries forward.  stateless-setup.sh prompts for one.  "vexos" is only
+  # seen on a completely unconfigured first run where neither script ran.
+  users.users.nimda.initialPassword = "vexos";
 
   # ---------- Impermanence ----------
   # Enable tmpfs-rooted ephemeral filesystem for the stateless role.
@@ -57,74 +38,6 @@
   # Filesystem impermanence: / is mounted as tmpfs by this module.
   # Run scripts/stateless-setup.sh to format the disk before first deploy.
   vexos.impermanence.enable = true;
-
-  # ---------- Nix settings ----------
-  nix.settings = {
-    experimental-features = [ "nix-command" "flakes" ];
-
-    # Trust wheel group users to use additional substituters and caches
-    trusted-users = [ "root" "@wheel" ];
-
-    # Deduplicate identical files in the store (saves significant disk space)
-    auto-optimise-store = true;
-
-    # Binary caches — fetch pre-built derivations instead of compiling locally.
-    # Declaring caches here (trusted system config) avoids the interactive
-    # "do you want to allow this substituter?" prompt that nixConfig in a flake
-    # triggers. The flake's nixConfig block has been removed; these settings
-    # cover the same caches unconditionally.
-    substituters = [
-      "https://cache.nixos.org"          # Official NixOS cache — always required
-    ];
-    trusted-public-keys = [
-      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-    ];
-
-    # Build concurrency — 1 job at a time, each using half the available cores.
-    # Prevents OOM on low-RAM machines; raise max-jobs on beefy hardware.
-    max-jobs = 1;
-    cores = 0; # 0 = auto-detect (uses all cores for the single active job)
-
-    # Nix daemon process priorities — keeps the system responsive during builds
-    # without killing the build on RAM-constrained hosts.
-    # (requires systemd; ignored on non-Linux)
-
-    # Automatically free store space during builds:
-    #   min-free: start GC when free store space drops below this (bytes)
-    #   max-free: stop GC once free store space reaches this
-    min-free = 1073741824;   # 1 GiB
-    max-free = 5368709120;   # 5 GiB
-
-    # Larger download buffer — prevents "download buffer is full" warnings
-    # on slow or unstable connections during large fetches (e.g. Steam).
-    download-buffer-size = 524288000; # 500 MiB
-
-    # Download only — do not keep build-time deps or .drv files after install
-    keep-outputs = false;
-    keep-derivations = false;
-  };
-
-  # Nix daemon: run builds at lower CPU and I/O priority so the
-  # desktop stays usable during a nixos-rebuild.
-  nix.daemonCPUSchedPolicy = "idle";
-  nix.daemonIOSchedClass = "idle";
-
-  # Automatic store garbage-collection: weekly, remove generations older than 7 days.
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 7d";
-  };
-
-  # Hard-link identical files in the store after every build
-  # (complements auto-optimise-store for any files added between GC runs).
-  nix.optimise = {
-    automatic = true;
-    dates = [ "weekly" ];
-  };
-
-  # ---------- Unfree packages (required for Steam, NVIDIA, proton-ge-bin) ----------
-  nixpkgs.config.allowUnfree = true;
 
   # ---------- System packages ----------
   # tor-browser: installed system-wide (not via Home Manager) so torbrowser.desktop

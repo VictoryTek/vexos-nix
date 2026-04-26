@@ -98,4 +98,7 @@
     # ── Generic: allow all input devices for the input group ──
     SUBSYSTEM=="input", MODE="0660", GROUP="input"
   '';
+
+  # Grant nimda access to GameMode CPU governor, input devices, and USB peripherals.
+  users.users.nimda.extraGroups = [ "gamemode" "input" "plugdev" ];
 }

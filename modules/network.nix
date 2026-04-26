@@ -6,6 +6,9 @@
   # NetworkManager (primary network management daemon)
   networking.networkmanager.enable = true;
 
+  # Default hostname — hosts/*.nix can override with a plain assignment.
+  networking.hostName = lib.mkDefault "vexos";
+
   # ── mDNS / Avahi ─────────────────────────────────────────────────────────
   # Required for .local hostname resolution and AirPlay via PipeWire/Avahi.
   services.avahi = {
