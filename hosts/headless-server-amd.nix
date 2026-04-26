@@ -8,6 +8,5 @@
     ../modules/gpu/amd-headless.nix
   ];
 
-  virtualisation.virtualbox.guest.enable = lib.mkForce false;
   system.nixos.distroName = "VexOS Headless Server AMD";
 }

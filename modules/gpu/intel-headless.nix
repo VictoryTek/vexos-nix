@@ -12,7 +12,7 @@
 #
 # For Intel Arc B-series (Battlemage), Meteor Lake, or Lunar Lake:
 #   Replace boot.kernelParams i915.enable_guc=3 with the xe driver equivalent.
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 {
   # GuC submission + HuC firmware loading — required for QSV transcoding
   boot.kernelParams = [ "i915.enable_guc=3" ];
@@ -30,4 +30,9 @@
     vpl-gpu-rt              # Intel oneVPL: Quick Sync Video hardware encode/decode (Gen12+)
     intel-compute-runtime   # OpenCL NEO + Level Zero: GPU compute on Arc/Xe/12th gen+
   ];
+
+  # Prevent hardware-configuration.nix (generated inside a VM) from enabling
+  # VirtualBox guest additions on bare-metal hosts. Guest additions fail to
+  # build against linuxPackages_latest (kernel 6.12+).
+  virtualisation.virtualbox.guest.enable = lib.mkForce false;
 }

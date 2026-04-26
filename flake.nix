@@ -125,12 +125,21 @@
     #   4. role.extraModules                       (impermanence / serverServicesModule)
     #   5. ./hosts/<role>-<gpu>.nix                (host file)
     #   6. legacyExtra                             ({ vexos.gpu.nvidiaDriverVariant = …; })
-    mkHost = { role, gpu, nvidiaVariant ? null }:
+    mkHost = { name, role, gpu, nvidiaVariant ? null }:
       let
         r           = roles.${role};
         hostFile    = ./hosts + "/${role}-${gpu}.nix";
         legacyExtra = lib.optional (nvidiaVariant != null)
                         { vexos.gpu.nvidiaDriverVariant = nvidiaVariant; };
+
+        # Variant stamp: identifies the active build variant in /etc/nixos/vexos-variant.
+        # Non-stateless: use standard environment.etc (file managed by NixOS etc activation).
+        # Stateless: use vexos.variant option which feeds a persistent-aware activation
+        # script in modules/impermanence.nix (bypasses tmpfs/bind-mount timing race).
+        variantModule =
+          if role == "stateless"
+          then { vexos.variant = name; }
+          else { environment.etc."nixos/vexos-variant".text = "${name}\n"; };
       in
       nixpkgs.lib.nixosSystem {
         inherit system;
@@ -141,7 +150,8 @@
           ++ [ (mkHomeManagerModule r.homeFile) ]
           ++ r.extraModules
           ++ [ hostFile ]
-          ++ legacyExtra;
+          ++ legacyExtra
+          ++ [ variantModule ];
       };
 
     # ── Host descriptor table — single source of truth for which systems exist ──
@@ -231,7 +241,7 @@
     nixosConfigurations = lib.listToAttrs (map (h: {
       name  = h.name;
       value = mkHost {
-        inherit (h) role gpu;
+        inherit (h) name role gpu;
         nvidiaVariant = h.nvidiaVariant or null;
       };
     }) hostList);

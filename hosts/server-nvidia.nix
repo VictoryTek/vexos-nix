@@ -8,6 +8,5 @@
     ../modules/gpu/nvidia.nix
   ];
 
-  virtualisation.virtualbox.guest.enable = lib.mkForce false;
   system.nixos.distroName = "VexOS Server NVIDIA";
 }

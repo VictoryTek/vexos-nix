@@ -17,10 +17,5 @@
     device = lib.mkDefault "/dev/nvme0n1";
   };
 
-  # Prevent hardware-configuration.nix (generated on a VM) from accidentally
-  # enabling VirtualBox guest additions on a bare-metal host. Guest additions
-  # fail to build against linuxPackages_latest (kernel 6.12+).
-  virtualisation.virtualbox.guest.enable = lib.mkForce false;
   system.nixos.distroName = "VexOS Stateless AMD";
-  vexos.variant = "vexos-stateless-amd";
 }

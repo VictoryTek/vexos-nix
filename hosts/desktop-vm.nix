@@ -17,9 +17,8 @@
   imports = [
     ../configuration-desktop.nix
     ../modules/gpu/vm.nix
+    ../modules/asus.nix
   ];
-
-  networking.hostName = lib.mkDefault "vexos";
 
   # vexos.btrfs.enable = false and vexos.swap.enable = false are set in
   # modules/gpu/vm.nix so they apply to both repo builds and the external

@@ -8,7 +8,5 @@
     ../modules/gpu/vm.nix
   ];
 
-  environment.etc."nixos/vexos-variant".text = "vexos-htpc-vm\n";
-  networking.hostName = lib.mkDefault "vexos";
   system.nixos.distroName = "VexOS HTPC VM";
 }

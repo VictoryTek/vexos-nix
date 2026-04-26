@@ -28,4 +28,9 @@
     in [
       "L+  /opt/rocm  -  -  -  -  ${rocmEnv}"
     ];
+
+  # Prevent hardware-configuration.nix (generated inside a VM) from enabling
+  # VirtualBox guest additions on bare-metal hosts. Guest additions fail to
+  # build against linuxPackages_latest (kernel 6.12+).
+  virtualisation.virtualbox.guest.enable = lib.mkForce false;
 }

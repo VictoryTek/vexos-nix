@@ -8,7 +8,5 @@
     ../modules/gpu/intel.nix
   ];
 
-  environment.etc."nixos/vexos-variant".text = "vexos-htpc-intel\n";
-  virtualisation.virtualbox.guest.enable = lib.mkForce false;
   system.nixos.distroName = "VexOS HTPC Intel";
 }
