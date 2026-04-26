@@ -16,11 +16,11 @@
     bat
     eza
     fzf
-    # NOTE: just is installed system-wide via modules/packages.nix.
+    # NOTE: just is installed system-wide via modules/packages-common.nix.
 
     # System utilities
     fastfetch
-    # NOTE: btop and inxi are installed system-wide via modules/packages.nix.
+    # NOTE: btop and inxi are installed system-wide via modules/packages-common.nix.
   ];
 
   # ── Shell ──────────────────────────────────────────────────────────────────

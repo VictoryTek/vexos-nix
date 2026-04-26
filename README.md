@@ -10,7 +10,7 @@
 </div>
 
 Personal NixOS config (GNOME, PipeWire, latest kernel). 
-Comes in seven roles:
+Comes in five roles:
 **Desktop** (full gaming/workstation stack), 
 **Stateless** (impermanent, minimal build, security-focused), 
 **Server** (GUI & Headless service stack), 
@@ -63,8 +63,8 @@ You can switch between variants (and roles) at any time — no reinstall require
 |---|---|
 | `vexos-desktop-amd` | AMD GPU (RADV, ROCm, LACT) |
 | `vexos-desktop-nvidia` | NVIDIA GPU (proprietary, open kernel modules) |
+| `vexos-desktop-nvidia-legacy535` | NVIDIA Maxwell/Pascal/Volta legacy — LTS alternative (535.x driver) |
 | `vexos-desktop-nvidia-legacy470` | NVIDIA Kepler legacy — GeForce 600/700 series (470.x driver) |
-| `vexos-desktop-nvidia-legacy390` | NVIDIA Fermi legacy — GeForce 400/500 series (390.x driver) |
 | `vexos-desktop-intel` | Intel iGPU or Arc dGPU |
 | `vexos-desktop-vm` | QEMU/KVM or VirtualBox guest |
 
@@ -84,8 +84,8 @@ You can switch between variants (and roles) at any time — no reinstall require
 |---|---|
 | `vexos-stateless-amd` | AMD GPU, minimal stack |
 | `vexos-stateless-nvidia` | NVIDIA GPU, minimal stack |
+| `vexos-stateless-nvidia-legacy535` | NVIDIA Maxwell/Pascal/Volta legacy, minimal stack |
 | `vexos-stateless-nvidia-legacy470` | NVIDIA Kepler legacy — GeForce 600/700 series, minimal stack |
-| `vexos-stateless-nvidia-legacy390` | NVIDIA Fermi legacy — GeForce 400/500 series, minimal stack |
 | `vexos-stateless-intel` | Intel iGPU or Arc dGPU, minimal stack |
 | `vexos-stateless-vm` | QEMU/KVM or VirtualBox guest, minimal stack |
 
@@ -105,6 +105,8 @@ You can switch between variants (and roles) at any time — no reinstall require
 |---|---|
 | `vexos-server-amd` | AMD GPU |
 | `vexos-server-nvidia` | NVIDIA GPU |
+| `vexos-server-nvidia-legacy535` | NVIDIA Maxwell/Pascal/Volta legacy |
+| `vexos-server-nvidia-legacy470` | NVIDIA Kepler legacy — GeForce 600/700 series |
 | `vexos-server-intel` | Intel iGPU or Arc dGPU |
 | `vexos-server-vm` | QEMU/KVM or VirtualBox guest |
 
@@ -114,6 +116,8 @@ You can switch between variants (and roles) at any time — no reinstall require
 |---|---|
 | `vexos-headless-server-amd` | AMD GPU |
 | `vexos-headless-server-nvidia` | NVIDIA GPU |
+| `vexos-headless-server-nvidia-legacy535` | NVIDIA Maxwell/Pascal/Volta legacy |
+| `vexos-headless-server-nvidia-legacy470` | NVIDIA Kepler legacy — GeForce 600/700 series |
 | `vexos-headless-server-intel` | Intel iGPU or Arc dGPU |
 | `vexos-headless-server-vm` | QEMU/KVM or VirtualBox guest |
 
@@ -133,8 +137,8 @@ You can switch between variants (and roles) at any time — no reinstall require
 |---|---|
 | `vexos-htpc-amd` | AMD GPU |
 | `vexos-htpc-nvidia` | NVIDIA GPU |
+| `vexos-htpc-nvidia-legacy535` | NVIDIA Maxwell/Pascal/Volta legacy |
 | `vexos-htpc-nvidia-legacy470` | NVIDIA Kepler legacy — GeForce 600/700 series |
-| `vexos-htpc-nvidia-legacy390` | NVIDIA Fermi legacy — GeForce 400/500 series |
 | `vexos-htpc-intel` | Intel iGPU or Arc dGPU |
 | `vexos-htpc-vm` | QEMU/KVM or VirtualBox guest |
 

@@ -33,15 +33,15 @@
     eza
     fzf
     wl-clipboard  # Wayland clipboard CLI (wl-copy / wl-paste)
-    # NOTE: just is installed system-wide via modules/packages.nix.
+    # NOTE: just is installed system-wide via modules/packages-common.nix.
 
     # System utilities
     fastfetch
     blivet-gui
-    # NOTE: btop and inxi are installed system-wide via modules/packages.nix.
+    # NOTE: btop and inxi are installed system-wide via modules/packages-common.nix.
 
     # NOTE: pavucontrol and protonplus are installed via Flatpak (see modules/flatpak.nix).
-    # brave is installed as a Nix package (see modules/packages.nix).
+    # brave is installed as a Nix package (see modules/packages-common.nix).
   ];
 
   # ── Shell ──────────────────────────────────────────────────────────────────
