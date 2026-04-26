@@ -6,6 +6,16 @@
 #          quality before pushing changes to GitHub.
 # Usage:   Run from repository root: bash scripts/preflight.sh
 #
+# Stages:
+#   [0/7] Nix + jq availability
+#   [1/7] nix flake check
+#   [2/7] Dry-build all variants (30 outputs)
+#   [3/7] hardware-configuration.nix not tracked
+#   [4/7] system.stateVersion (all 5 configuration-*.nix files)
+#   [5/7] flake.lock validation (committed, pinned, freshness)
+#   [6/7] Nix formatting
+#   [7/7] Secret scan
+#
 # NOTE (Windows users): This script must be made executable on the NixOS host.
 #   Option A — chmod:
 #     chmod +x scripts/preflight.sh
@@ -34,8 +44,8 @@ echo "  vexos-nix Preflight Validation"
 echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================================"
 echo ""
-# ---------- CHECK 0: Nix binary availability (HARD) -------------------------
-echo "[0/9] Checking for Nix installation..."
+# ---------- CHECK 0: Nix + jq availability (HARD for nix, WARN for jq) ------
+echo "[0/7] Checking for required tools..."
 if ! command -v nix &>/dev/null; then
   echo ""
   fail "nix is not installed or not in PATH"
@@ -55,13 +65,22 @@ if ! command -v nix &>/dev/null; then
   exit 1
 fi
 pass "nix $(nix --version 2>/dev/null | head -1 | sed 's/nix (Nix) //')"
+
+# Check for jq — required for flake.lock validation stages
+HAS_JQ=0
+if command -v jq &>/dev/null; then
+  HAS_JQ=1
+  pass "jq $(jq --version 2>/dev/null)"
+else
+  warn "jq not found — flake.lock pinning and freshness checks will be skipped"
+fi
 echo ""
 # ---------- CHECK 1: nix flake check (HARD / WARN if no hw-config) ----------
 # --impure is required because hardware-configuration.nix is intentionally
 # kept at /etc/nixos/ (generated per-host, not tracked in this repo).
 # If the host has not yet run nixos-generate-config the check is downgraded to
 # a warning so the preflight can still pass on fresh dev machines.
-echo "[1/9] Validating flake structure..."
+echo "[1/7] Validating flake structure..."
 if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
   warn "Skipping nix flake check — /etc/nixos/hardware-configuration.nix not found."
   warn "Run 'sudo nixos-generate-config' on the target host and retry."
@@ -76,44 +95,70 @@ fi
 echo ""
 
 # ---------- CHECK 2: nixos-rebuild dry-build (HARD / WARN if no hw-config) ---
-echo "[2/9] Verifying system closures (dry-build all variants)..."
+echo "[2/7] Verifying system closures (dry-build all variants)..."
+
+# Dynamically enumerate all nixosConfigurations output names.
+# --impure is required because hardware-configuration.nix lives at /etc/nixos/.
+TARGETS=""
+if [ -f /etc/nixos/hardware-configuration.nix ]; then
+  TARGETS=$(nix eval --impure --json '.#nixosConfigurations' --apply builtins.attrNames 2>/dev/null \
+    | jq -r '.[]' 2>/dev/null || true)
+fi
+
+# Fallback: hardcoded list if dynamic enumeration failed or jq unavailable.
+if [ -z "$TARGETS" ]; then
+  TARGETS="vexos-desktop-amd vexos-desktop-nvidia vexos-desktop-nvidia-legacy535 vexos-desktop-nvidia-legacy470 vexos-desktop-intel vexos-desktop-vm
+vexos-htpc-amd vexos-htpc-nvidia vexos-htpc-nvidia-legacy535 vexos-htpc-nvidia-legacy470 vexos-htpc-intel vexos-htpc-vm
+vexos-server-amd vexos-server-nvidia vexos-server-nvidia-legacy535 vexos-server-nvidia-legacy470 vexos-server-intel vexos-server-vm
+vexos-headless-server-amd vexos-headless-server-nvidia vexos-headless-server-nvidia-legacy535 vexos-headless-server-nvidia-legacy470 vexos-headless-server-intel vexos-headless-server-vm
+vexos-stateless-amd vexos-stateless-nvidia vexos-stateless-nvidia-legacy535 vexos-stateless-nvidia-legacy470 vexos-stateless-intel vexos-stateless-vm"
+fi
+
+TARGET_COUNT=$(echo "$TARGETS" | wc -w)
+echo "  Discovered ${TARGET_COUNT} nixosConfigurations outputs"
+
 if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
   warn "Skipping dry-build — /etc/nixos/hardware-configuration.nix not found."
   warn "Run 'sudo nixos-generate-config' on the target host and retry."
-elif command -v nixos-rebuild &>/dev/null; then
-  for TARGET in \
-    vexos-desktop-amd vexos-desktop-nvidia vexos-desktop-vm vexos-desktop-intel \
-    vexos-stateless-amd vexos-stateless-nvidia vexos-stateless-intel vexos-stateless-vm \
-    vexos-server-amd vexos-server-nvidia vexos-server-vm \
-    vexos-headless-server-amd vexos-headless-server-nvidia vexos-headless-server-vm; do
+elif command -v nixos-rebuild &>/dev/null && sudo -n true 2>/dev/null; then
+  DRY_FAIL=0
+  for TARGET in $TARGETS; do
     if sudo nixos-rebuild dry-build --flake ".#${TARGET}" 2>&1; then
       pass "nixos-rebuild dry-build .#${TARGET} passed"
     else
       fail "nixos-rebuild dry-build .#${TARGET} failed"
-      EXIT_CODE=1
+      DRY_FAIL=1
     fi
   done
+  if [ "$DRY_FAIL" -ne 0 ]; then
+    EXIT_CODE=1
+  fi
 else
-  # nixos-rebuild not available (e.g. developing on a non-NixOS host).
+  # nixos-rebuild not available or sudo not functional (e.g. developing on a
+  # non-NixOS host, or running in a container/CI without sudo).
   # Fall back to nix build --dry-run which evaluates the full closure without sudo.
-  warn "nixos-rebuild not found — falling back to 'nix build --dry-run' for each variant"
-  for TARGET in \
-    vexos-desktop-amd vexos-desktop-nvidia vexos-desktop-vm vexos-desktop-intel \
-    vexos-stateless-amd vexos-stateless-nvidia vexos-stateless-intel vexos-stateless-vm \
-    vexos-server-amd vexos-server-nvidia vexos-server-vm \
-    vexos-headless-server-amd vexos-headless-server-nvidia vexos-headless-server-vm; do
+  if command -v nixos-rebuild &>/dev/null; then
+    warn "sudo not available — falling back to 'nix build --dry-run' for each variant"
+  else
+    warn "nixos-rebuild not found — falling back to 'nix build --dry-run' for each variant"
+  fi
+  DRY_FAIL=0
+  for TARGET in $TARGETS; do
     if nix build --dry-run --impure ".#nixosConfigurations.${TARGET}.config.system.build.toplevel" 2>&1; then
       pass "nix build --dry-run .#${TARGET} passed"
     else
       fail "nix build --dry-run .#${TARGET} failed"
-      EXIT_CODE=1
+      DRY_FAIL=1
     fi
   done
+  if [ "$DRY_FAIL" -ne 0 ]; then
+    EXIT_CODE=1
+  fi
 fi
 echo ""
 
 # ---------- CHECK 3: hardware-configuration.nix not tracked (HARD) -----------
-echo "[3/9] Checking hardware-configuration.nix is not tracked in git..."
+echo "[3/7] Checking hardware-configuration.nix is not tracked in git..."
 if git ls-files hardware-configuration.nix | grep -q .; then
   fail "hardware-configuration.nix is tracked in git — remove it immediately"
   EXIT_CODE=1
@@ -123,11 +168,25 @@ fi
 echo ""
 
 # ---------- CHECK 4: system.stateVersion present (HARD) ----------------------
-echo "[4/9] Verifying system.stateVersion in configuration-desktop.nix..."
-if grep -q 'system\.stateVersion' configuration-desktop.nix; then
-  pass "system.stateVersion is present in configuration-desktop.nix"
-else
-  fail "system.stateVersion is missing from configuration-desktop.nix"
+echo "[4/7] Verifying system.stateVersion in all configuration files..."
+STATEVER_FAIL=0
+for CFG in \
+  configuration-desktop.nix \
+  configuration-htpc.nix \
+  configuration-server.nix \
+  configuration-headless-server.nix \
+  configuration-stateless.nix; do
+  if [ ! -f "$CFG" ]; then
+    fail "$CFG does not exist"
+    STATEVER_FAIL=1
+  elif grep -q 'system\.stateVersion' "$CFG"; then
+    pass "system.stateVersion is present in $CFG"
+  else
+    fail "system.stateVersion is missing from $CFG"
+    STATEVER_FAIL=1
+  fi
+done
+if [ "$STATEVER_FAIL" -ne 0 ]; then
   EXIT_CODE=1
 fi
 echo ""
@@ -141,25 +200,86 @@ if [ "$EXIT_CODE" -ne 0 ]; then
   exit "$EXIT_CODE"
 fi
 
-# ---------- CHECK 5: flake.lock freshness (WARN) -----------------------------
-echo "[5/9] Checking flake.lock freshness..."
-LOCK_HISTORY=$(git log -1 --format="%ct" -- flake.lock 2>/dev/null || true)
-if [ -z "$LOCK_HISTORY" ]; then
-  warn "flake.lock has no git history — commit it with: git add flake.lock"
+# ---------- CHECK 5: flake.lock validation (WARN / HARD for pinning) ---------
+echo "[5/7] Validating flake.lock..."
+echo "  --- 5a: flake.lock committed ---"
+if ! test -f flake.lock; then
+  warn "flake.lock does not exist — run: nix flake lock"
+elif git ls-files flake.lock | grep -q .; then
+  pass "flake.lock is tracked in git"
 else
-  LOCK_EPOCH="$LOCK_HISTORY"
-  NOW_EPOCH=$(date +%s)
-  AGE_DAYS=$(( (NOW_EPOCH - LOCK_EPOCH) / 86400 ))
-  if [ "$AGE_DAYS" -gt 30 ]; then
-    warn "flake.lock is ${AGE_DAYS} days old — consider running: nix flake update"
+  warn "flake.lock exists but is not tracked by git — run: git add flake.lock"
+fi
+
+echo "  --- 5b: flake.lock pinned inputs ---"
+if [ "$HAS_JQ" -eq 1 ] && [ -f flake.lock ]; then
+  # Every non-root node that has a "locked" field must also have "locked.rev".
+  UNPINNED=$(jq -r '
+    .nodes | to_entries[]
+    | select(.key != "root")
+    | select(.value.locked != null)
+    | select(.value.locked.rev == null)
+    | .key
+  ' flake.lock 2>/dev/null || true)
+  if [ -n "$UNPINNED" ]; then
+    fail "Unpinned inputs found in flake.lock (missing locked.rev):"
+    echo "$UNPINNED" | while read -r name; do
+      echo "    - $name"
+    done
+    EXIT_CODE=1
   else
-    pass "flake.lock updated ${AGE_DAYS} day(s) ago"
+    pass "All flake.lock inputs have pinned revisions"
   fi
+elif [ "$HAS_JQ" -eq 0 ]; then
+  warn "Skipping flake.lock pinning check — jq not available"
+else
+  warn "Skipping flake.lock pinning check — flake.lock not found"
+fi
+
+echo "  --- 5c: flake.lock freshness ---"
+# Configurable thresholds (days).
+FRESHNESS_WARN_DAYS=${PREFLIGHT_FRESHNESS_WARN:-30}
+FRESHNESS_ERROR_DAYS=${PREFLIGHT_FRESHNESS_ERROR:-90}
+
+if [ "$HAS_JQ" -eq 1 ] && [ -f flake.lock ]; then
+  NOW_EPOCH=$(date +%s)
+  STALE_WARN=""
+  STALE_ERR=""
+
+  # Check lastModified of each direct input (root's inputs).
+  DIRECT_INPUTS=$(jq -r '.nodes.root.inputs | .[] | if type == "array" then .[] else . end' flake.lock 2>/dev/null | sort -u || true)
+
+  for INPUT_NAME in $DIRECT_INPUTS; do
+    LAST_MOD=$(jq -r --arg n "$INPUT_NAME" '.nodes[$n].locked.lastModified // empty' flake.lock 2>/dev/null || true)
+    [ -n "$LAST_MOD" ] || continue
+    AGE_DAYS=$(( (NOW_EPOCH - LAST_MOD) / 86400 ))
+    if [ "$AGE_DAYS" -gt "$FRESHNESS_ERROR_DAYS" ]; then
+      STALE_ERR="${STALE_ERR}    - ${INPUT_NAME}: ${AGE_DAYS} days old\n"
+    elif [ "$AGE_DAYS" -gt "$FRESHNESS_WARN_DAYS" ]; then
+      STALE_WARN="${STALE_WARN}    - ${INPUT_NAME}: ${AGE_DAYS} days old\n"
+    fi
+  done
+
+  if [ -n "$STALE_ERR" ]; then
+    warn "Inputs older than ${FRESHNESS_ERROR_DAYS} days (consider 'nix flake update'):"
+    echo -e "$STALE_ERR"
+  fi
+  if [ -n "$STALE_WARN" ]; then
+    warn "Inputs older than ${FRESHNESS_WARN_DAYS} days:"
+    echo -e "$STALE_WARN"
+  fi
+  if [ -z "$STALE_ERR" ] && [ -z "$STALE_WARN" ]; then
+    pass "All direct inputs updated within ${FRESHNESS_WARN_DAYS} days"
+  fi
+elif [ "$HAS_JQ" -eq 0 ]; then
+  warn "Skipping flake.lock freshness check — jq not available"
+else
+  warn "Skipping flake.lock freshness check — flake.lock not found"
 fi
 echo ""
 
 # ---------- CHECK 6: Nix formatting (WARN) -----------------------------------
-echo "[6/9] Checking Nix formatting..."
+echo "[6/7] Checking Nix formatting..."
 if command -v nixpkgs-fmt &>/dev/null; then
   if nixpkgs-fmt --check . 2>&1; then
     pass "Nix formatting OK"
@@ -172,7 +292,7 @@ fi
 echo ""
 
 # ---------- CHECK 7: No hardcoded secrets (WARN) -----------------------------
-echo "[7/9] Scanning tracked .nix files for hardcoded secrets..."
+echo "[7/7] Scanning tracked .nix files for hardcoded secrets..."
 TRACKED_NIX=$(git ls-files '*.nix' 2>/dev/null || true)
 if [ -z "$TRACKED_NIX" ]; then
   warn "No tracked .nix files found — skipping secret scan"
@@ -186,17 +306,6 @@ else
   else
     pass "No hardcoded secret patterns found"
   fi
-fi
-echo ""
-
-# ---------- CHECK 8: flake.lock committed (WARN) -----------------------------
-echo "[8/9] Verifying flake.lock is committed..."
-if ! test -f flake.lock; then
-  warn "flake.lock does not exist — run: nix flake lock"
-elif git ls-files flake.lock | grep -q .; then
-  pass "flake.lock is tracked in git"
-else
-  warn "flake.lock exists but is not tracked by git — run: git add flake.lock"
 fi
 echo ""
 
