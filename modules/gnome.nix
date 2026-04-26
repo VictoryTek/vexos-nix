@@ -1,37 +1,14 @@
 # modules/gnome.nix
-# GNOME desktop: GDM Wayland, XDG portals, fonts, Ozone env var, printing, Bluetooth,
-# GNOME tooling, and GNOME Shell extensions.
+# Universal GNOME desktop base: GDM Wayland, XDG portals, fonts, Ozone env var,
+# printing, Bluetooth, GNOME tooling, and the role-agnostic GNOME Shell extensions.
+#
+# Role-specific additions (accent colour, dock favourites, role-only extensions,
+# Flatpak install service, extra excludePackages) live in:
+#   modules/gnome-desktop.nix
+#   modules/gnome-htpc.nix
+#   modules/gnome-server.nix
+#   modules/gnome-stateless.nix
 { config, pkgs, lib, ... }:
-let
-  # ── GNOME Flatpak app lists ────────────────────────────────────────────────
-  # Apps installed on every role.
-  gnomeBaseApps = [
-    "org.gnome.TextEditor"
-    "org.gnome.Loupe"
-    "org.gnome.Totem"
-  ];
-
-  # Apps installed only on the Desktop role.
-  gnomeDesktopOnlyApps = [
-    "org.gnome.Calculator"
-    "org.gnome.Calendar"
-    "org.gnome.Papers"
-    "org.gnome.Snapshot"
-  ];
-
-  # Final list for this role.
-  # Totem (GNOME Videos) is excluded on htpc — mpv is the designated player there.
-  gnomeAppsToInstall =
-    (lib.filter
-      (a: !(config.vexos.branding.role == "htpc" && a == "org.gnome.Totem"))
-      gnomeBaseApps)
-    ++ lib.optionals (config.vexos.branding.role == "desktop") gnomeDesktopOnlyApps;
-
-  # Short hash of the app list — changes when the list changes, invalidating
-  # the old stamp so the service re-runs and syncs (same pattern as flatpak.nix).
-  gnomeAppsHash = builtins.substring 0 16
-    (builtins.hashString "sha256" (lib.concatStringsSep "," gnomeAppsToInstall));
-in
 {
   # ── GNOME stack sourced from nixpkgs-unstable ──────────────────────────────
   # Replaces the GNOME desktop shell and its default-shipped applications with
@@ -98,85 +75,14 @@ in
   # System database is written during nixos-rebuild switch and is available before
   # any user session starts — critical for autoLogin where GNOME reads dconf at
   # session start before home-manager's user activation service completes.
+  #
+  # Universal keys only — accent-color, enabled-extensions, and favorite-apps
+  # are written by the role-specific gnome-<role>.nix module.
   programs.dconf.profiles.user = {
     enableUserDb = true;
     databases = [
       {
-        settings = let
-          role = config.vexos.branding.role;
-          accentColor = {
-            desktop   = "blue";
-            htpc      = "orange";
-            server    = "yellow";
-            stateless = "teal";
-          }.${role};
-          # Extensions shared by all roles (no gamemode).
-          commonExtensions = [
-            "appindicatorsupport@rgcjonas.gmail.com"
-            # "dash-to-dock@micxgx.gmail.com"  # disabled: autohide broken
-            "AlphabeticalAppGrid@stuarthayhurst"
-            "gnome-ui-tune@itstime.tech"
-            "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
-            "steal-my-focus-window@steal-my-focus-window"
-            "tailscale-status@maxgallup.github.com"
-            "caffeine@patapon.info"
-            "restartto@tiagoporsch.github.io"
-            "blur-my-shell@aunetx"
-            "background-logo@fedorahosted.org"
-          ];
-          # Desktop role adds the GameMode indicator.
-          enabledExtensions =
-            if role == "desktop"
-            then commonExtensions ++ [ "gamemodeshellextension@trsnaqe.com" ]
-            else commonExtensions;
-          # Role-specific dock favorites. Defined here so they are present in
-          # the system dconf database before home-manager activation runs —
-          # critical on the stateless role where the user dconf db starts empty
-          # on every boot due to impermanence (autoLogin fires before HM writes
-          # ~/.config/dconf/user).
-          favApps = {
-            desktop   = [
-              "brave-browser.desktop"
-              "app.zen_browser.zen.desktop"
-              "org.gnome.Nautilus.desktop"
-              "com.mitchellh.ghostty.desktop"
-              "io.github.up.desktop"
-              "org.gnome.Boxes.desktop"
-              "code.desktop"
-            ];
-            stateless = [
-              "brave-browser.desktop"
-              "torbrowser.desktop"
-              "app.zen_browser.zen.desktop"
-              "org.gnome.Nautilus.desktop"
-              "com.mitchellh.ghostty.desktop"
-              "io.github.up.desktop"
-            ];
-            htpc = [
-              "brave-browser.desktop"
-              "app.zen_browser.zen.desktop"
-              "plex-desktop.desktop"             # nixpkgs plex-desktop package
-              "io.freetubeapp.FreeTube.desktop"
-              "org.gnome.Nautilus.desktop"
-              "io.github.up.desktop"
-              "com.mitchellh.ghostty.desktop"
-              "system-update.desktop"
-            ];
-            server = [
-              "brave-browser.desktop"
-              "app.zen_browser.zen.desktop"
-              "org.gnome.Nautilus.desktop"
-              "com.mitchellh.ghostty.desktop"
-              "io.github.up.desktop"
-            ];
-          }.${role};
-        in {
-          # ── GNOME Shell ─────────────────────────────────────────────────
-          "org/gnome/shell" = {
-            enabled-extensions = enabledExtensions;
-            favorite-apps = favApps;
-          };
-
+        settings = {
           # ── Wallpaper (stable Nix store path via branding.nix) ──────────
           # vexos-wallpapers package deploys the role-specific wallpaper to
           # /run/current-system/sw/share/backgrounds/vexos/ at build time.
@@ -192,18 +98,12 @@ in
             icon-theme   = "kora";
             clock-format = "12h";
             color-scheme = "prefer-dark";
-            accent-color = accentColor;
           };
 
           # ── Window manager ──────────────────────────────────────────────
           "org/gnome/desktop/wm/preferences" = {
             button-layout = "appmenu:minimize,maximize,close";
           };
-
-          # ── Dock ────────────────────────────────────────────────────────
-          # "org/gnome/shell/extensions/dash-to-dock" = {
-          #   dock-position = "LEFT";
-          # };
 
           # ── Background logo extension ───────────────────────────────────
           "org/fedorahosted/background-logo-extension" = {
@@ -219,7 +119,8 @@ in
           # ── Housekeeping ────────────────────────────────────────────────
           "org/gnome/settings-daemon/plugins/housekeeping" = {
             donation-reminder-enabled = false;
-          };        };
+          };
+        };
       }
     ];
   };
@@ -258,6 +159,9 @@ in
   };
 
   # ── GNOME bloat reduction ─────────────────────────────────────────────────
+  # Common bloat list — applies to every role that imports this module.
+  # Role-specific additions (e.g. `papers` on non-desktop roles) live in
+  # the role's gnome-<role>.nix module.
   environment.gnome.excludePackages = with pkgs; [
     gnome-photos
     gnome-tour
@@ -280,11 +184,11 @@ in
     gnome-calculator  # Flatpak org.gnome.Calculator installed on desktop only
     gnome-calendar    # Flatpak org.gnome.Calendar installed on desktop only
     snapshot          # GNOME Camera — Flatpak org.gnome.Snapshot installed on desktop only
-  ] ++ lib.optionals (config.vexos.branding.role != "desktop") [
-    papers            # Flatpak org.gnome.Papers installed on desktop only
   ];
 
   # ── GNOME tooling & Shell extensions ─────────────────────────────────────
+  # Common extensions only — gamemode-shell-extension is added by
+  # modules/gnome-desktop.nix (it is the only role that enables it).
   environment.systemPackages = with pkgs; [
     # GNOME tooling
     unstable.gnome-tweaks                               # GNOME customisation GUI
@@ -301,7 +205,6 @@ in
     unstable.gnomeExtensions.appindicator               # System tray icons
     # unstable.gnomeExtensions.dash-to-dock             # macOS-style dock — disabled: autohide broken
     unstable.gnomeExtensions.alphabetical-app-grid      # Sort app grid alphabetically
-    unstable.gnomeExtensions.gamemode-shell-extension   # GameMode status indicator
     unstable.gnomeExtensions.gnome-40-ui-improvements   # UI tweaks
     unstable.gnomeExtensions.nothing-to-say             # Mic mute indicator
     unstable.gnomeExtensions.steal-my-focus-window      # Force window focus
@@ -311,65 +214,6 @@ in
     unstable.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
     unstable.gnomeExtensions.background-logo            # Desktop background logo
   ];
-
-  # ── GNOME default app Flatpaks ────────────────────────────────────────────
-  # Installs GNOME apps from Flathub on first boot (stamp is role+app-list-hash based).
-  # Calculator and Calendar are desktop role only; TextEditor, Loupe, Papers,
-  # and Totem are installed on all roles.  After initial install, Up manages updates.
-  # Skipped entirely when vexos.flatpak.enable = false (e.g. VM guests).
-  systemd.services.flatpak-install-gnome-apps = lib.mkIf config.services.flatpak.enable {
-    description = "Install GNOME Flatpak apps (once)";
-    wantedBy    = [ "multi-user.target" ];
-    after       = [ "flatpak-install-apps.service" ];
-    requires    = [ "flatpak-add-flathub.service" ];
-    path        = [ pkgs.flatpak ];
-    script = ''
-      STAMP="/var/lib/flatpak/.gnome-apps-installed-${gnomeAppsHash}"
-      if [ -f "$STAMP" ]; then exit 0; fi
-
-      # Require at least 1.5 GB free before attempting installs.
-      # Exit 0 (not 1) so the switch doesn't fail — stamp is not written,
-      # so the service will retry on the next boot.
-      AVAIL_MB=$(df /var/lib/flatpak --output=avail -BM 2>/dev/null | tail -1 | tr -d 'M ' || echo 0)
-      if [ "$AVAIL_MB" -lt 1536 ]; then
-        echo "flatpak: only ''${AVAIL_MB} MB free — need 1536 MB; skipping this boot"
-        exit 0
-      fi
-
-      ${lib.optionalString (config.vexos.branding.role != "desktop") ''
-      # Migration: uninstall desktop-only apps from non-desktop roles.
-      for app in ${lib.concatStringsSep " " gnomeDesktopOnlyApps}; do
-        if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
-          echo "flatpak: removing desktop-only app $app (role: ${config.vexos.branding.role})"
-          flatpak uninstall --noninteractive --assumeyes "$app" || true
-        fi
-      done
-      ''}
-      ${lib.optionalString (config.vexos.branding.role == "htpc") ''
-      # Migration: uninstall Totem on HTPC — mpv is the designated player.
-      if flatpak list --app --columns=application 2>/dev/null | grep -qx "org.gnome.Totem"; then
-        echo "flatpak: removing org.gnome.Totem (htpc role uses mpv)"
-        flatpak uninstall --noninteractive --assumeyes org.gnome.Totem || true
-      fi
-      ''}
-      flatpak install --noninteractive --assumeyes flathub \
-        ${lib.concatStringsSep " \\\n        " gnomeAppsToInstall}
-
-      rm -f /var/lib/flatpak/.gnome-apps-installed \
-            /var/lib/flatpak/.gnome-apps-installed-*
-      touch "$STAMP"
-    '';
-    unitConfig = {
-      StartLimitIntervalSec = 600;
-      StartLimitBurst       = 10;
-    };
-    serviceConfig = {
-      Type            = "oneshot";
-      RemainAfterExit = true;
-      Restart         = "on-failure";
-      RestartSec      = 60;
-    };
-  };
 
   # ── Fonts ─────────────────────────────────────────────────────────────────
   fonts = {

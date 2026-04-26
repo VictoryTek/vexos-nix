@@ -3,6 +3,7 @@
 {
   imports = [
     ./modules/gnome.nix
+    ./modules/gnome-server.nix
     ./modules/audio.nix
     ./modules/gpu.nix
     ./modules/branding.nix

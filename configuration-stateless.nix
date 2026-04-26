@@ -3,6 +3,7 @@
 {
   imports = [
     ./modules/gnome.nix
+    ./modules/gnome-stateless.nix
     ./modules/audio.nix
     ./modules/gpu.nix
     ./modules/flatpak.nix
