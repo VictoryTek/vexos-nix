@@ -125,11 +125,30 @@
   # ---------- Unfree packages (required for Steam, NVIDIA, proton-ge-bin) ----------
   nixpkgs.config.allowUnfree = true;
 
-  # ---------- Privacy browser ----------
-  # tor-browser is a system package (not HM user package) so it lands in
-  # /run/current-system/sw/share/applications/ — always visible to GNOME
-  # regardless of Home Manager activation timing on the fresh tmpfs home.
-  environment.systemPackages = [ pkgs.tor-browser ];
+  # ---------- System packages ----------
+  # tor-browser: installed system-wide (not via Home Manager) so torbrowser.desktop
+  # lands in /run/current-system/sw/share/applications/ and is always visible to
+  # GNOME regardless of Home Manager activation timing on the fresh tmpfs home.
+  #
+  # gimp-hidden: a minimal NoDisplay=true desktop entry for org.gimp.GIMP.
+  # Placed in the Nix system profile share dir, which XDG_DATA_DIRS searches
+  # BEFORE /var/lib/flatpak/exports/share (added via lib.mkAfter in flatpak.nix).
+  # The first match in the search path wins, so GNOME hides the GIMP Flatpak
+  # from the app grid immediately at session start — before Home Manager writes
+  # its own ~/.local/share/applications override.
+  environment.systemPackages = [
+    pkgs.tor-browser
+    (pkgs.writeTextFile {
+      name        = "gimp-hidden";
+      destination = "/share/applications/org.gimp.GIMP.desktop";
+      text        = ''
+        [Desktop Entry]
+        Name=GIMP
+        Type=Application
+        NoDisplay=true
+      '';
+    })
+  ];
 
   # ---------- Flatpak ----------
   # Prevent GIMP from being installed on stateless. It is never in
