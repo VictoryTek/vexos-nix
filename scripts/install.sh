@@ -186,7 +186,85 @@ echo ""
 echo -e "${BOLD}Building ${CYAN}${FLAKE_TARGET}${RESET}${BOLD}...${RESET}"
 echo ""
 
-if sudo nixos-rebuild switch --flake "/etc/nixos#${FLAKE_TARGET}"; then
+# ---------- UEFI / BIOS preflight check -------------------------------------
+# vexos-nix defaults to systemd-boot (UEFI). On Legacy BIOS machines we patch
+# /etc/nixos/flake.nix to use GRUB before building.
+if [ ! -d /sys/firmware/efi ]; then
+  echo -e "${YELLOW}${BOLD}⚠ Legacy BIOS / non-UEFI system detected.${RESET}"
+  echo ""
+  echo "  vexos-nix defaults to systemd-boot (UEFI). This machine will be"
+  echo "  configured to use GRUB instead."
+  echo ""
+  echo "  Disk layout for GRUB (Legacy BIOS):"
+  lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT 2>/dev/null || true
+  echo ""
+  echo "  GRUB is installed to the MBR of a whole disk (e.g. /dev/sda),"
+  echo "  not a partition. Provide the disk device, not a partition number."
+  echo ""
+  GRUB_DEVICE=""
+  while [ -z "$GRUB_DEVICE" ]; do
+    printf "  Enter disk device for GRUB (e.g. /dev/sda, /dev/nvme0n1): "
+    read -r GRUB_DEVICE </dev/tty
+    if [ ! -b "$GRUB_DEVICE" ]; then
+      echo -e "  ${RED}'${GRUB_DEVICE}' is not a block device. Try again.${RESET}"
+      GRUB_DEVICE=""
+    fi
+  done
+  echo ""
+  echo "  Patching /etc/nixos/flake.nix to use GRUB on ${GRUB_DEVICE}..."
+  # Replace the bootloaderModule block in flake.nix with a GRUB stanza.
+  # Uses Python for reliable multi-line replacement (always available on NixOS).
+  python3 - "$GRUB_DEVICE" /etc/nixos/flake.nix <<'PYEOF'
+import sys, re
+device, path = sys.argv[1], sys.argv[2]
+with open(path) as f:
+    text = f.read()
+grub_block = (
+    "    bootloaderModule = { ... }: {\n"
+    "      boot.loader.systemd-boot.enable = false;\n"
+    "      boot.loader.grub = {\n"
+    "        enable     = true;\n"
+    "        efiSupport = false;\n"
+    f"        device     = \"{device}\";\n"
+    "      };\n"
+    "    };"
+)
+pattern = r'bootloaderModule = \{ \.\.\. \}: \{[^}]*\};'
+if not re.search(pattern, text, re.DOTALL):
+    print("error: could not locate bootloaderModule block in flake.nix", file=sys.stderr)
+    sys.exit(1)
+text = re.sub(pattern, grub_block, text, count=1, flags=re.DOTALL)
+with open(path, 'w') as f:
+    f.write(text)
+print("  Patched successfully.")
+PYEOF
+  echo -e "  ${GREEN}✓ flake.nix updated for GRUB (${GRUB_DEVICE}).${RESET}"
+  echo ""
+else
+  # UEFI system — ensure /boot (EFI system partition) is mounted before building.
+  if ! findmnt /boot >/dev/null 2>&1; then
+    echo -e "${YELLOW}${BOLD}⚠ /boot is not mounted.${RESET}"
+    echo ""
+    echo "  The EFI system partition must be mounted at /boot before building."
+    echo "  Identify your EFI partition (small FAT32, usually 512M–1G):"
+    echo ""
+    lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT 2>/dev/null || true
+    echo ""
+    printf "  Enter EFI partition device (e.g. /dev/sda1, /dev/nvme0n1p1): "
+    read -r EFI_DEV </dev/tty
+    if [ -b "$EFI_DEV" ]; then
+      echo "  Mounting ${EFI_DEV} at /boot..."
+      sudo mount "$EFI_DEV" /boot
+      echo -e "  ${GREEN}✓ /boot mounted.${RESET}"
+      echo ""
+    else
+      echo -e "  ${RED}✗ '${EFI_DEV}' is not a block device. Mount /boot manually and re-run.${RESET}"
+      exit 1
+    fi
+  fi
+fi
+
+
   echo ""
   echo -e "${GREEN}${BOLD}✓ Build and switch successful!${RESET}"
   echo ""

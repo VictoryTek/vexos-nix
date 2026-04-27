@@ -126,10 +126,10 @@ in
 
   # ── Boot menu entry cleanup ───────────────────────────────────────────────
   # Post-process systemd-boot .conf entries after each rebuild to shorten the
-  # verbose auto-generated title.
+  # verbose auto-generated title.  Skipped automatically on GRUB/BIOS systems.
   # Auto-generated: "VexOS Desktop VM (Generation N VexOS Desktop VM Xantusia 25.11 (Linux 6.6.132))"
   # Trimmed to:     "VexOS Desktop VM (Generation N Xantusia 25.11)"
-  boot.loader.systemd-boot.extraInstallCommands = ''
+  boot.loader.systemd-boot.extraInstallCommands = lib.mkIf config.boot.loader.systemd-boot.enable ''
     for f in /boot/loader/entries/*.conf; do
       [ -f "$f" ] || continue
       # Strip ", built on YYYY-MM-DD" date suffix
