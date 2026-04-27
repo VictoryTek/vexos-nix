@@ -375,7 +375,14 @@ service-info service="":
             [ -z "$_mc_ver" ] && _mc_ver=$(ls /nix/store/*papermc*/share/papermc/paper-*.jar 2>/dev/null \
                 | head -1 | grep -oP '(?<=paper-)\S+(?=\.jar)')
             [ -z "$_mc_ver" ] && _mc_ver="unknown"
-            printf "  %-18s  Version: Minecraft Java Edition %s\n"                                      "$1" "$_mc_ver"
+            _java_bin=$(systemctl show minecraft-server.service -p ExecStart --value 2>/dev/null \
+                | grep -oP '/nix/store/\S+/bin/java' | head -1)
+            [ -z "$_java_bin" ] && _java_bin=$(readlink -f "$(command -v java 2>/dev/null)" 2>/dev/null)
+            _java_ver=$("$_java_bin" -version 2>&1 | grep -oP '(?<=version ")\d+' | head -1 2>/dev/null)
+            [ -z "$_java_ver" ] && _java_ver="unknown"
+            printf "  %-18s  Version: Minecraft Java Edition %s\n"                                       "$1" "$_mc_ver"
+            printf "  %-18s  Java:    Server running Java %s  |  Clients: Java %s required\n"           "" "$_java_ver" "$_java_ver"
+            printf "  %-18s           (official Minecraft launcher bundles Java automatically)\n"        ""
             printf "  %-18s  Port :25565 (Minecraft Java TCP/UDP)\n"                                    ""
             printf "  %-18s  Connect: Minecraft Java → Multiplayer → <server-ip>:25565\n"              ""
             printf "  %-18s  Files:   /var/lib/minecraft/  (server.properties, plugins/, world/)\n"   ""
@@ -752,8 +759,14 @@ enable service: _require-server-role
         [ -z "$_mc_ver" ] && _mc_ver=$(ls /nix/store/*papermc*/share/papermc/paper-*.jar 2>/dev/null \
             | head -1 | grep -oP '(?<=paper-)\S+(?=\.jar)')
         [ -z "$_mc_ver" ] && _mc_ver="unknown (start the server once to detect)"
+        _java_bin=$(systemctl show minecraft-server.service -p ExecStart --value 2>/dev/null \
+            | grep -oP '/nix/store/\S+/bin/java' | head -1)
+        [ -z "$_java_bin" ] && _java_bin=$(readlink -f "$(command -v java 2>/dev/null)" 2>/dev/null)
+        _java_ver=$("$_java_bin" -version 2>&1 | grep -oP '(?<=version ")\d+' | head -1 2>/dev/null)
+        [ -z "$_java_ver" ] && _java_ver="unknown"
         echo "  Service:  minecraft-server.service"
         echo "  Version:  Minecraft Java Edition $_mc_ver"
+        echo "  Java:     Server running Java $_java_ver  |  Clients: Java $_java_ver required (official launcher bundles it automatically)"
         echo "  Port:     25565 (TCP/UDP) — open in your firewall/router for external access."
         echo "  About:    High-performance PaperMC Minecraft Java Edition server (Spigot fork with plugin support)."
         echo ""
