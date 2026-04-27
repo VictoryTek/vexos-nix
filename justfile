@@ -622,6 +622,25 @@ enable service: _require-server-role
         fi
     fi
 
+    # Proxmox IP prompt — ipAddress is required, ask at enable time
+    if [ "$SERVICE" = "proxmox" ]; then
+        IP_OPTION="vexos.server.proxmox.ipAddress"
+        _proxmox_ip=""
+        while [ -z "$_proxmox_ip" ]; do
+            read -r -p "  Enter this server's IP address (required by Proxmox VE): " _proxmox_ip
+            # Basic validation: must look like an IP
+            if ! echo "$_proxmox_ip" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
+                echo "  Invalid IP address. Please enter a valid IPv4 address (e.g. 192.168.1.100)."
+                _proxmox_ip=""
+            fi
+        done
+        if grep -qP "^\s*#?\s*${IP_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+            sudo sed -i -E "s|^(\s*)#?\s*(${IP_OPTION//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${IP_OPTION} = \"${_proxmox_ip}\";|" "$SVC_FILE"
+        else
+            sudo sed -i "s|${OPTION} = true;|${OPTION} = true;\n  ${IP_OPTION} = \"${_proxmox_ip}\";|" "$SVC_FILE"
+        fi
+    fi
+
     echo "✓ Enabled: $SERVICE"
     echo "  → Run 'just rebuild' to apply."
     echo ""
