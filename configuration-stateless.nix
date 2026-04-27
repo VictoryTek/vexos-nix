@@ -14,6 +14,7 @@
     ./modules/branding.nix
     ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix
+    ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on stateless
     ./modules/impermanence.nix
     ./modules/nix.nix
     ./modules/locale.nix
