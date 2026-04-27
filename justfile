@@ -458,7 +458,7 @@ status service: _require-server-role
       nginx)          UNITS="nginx";                URLS="http://localhost:80" ;;
       ntfy)           UNITS="ntfy";                 URLS="http://localhost:2586" ;;
       overseerr)      UNITS="overseerr";            URLS="http://localhost:5055" ;;
-      papermc)        UNITS="papermc";              URLS="" ;;
+      papermc)        UNITS="minecraft-server";     URLS="" ;;
       plex)           UNITS="plex";                 URLS="http://localhost:32400/web" ;;
       rustdesk)       UNITS="rustdesk-server hbbr hbbs"; URLS="" ;;
       scrutiny)       UNITS="scrutiny";             URLS="http://localhost:8080" ;;
