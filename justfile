@@ -298,7 +298,7 @@ rollforward:
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "docker jellyfin plex audiobookshelf tautulli overseerr jellyseerr arr komga kavita papermc nextcloud syncthing immich forgejo vaultwarden nginx caddy traefik adguard headscale cockpit uptime-kuma homepage grafana scrutiny ntfy mealie rustdesk home-assistant stirling-pdf proxmox"
+_server_service_names := "adguard arr audiobookshelf caddy cockpit docker forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita komga mealie nextcloud nginx ntfy overseerr papermc plex proxmox rustdesk scrutiny stirling-pdf syncthing tautulli traefik uptime-kuma vaultwarden"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -316,12 +316,22 @@ _require-server-role:
 [private]
 list-services:
     #!/usr/bin/env bash
+    _hdr() { printf "\n  \033[1m%s\033[0m\n" "$1"; }
+    _svc() { printf "    %s\n" "$1"; }
     echo ""
     echo "Available server service modules:"
-    echo ""
-    for svc in {{_server_service_names}}; do
-        printf "  %s\n" "$svc"
-    done
+    _hdr "Books & Reading";            _svc kavita;           _svc komga
+    _hdr "Files & Storage";            _svc immich;           _svc nextcloud;       _svc syncthing
+    _hdr "Gaming";                     _svc papermc
+    _hdr "Infrastructure";             _svc caddy;            _svc docker;          _svc nginx;           _svc traefik
+    _hdr "Media";                      _svc audiobookshelf;   _svc jellyfin;        _svc plex;            _svc tautulli
+    _hdr "Media Requests & Automation";_svc arr;              _svc jellyseerr;      _svc overseerr
+    _hdr "Monitoring & Admin";         _svc cockpit;          _svc grafana;         _svc scrutiny;        _svc uptime-kuma
+    _hdr "Networking & Security";      _svc adguard;          _svc headscale;       _svc vaultwarden
+    _hdr "Productivity";               _svc forgejo;          _svc homepage;        _svc mealie;          _svc stirling-pdf
+    _hdr "Remote Access";              _svc rustdesk
+    _hdr "Smart Home & Notifications"; _svc home-assistant;   _svc ntfy
+    _hdr "Experimental";               _svc proxmox
     echo ""
     echo "Use 'just enable <service>' to enable a module on a server host."
     echo ""
@@ -498,18 +508,31 @@ services: _require-server-role
         echo "No services have been enabled yet. Run 'just enable <service>' to get started."
         exit 0
     fi
+    _check() {
+        local svc="$1"
+        local nix_name
+        nix_name=$(echo "$svc" | sed 's/-/_/g')
+        if grep -qP "vexos\.server\.(${svc}|${nix_name})\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+            printf "    \033[32m✓\033[0m %s\n" "$svc"
+        else
+            printf "    \033[90m✗\033[0m %s\n" "$svc"
+        fi
+    }
+    _hdr() { printf "\n  \033[1m%s\033[0m\n" "$1"; }
     echo ""
     echo "Server services (/etc/nixos/server-services.nix):"
-    echo ""
-    for svc in {{_server_service_names}}; do
-        nix_name=$(echo "$svc" | sed 's/-/_/g')
-        # Handle both dash and underscore names in the file
-        if grep -qP "vexos\.server\.(${svc}|${nix_name})\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
-            printf "  \033[32m✓\033[0m %s\n" "$svc"
-        else
-            printf "  \033[90m✗\033[0m %s\n" "$svc"
-        fi
-    done
+    _hdr "Books & Reading";            _check kavita;         _check komga
+    _hdr "Files & Storage";            _check immich;         _check nextcloud;     _check syncthing
+    _hdr "Gaming";                     _check papermc
+    _hdr "Infrastructure";             _check caddy;          _check docker;        _check nginx;         _check traefik
+    _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check plex;          _check tautulli
+    _hdr "Media Requests & Automation";_check arr;            _check jellyseerr;    _check overseerr
+    _hdr "Monitoring & Admin";         _check cockpit;        _check grafana;       _check scrutiny;      _check uptime-kuma
+    _hdr "Networking & Security";      _check adguard;        _check headscale;     _check vaultwarden
+    _hdr "Productivity";               _check forgejo;        _check homepage;      _check mealie;        _check stirling-pdf
+    _hdr "Remote Access";              _check rustdesk
+    _hdr "Smart Home & Notifications"; _check home-assistant; _check ntfy
+    _hdr "Experimental";               _check proxmox
     echo ""
 
 # Enable a server service module.  Usage: just enable docker
