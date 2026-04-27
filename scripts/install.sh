@@ -271,7 +271,8 @@ else
   fi
 fi
 
-
+# ---------- Build & switch ---------------------------------------------------
+if sudo nixos-rebuild switch --flake "/etc/nixos#${FLAKE_TARGET}"; then
   echo ""
   echo -e "${GREEN}${BOLD}✓ Build and switch successful!${RESET}"
   echo ""
