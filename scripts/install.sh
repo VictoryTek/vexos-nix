@@ -212,32 +212,39 @@ if [ ! -d /sys/firmware/efi ]; then
   done
   echo ""
   echo "  Patching /etc/nixos/flake.nix to use GRUB on ${GRUB_DEVICE}..."
-  # Replace the bootloaderModule block in flake.nix with a GRUB stanza.
-  # Uses Python for reliable multi-line replacement (always available on NixOS).
-  python3 - "$GRUB_DEVICE" /etc/nixos/flake.nix <<'PYEOF'
-import sys, re
-device, path = sys.argv[1], sys.argv[2]
-with open(path) as f:
-    text = f.read()
-grub_block = (
-    "    bootloaderModule = { ... }: {\n"
-    "      boot.loader.systemd-boot.enable = false;\n"
-    "      boot.loader.grub = {\n"
-    "        enable     = true;\n"
-    "        efiSupport = false;\n"
-    f"        device     = \"{device}\";\n"
-    "      };\n"
-    "    };"
-)
-pattern = r'bootloaderModule = \{ \.\.\. \}: \{[^}]*\};'
-if not re.search(pattern, text, re.DOTALL):
-    print("error: could not locate bootloaderModule block in flake.nix", file=sys.stderr)
-    sys.exit(1)
-text = re.sub(pattern, grub_block, text, count=1, flags=re.DOTALL)
-with open(path, 'w') as f:
-    f.write(text)
-print("  Patched successfully.")
-PYEOF
+  # Replace the bootloaderModule block using awk (always available on NixOS ISO).
+  # Tracks brace depth to reliably skip the old block regardless of comments/content.
+  awk -v device="$GRUB_DEVICE" '
+    /^    bootloaderModule = \{ \.\.\. \}: \{/ {
+      print "    bootloaderModule = { ... }: {"
+      print "      boot.loader.systemd-boot.enable = false;"
+      print "      boot.loader.grub = {"
+      print "        enable     = true;"
+      print "        efiSupport = false;"
+      print "        device     = \"" device "\";"
+      print "      };"
+      print "    };"
+      in_block = 1
+      depth = 1
+      next
+    }
+    in_block {
+      for (i = 1; i <= length($0); i++) {
+        c = substr($0, i, 1)
+        if (c == "{") depth++
+        else if (c == "}") depth--
+      }
+      if (depth <= 0) in_block = 0
+      next
+    }
+    { print }
+  ' /etc/nixos/flake.nix > /tmp/vexos-flake.tmp
+  if ! grep -q 'grub' /tmp/vexos-flake.tmp; then
+    echo -e "  ${RED}✗ Patch failed — bootloaderModule block not found in flake.nix.${RESET}" >&2
+    rm -f /tmp/vexos-flake.tmp
+    exit 1
+  fi
+  sudo mv /tmp/vexos-flake.tmp /etc/nixos/flake.nix
   echo -e "  ${GREEN}✓ flake.nix updated for GRUB (${GRUB_DEVICE}).${RESET}"
   echo ""
 else
