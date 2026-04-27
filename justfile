@@ -564,6 +564,21 @@ enable service: _require-server-role
         sudo sed -i "s|}|  ${OPTION} = true;\n}|" "$SVC_FILE"
     fi
 
+    # Plex Pass prompt — ask once at enable time
+    PLEX_PASS_ENABLED=false
+    if [ "$SERVICE" = "plex" ]; then
+        PP_OPTION="vexos.server.plex.plexPass"
+        read -r -p "  Do you have a Plex Pass subscription? (enables hardware transcoding) [y/N] " _pp
+        if [[ "$_pp" =~ ^[Yy]$ ]]; then
+            if grep -qP "^\s*#?\s*${PP_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+                sudo sed -i -E "s|^(\s*)#?\s*(${PP_OPTION//./\\.})\s*=\s*(true|false)\s*;|\1${PP_OPTION} = true;|" "$SVC_FILE"
+            else
+                sudo sed -i "s|${OPTION} = true;|${OPTION} = true;\n  ${PP_OPTION} = true;|" "$SVC_FILE"
+            fi
+            PLEX_PASS_ENABLED=true
+        fi
+    fi
+
     echo "✓ Enabled: $SERVICE"
     echo "  → Run 'just rebuild' to apply."
     echo ""
@@ -706,6 +721,11 @@ enable service: _require-server-role
         echo "  Web UI:   http://<server-ip>:32400/web"
         echo "  About:    Proprietary media server with apps on virtually every platform. Supports hardware transcoding with Plex Pass."
         echo "  Note:     Claim your server at plex.tv/claim on first setup (requires a free Plex account)."
+        if [ "$PLEX_PASS_ENABLED" = "true" ]; then
+            echo "  Plex Pass: Hardware transcoding enabled (vexos.server.plex.plexPass = true)."
+        else
+            echo "  Plex Pass: Disabled. Re-enable with: just enable-plex-pass"
+        fi
         ;;
       rustdesk)
         echo "  Service:  rustdesk-server.service"
@@ -768,6 +788,40 @@ enable service: _require-server-role
         echo "            nix.settings.trusted-public-keys = [ \"proxmox-nixos:D9RYSWpQQC/msZUWphOY2I5RLH5Dd6yQcaHIuug7dWM=\" ]"
         ;;
     esac
+    echo ""
+
+# Toggle Plex Pass hardware transcoding on/off for an already-enabled Plex installation.
+# Usage: just enable-plex-pass   /   just disable-plex-pass
+enable-plex-pass: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SVC_FILE="/etc/nixos/server-services.nix"
+    PP_OPTION="vexos.server.plex.plexPass"
+    if ! grep -q "vexos.server.plex.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+        echo "error: Plex is not enabled. Run 'just enable plex' first." >&2
+        exit 1
+    fi
+    if grep -qP "^\s*#?\s*${PP_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+        sudo sed -i -E "s|^(\s*)#?\s*(${PP_OPTION//./\\.})\s*=\s*(true|false)\s*;|\1${PP_OPTION} = true;|" "$SVC_FILE"
+    else
+        sudo sed -i "s|vexos.server.plex.enable = true;|vexos.server.plex.enable = true;\n  ${PP_OPTION} = true;|" "$SVC_FILE"
+    fi
+    echo "✓ Plex Pass hardware transcoding enabled."
+    echo "  → Run 'just rebuild' to apply."
+    echo ""
+
+disable-plex-pass: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SVC_FILE="/etc/nixos/server-services.nix"
+    PP_OPTION="vexos.server.plex.plexPass"
+    if grep -qP "^\s*${PP_OPTION//./\\.}\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+        sudo sed -i -E "s|^(\s*)(${PP_OPTION//./\\.})\s*=\s*true\s*;|\1${PP_OPTION} = false;|" "$SVC_FILE"
+        echo "✓ Plex Pass hardware transcoding disabled."
+        echo "  → Run 'just rebuild' to apply."
+    else
+        echo "Plex Pass is already disabled (or was never set)."
+    fi
     echo ""
 
 # Disable a server service module.  Usage: just disable docker

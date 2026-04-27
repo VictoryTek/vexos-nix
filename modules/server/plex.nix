@@ -32,5 +32,14 @@ in
     };
 
     users.users.nimda.extraGroups = [ "plex" ];
+
+    # Without Plex Pass, hardware transcoding is unused. The NixOS plex module
+    # unconditionally adds /run/opengl-driver/lib to the service LD_LIBRARY_PATH,
+    # but the system libva there references __isoc23_sscanf (glibc >= 2.38) which
+    # Plex's bundled libc does not provide, causing plex.service to exit 127.
+    # Clearing LD_LIBRARY_PATH when hardware transcoding is off prevents Plex
+    # from loading the incompatible system VA-API libraries.
+    systemd.services.plex.environment.LD_LIBRARY_PATH =
+      lib.mkIf (!cfg.plexPass) (lib.mkForce "");
   };
 }
