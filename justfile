@@ -370,12 +370,18 @@ service-info service="":
         ntfy)            printf "  %-18s  Web UI  http://<server-ip>:2586\n"                                           "$1" ;;
         overseerr)       printf "  %-18s  Web UI  http://<server-ip>:5055   ⚠ conflicts with jellyseerr\n"             "$1" ;;
         papermc)
-            printf "  %-18s  Port :25565 (Minecraft Java TCP/UDP)\n"                                        "$1"
+            _mc_ver=$(grep -m1 'Starting minecraft server version\|server version' /var/lib/minecraft/logs/latest.log 2>/dev/null \
+                | grep -oP '(?<=version )\S+' | head -1)
+            [ -z "$_mc_ver" ] && _mc_ver=$(ls /nix/store/*papermc*/share/papermc/paper-*.jar 2>/dev/null \
+                | head -1 | grep -oP '(?<=paper-)\S+(?=\.jar)')
+            [ -z "$_mc_ver" ] && _mc_ver="unknown"
+            printf "  %-18s  Version: Minecraft Java Edition %s\n"                                      "$1" "$_mc_ver"
+            printf "  %-18s  Port :25565 (Minecraft Java TCP/UDP)\n"                                    ""
             printf "  %-18s  Connect: Minecraft Java → Multiplayer → <server-ip>:25565\n"              ""
             printf "  %-18s  Files:   /var/lib/minecraft/  (server.properties, plugins/, world/)\n"   ""
             printf "  %-18s  Memory:  set vexos.server.papermc.memory in server-services.nix\n"       ""
             printf "  %-18s  Console: enable-rcon=true in server.properties, then mcrcon\n"           ""
-            printf "  %-18s  Monitor: journalctl -fu minecraft-server\n"                             ""
+            printf "  %-18s  Monitor: journalctl -fu minecraft-server\n"                              ""
             ;;
         plex)            printf "  %-18s  Web UI  http://<server-ip>:32400/web\n"                                      "$1" ;;
         rustdesk)        printf "  %-18s  Ports :21115-21117 / :21118-21119 (no web UI)\n"                             "$1" ;;
@@ -741,7 +747,13 @@ enable service: _require-server-role
         echo "  Warning:  Port 5055 conflicts with Jellyseerr — enable only one."
         ;;
       papermc)
+        _mc_ver=$(grep -m1 'Starting minecraft server version\|server version' /var/lib/minecraft/logs/latest.log 2>/dev/null \
+            | grep -oP '(?<=version )\S+' | head -1)
+        [ -z "$_mc_ver" ] && _mc_ver=$(ls /nix/store/*papermc*/share/papermc/paper-*.jar 2>/dev/null \
+            | head -1 | grep -oP '(?<=paper-)\S+(?=\.jar)')
+        [ -z "$_mc_ver" ] && _mc_ver="unknown (start the server once to detect)"
         echo "  Service:  minecraft-server.service"
+        echo "  Version:  Minecraft Java Edition $_mc_ver"
         echo "  Port:     25565 (TCP/UDP) — open in your firewall/router for external access."
         echo "  About:    High-performance PaperMC Minecraft Java Edition server (Spigot fork with plugin support)."
         echo ""
