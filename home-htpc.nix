@@ -40,33 +40,6 @@
   home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/htpc/vex-bb-dark.jxl;
 
   dconf.settings = {
-    "org/gnome/shell" = {
-      enabled-extensions = [
-        "appindicatorsupport@rgcjonas.gmail.com"
-        # "dash-to-dock@micxgx.gmail.com"  # disabled: autohide broken
-        "AlphabeticalAppGrid@stuarthayhurst"
-        # gamemode-shell-extension omitted — programs.gamemode not enabled on htpc
-        "gnome-ui-tune@itstime.tech"
-        "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
-        "steal-my-focus-window@steal-my-focus-window"
-        "tailscale-status@maxgallup.github.com"
-        "caffeine@patapon.info"
-        "restartto@tiagoporsch.github.io"
-        "blur-my-shell@aunetx"
-        "background-logo@fedorahosted.org"
-      ];
-      favorite-apps = [
-        "brave-browser.desktop"
-        "app.zen_browser.zen.desktop"
-        "plex-desktop.desktop"
-        "io.freetubeapp.FreeTube.desktop"
-        "org.gnome.Nautilus.desktop"
-        "io.github.up.desktop"
-        "com.mitchellh.ghostty.desktop"
-        "system-update.desktop"
-      ];
-    };
-
     "org/gnome/settings-daemon/plugins/power" = {
       sleep-inactive-ac-type      = "nothing";
       sleep-inactive-battery-type = "nothing";
@@ -118,10 +91,7 @@
         "org.gnome.SystemMonitor.desktop"
       ];
     };
-    "org/gnome/desktop/interface" = {
-      color-scheme = "prefer-dark";
-      accent-color = "orange";
-    };  };
+  };
 
   # ── Hidden app grid entries ────────────────────────────────────────────────
   # These packages cannot be safely removed (they are required dependencies),

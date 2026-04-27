@@ -50,52 +50,10 @@
   vexos.branding.role  = "htpc";
   boot.plymouth.enable = true;   # graphical boot splash
 
-  # ---------- Icons ----------
-  # Install Kora icon theme system-wide and set it as the default via a
-  # system-level dconf database so GNOME picks it up without home-manager.
+  # ---------- HTPC-specific packages ----------
   environment.systemPackages = with pkgs; [
-    bibata-cursors
-    kora-icon-theme
     ghostty
     unstable.plex-desktop  # Plex media client (nixpkgs-unstable)
-  ];
-  programs.dconf.profiles.user.databases = [
-    {
-      settings."org/gnome/desktop/interface" = {
-        cursor-theme = "Bibata-Modern-Classic";
-        cursor-size  = lib.gvariant.mkInt32 24;
-        icon-theme   = "kora";
-        clock-format = "12h";
-        color-scheme = "prefer-dark";
-        accent-color = "orange";
-      };
-      # Enable GNOME Shell extensions at the system level (no home-manager on HTPC).
-      # gamemode-shell-extension is omitted — programs.gamemode is not enabled here.
-      settings."org/gnome/shell" = {
-        enabled-extensions = [
-          "appindicatorsupport@rgcjonas.gmail.com"
-          # "dash-to-dock@micxgx.gmail.com"  # disabled: autohide broken
-          "AlphabeticalAppGrid@stuarthayhurst"
-          "gnome-ui-tune@itstime.tech"
-          "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
-          "steal-my-focus-window@steal-my-focus-window"
-          "tailscale-status@maxgallup.github.com"
-          "caffeine@patapon.info"
-          "restartto@tiagoporsch.github.io"
-          "blur-my-shell@aunetx"
-          "background-logo@fedorahosted.org"
-        ];
-        favorite-apps = [
-          "brave-browser.desktop"
-          "app.zen_browser.zen.desktop"
-          "plex-desktop.desktop"  # unstable.plex-desktop nixpkgs package
-          "io.freetubeapp.FreeTube.desktop"
-          "com.mitchellh.ghostty.desktop"
-          "org.gnome.Nautilus.desktop"
-          "io.github.up.desktop"
-        ];
-      };
-    }
   ];
 
 }
