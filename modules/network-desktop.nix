@@ -31,6 +31,8 @@
         "server string"      = "NixOS";
         "server role"        = "standalone";
         "client min protocol" = "SMB2";
+        "client max protocol" = "SMB3";
+        "load printers"       = "no";
       };
     };
   };
@@ -54,6 +56,23 @@
   services.samba-wsdd = {
     enable       = true;
     openFirewall = true;
+  };
+
+  # ── /etc/samba symlink safety net ────────────────────────────────────────
+  # NixOS generates smb.conf at /etc/static/samba/smb.conf, but the
+  # /etc/samba → /etc/static/samba symlink may not be created during etc
+  # activation (observed after first samba enable).  This tmpfiles rule
+  # guarantees the symlink exists on every boot so that libsmbclient
+  # (and therefore GVfs gvfsd-smb-browse) can find smb.conf.
+  # L+ (recreate) handles a stale /etc/samba directory left by a previous
+  # activation — it removes the existing entry and replaces it with the
+  # symlink unconditionally.
+  systemd.tmpfiles.settings."10-samba-etc" = {
+    "/etc/samba" = {
+      "L+" = {
+        argument = "/etc/static/samba";
+      };
+    };
   };
 
   # ── NFS client support ──────────────────────────────────────────────────
