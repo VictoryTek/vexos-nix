@@ -11,10 +11,11 @@
 
 Personal NixOS config (GNOME, PipeWire, latest kernel). 
 Comes in five roles:
-**Desktop** (full gaming/workstation stack), 
-**Stateless** (impermanent, minimal build, security-focused), 
-**Server** (GUI & Headless service stack), 
-**HTPC** (media center build). 
+**Desktop** (full gaming/workstation stack),
+**Stateless** (impermanent, minimal build, security-focused),
+**Server** (GUI server with GNOME desktop + service stack),
+**Headless Server** (CLI-only service stack, no GUI),
+**HTPC** (media centre build).
 No cloning required — `/etc/nixos` is the only working directory you need.
 
 Each role utilizes "just" to give a variety of options. Simply type "just" in a terminal to see the options.
@@ -68,7 +69,8 @@ You can switch between variants (and roles) at any time — no reinstall require
 | `vexos-desktop-intel` | Intel iGPU or Arc dGPU |
 | `vexos-desktop-vm` | QEMU/KVM or VirtualBox guest |
 
-> just switch vexos-desktop-(gpu-choice)
+> just switch desktop amd          # direct (any GPU variant)
+> just switch                      # interactive prompt
 
 
 
@@ -89,7 +91,8 @@ You can switch between variants (and roles) at any time — no reinstall require
 | `vexos-stateless-intel` | Intel iGPU or Arc dGPU, minimal stack |
 | `vexos-stateless-vm` | QEMU/KVM or VirtualBox guest, minimal stack |
 
-> just switch vexos-stateless-(gpu-choice)
+> just switch stateless amd        # direct (any GPU variant)
+> just switch                      # interactive prompt
 
 
 
@@ -121,7 +124,8 @@ You can switch between variants (and roles) at any time — no reinstall require
 | `vexos-headless-server-intel` | Intel iGPU or Arc dGPU |
 | `vexos-headless-server-vm` | QEMU/KVM or VirtualBox guest |
 
-> just switch vexos-server-(gpu-choice)
+> just switch server amd           # direct (any GPU variant)
+> just switch                      # interactive prompt
 
 
 
@@ -142,7 +146,8 @@ You can switch between variants (and roles) at any time — no reinstall require
 | `vexos-htpc-intel` | Intel iGPU or Arc dGPU |
 | `vexos-htpc-vm` | QEMU/KVM or VirtualBox guest |
 
-> just switch vexos-htpc-(gpu-choice)
+> just switch htpc amd             # direct (any GPU variant)
+> just switch                      # interactive prompt
 
 
 > **Switching GPU drivers?** A reboot is recommended after switching between AMD, NVIDIA, and Intel variants so the kernel modules load cleanly.
@@ -159,15 +164,19 @@ sudo nixos-rebuild switch --flake /etc/nixos#$(cat /etc/nixos/vexos-variant)
 
 
 ## Notes
+
 ```bash
 sudo nix --extra-experimental-features 'nix-command flakes' flake update --flake /etc/nixos
-
+```
 
 ## Rollback
 
 ```bash
 sudo nixos-rebuild switch --rollback
+```
 
-Set Nixos back to default configuration:
+Reset NixOS back to default configuration:
+
+```bash
 sudo rm -f /etc/nixos/flake.nix /etc/nixos/flake.lock && sudo nixos-generate-config --root / && sudo nixos-rebuild switch
 ```

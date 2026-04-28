@@ -4,6 +4,7 @@
 { config, pkgs, lib, inputs, ... }:
 {
   imports = [
+    ./home/bash-common.nix
     ./home/gnome-common.nix
   ];
 
@@ -35,24 +36,6 @@
 
     # NOTE: brave is installed as a Nix package (see modules/packages-common.nix).
   ];
-
-  # ── Shell ──────────────────────────────────────────────────────────────────
-  programs.bash = {
-    enable = true;
-    shellAliases = {
-      ll  = "ls -la";
-      ".." = "cd ..";
-
-      # Tailscale shortcuts
-      ts   = "tailscale";
-      tss  = "tailscale status";
-      tsip = "tailscale ip";
-
-      # System service shortcuts
-      sshstatus = "systemctl status sshd";
-      smbstatus = "systemctl status smbd";
-    };
-  };
 
   # ── Starship prompt ────────────────────────────────────────────────────────
   programs.starship = {

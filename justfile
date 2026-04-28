@@ -157,6 +157,26 @@ switch role="" variant="" flake="":
                 *) echo "Invalid — enter 1-4 or amd/nvidia/intel/vm" ;;
             esac
         done
+
+        # NVIDIA driver branch sub-selection
+        if [ "$VARIANT" = "nvidia" ]; then
+            echo ""
+            echo "Select NVIDIA driver branch:"
+            echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
+            echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+            echo "  3) Legacy 470 — Kepler, GeForce 600/700 (470.x)"
+            echo ""
+            while true; do
+                printf "Choice [1-3]: "
+                read -r INPUT
+                case "${INPUT}" in
+                    1) break ;;
+                    2) VARIANT="nvidia-legacy535"; break ;;
+                    3) VARIANT="nvidia-legacy470"; break ;;
+                    *) echo "Invalid — enter 1, 2, or 3" ;;
+                esac
+            done
+        fi
     fi
 
     TARGET="vexos-${ROLE}-${VARIANT}"
@@ -251,6 +271,26 @@ update:
                 *) echo "Invalid — enter 1-4 or amd/nvidia/intel/vm" ;;
             esac
         done
+
+        # NVIDIA driver branch sub-selection
+        if [ "$VARIANT" = "nvidia" ]; then
+            echo ""
+            echo "Select NVIDIA driver branch:"
+            echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
+            echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+            echo "  3) Legacy 470 — Kepler, GeForce 600/700 (470.x)"
+            echo ""
+            while true; do
+                printf "Choice [1-3]: "
+                read -r INPUT
+                case "${INPUT}" in
+                    1) break ;;
+                    2) VARIANT="nvidia-legacy535"; break ;;
+                    3) VARIANT="nvidia-legacy470"; break ;;
+                    *) echo "Invalid — enter 1, 2, or 3" ;;
+                esac
+            done
+        fi
 
         target="vexos-${ROLE}-${VARIANT}"
     fi

@@ -4,6 +4,8 @@
 # No GNOME, no Wayland, no GUI apps — accessed exclusively via SSH.
 { config, pkgs, lib, inputs, ... }:
 {
+  imports = [ ./home/bash-common.nix ];
+
   home.username    = "nimda";
   home.homeDirectory = "/home/nimda";
 
@@ -22,24 +24,6 @@
     fastfetch
     # NOTE: btop and inxi are installed system-wide via modules/packages-common.nix.
   ];
-
-  # ── Shell ──────────────────────────────────────────────────────────────────
-  programs.bash = {
-    enable = true;
-    shellAliases = {
-      ll   = "ls -la";
-      ".." = "cd ..";
-
-      # Tailscale shortcuts
-      ts   = "tailscale";
-      tss  = "tailscale status";
-      tsip = "tailscale ip";
-
-      # System service shortcuts
-      sshstatus = "systemctl status sshd";
-      smbstatus = "systemctl status smbd";
-    };
-  };
 
   # ── Starship prompt ────────────────────────────────────────────────────────
   programs.starship = {

@@ -66,15 +66,14 @@ Primary Language(s): **Nix**
 Framework(s): **NixOS 25.05, nixpkgs, Nix Flakes**  
 
 Build Command(s):  
-- `sudo nixos-rebuild switch --flake .#vexos-desktop-amd` (AMD GPU)  
-- `sudo nixos-rebuild switch --flake .#vexos-desktop-nvidia` (NVIDIA GPU)  
-- `sudo nixos-rebuild switch --flake .#vexos-desktop-vm` (VM guest)  
+- `sudo nixos-rebuild switch --flake .#vexos-<role>-<gpu>` (general form)  
+- Example: `sudo nixos-rebuild switch --flake .#vexos-desktop-amd`  
+- See `hostList` in `flake.nix` for the complete list of 30 output names  
 
 Test Command(s):  
 - `nix flake check`  
-- `sudo nixos-rebuild dry-build --flake .#vexos-desktop-amd`  
-- `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia`  
-- `sudo nixos-rebuild dry-build --flake .#vexos-desktop-vm`  
+- `sudo nixos-rebuild dry-build --flake .#vexos-<role>-<gpu>` (per-variant validation)  
+- At minimum, dry-build one variant per role to catch role-specific regressions  
 
 Package Manager(s): **Nix (nix CLI / nix flake)**  
 
@@ -85,12 +84,12 @@ Repository Notes:
   - `.github/docs/subagent_docs/` — subagent specification and review documents  
 - Architecture Pattern: **Thin Flake — `hardware-configuration.nix` is delegated to the host at `/etc/nixos/` and imported by reference; all tracked configuration lives in flat Nix modules at the repo root**  
 - Special Constraints:  
-  - The flake defines four outputs: `vexos-desktop-amd`, `vexos-desktop-nvidia`, `vexos-desktop-intel`, `vexos-desktop-vm`  
-  - Host configs live in `hosts/` and import `configuration-desktop.nix` + the appropriate `modules/gpu/` variant  
-  - GPU-brand-specific configuration lives in `modules/gpu/{amd,nvidia,vm}.nix`  
+  - The flake defines 30 outputs across five roles (`desktop`, `stateless`, `server`, `headless-server`, `htpc`) × six GPU variants (`amd`, `nvidia`, `nvidia-legacy535`, `nvidia-legacy470`, `intel`, `vm`)  
+  - Host configs live in `hosts/` and import the role's `configuration-*.nix` + the appropriate `modules/gpu/` variant  
+  - GPU-brand-specific configuration lives in `modules/gpu/` (`amd.nix`, `nvidia.nix`, `intel.nix`, `vm.nix`, plus `*-headless.nix` variants)  
   - `hardware-configuration.nix` MUST NOT be added to this repository; it is generated per-host by `nixos-generate-config`  
   - `system.stateVersion` in `configuration-desktop.nix` MUST NOT be changed after initial installation  
-  - All rebuild commands must target one of `.#vexos-desktop-amd`, `.#vexos-desktop-nvidia`, `.#vexos-desktop-intel`, or `.#vexos-desktop-vm`  
+  - All rebuild commands must target a valid `nixosConfigurations` output (see `hostList` in `flake.nix` for the complete list)  
   - `nix flake check` must pass before any change is considered complete  
   - Flake inputs must maintain `nixpkgs.follows` for any new inputs to avoid duplicate nixpkgs  
 

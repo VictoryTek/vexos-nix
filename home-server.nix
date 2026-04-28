@@ -4,7 +4,7 @@
 # No gaming, no dev-language tooling. Focus: sysadmin utilities and remote management.
 { config, pkgs, lib, inputs, ... }:
 {
-  imports = [ ./home/gnome-common.nix ];
+  imports = [ ./home/bash-common.nix ./home/gnome-common.nix ];
 
   home.username    = "nimda";
   home.homeDirectory = "/home/nimda";
@@ -31,24 +31,6 @@
 
     # NOTE: brave is installed as a Nix package (see modules/packages-common.nix).
   ];
-
-  # ── Shell ──────────────────────────────────────────────────────────────────
-  programs.bash = {
-    enable = true;
-    shellAliases = {
-      ll  = "ls -la";
-      ".." = "cd ..";
-
-      # Tailscale shortcuts
-      ts   = "tailscale";
-      tss  = "tailscale status";
-      tsip = "tailscale ip";
-
-      # System service shortcuts
-      sshstatus = "systemctl status sshd";
-      smbstatus = "systemctl status smbd";
-    };
-  };
 
   # ── Starship prompt ────────────────────────────────────────────────────────
   programs.starship = {

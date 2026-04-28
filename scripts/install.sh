@@ -157,22 +157,24 @@ fi
 NVIDIA_SUFFIX=""
 if [ "$VARIANT" = "nvidia" ]; then
   echo ""
-  echo -e "${BOLD}Select NVIDIA driver:${RESET}"
-  echo "  1) Latest — RTX, GTX 16xx, GTX 750 and newer"
-  echo "  2) Legacy — Everything older"
+  echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
+  echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
+  echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+  echo "  3) Legacy 470 — Kepler, GeForce 600/700 (470.x)"
   echo ""
   echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"
   echo -e "${YELLOW}Wrong choice? Run this installer again and switch.${RESET}"
   echo ""
 
   while [ -z "$NVIDIA_SUFFIX" ]; do
-    printf "Enter choice [1-2]: "
+    printf "Enter choice [1-3]: "
     read -r INPUT </dev/tty
     case "${INPUT}" in
-      1) NVIDIA_SUFFIX=""           ;;
-      2) NVIDIA_SUFFIX="-legacy470" ;;
+      1) NVIDIA_SUFFIX=""             ;;
+      2) NVIDIA_SUFFIX="-legacy535"   ;;
+      3) NVIDIA_SUFFIX="-legacy470"   ;;
       *)
-        echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
+        echo -e "${RED}Invalid selection '${INPUT}'. Choose 1, 2, or 3.${RESET}"
         ;;
     esac
     [[ -n "${INPUT}" ]] && break
