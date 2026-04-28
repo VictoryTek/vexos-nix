@@ -1,11 +1,40 @@
 # modules/network-desktop.nix
-# Display-role networking additions: SMB/NFS network share discovery for GNOME
-# Files (Nautilus) and samba CLI tools.
+# Display-role networking additions: SMB/NFS network share discovery for
+# GNOME Files (Nautilus).
+#
+# Generates /etc/samba/smb.conf (client-only — all server daemons disabled)
+# so that GVfs gvfsd-smb-browse can use libsmbclient to discover SMB hosts.
+# Also enables Avahi service publishing, WS-Discovery (WSDD), and NFS
+# kernel support.
 #
 # Import in any configuration with a display (desktop, server, htpc, stateless).
 # Do NOT import on headless-server.
-{ pkgs, ... }:
+{ lib, ... }:
 {
+  # ── Samba client configuration ───────────────────────────────────────────
+  # Generates /etc/samba/smb.conf so that libsmbclient (used by GVfs
+  # gvfsd-smb-browse) can initialise and enumerate SMB workgroups/hosts.
+  # All server daemons are disabled — this is client-only.  The NixOS samba
+  # module automatically adds the samba package (smbclient, nmblookup) to
+  # environment.systemPackages.
+  #
+  # lib.mkDefault on daemon enables lets a server role override to true
+  # without conflicts.
+  services.samba = {
+    enable              = true;
+    nmbd.enable         = lib.mkDefault false;
+    smbd.enable         = lib.mkDefault false;
+    winbindd.enable     = lib.mkDefault false;
+    settings = {
+      global = {
+        workgroup            = "WORKGROUP";
+        "server string"      = "NixOS";
+        "server role"        = "standalone";
+        "client min protocol" = "SMB2";
+      };
+    };
+  };
+
   # ── Avahi service publishing ─────────────────────────────────────────────
   # Extends the base Avahi configuration in network.nix with service
   # publishing.  publish.enable + publish.userServices allow Avahi to
@@ -31,12 +60,4 @@
   # Loads the NFS kernel module and pulls in nfs-utils so that GVfs can
   # mount NFS shares discovered via Nautilus → Network → nfs://host/export.
   boot.supportedFilesystems = [ "nfs" ];
-
-  # ── SMB/CIFS client tools ────────────────────────────────────────────────
-  # samba: provides smbclient CLI and libsmbclient (used by GVfs SMB
-  # backend).  GNOME Files browses SMB shares via GVfs; smbclient is the
-  # CLI companion.  Client-only — no inbound firewall ports needed.
-  environment.systemPackages = with pkgs; [
-    samba  # smbclient — browse/test SMB shares; also provides nmblookup
-  ];
 }
