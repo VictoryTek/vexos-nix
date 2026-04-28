@@ -54,7 +54,7 @@
   # ── Development ──────────────────────────────────────────────────────────
   # vexos.server.forgejo.enable = false;
   # vexos.server.code-server.enable = false;             # Port 4444 — VS Code in the browser
-  # vexos.server.code-server.hashedPasswordFile = null;  # Set to /etc/nixos/secrets/code-server-password (bcrypt)
+  # vexos.server.code-server.hashedPassword = "";       # Set to argon2 hash: echo -n 'pass' | nix run nixpkgs#libargon2 -- "$(head -c 20 /dev/random | base64)" -e
 
   # ── Security ─────────────────────────────────────────────────────────────
   # vexos.server.vaultwarden.enable = false;

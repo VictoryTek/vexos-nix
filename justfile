@@ -969,8 +969,8 @@ enable service: _require-server-role
         echo "  Service:  code-server.service"
         echo "  Web UI:   http://<server-ip>:4444"
         echo "  About:    Visual Studio Code running in the browser — develop from any device without a local install."
-        echo "  Note:     Set vexos.server.code-server.hashedPasswordFile to a file containing your hashed password."
-        echo "            Generate hash: echo -n 'yourpassword' | npx argon2-browser (or use code-server --help)."
+        echo "  Note:     Set vexos.server.code-server.hashedPassword to your argon2 hash string."
+        echo "            Generate hash: echo -n 'yourpassword' | nix run nixpkgs#libargon2 -- \"\$(head -c 20 /dev/random | base64)\" -e"
         ;;
       dozzle)
         echo "  Container: dozzle (NixOS OCI container)"
