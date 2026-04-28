@@ -665,6 +665,7 @@ enable service: _require-server-role
             exit 1
         fi
         sudo cp "$TEMPLATE_SRC" "$SVC_FILE"
+        sudo sed -i 's/\r//' "$SVC_FILE"  # strip CRLF if template was checked out on Windows
     fi
 
     # The option uses dots as-is (e.g. uptime-kuma stays uptime-kuma)
