@@ -11,6 +11,7 @@
     ./plex.nix
     ./audiobookshelf.nix
     ./tautulli.nix
+    ./navidrome.nix
     # ── Media Requests ───────────────────────────────────────────────────────
     ./overseerr.nix
     ./jellyseerr.nix
@@ -25,31 +26,51 @@
     ./nextcloud.nix
     ./syncthing.nix
     ./immich.nix
+    ./minio.nix
+    ./photoprism.nix
+    # ── Documents ────────────────────────────────────────────────────────────
+    ./paperless.nix
     # ── Development ──────────────────────────────────────────────────────────
     ./forgejo.nix
+    ./code-server.nix
     # ── Security ─────────────────────────────────────────────────────────────
     ./vaultwarden.nix
+    ./authelia.nix
     # ── Networking & Reverse Proxies ─────────────────────────────────────────
     ./nginx.nix
     ./caddy.nix
     ./traefik.nix
     ./adguard.nix
     ./headscale.nix
+    ./unbound.nix
+    ./nginx-proxy-manager.nix
     # ── Monitoring & Management ──────────────────────────────────────────────
     ./cockpit.nix
     ./uptime-kuma.nix
     ./homepage.nix
     ./grafana.nix
     ./scrutiny.nix
+    ./prometheus.nix
+    ./loki.nix
+    ./netdata.nix
+    ./dozzle.nix
+    ./portainer.nix
     # ── Notifications ────────────────────────────────────────────────────────
     ./ntfy.nix
     # ── Food & Home ──────────────────────────────────────────────────────────
     ./mealie.nix
+    ./listmonk.nix
     # ── Remote Access ────────────────────────────────────────────────────────
     ./rustdesk.nix
     # ── Automation & Smart Home ──────────────────────────────────────────────
     ./home-assistant.nix
+    ./node-red.nix
+    ./zigbee2mqtt.nix
+    # ── Communications ───────────────────────────────────────────────────────
+    ./matrix-conduit.nix
     # ── PDF Tools ────────────────────────────────────────────────────────────
-    ./stirling-pdf.nix    # ── Virtualisation ─────────────────────────────────────────────────────────
-    ./proxmox.nix  ];
+    ./stirling-pdf.nix
+    # ── Virtualisation ────────────────────────────────────────────────────────────
+    ./proxmox.nix
+  ];
 }

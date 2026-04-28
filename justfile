@@ -338,7 +338,7 @@ rollforward:
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr audiobookshelf caddy cockpit docker forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita komga mealie nextcloud nginx ntfy overseerr papermc plex proxmox rustdesk scrutiny stirling-pdf syncthing tautulli traefik uptime-kuma vaultwarden"
+_server_service_names := "adguard arr audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita komga listmonk loki matrix-conduit mealie minio navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy overseerr paperless papermc photoprism plex portainer prometheus proxmox rustdesk scrutiny stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -361,16 +361,17 @@ list-services:
     echo ""
     echo "Available server service modules:"
     _hdr "Books & Reading";            _svc kavita;           _svc komga
-    _hdr "Files & Storage";            _svc immich;           _svc nextcloud;       _svc syncthing
+    _hdr "Communications";             _svc matrix-conduit
+    _hdr "Files & Storage";            _svc immich;           _svc nextcloud;       _svc syncthing;       _svc minio;           _svc photoprism
     _hdr "Gaming";                     _svc papermc
-    _hdr "Infrastructure";             _svc caddy;            _svc docker;          _svc nginx;           _svc traefik
-    _hdr "Media";                      _svc audiobookshelf;   _svc jellyfin;        _svc plex;            _svc tautulli
+    _hdr "Infrastructure";             _svc caddy;            _svc docker;          _svc nginx;           _svc nginx-proxy-manager;  _svc portainer;  _svc traefik
+    _hdr "Media";                      _svc audiobookshelf;   _svc jellyfin;        _svc navidrome;       _svc plex;            _svc tautulli
     _hdr "Media Requests & Automation";_svc arr;              _svc jellyseerr;      _svc overseerr
-    _hdr "Monitoring & Admin";         _svc cockpit;          _svc grafana;         _svc scrutiny;        _svc uptime-kuma
-    _hdr "Networking & Security";      _svc adguard;          _svc headscale;       _svc vaultwarden
-    _hdr "Productivity";               _svc forgejo;          _svc homepage;        _svc mealie;          _svc stirling-pdf
+    _hdr "Monitoring & Admin";         _svc cockpit;          _svc dozzle;          _svc grafana;         _svc loki;            _svc netdata;     _svc prometheus;  _svc scrutiny;  _svc uptime-kuma
+    _hdr "Networking & Security";      _svc adguard;          _svc authelia;        _svc headscale;       _svc unbound;         _svc vaultwarden
+    _hdr "Productivity";               _svc code-server;      _svc forgejo;         _svc homepage;        _svc listmonk;        _svc mealie;      _svc paperless;   _svc stirling-pdf
     _hdr "Remote Access";              _svc rustdesk
-    _hdr "Smart Home & Notifications"; _svc home-assistant;   _svc ntfy
+    _hdr "Smart Home & Notifications"; _svc home-assistant;   _svc node-red;        _svc ntfy;            _svc zigbee2mqtt
     _hdr "Experimental";               _svc proxmox
     echo ""
     echo "Use 'just enable <service>' to enable a module on a server host."
@@ -439,6 +440,23 @@ service-info service="":
         traefik)         printf "  %-18s  Ports :80, :443  |  Dashboard http://<server-ip>:8080/dashboard/\n"         "$1" ;;
         uptime-kuma)     printf "  %-18s  Web UI  http://<server-ip>:3001\n"                                           "$1" ;;
         vaultwarden)     printf "  %-18s  Web UI  http://<server-ip>:8222   |  Admin .../admin\n"                      "$1" ;;
+        authelia)        printf "  %-18s  Web UI  http://<server-ip>:9091\n"                                                   "$1" ;;
+        code-server)     printf "  %-18s  Web UI  http://<server-ip>:4444\n"                                                   "$1" ;;
+        dozzle)          printf "  %-18s  Web UI  http://<server-ip>:8888   (requires docker)\n"                               "$1" ;;
+        listmonk)        printf "  %-18s  Web UI  http://<server-ip>:9025   ⚠ check port — may conflict with mealie/minio\n"  "$1" ;;
+        loki)            printf "  %-18s  API     http://<server-ip>:3100   (no web UI — pair with Grafana)\n"                 "$1" ;;
+        matrix-conduit)  printf "  %-18s  API     http://<server-ip>:6167   |  Federation :8448\n"                             "$1" ;;
+        minio)           printf "  %-18s  API :9000  Console http://<server-ip>:9001   ⚠ conflicts with mealie\n"             "$1" ;;
+        navidrome)       printf "  %-18s  Web UI  http://<server-ip>:4533\n"                                                   "$1" ;;
+        netdata)         printf "  %-18s  Web UI  http://<server-ip>:19999\n"                                                  "$1" ;;
+        nginx-proxy-manager) printf "  %-18s  Admin http://<server-ip>:81   |  Ports :80, :443\n"                             "$1" ;;
+        node-red)        printf "  %-18s  Web UI  http://<server-ip>:1880\n"                                                   "$1" ;;
+        paperless)       printf "  %-18s  Web UI  http://<server-ip>:28981\n"                                                  "$1" ;;
+        photoprism)      printf "  %-18s  Web UI  http://<server-ip>:2342\n"                                                   "$1" ;;
+        portainer)       printf "  %-18s  Web UI  https://<server-ip>:9443  (requires docker)\n"                               "$1" ;;
+        prometheus)      printf "  %-18s  Web UI  http://<server-ip>:9090   ⚠ conflicts with cockpit\n"                        "$1" ;;
+        unbound)         printf "  %-18s  DNS on :53   ⚠ conflicts with adguard\n"                                             "$1" ;;
+        zigbee2mqtt)     printf "  %-18s  Web UI  http://<server-ip>:8088\n"                                                   "$1" ;;
         *)               printf "  %-18s  (no info available)\n"                                                       "$1" ;;
       esac
     }
@@ -528,6 +546,23 @@ status service: _require-server-role
       traefik)        UNITS="traefik";              URLS="http://localhost:8080/dashboard/" ;;
       uptime-kuma)    UNITS="docker-uptime-kuma";   URLS="http://localhost:3001" ;;
       vaultwarden)    UNITS="vaultwarden";          URLS="http://localhost:8222" ;;
+      authelia)       UNITS="docker-authelia";          URLS="http://localhost:9091" ;;
+      code-server)    UNITS="code-server";              URLS="http://localhost:4444" ;;
+      dozzle)         UNITS="docker-dozzle";            URLS="http://localhost:8888" ;;
+      listmonk)       UNITS="listmonk";                 URLS="http://localhost:9025" ;;
+      loki)           UNITS="loki";                     URLS="http://localhost:3100/ready" ;;
+      matrix-conduit) UNITS="conduit";                  URLS="http://localhost:6167/_matrix/client/versions" ;;
+      minio)          UNITS="minio";                    URLS="http://localhost:9001 http://localhost:9000" ;;
+      navidrome)      UNITS="navidrome";                URLS="http://localhost:4533" ;;
+      netdata)        UNITS="netdata";                  URLS="http://localhost:19999" ;;
+      nginx-proxy-manager) UNITS="docker-nginx-proxy-manager"; URLS="http://localhost:81" ;;
+      node-red)       UNITS="node-red";                 URLS="http://localhost:1880" ;;
+      paperless)      UNITS="paperless";                URLS="http://localhost:28981" ;;
+      photoprism)     UNITS="photoprism";               URLS="http://localhost:2342" ;;
+      portainer)      UNITS="docker-portainer";         URLS="https://localhost:9443" ;;
+      prometheus)     UNITS="prometheus";               URLS="http://localhost:9090" ;;
+      unbound)        UNITS="unbound";                  URLS="" ;;
+      zigbee2mqtt)    UNITS="zigbee2mqtt";              URLS="http://localhost:8088" ;;
       *)              UNITS="$SERVICE";             URLS="" ;;
     esac
 
@@ -582,16 +617,17 @@ services: _require-server-role
     echo ""
     echo "Server services (/etc/nixos/server-services.nix):"
     _hdr "Books & Reading";            _check kavita;         _check komga
-    _hdr "Files & Storage";            _check immich;         _check nextcloud;     _check syncthing
+    _hdr "Communications";             _check matrix-conduit
+    _hdr "Files & Storage";            _check immich;         _check nextcloud;     _check syncthing;     _check minio;         _check photoprism
     _hdr "Gaming";                     _check papermc
-    _hdr "Infrastructure";             _check caddy;          _check docker;        _check nginx;         _check traefik
-    _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check plex;          _check tautulli
+    _hdr "Infrastructure";             _check caddy;          _check docker;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
+    _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
     _hdr "Media Requests & Automation";_check arr;            _check jellyseerr;    _check overseerr
-    _hdr "Monitoring & Admin";         _check cockpit;        _check grafana;       _check scrutiny;      _check uptime-kuma
-    _hdr "Networking & Security";      _check adguard;        _check headscale;     _check vaultwarden
-    _hdr "Productivity";               _check forgejo;        _check homepage;      _check mealie;        _check stirling-pdf
+    _hdr "Monitoring & Admin";         _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma
+    _hdr "Networking & Security";      _check adguard;        _check authelia;      _check headscale;     _check unbound;       _check vaultwarden
+    _hdr "Productivity";               _check code-server;    _check forgejo;       _check homepage;      _check listmonk;      _check mealie;    _check paperless;   _check stirling-pdf
     _hdr "Remote Access";              _check rustdesk
-    _hdr "Smart Home & Notifications"; _check home-assistant; _check ntfy
+    _hdr "Smart Home & Notifications"; _check home-assistant; _check node-red;      _check ntfy;          _check zigbee2mqtt
     _hdr "Experimental";               _check proxmox
     echo ""
 
@@ -920,6 +956,147 @@ enable service: _require-server-role
         echo "  ⚠  You must also set vexos.server.proxmox.ipAddress to this host's IP in server-services.nix."
         echo "  Cache:    nix.settings.substituters = [ \"https://cache.saumon.network/proxmox-nixos\" ]"
         echo "            nix.settings.trusted-public-keys = [ \"proxmox-nixos:D9RYSWpQQC/msZUWphOY2I5RLH5Dd6yQcaHIuug7dWM=\" ]"
+        ;;
+      authelia)
+        echo "  Container: authelia (NixOS OCI container)"
+        echo "  Web UI:   http://<server-ip>:9091"
+        echo "  About:    Self-hosted SSO and two-factor authentication proxy. Protects apps behind a login portal."
+        echo "  Note:     Create /var/lib/authelia/config/configuration.yml before first start."
+        echo "            See https://www.authelia.com/configuration/prologue/introduction/ for config reference."
+        ;;
+      code-server)
+        echo "  Service:  code-server.service"
+        echo "  Web UI:   http://<server-ip>:4444"
+        echo "  About:    Visual Studio Code running in the browser — develop from any device without a local install."
+        echo "  Note:     Set vexos.server.code-server.hashedPasswordFile to a file containing your hashed password."
+        echo "            Generate hash: echo -n 'yourpassword' | npx argon2-browser (or use code-server --help)."
+        ;;
+      dozzle)
+        echo "  Container: dozzle (NixOS OCI container)"
+        echo "  Web UI:   http://<server-ip>:8888"
+        echo "  About:    Real-time Docker log viewer in the browser. No persistent storage — live tailing only."
+        echo "  Note:     Requires Docker to be enabled (just enable docker)."
+        ;;
+      listmonk)
+        echo "  Service:  listmonk.service"
+        echo "  Web UI:   http://<server-ip>:9025"
+        echo "  About:    Self-hosted newsletter and mailing list manager with campaign analytics."
+        echo "  Login:    Default admin / listmonk — change immediately after first login."
+        echo "  Warning:  Default port 9000 remapped to 9025 to avoid conflict with Mealie and Minio."
+        ;;
+      loki)
+        echo "  Service:  loki.service"
+        echo "  API:      http://<server-ip>:3100"
+        echo "  About:    Log aggregation system designed to work with Grafana and Promtail. No standalone web UI."
+        echo "  Note:     Add Loki as a data source in Grafana (http://<server-ip>:3100). Use Promtail to ship logs."
+        ;;
+      matrix-conduit)
+        MC_SERVER_NAME=""
+        MC_OPTION="vexos.server.matrix-conduit.serverName"
+        while [ -z "$MC_SERVER_NAME" ]; do
+          read -r -p "  Enter your Matrix server name (e.g. yourdomain.com) [default: localhost]: " MC_SERVER_NAME
+          MC_SERVER_NAME="${MC_SERVER_NAME:-localhost}"
+        done
+        if grep -qP "^\s*#?\s*${MC_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+          sudo sed -i -E "s|^(\s*)#?\s*(${MC_OPTION//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${MC_OPTION} = \"${MC_SERVER_NAME}\";|" "$SVC_FILE"
+        else
+          sudo sed -i "s|${OPTION} = true;|${OPTION} = true;\n  ${MC_OPTION} = \"${MC_SERVER_NAME}\";|" "$SVC_FILE"
+        fi
+        echo "✓ Enabled: matrix-conduit (server name: ${MC_SERVER_NAME})"
+        echo "  → Run 'just rebuild' to apply."
+        echo ""
+        echo "  Service:  conduit.service"
+        echo "  API:      http://<server-ip>:6167"
+        echo "  About:    Lightweight Matrix homeserver (Conduit). Supports encrypted messaging and federation."
+        echo "  Note:     Set vexos.server.matrix-conduit.serverName to your domain name before first run."
+        echo "            Federation requires a public domain with port 8448 forwarded or a .well-known delegate."
+        ;;
+      minio)
+        echo "  Service:  minio.service"
+        echo "  API:      http://<server-ip>:9000"
+        echo "  Console:  http://<server-ip>:9001"
+        echo "  About:    S3-compatible object storage server. Use as a backend for Nextcloud, Immich, or S3 clients."
+        echo "  Warning:  Port 9000 conflicts with Mealie — enable only one."
+        echo "  Note:     Create /etc/nixos/minio-credentials with:"
+        echo "              MINIO_ROOT_USER=yourusername"
+        echo "              MINIO_ROOT_PASSWORD=yourpassword"
+        ;;
+      navidrome)
+        echo "  Service:  navidrome.service"
+        echo "  Web UI:   http://<server-ip>:4533"
+        echo "  About:    Self-hosted music streaming server with Subsonic API — compatible with DSub, Symfonium, and others."
+        echo "  Note:     Set vexos.server.navidrome.musicFolder to your music library path (default: /var/lib/navidrome/music)."
+        ;;
+      netdata)
+        echo "  Service:  netdata.service"
+        echo "  Web UI:   http://<server-ip>:19999"
+        echo "  About:    Real-time system performance monitoring with per-second metrics and automatic anomaly detection."
+        ;;
+      nginx-proxy-manager)
+        echo "  Container: nginx-proxy-manager (NixOS OCI container)"
+        echo "  Admin UI: http://<server-ip>:81"
+        echo "  Ports:    :80 (HTTP proxy), :443 (HTTPS proxy)"
+        echo "  About:    Web UI for managing Nginx reverse proxy rules with automatic Let's Encrypt TLS."
+        echo "  Login:    Default admin@example.com / changeme — change immediately after first login."
+        echo "  Warning:  Ports 80 and 443 conflict with Caddy, Nginx, and Traefik — enable only one reverse proxy."
+        ;;
+      node-red)
+        echo "  Service:  node-red.service"
+        echo "  Web UI:   http://<server-ip>:1880"
+        echo "  About:    Flow-based visual programming tool for wiring together devices, APIs, and online services."
+        echo "  Note:     Pairs well with Home Assistant and MQTT for home automation flows."
+        ;;
+      paperless)
+        echo "  Service:  paperless.service"
+        echo "  Web UI:   http://<server-ip>:28981"
+        echo "  About:    Document management system with OCR, tagging, full-text search, and automatic consumption."
+        echo "  Note:     Drop documents into the consume folder — Paperless OCRs and indexes them automatically."
+        ;;
+      photoprism)
+        echo "  Service:  photoprism.service"
+        echo "  Web UI:   http://<server-ip>:2342"
+        echo "  About:    AI-powered self-hosted photo library with face recognition, geo-tagging, and album organisation."
+        echo "  Login:    Default admin / insecure — change immediately after first login."
+        ;;
+      portainer)
+        echo "  Container: portainer (NixOS OCI container)"
+        echo "  Web UI:   https://<server-ip>:9443"
+        echo "  About:    Web UI for managing Docker containers, images, volumes, and networks."
+        echo "  Note:     Requires Docker to be enabled (just enable docker)."
+        ;;
+      prometheus)
+        echo "  Service:  prometheus.service"
+        echo "  Web UI:   http://<server-ip>:9090"
+        echo "  About:    Time-series metrics collection and alerting. Pair with Grafana for dashboards."
+        echo "  Warning:  Port 9090 conflicts with Cockpit — enable only one."
+        echo "  Note:     Add scrape targets in the module. Node Exporter is not auto-enabled — add it separately."
+        ;;
+      unbound)
+        echo "  Service:  unbound.service"
+        echo "  DNS:      Port 53 (UDP/TCP)"
+        echo "  About:    Validating, recursive DNS resolver with DNS-over-TLS forwarding to Cloudflare (1.1.1.1)."
+        echo "  Warning:  Port 53 conflicts with AdGuard Home — enable only one DNS service."
+        ;;
+      zigbee2mqtt)
+        Z2M_PORT=""
+        Z2M_OPTION="vexos.server.zigbee2mqtt.serialPort"
+        while [ -z "$Z2M_PORT" ]; do
+          read -r -p "  Enter your Zigbee coordinator serial device [default: /dev/ttyUSB0]: " Z2M_PORT
+          Z2M_PORT="${Z2M_PORT:-/dev/ttyUSB0}"
+        done
+        if grep -qP "^\s*#?\s*${Z2M_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+          sudo sed -i -E "s|^(\s*)#?\s*(${Z2M_OPTION//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${Z2M_OPTION} = \"${Z2M_PORT}\";|" "$SVC_FILE"
+        else
+          sudo sed -i "s|${OPTION} = true;|${OPTION} = true;\n  ${Z2M_OPTION} = \"${Z2M_PORT}\";|" "$SVC_FILE"
+        fi
+        echo "✓ Enabled: zigbee2mqtt (serial port: ${Z2M_PORT})"
+        echo "  → Run 'just rebuild' to apply."
+        echo ""
+        echo "  Service:  zigbee2mqtt.service"
+        echo "  Web UI:   http://<server-ip>:8088"
+        echo "  About:    Bridges Zigbee devices to MQTT, enabling control without vendor clouds."
+        echo "  Note:     Set vexos.server.zigbee2mqtt.serialPort to your coordinator device (default: /dev/ttyUSB0)."
+        echo "            Requires an MQTT broker — consider enabling Mosquitto separately."
         ;;
     esac
     echo ""
