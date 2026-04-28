@@ -27,6 +27,7 @@ let
     "restartto@tiagoporsch.github.io"
     "blur-my-shell@aunetx"
     "background-logo@fedorahosted.org"
+    "tiling-assistant@leleat-on.github.com"
   ];
 in
 {

@@ -213,6 +213,7 @@
     unstable.gnomeExtensions.restart-to                 # Restart-to menu entry
     unstable.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
     unstable.gnomeExtensions.background-logo            # Desktop background logo
+    unstable.gnomeExtensions.tiling-assistant           # Half- and quarter-tiling support
   ];
 
   # ── Fonts ─────────────────────────────────────────────────────────────────
