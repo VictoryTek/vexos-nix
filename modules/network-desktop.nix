@@ -45,17 +45,25 @@
   # the Nautilus "Network" view.
   services.avahi.publish = {
     enable       = true;
+    addresses    = true;
+    workstation  = true;
     userServices = true;
   };
 
-  # ── WS-Discovery (WSDD) ─────────────────────────────────────────────────
-  # Web Service Discovery responder — required for discovering Windows 10+
-  # machines and Samba servers that use WSD instead of legacy NetBIOS
-  # browsing.  Also makes this machine visible to Windows "Network".
-  # Opens TCP 5357 and UDP 3702 via openFirewall.
+  # ── WS-Discovery (WSDD) — RESPONDER + DISCOVERY ─────────────────────────
+  # `enable` alone runs wsdd as a responder only — it announces this host to
+  # Windows but never enumerates other WSD hosts on the LAN. GVfs's gvfsd-wsdd
+  # backend reads the wsdd discovery socket (default /run/wsdd/wsdd.sock),
+  # which only exists when `discovery = true`. Without that, the Nautilus
+  # "Network" view stays empty even though smb.conf, libsmbclient, and Avahi
+  # are all correctly configured. This was the root cause of three prior
+  # failed attempts (commits bec7bec, da6e40c, 3082227).
+  # Opens TCP 5357 and UDP 3702 via openFirewall. The discovery socket is a
+  # local Unix socket and requires no firewall rules.
   services.samba-wsdd = {
     enable       = true;
     openFirewall = true;
+    discovery    = true;
   };
 
   # ── /etc/samba symlink safety net ────────────────────────────────────────
