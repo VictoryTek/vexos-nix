@@ -60,7 +60,7 @@
     # The proxmox NixOS module does NOT auto-apply its own overlay; this must be
     # done explicitly. Scoped to server / headless-server roles only.
     proxmoxOverlayModule = {
-      nixpkgs.overlays = [ inputs.proxmox-nixos.overlays.default ];
+      nixpkgs.overlays = [ inputs.proxmox-nixos.overlays.${system} ];
     };
 
     # Optional opt-in services module loaded from the host's /etc/nixos.
