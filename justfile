@@ -308,11 +308,11 @@ update:
 rollback:
     #!/usr/bin/env bash
     set -euo pipefail
-    current=$(nix-env -p /nix/var/nix/profiles/system --list-generations \
+    current=$(sudo nix-env -p /nix/var/nix/profiles/system --list-generations \
                 | awk '/current/{print $1}')
     echo "Current generation: ${current}"
     sudo nixos-rebuild switch --rollback
-    new=$(nix-env -p /nix/var/nix/profiles/system --list-generations \
+    new=$(sudo nix-env -p /nix/var/nix/profiles/system --list-generations \
             | awk '/current/{print $1}')
     echo "Now on generation: ${new}"
 
@@ -320,9 +320,9 @@ rollback:
 rollforward:
     #!/usr/bin/env bash
     set -euo pipefail
-    current=$(nix-env -p /nix/var/nix/profiles/system --list-generations \
+    current=$(sudo nix-env -p /nix/var/nix/profiles/system --list-generations \
                 | awk '/current/{print $1}')
-    next=$(nix-env -p /nix/var/nix/profiles/system --list-generations \
+    next=$(sudo nix-env -p /nix/var/nix/profiles/system --list-generations \
              | awk -v cur="$current" '$1+0 > cur+0 {print $1+0; exit}')
     if [ -z "$next" ]; then
         echo "Already at the latest generation (${current}). Nothing to roll forward to."
