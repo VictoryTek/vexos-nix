@@ -55,6 +55,14 @@
     # GUI update app — only for roles with a display (desktop, htpc, GUI server, stateless).
     upModule = { environment.systemPackages = [ up.packages.x86_64-linux.default ]; };
 
+    # Proxmox VE overlay — exposes pkgs.proxmox-ve (and related Proxmox packages).
+    # Required by services.proxmox-ve.package (lazy default in the proxmox NixOS module).
+    # The proxmox NixOS module does NOT auto-apply its own overlay; this must be
+    # done explicitly. Scoped to server / headless-server roles only.
+    proxmoxOverlayModule = {
+      nixpkgs.overlays = [ inputs.proxmox-nixos.overlays.default ];
+    };
+
     # Optional opt-in services module loaded from the host's /etc/nixos.
     # Empty list when the file is absent so server/headless-server outputs stay
     # buildable on machines that haven't deployed server-services.nix yet.
@@ -88,14 +96,16 @@
         # inputs.proxmox-nixos.nixosModules.proxmox-ve is imported here (not in
         # modules/server/proxmox.nix) to avoid infinite recursion — `imports`
         # cannot safely reference _module.args.
-        baseModules  = [ unstableOverlayModule upModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
+        # proxmoxOverlayModule must also be listed to make pkgs.proxmox-ve available.
+        baseModules  = [ unstableOverlayModule upModule proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
         extraModules = serverServicesModule;
       };
       headless-server = {
         homeFile     = ./home-headless-server.nix;
         # No upModule — headless servers have no display, so the GUI update
         # app is intentionally omitted.
-        baseModules  = [ unstableOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
+        # proxmoxOverlayModule must also be listed to make pkgs.proxmox-ve available.
+        baseModules  = [ unstableOverlayModule proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
         extraModules = serverServicesModule;
       };
     };
@@ -212,8 +222,8 @@
       imports =
         [ home-manager.nixosModules.home-manager configFile ]
         ++ roles.${role}.extraModules
-        ++ lib.optional (role == "server" || role == "headless-server")
-             inputs.proxmox-nixos.nixosModules.proxmox-ve;
+        ++ lib.optionals (role == "server" || role == "headless-server")
+             [ proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
       home-manager = {
         useGlobalPkgs    = true;
         useUserPackages  = true;

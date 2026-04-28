@@ -7,9 +7,10 @@
 #   nix.settings.trusted-public-keys = [ "proxmox-nixos:D9RYSWpQQC/msZUWphOY2I5RLH5Dd6yQcaHIuug7dWM=" ];
 #
 # ⚠ Experimental — not recommended for production machines.
-# ⚠ The proxmox-nixos overlay is applied by the proxmox-ve NixOS module imported
-#   at the flake level (serverBase / headlessServerBase) — it does not need to be
-#   re-applied here.
+# ⚠ The proxmox-nixos overlay (`proxmoxOverlayModule`) and the proxmox-ve NixOS
+#   module are both applied at the flake level (in `roles.server/headless-server
+#   .baseModules`). The overlay makes `pkgs.proxmox-ve` available; the NixOS
+#   module defines `services.proxmox-ve.*` options. Neither needs re-applying here.
 #
 # Impermanence note: if running on the stateless role, add /var/lib/pve-cluster
 # to your persistence directories to survive reboots with the cluster config intact.
