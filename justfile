@@ -455,6 +455,7 @@ service-info service="":
         photoprism)      printf "  %-18s  Web UI  http://<server-ip>:2342\n"                                                   "$1" ;;
         portainer)       printf "  %-18s  Web UI  https://<server-ip>:9443  (requires docker)\n"                               "$1" ;;
         prometheus)      printf "  %-18s  Web UI  http://<server-ip>:9090   ⚠ conflicts with cockpit\n"                        "$1" ;;
+        proxmox)         printf "  %-18s  Web UI  https://<server-ip>:8006  |  Ports :3128 (SPICE), :5900-5999 (VNC)\n"        "$1" ;;
         unbound)         printf "  %-18s  DNS on :53   ⚠ conflicts with adguard\n"                                             "$1" ;;
         zigbee2mqtt)     printf "  %-18s  Web UI  http://<server-ip>:8088\n"                                                   "$1" ;;
         *)               printf "  %-18s  (no info available)\n"                                                       "$1" ;;
