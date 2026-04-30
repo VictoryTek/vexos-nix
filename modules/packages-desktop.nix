@@ -6,5 +6,6 @@
   environment.systemPackages = with pkgs; [
     brave  # Chromium-based browser
     joplin-desktop  # Note-taking app (testing)
+    jdk21  # Java 21 (LTS)
   ];
 }
