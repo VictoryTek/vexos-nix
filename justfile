@@ -580,7 +580,7 @@ status service: _require-server-role
         echo "── HTTP reachability ─────────────────────────────────────────"
         for url in $URLS; do
             printf "  %-45s  " "$url"
-            http_code=$(curl -o /dev/null -s -w "%{http_code}" --max-time 3 "$url" 2>/dev/null || echo "unreachable")
+            http_code=$(curl -o /dev/null -s -k -w "%{http_code}" --max-time 3 "$url" 2>/dev/null || echo "unreachable")
             if [[ "$http_code" =~ ^[0-9]+$ ]]; then
                 if [[ "$http_code" -lt 400 ]]; then
                     printf "\033[32m%s\033[0m\n" "$http_code OK"
