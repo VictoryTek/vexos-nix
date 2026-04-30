@@ -9,7 +9,7 @@ default:
     if [[ "$variant" == *server* ]]; then
         echo ""
         echo "Available recipes (GUI Server / Headless Server roles):"
-        echo "    list-services              List all available server service modules"
+        echo "    available-services         List all available server service modules"
         echo "    service-info [service]     Show ports and URLs for enabled (or specified) services"
         echo "    services                   List enabled/disabled status of server service modules"
         echo "    status <service>           Show systemctl status and HTTP reachability for a service"
@@ -354,7 +354,7 @@ _require-server-role:
 
 # List all available server service modules (catalog view, no role required).
 [private]
-list-services:
+available-services:
     #!/usr/bin/env bash
     _hdr() { printf "\n  \033[1m%s\033[0m\n" "$1"; }
     _svc() { printf "    %s\n" "$1"; }

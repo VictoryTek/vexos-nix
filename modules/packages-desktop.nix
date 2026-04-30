@@ -5,5 +5,6 @@
 {
   environment.systemPackages = with pkgs; [
     brave  # Chromium-based browser
+    joplin-desktop  # Note-taking app (testing)
   ];
 }
