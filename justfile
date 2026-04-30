@@ -413,13 +413,27 @@ service-info service="":
         papermc)
             _mc_ver=$(grep -m1 'Starting minecraft server version\|server version' /var/lib/minecraft/logs/latest.log 2>/dev/null \
                 | grep -oP '(?<=version )\S+' | head -1) || true
-            [ -z "$_mc_ver" ] && _mc_ver=$(ls /nix/store/*papermc*/share/papermc/paper-*.jar 2>/dev/null \
-                | head -1 | grep -oP '(?<=paper-)\S+(?=\.jar)') || true
+            if [ -z "$_mc_ver" ]; then
+                _mc_jar=$(find /nix/store -maxdepth 3 -name 'paper-*.jar' 2>/dev/null | head -1) || true
+                [ -n "$_mc_jar" ] && _mc_ver=$(basename "$_mc_jar" | grep -oP '(?<=paper-)\d+\.\d+[\.\d]*') || true
+            fi
             [ -z "$_mc_ver" ] && _mc_ver="unknown"
-            _java_bin=$(systemctl show minecraft-server.service -p ExecStart --value 2>/dev/null \
-                | grep -oP '/nix/store/\S+/bin/java' | head -1) || true
+            _java_bin=""
+            # 1. Detect java from the running process
+            _java_pid=$(pgrep -f 'paper[^/]*\.jar' 2>/dev/null | head -1) || true
+            [ -n "$_java_pid" ] && _java_bin=$(readlink -f "/proc/$_java_pid/exe" 2>/dev/null) || true
+            # 2. Detect java from inside the ExecStart wrapper script (NixOS wraps java)
+            if [ -z "$_java_bin" ]; then
+                _exec_bin=$(systemctl show minecraft-server.service -p ExecStart --value 2>/dev/null \
+                    | grep -oP '(?<=path=)/nix/store/\S+' | head -1) || true
+                if [ -n "$_exec_bin" ] && [ -f "$_exec_bin" ]; then
+                    _java_bin=$(grep -oP '/nix/store/\S+/bin/java' "$_exec_bin" 2>/dev/null | head -1) || true
+                fi
+            fi
+            # 3. Fall back to java in PATH
             [ -z "$_java_bin" ] && _java_bin=$(readlink -f "$(command -v java 2>/dev/null)" 2>/dev/null) || true
-            _java_ver=$("$_java_bin" -version 2>&1 | grep -oP '(?<=version ")\d+' | head -1 2>/dev/null) || true
+            _java_ver=""
+            [ -n "$_java_bin" ] && _java_ver=$("$_java_bin" -version 2>&1 | grep -oP '(?<=version ")\d+' | head -1) || true
             [ -z "$_java_ver" ] && _java_ver="unknown"
             printf "  %-18s  Version: Minecraft Java Edition %s\n"                                       "$1" "$_mc_ver"
             printf "  %-18s  Java:    Server running Java %s  |  Clients: Java %s required\n"           "" "$_java_ver" "$_java_ver"
