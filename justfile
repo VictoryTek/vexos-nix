@@ -561,6 +561,7 @@ status service: _require-server-role
       photoprism)     UNITS="photoprism";               URLS="http://localhost:2342" ;;
       portainer)      UNITS="docker-portainer";         URLS="https://localhost:9443" ;;
       prometheus)     UNITS="prometheus";               URLS="http://localhost:9090" ;;
+      proxmox)        UNITS="pve-cluster pvedaemon pveproxy pvestatd pvescheduler"; URLS="https://localhost:8006" ;;
       unbound)        UNITS="unbound";                  URLS="" ;;
       zigbee2mqtt)    UNITS="zigbee2mqtt";              URLS="http://localhost:8088" ;;
       *)              UNITS="$SERVICE";             URLS="" ;;
