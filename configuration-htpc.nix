@@ -21,10 +21,6 @@
     ./modules/users.nix
   ];
 
-  # ---------- Nixpkgs ----------
-  # Enable Widevine CDM for Brave (DRM-protected streaming: Netflix, Prime, Disney+).
-  nixpkgs.config.chromium.enableWidevineCdm = true;
-
   # ---------- State version ----------
   # Set once at install time — do not change after initial deployment.
   system.stateVersion = "25.11";
