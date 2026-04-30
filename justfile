@@ -412,14 +412,14 @@ service-info service="":
         overseerr)       printf "  %-18s  Web UI  http://<server-ip>:5055   ⚠ conflicts with jellyseerr\n"             "$1" ;;
         papermc)
             _mc_ver=$(grep -m1 'Starting minecraft server version\|server version' /var/lib/minecraft/logs/latest.log 2>/dev/null \
-                | grep -oP '(?<=version )\S+' | head -1)
+                | grep -oP '(?<=version )\S+' | head -1) || true
             [ -z "$_mc_ver" ] && _mc_ver=$(ls /nix/store/*papermc*/share/papermc/paper-*.jar 2>/dev/null \
-                | head -1 | grep -oP '(?<=paper-)\S+(?=\.jar)')
+                | head -1 | grep -oP '(?<=paper-)\S+(?=\.jar)') || true
             [ -z "$_mc_ver" ] && _mc_ver="unknown"
             _java_bin=$(systemctl show minecraft-server.service -p ExecStart --value 2>/dev/null \
-                | grep -oP '/nix/store/\S+/bin/java' | head -1)
-            [ -z "$_java_bin" ] && _java_bin=$(readlink -f "$(command -v java 2>/dev/null)" 2>/dev/null)
-            _java_ver=$("$_java_bin" -version 2>&1 | grep -oP '(?<=version ")\d+' | head -1 2>/dev/null)
+                | grep -oP '/nix/store/\S+/bin/java' | head -1) || true
+            [ -z "$_java_bin" ] && _java_bin=$(readlink -f "$(command -v java 2>/dev/null)" 2>/dev/null) || true
+            _java_ver=$("$_java_bin" -version 2>&1 | grep -oP '(?<=version ")\d+' | head -1 2>/dev/null) || true
             [ -z "$_java_ver" ] && _java_ver="unknown"
             printf "  %-18s  Version: Minecraft Java Edition %s\n"                                       "$1" "$_mc_ver"
             printf "  %-18s  Java:    Server running Java %s  |  Clients: Java %s required\n"           "" "$_java_ver" "$_java_ver"
@@ -851,14 +851,14 @@ enable service: _require-server-role
         ;;
       papermc)
         _mc_ver=$(grep -m1 'Starting minecraft server version\|server version' /var/lib/minecraft/logs/latest.log 2>/dev/null \
-            | grep -oP '(?<=version )\S+' | head -1)
+            | grep -oP '(?<=version )\S+' | head -1) || true
         [ -z "$_mc_ver" ] && _mc_ver=$(ls /nix/store/*papermc*/share/papermc/paper-*.jar 2>/dev/null \
-            | head -1 | grep -oP '(?<=paper-)\S+(?=\.jar)')
+            | head -1 | grep -oP '(?<=paper-)\S+(?=\.jar)') || true
         [ -z "$_mc_ver" ] && _mc_ver="unknown (start the server once to detect)"
         _java_bin=$(systemctl show minecraft-server.service -p ExecStart --value 2>/dev/null \
-            | grep -oP '/nix/store/\S+/bin/java' | head -1)
-        [ -z "$_java_bin" ] && _java_bin=$(readlink -f "$(command -v java 2>/dev/null)" 2>/dev/null)
-        _java_ver=$("$_java_bin" -version 2>&1 | grep -oP '(?<=version ")\d+' | head -1 2>/dev/null)
+            | grep -oP '/nix/store/\S+/bin/java' | head -1) || true
+        [ -z "$_java_bin" ] && _java_bin=$(readlink -f "$(command -v java 2>/dev/null)" 2>/dev/null) || true
+        _java_ver=$("$_java_bin" -version 2>&1 | grep -oP '(?<=version ")\d+' | head -1 2>/dev/null) || true
         [ -z "$_java_ver" ] && _java_ver="unknown"
         echo "  Service:  minecraft-server.service"
         echo "  Version:  Minecraft Java Edition $_mc_ver"
