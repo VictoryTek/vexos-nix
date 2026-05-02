@@ -19,6 +19,7 @@
   virtualisation.virtualbox.host = {
     enable              = true;
     enableExtensionPack = true;   # USB 2/3 passthrough (unfree; allowed in modules/nix.nix)
+    package             = pkgs.unstable.virtualbox;  # 7.2.6 fixes kernel 7.0 module build
   };
 
   # ── User groups ───────────────────────────────────────────────────────────
