@@ -87,4 +87,15 @@
   # Loads the NFS kernel module and pulls in nfs-utils so that GVfs can
   # mount NFS shares discovered via Nautilus → Network → nfs://host/export.
   boot.supportedFilesystems = [ "nfs" ];
+
+  # ── NetBIOS conntrack helper ────────────────────────────────────────────
+  # Traditional SMB browsing (gvfsd-smb-browse / libsmbclient) sends
+  # broadcast queries on UDP 137.  Replies arrive from different source IPs
+  # than the broadcast destination, so the firewall's conntrack doesn't
+  # recognise them as RELATED — they're silently dropped.  This rule loads
+  # the netbios-ns conntrack helper so replies are correctly tracked.
+  # Reference: https://wiki.archlinux.org/title/Samba#%22Browsing%22_network_fails_with_%22Failed_to_retrieve_share_list_from_server%22
+  networking.firewall.extraCommands = ''
+    iptables -t raw -A OUTPUT -p udp -m udp --dport 137 -j CT --helper netbios-ns
+  '';
 }

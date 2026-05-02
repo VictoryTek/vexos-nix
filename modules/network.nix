@@ -45,6 +45,16 @@
     enable      = true;
     dnssec      = "allow-downgrade";
     fallbackDns = [ "1.1.1.1" "9.9.9.9" ];
+    # Disable resolved's built-in mDNS and LLMNR handlers so they don't
+    # conflict with Avahi.  Without this, resolved and Avahi race on mDNS
+    # multicast traffic (UDP 5353), causing Avahi's service browser to miss
+    # NAS devices advertising _smb._tcp — the root cause of SMB shares not
+    # appearing in Nautilus → Network.
+    # Reference: https://wiki.archlinux.org/title/Avahi#Installation
+    extraConfig = ''
+      MulticastDNS=no
+      LLMNR=no
+    '';
   };
 
   # ── SMB / CIFS client ────────────────────────────────────────────────────
