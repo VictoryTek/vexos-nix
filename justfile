@@ -15,6 +15,8 @@ default:
         echo "    status <service>           Show systemctl status and HTTP reachability for a service"
         echo "    enable <service>           Enable a server service module"
         echo "    disable <service>          Disable a server service module"
+        echo "    enable-plex-pass           Enable Plex Pass hardware transcoding"
+        echo "    disable-plex-pass          Disable Plex Pass hardware transcoding"
     elif [[ "$variant" == *stateless* ]]; then
         echo ""
         echo "Active role: stateless (ephemeral / tmpfs root)"
@@ -1118,6 +1120,7 @@ enable service: _require-server-role
 
 # Toggle Plex Pass hardware transcoding on/off for an already-enabled Plex installation.
 # Usage: just enable-plex-pass   /   just disable-plex-pass
+[private]
 enable-plex-pass: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1136,6 +1139,7 @@ enable-plex-pass: _require-server-role
     echo "  → Run 'just rebuild' to apply."
     echo ""
 
+[private]
 disable-plex-pass: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
