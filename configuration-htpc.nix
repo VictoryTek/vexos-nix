@@ -31,6 +31,7 @@
   vexos.flatpak.excludeApps = [
     "org.gimp.GIMP"
     "org.onlyoffice.desktopeditors"  # desktop-only app; clean up if left over from pre-split config
+    "tv.plex.PlexDesktop"            # Flatpak version; nixpkgs plex-desktop is used instead
   ];
 
   vexos.flatpak.extraApps = [
