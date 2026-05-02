@@ -150,5 +150,44 @@
   # changes in GNOME Settings survive rebuilds because the user-db has higher
   # priority.
 
+  # ── First-run app-folder layout ───────────────────────────────────────────
+  # See comment in home-htpc.nix for rationale.
+  systemd.user.services.vexos-init-app-folders = {
+    Unit = {
+      Description = "VexOS: initialise GNOME app folders (once)";
+      After       = [ "graphical-session.target" ];
+      PartOf      = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type            = "oneshot";
+      RemainAfterExit = true;
+      ExecStart       = toString (pkgs.writeShellScript "vexos-init-app-folders-stateless" ''
+        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized"
+        [ -f "$STAMP" ] && exit 0
+
+        D="${pkgs.dconf}/bin/dconf"
+
+        $D write /org/gnome/desktop/app-folders/folder-children \
+          "['Office', 'Utilities', 'System']"
+
+        $D write /org/gnome/desktop/app-folders/folders/Office/name   "'Office'"
+        $D write /org/gnome/desktop/app-folders/folders/Office/apps \
+          "['org.onlyoffice.desktopeditors.desktop', 'org.gnome.TextEditor.desktop']"
+
+        $D write /org/gnome/desktop/app-folders/folders/Utilities/name "'Utilities'"
+        $D write /org/gnome/desktop/app-folders/folders/Utilities/apps \
+          "['com.mattjakeman.ExtensionManager.desktop', 'it.mijorus.gearlever.desktop', 'org.gnome.tweaks.desktop', 'io.github.flattool.Warehouse.desktop', 'io.missioncenter.MissionCenter.desktop', 'com.github.tchx84.Flatseal.desktop']"
+
+        $D write /org/gnome/desktop/app-folders/folders/System/name    "'System'"
+        $D write /org/gnome/desktop/app-folders/folders/System/apps \
+          "['org.pulseaudio.pavucontrol.desktop', 'io.missioncenter.MissionCenter.desktop', 'org.gnome.Settings.desktop', 'org.gnome.seahorse.Application.desktop', 'nixos-manual.desktop', 'cups.desktop', 'blivet-gui.desktop', 'blueman-manager.desktop', 'btop.desktop', 'ca.desrt.dconf-editor.desktop', 'org.gnome.baobab.desktop', 'org.gnome.DiskUtility.desktop', 'org.gnome.font-viewer.desktop', 'org.gnome.Logs.desktop', 'btrfs-assistant.desktop', 'org.gnome.SystemMonitor.desktop']"
+
+        mkdir -p "$HOME/.local/share/vexos"
+        touch "$STAMP"
+      '');
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
   home.stateVersion = "24.05";
 }

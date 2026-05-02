@@ -338,6 +338,8 @@ rollforward:
 # Reset all GNOME settings to the flake defaults by clearing the user dconf
 # database.  After this, every key falls back to the system dconf database
 # written by modules/gnome.nix and the active gnome-<role>.nix module.
+# The app-folder stamp file is also removed so the first-run service
+# re-applies the folder layout on the next graphical login.
 # Run in a terminal (NOT inside a GNOME session) or log out first for best
 # results, since GNOME may re-write some keys while running.
 reset-defaults:
@@ -351,7 +353,9 @@ reset-defaults:
         *) echo "Aborted."; exit 0 ;;
     esac
     dconf reset -f /
+    rm -f "$HOME/.local/share/vexos/.dconf-app-folders-initialized"
     echo "Done. Log out and back in (or reboot) for all changes to take effect."
+    echo "App folders will be restored on the next graphical login."
 
 # ── Server Services Management ───────────────────────────────────────────────
 # Run `just services` to see available modules and their status.
