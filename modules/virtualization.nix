@@ -1,9 +1,10 @@
 # modules/virtualization.nix
-# QEMU/KVM virtualisation: libvirt daemon, virt-manager GUI, UEFI/TPM support,
-# SPICE USB redirection, and VirtIO drivers for Windows guests.
+# Virtualisation stack for the desktop role:
+# - VirtualBox as the primary hypervisor (VM creation & management)
+# - libvirtd + QEMU/KVM retained as the backend for GNOME Boxes
 { pkgs, ... }:
 {
-  # ── libvirt / KVM ─────────────────────────────────────────────────────────
+  # ── libvirt / KVM (backend for GNOME Boxes) ───────────────────────────────
   virtualisation.libvirtd = {
     enable = true;
     qemu = {
@@ -14,19 +15,14 @@
     };
   };
 
-  # USB passthrough inside SPICE console sessions
-  virtualisation.spiceUSBRedirection.enable = true;
+  # ── VirtualBox host ───────────────────────────────────────────────────────
+  virtualisation.virtualbox.host = {
+    enable              = true;
+    enableExtensionPack = true;   # USB 2/3 passthrough (unfree; allowed in modules/nix.nix)
+  };
 
-  # ── libvirt group ─────────────────────────────────────────────────────────
-  # Grants nimda permission to manage VMs without sudo.
-  users.users.nimda.extraGroups = [ "libvirtd" ];
-
-  environment.systemPackages = with pkgs; [
-
-    # ── VM management ─────────────────────────────────────────────────────────
-    virt-manager                                  # GUI for creating and managing VMs
-    virt-viewer                                   # Lightweight SPICE / VNC VM console
-    virtio-win                                    # VirtIO drivers ISO for Windows guests
-
-  ];
+  # ── User groups ───────────────────────────────────────────────────────────
+  # libvirtd  — manage GNOME Boxes VMs without sudo
+  # vboxusers — access VirtualBox host services
+  users.users.nimda.extraGroups = [ "libvirtd" "vboxusers" ];
 }
