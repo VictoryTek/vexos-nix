@@ -333,8 +333,25 @@ rollforward:
     sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
     echo "Now on generation: ${next}"
 
+# Reset all GNOME settings to the flake defaults by clearing the user dconf
+# database.  After this, every key falls back to the system dconf database
+# written by modules/gnome.nix and the active gnome-<role>.nix module.
+# Run in a terminal (NOT inside a GNOME session) or log out first for best
+# results, since GNOME may re-write some keys while running.
+reset-defaults:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Resetting user dconf database — all GNOME customisations will be lost."
+    printf "Continue? [y/N]: "
+    read -r ANSWER
+    case "${ANSWER,,}" in
+        y|yes) ;;
+        *) echo "Aborted."; exit 0 ;;
+    esac
+    dconf reset -f /
+    echo "Done. Log out and back in (or reboot) for all changes to take effect."
+
 # ── Server Services Management ───────────────────────────────────────────────
-# These recipes manage /etc/nixos/server-services.nix on the server role.
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.

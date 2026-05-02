@@ -34,55 +34,15 @@
   };
 
   # ── Common GNOME dconf settings ────────────────────────────────────────────
-  # These keys are identical across all roles. Role-specific keys (wallpaper
-  # URIs, enabled-extensions, favorite-apps, app-folders) remain in each
-  # role's home file.
-  dconf.settings = {
-
-    "org/gnome/desktop/interface" = {
-      clock-format = "12h";
-      cursor-theme = "Bibata-Modern-Classic";
-      icon-theme   = "kora";
-      color-scheme = "prefer-dark";
-    };
-
-    "org/gnome/desktop/wm/preferences" = {
-      button-layout = "appmenu:minimize,maximize,close";
-    };
-
-    # Wallpaper: use the stable Nix store path from branding.nix's vexosWallpapers
-    # package so the value matches the system dconf database entry exactly.
-    # The role-specific wallpaper is deployed to this path at build time.
-    "org/gnome/desktop/background" = {
-      picture-options  = "zoom";
-      picture-uri      = "file:///run/current-system/sw/share/backgrounds/vexos/vex-bb-light.jxl";
-      picture-uri-dark = "file:///run/current-system/sw/share/backgrounds/vexos/vex-bb-dark.jxl";
-    };
-
-    # "org/gnome/shell/extensions/dash-to-dock" = {
-    #   dock-position = "LEFT";
-    # };
-
-    "org/fedorahosted/background-logo-extension" = {
-      logo-file           = "/run/current-system/sw/share/pixmaps/vex-background-logo.svg";
-      logo-file-dark      = "/run/current-system/sw/share/pixmaps/vex-background-logo-dark.svg";
-      logo-always-visible = true;
-    };
-
-    "org/gnome/desktop/screensaver" = {
-      lock-enabled = false;
-      lock-delay   = lib.gvariant.mkUint32 0;
-    };
-
-    "org/gnome/session" = {
-      idle-delay = lib.gvariant.mkUint32 300;
-    };
-
-    "org/gnome/settings-daemon/plugins/housekeeping" = {
-      donation-reminder-enabled = false;
-    };
-
-  };
+  # All GNOME defaults are set via the system dconf database
+  # (programs.dconf.profiles.user.databases in modules/gnome.nix and the
+  # role-specific gnome-<role>.nix modules).  The system database provides
+  # defaults that the user can override — manual customizations survive
+  # nixos-rebuild because the user-db has higher priority than the system-db.
+  #
+  # Previously dconf.settings was used here, but Home Manager writes those
+  # directly into ~/.config/dconf/user, overwriting manual changes on every
+  # rebuild.  Removed to preserve user customizations.
 
   # ── MIME associations ──────────────────────────────────────────────────────
   # Declaratively registers Brave as the XDG MIME default for all web schemes.

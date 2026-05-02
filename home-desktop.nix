@@ -109,114 +109,12 @@
   home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/desktop/vex-bb-light.jxl;
   home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/desktop/vex-bb-dark.jxl;
 
-  # ── GNOME dconf settings ────────────────────────────────────────────────
-  # Written directly into the user's dconf binary db during home-manager activation.
-  # These override system-level defaults and are the authoritative source for all
-  # GNOME settings tracked in this repo.
-  dconf.settings = {
+  # ── GNOME dconf defaults ─────────────────────────────────────────────────
+  # All dconf keys are set via the system dconf database in modules/gnome.nix
+  # and modules/gnome-desktop.nix.  The system-db provides defaults; user
+  # changes in GNOME Settings survive rebuilds because the user-db has higher
+  # priority.
 
-    "org/gnome/shell" = {
-      enabled-extensions = [
-        "appindicatorsupport@rgcjonas.gmail.com"
-        # "dash-to-dock@micxgx.gmail.com"  # disabled: autohide broken
-        "AlphabeticalAppGrid@stuarthayhurst"
-        "gamemodeshellextension@trsnaqe.com"
-        "gnome-ui-tune@itstime.tech"
-        "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
-        "steal-my-focus-window@steal-my-focus-window"
-        "tailscale-status@maxgallup.github.com"
-        "caffeine@patapon.info"
-        "restartto@tiagoporsch.github.io"
-        "blur-my-shell@aunetx"
-        "background-logo@fedorahosted.org"
-      ];
-      favorite-apps = [
-        "brave-browser.desktop"
-        "app.zen_browser.zen.desktop"
-        "org.gnome.Nautilus.desktop"
-        "com.mitchellh.ghostty.desktop"
-        "io.github.up.desktop"
-        "org.gnome.Boxes.desktop"
-        "virtualbox.desktop"
-        "code.desktop"
-      ];
-    };
-
-    "org/gnome/desktop/app-folders" = {
-      folder-children = [ "Games" "Game Utilities" "Office" "Utilities" "System" ];
-    };
-
-    "org/gnome/desktop/app-folders/folders/Games" = {
-      name = "Games";
-      apps = [
-        "org.prismlauncher.PrismLauncher.desktop"
-        "net.lutris.Lutris.desktop"
-        "steam.desktop"
-        "com.hypixel.HytaleLauncher.desktop"
-        "Ryujinx.desktop"
-        "com.libretro.RetroArch.desktop"
-      ];
-    };
-
-    "org/gnome/desktop/app-folders/folders/Game Utilities" = {
-      name = "Game Utilities";
-      apps = [
-        "com.vysp3r.ProtonPlus.desktop"
-        "protontricks.desktop"
-        "vesktop.desktop"
-        "discord.desktop"
-      ];
-    };
-
-    "org/gnome/desktop/app-folders/folders/Office" = {
-      name = "Office";
-      apps = [
-        "org.onlyoffice.desktopeditors.desktop"
-        "org.gnome.TextEditor.desktop"
-        "org.gnome.Papers.desktop"
-      ];
-    };
-
-    "org/gnome/desktop/app-folders/folders/Utilities" = {
-      name = "Utilities";
-      apps = [
-        "com.mattjakeman.ExtensionManager.desktop"
-        "it.mijorus.gearlever.desktop"
-        "org.gnome.tweaks.desktop"
-        "io.github.flattool.Warehouse.desktop"
-        "io.missioncenter.MissionCenter.desktop"
-        "com.github.tchx84.Flatseal.desktop"
-        "org.gnome.World.PikaBackup.desktop"
-      ];
-    };
-
-    "org/gnome/desktop/app-folders/folders/System" = {
-      name = "System";
-      apps = [
-        "org.pulseaudio.pavucontrol.desktop"
-        "rog-control-center.desktop"
-        "io.missioncenter.MissionCenter.desktop"
-        "org.gnome.Settings.desktop"
-        "org.gnome.seahorse.Application.desktop"
-        "nixos-manual.desktop"
-        "cups.desktop"
-        "blivet-gui.desktop"
-        "blueman-manager.desktop"
-        "btop.desktop"
-        "ca.desrt.dconf-editor.desktop"
-        "org.gnome.baobab.desktop"
-        "org.gnome.DiskUtility.desktop"
-        "org.gnome.font-viewer.desktop"
-        "org.gnome.Logs.desktop"
-        "btrfs-assistant.desktop"
-        "org.gnome.SystemMonitor.desktop"
-        "com.system76.Popsicle.desktop"
-      ];
-    };
-    "org/gnome/desktop/interface" = {
-      #color-scheme = "prefer-dark";
-      accent-color = "blue";
-    };  };
   # ── State version ──────────────────────────────────────────────────────────
   # Do NOT change after first activation — tracks the HM release at initial install.
   home.stateVersion = "24.05";

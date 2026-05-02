@@ -115,7 +115,13 @@
           # ── Screensaver / session ───────────────────────────────────────
           "org/gnome/desktop/screensaver" = {
             lock-enabled = false;
+            lock-delay   = lib.gvariant.mkUint32 0;
           };
+
+          "org/gnome/session" = {
+            idle-delay = lib.gvariant.mkUint32 300;
+          };
+
           # ── Housekeeping ────────────────────────────────────────────────
           "org/gnome/settings-daemon/plugins/housekeeping" = {
             donation-reminder-enabled = false;

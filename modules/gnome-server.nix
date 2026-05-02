@@ -55,6 +55,52 @@ in
             "io.github.up.desktop"
           ];
         };
+
+        "org/gnome/desktop/app-folders" = {
+          folder-children = [ "Office" "Utilities" "System" ];
+        };
+
+        "org/gnome/desktop/app-folders/folders/Office" = {
+          name = "Office";
+          apps = [
+            "org.gnome.TextEditor.desktop"
+          ];
+        };
+
+        "org/gnome/desktop/app-folders/folders/Utilities" = {
+          name = "Utilities";
+          apps = [
+            "com.mattjakeman.ExtensionManager.desktop"
+            "it.mijorus.gearlever.desktop"
+            "org.gnome.tweaks.desktop"
+            "io.github.flattool.Warehouse.desktop"
+            "io.missioncenter.MissionCenter.desktop"
+            "com.github.tchx84.Flatseal.desktop"
+            "org.gnome.World.PikaBackup.desktop"
+          ];
+        };
+
+        "org/gnome/desktop/app-folders/folders/System" = {
+          name = "System";
+          apps = [
+            "org.pulseaudio.pavucontrol.desktop"
+            "io.missioncenter.MissionCenter.desktop"
+            "org.gnome.Settings.desktop"
+            "org.gnome.seahorse.Application.desktop"
+            "nixos-manual.desktop"
+            "cups.desktop"
+            "blivet-gui.desktop"
+            "blueman-manager.desktop"
+            "btop.desktop"
+            "ca.desrt.dconf-editor.desktop"
+            "org.gnome.baobab.desktop"
+            "org.gnome.DiskUtility.desktop"
+            "org.gnome.font-viewer.desktop"
+            "org.gnome.Logs.desktop"
+            "btrfs-assistant.desktop"
+            "org.gnome.SystemMonitor.desktop"
+          ];
+        };
       };
     }
   ];
