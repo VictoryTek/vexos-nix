@@ -1,7 +1,8 @@
 # modules/virtualization.nix
 # Virtualisation stack for the desktop role:
-# - VirtualBox as the primary hypervisor (VM creation & management)
-# - libvirtd + QEMU/KVM retained as the backend for GNOME Boxes
+# - libvirtd + QEMU/KVM as the primary hypervisor (GNOME Boxes & virt-manager)
+# - VirtualBox disabled: kernel 7.0 moved KVM symbols to a restricted namespace
+#   that VirtualBox ≤7.2.6 cannot import. Re-enable when upstream fixes this.
 { pkgs, ... }:
 {
   # ── libvirt / KVM (backend for GNOME Boxes) ───────────────────────────────
@@ -15,15 +16,13 @@
     };
   };
 
-  # ── VirtualBox host ───────────────────────────────────────────────────────
-  virtualisation.virtualbox.host = {
-    enable              = true;
-    enableExtensionPack = true;   # USB 2/3 passthrough (unfree; allowed in modules/nix.nix)
-    package             = pkgs.unstable.virtualbox;  # 7.2.6 fixes kernel 7.0 module build
-  };
+  # ── VirtualBox host (DISABLED — incompatible with kernel 7.0) ─────────────
+  # virtualisation.virtualbox.host = {
+  #   enable              = true;
+  #   enableExtensionPack = true;
+  # };
 
   # ── User groups ───────────────────────────────────────────────────────────
   # libvirtd  — manage GNOME Boxes VMs without sudo
-  # vboxusers — access VirtualBox host services
-  users.users.nimda.extraGroups = [ "libvirtd" "vboxusers" ];
+  users.users.nimda.extraGroups = [ "libvirtd" ];
 }
