@@ -335,6 +335,14 @@ rollforward:
     sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
     echo "Now on generation: ${next}"
 
+# Reboot the system immediately.
+reboot:
+    sudo systemctl reboot
+
+# Shut down the system immediately.
+shutdown:
+    sudo systemctl poweroff
+
 # Reset all GNOME settings to the flake defaults by clearing the user dconf
 # database.  After this, every key falls back to the system dconf database
 # written by modules/gnome.nix and the active gnome-<role>.nix module.
