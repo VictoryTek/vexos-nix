@@ -183,9 +183,21 @@ fi
 
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}${NVIDIA_SUFFIX}"
 
+# Headless server cannot be activated live: doing so stops display-manager.service
+# during switch-to-configuration, killing the live ISO's GNOME session (and this
+# script). Use `nixos-rebuild boot` to install the new generation as default
+# without runtime activation; user reboots into the new system.
+REBUILD_ACTION="switch"
+if [ "$ROLE" = "headless-server" ]; then
+  REBUILD_ACTION="boot"
+fi
+
 # ---------- Build & switch ---------------------------------------------------
 echo ""
-echo -e "${BOLD}Building ${CYAN}${FLAKE_TARGET}${RESET}${BOLD}...${RESET}"
+echo -e "${BOLD}Building ${CYAN}${FLAKE_TARGET}${RESET}${BOLD} (action: ${REBUILD_ACTION})...${RESET}"
+if [ "$REBUILD_ACTION" = "boot" ]; then
+  echo -e "${YELLOW}[headless-server] Using 'nixos-rebuild boot' to preserve the live GNOME session. The new system will not activate until you reboot.${RESET}"
+fi
 echo ""
 
 # ---------- UEFI / BIOS preflight check -------------------------------------
@@ -274,28 +286,45 @@ else
 fi
 
 # ---------- Build & switch ---------------------------------------------------
-if sudo nixos-rebuild switch --flake "/etc/nixos#${FLAKE_TARGET}"; then
+if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "/etc/nixos#${FLAKE_TARGET}"; then
   echo ""
-  echo -e "${GREEN}${BOLD}✓ Build and switch successful!${RESET}"
-  echo ""
-  printf "Reboot now? [y/N] "
-  read -r REBOOT_CHOICE </dev/tty
-  case "${REBOOT_CHOICE,,}" in
-    y|yes)
-      echo "Rebooting..."
-      systemctl reboot
-      ;;
-    *)
-      echo ""
-      echo -e "${YELLOW}Skipping reboot. Log out and back in to apply session changes.${RESET}"
-      echo ""
-      ;;
-  esac
+  if [ "$REBUILD_ACTION" = "boot" ]; then
+    echo -e "${GREEN}${BOLD}✓ Build complete. New generation registered as default.${RESET}"
+    echo -e "${YELLOW}[headless-server] Build complete. Reboot now to start the headless server. The live ISO will remain active until you do.${RESET}"
+    echo ""
+    printf "Reboot now? [Y/n] "
+    read -r REBOOT_CHOICE </dev/tty
+    case "${REBOOT_CHOICE,,}" in
+      n|no)
+        echo -e "${YELLOW}Reboot skipped. Run 'systemctl reboot' when ready.${RESET}"
+        ;;
+      *)
+        echo "Rebooting..."
+        systemctl reboot
+        ;;
+    esac
+  else
+    echo -e "${GREEN}${BOLD}✓ Build and switch successful!${RESET}"
+    echo ""
+    printf "Reboot now? [y/N] "
+    read -r REBOOT_CHOICE </dev/tty
+    case "${REBOOT_CHOICE,,}" in
+      y|yes)
+        echo "Rebooting..."
+        systemctl reboot
+        ;;
+      *)
+        echo ""
+        echo -e "${YELLOW}Skipping reboot. Log out and back in to apply session changes.${RESET}"
+        echo ""
+        ;;
+    esac
+  fi
 else
   echo ""
-  echo -e "${RED}${BOLD}✗ nixos-rebuild failed. Reboot skipped.${RESET}"
+  echo -e "${RED}${BOLD}✗ nixos-rebuild ${REBUILD_ACTION} failed. Reboot skipped.${RESET}"
   echo "  Review the output above for errors and retry:"
-  echo "    sudo nixos-rebuild switch --flake /etc/nixos#${FLAKE_TARGET}"
+  echo "    sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
   echo ""
   exit 1
 fi

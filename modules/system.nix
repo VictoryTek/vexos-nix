@@ -37,6 +37,12 @@
       # Latest upstream kernel — applies to all variants.
       boot.kernelPackages = pkgs.linuxPackages_latest;
 
+      # EFI / systemd-boot — standard bootloader for all vexos-nix hosts.
+      # lib.mkDefault allows the host's /etc/nixos/flake.nix thin wrapper
+      # to override for BIOS/GRUB systems without conflict.
+      boot.loader.systemd-boot.enable      = lib.mkDefault true;
+      boot.loader.efi.canTouchEfiVariables = lib.mkDefault true;
+
       # ── Kernel parameters ───────────────────────────────────────────────
       boot.kernelParams = [
         # I/O scheduler: Kyber is low-latency; well suited for NVMe SSDs.
