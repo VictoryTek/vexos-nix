@@ -26,7 +26,7 @@ let
   # Common shell extensions enabled on every role.
   commonExtensions = [
     "appindicatorsupport@rgcjonas.gmail.com"
-    # "dash-to-dock@micxgx.gmail.com"  # disabled: autohide broken
+    "dash-to-dock@micxgx.gmail.com"
     "AlphabeticalAppGrid@stuarthayhurst"
     "gnome-ui-tune@itstime.tech"
     "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
