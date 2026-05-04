@@ -365,6 +365,86 @@ reset-defaults:
     echo "Done. Log out and back in (or reboot) for all changes to take effect."
     echo "App folders will be restored on the next graphical login."
 
+# Generate an SSH ed25519 key for nimda (if needed) and register it
+# declaratively via authorized_keys, then rebuild the current variant.
+# Safe to run multiple times — key generation and key registration are both idempotent.
+# After first run: git add authorized_keys && git commit to persist the key.
+enable-ssh:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v nix >/dev/null 2>&1; then
+        echo "error: 'nix' command not found. Run this recipe on a Nix-enabled Linux host." >&2
+        exit 127
+    fi
+    if ! command -v sudo >/dev/null 2>&1; then
+        echo "error: 'sudo' command not found. Use a Linux host with sudo configured." >&2
+        exit 127
+    fi
+    if [ "$(uname -s 2>/dev/null || echo unknown)" != "Linux" ]; then
+        echo "error: just enable-ssh must be run on Linux (NixOS target host)." >&2
+        exit 1
+    fi
+
+    TARGET=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [ -z "$TARGET" ]; then
+        echo "error: /etc/nixos/vexos-variant not found." >&2
+        echo "       Run 'just switch' first to build and activate a vexos variant." >&2
+        exit 1
+    fi
+
+    if [ "$(id -u)" -eq 0 ]; then
+        echo "warning: running as root — SSH key will be generated at /root/.ssh/." >&2
+        echo "         Consider running as nimda: sudo -u nimda just enable-ssh" >&2
+    fi
+
+    KEY_FILE="$HOME/.ssh/id_ed25519"
+    PUB_FILE="${KEY_FILE}.pub"
+
+    # ── Step 1: Generate key pair if not present ──────────────────────────
+    if [ ! -f "$KEY_FILE" ]; then
+        echo "Generating SSH ed25519 key pair for $USER..."
+        mkdir -p "$HOME/.ssh"
+        chmod 700 "$HOME/.ssh"
+        ssh-keygen -t ed25519 -f "$KEY_FILE" -N "" -C "${USER}@$(hostname)"
+        echo "Key written: $PUB_FILE"
+    else
+        echo "SSH key already exists: $PUB_FILE (skipping generation)"
+    fi
+
+    PUB_KEY=$(cat "$PUB_FILE")
+
+    # ── Step 2: Append public key to authorized_keys (idempotent) ─────────
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    _jf_dir=$(dirname "$_jf_real")
+    AUTH_KEYS="${_jf_dir}/authorized_keys"
+
+    if [ ! -f "$AUTH_KEYS" ]; then
+        echo "Creating ${AUTH_KEYS}..."
+        touch "$AUTH_KEYS"
+    fi
+
+    if grep -qF "$PUB_KEY" "$AUTH_KEYS" 2>/dev/null; then
+        echo "Public key already present in authorized_keys (skipping append)"
+    else
+        echo "$PUB_KEY" >> "$AUTH_KEYS"
+        echo "Public key appended to authorized_keys"
+        echo ""
+        echo "Reminder: commit the updated authorized_keys file to persist the key:"
+        echo "  git add authorized_keys && git commit -m 'chore: register nimda SSH key'"
+    fi
+
+    # ── Step 3: Rebuild and switch ─────────────────────────────────────────
+    echo ""
+    echo "Rebuilding: ${TARGET}"
+    echo ""
+    _flake_dir=$(just _resolve-flake-dir "${TARGET}" "")
+    sudo nixos-rebuild switch --flake "path:${_flake_dir}#${TARGET}"
+
+    echo ""
+    echo "SSH enabled. Connect with: ssh nimda@$(hostname)"
+    echo ""
+
 # ── Server Services Management ───────────────────────────────────────────────
 # Run `just services` to see available modules and their status.
 
