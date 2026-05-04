@@ -209,7 +209,7 @@
 
     # GNOME Shell extensions
     unstable.gnomeExtensions.appindicator               # System tray icons
-    # unstable.gnomeExtensions.dash-to-dock             # macOS-style dock — disabled: autohide broken
+    unstable.gnomeExtensions.dash-to-dock               # macOS-style dock
     unstable.gnomeExtensions.alphabetical-app-grid      # Sort app grid alphabetically
     unstable.gnomeExtensions.gnome-40-ui-improvements   # UI tweaks
     unstable.gnomeExtensions.nothing-to-say             # Mic mute indicator
