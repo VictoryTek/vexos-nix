@@ -366,6 +366,39 @@ reset-defaults:
     echo "Done. Log out and back in (or reboot) for all changes to take effect."
     echo "App folders will be restored on the next graphical login."
 
+# Copy your SSH key to a remote machine so future connections need no password.
+# Usage:
+#   just ssh                     — interactive prompts
+#   just ssh nimda@10.35.1.50   — direct
+ssh target="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    TARGET="{{target}}"
+
+    if [ -z "$TARGET" ]; then
+        printf "Username: "
+        read -r _user
+        printf "Server IP: "
+        read -r _ip
+        TARGET="${_user}@${_ip}"
+    fi
+
+    # Generate a local key pair if one doesn't exist yet.
+    if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
+        echo "No SSH key found — generating one now..."
+        mkdir -p "$HOME/.ssh"
+        chmod 700 "$HOME/.ssh"
+        ssh-keygen -t ed25519 -f "$HOME/.ssh/id_ed25519" -N "" -C "${USER}@$(hostname)"
+    fi
+
+    echo "Copying key to ${TARGET} — you will be prompted for the remote password once."
+    ssh-copy-id -i "$HOME/.ssh/id_ed25519.pub" "${TARGET}"
+
+    echo ""
+    echo "Done. Connect with: ssh ${TARGET}"
+    echo ""
+
 # ── Server Services Management ───────────────────────────────────────────────
 # Run `just services` to see available modules and their status.
 
