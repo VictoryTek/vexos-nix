@@ -416,24 +416,32 @@ enable-ssh:
     PUB_KEY=$(cat "$PUB_FILE")
 
     # ── Step 2: Append public key to authorized_keys (idempotent) ─────────
-    # {{justfile_directory()}} may canonicalise into the read-only nix store
-    # when just is invoked via a nix-store wrapper.  Walk the known locations
-    # and use the first writable directory that contains flake.nix.
-    # Try the unresolved path first — readlink -f can follow symlinks into the
-    # nix store and produce a path that is no longer the writable repo clone.
+    # Locate the writable repo clone that contains flake.nix.
+    # justfile_directory() / justfile() can resolve into the read-only nix store
+    # when the justfile is managed as a nix-store symlink (e.g. by home-manager).
+    # Walk up from $PWD first — this works whenever the user runs `just` from
+    # anywhere inside the repo, regardless of how the justfile was found.
     _jf_raw="{{justfile_directory()}}"
     _jf_real=$(readlink -f "$_jf_raw" 2>/dev/null || echo "$_jf_raw")
     _repo_dir=""
+    _walk="$PWD"
+    while [ "$_walk" != "/" ] && [ -z "$_repo_dir" ]; do
+        if [ -f "$_walk/flake.nix" ] && [ -w "$_walk" ]; then
+            _repo_dir="$_walk"
+        fi
+        _walk=$(dirname "$_walk")
+    done
     for _d in "$_jf_raw" "$_jf_real" "$HOME/Projects/vexos-nix"; do
+        [ -n "$_repo_dir" ] && break
         if [ -f "${_d}/flake.nix" ] && [ -w "$_d" ]; then
             _repo_dir="$_d"
-            break
         fi
     done
     if [ -z "$_repo_dir" ]; then
         echo "error: could not find a writable repo directory containing flake.nix." >&2
-        echo "       Checked: $_jf_raw, $_jf_real, $HOME/Projects/vexos-nix" >&2
-        echo "       Clone the vexos-nix repo and run 'just enable-ssh' from within it." >&2
+        echo "       Searched up from: $PWD" >&2
+        echo "       Also checked: $_jf_raw, $_jf_real, $HOME/Projects/vexos-nix" >&2
+        echo "       Run 'just enable-ssh' from inside the cloned vexos-nix repo." >&2
         exit 1
     fi
     AUTH_KEYS="${_repo_dir}/authorized_keys"
@@ -506,22 +514,30 @@ create-zfs-pool: _require-server-role
     fi
 
     # Locate scripts/create-zfs-pool.sh.
-    # Use the unresolved justfile_directory() first — readlink -f can follow
-    # symlinks into the nix store and produce a path without a scripts/ dir.
+    # justfile_directory() / justfile() can resolve into the read-only nix store
+    # when the justfile is a nix-store symlink.  Walk up from $PWD first.
     _jf_raw="{{justfile_directory()}}"
     _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
     _jf_dir=$(dirname "$_jf_real")
 
     SCRIPT=""
+    _walk="$PWD"
+    while [ "$_walk" != "/" ] && [ -z "$SCRIPT" ]; do
+        if [ -f "$_walk/scripts/create-zfs-pool.sh" ]; then
+            SCRIPT="$_walk/scripts/create-zfs-pool.sh"
+        fi
+        _walk=$(dirname "$_walk")
+    done
     for _candidate in "$_jf_raw/scripts" "$_jf_dir/scripts" "/etc/nixos/scripts" "$HOME/Projects/vexos-nix/scripts"; do
+        [ -n "$SCRIPT" ] && break
         if [ -f "$_candidate/create-zfs-pool.sh" ]; then
             SCRIPT="$_candidate/create-zfs-pool.sh"
-            break
         fi
     done
     if [ -z "$SCRIPT" ]; then
         echo "error: scripts/create-zfs-pool.sh not found in any known location." >&2
-        echo "       searched: $_jf_raw/scripts $_jf_dir/scripts /etc/nixos/scripts $HOME/Projects/vexos-nix/scripts" >&2
+        echo "       searched up from: $PWD" >&2
+        echo "       also checked: $_jf_raw/scripts $_jf_dir/scripts /etc/nixos/scripts $HOME/Projects/vexos-nix/scripts" >&2
         exit 1
     fi
 
