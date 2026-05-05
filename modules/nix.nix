@@ -45,13 +45,6 @@
   nix.daemonCPUSchedPolicy = "idle";
   nix.daemonIOSchedClass = "idle";
 
-  # Automatic store garbage-collection: weekly, remove generations older than 7 days.
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 7d";
-  };
-
   # Hard-link identical files in the store after every build
   # (complements auto-optimise-store for any files added between GC runs).
   nix.optimise = {

@@ -22,6 +22,7 @@
     ./modules/system-gaming.nix     # gaming kernel params, THP, SCX
     ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on desktop
     ./modules/nix.nix
+    ./modules/nix-desktop.nix       # 14-day GC retention (workstation standard)
     ./modules/locale.nix
     ./modules/users.nix
   ];

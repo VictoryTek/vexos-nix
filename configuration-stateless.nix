@@ -17,6 +17,7 @@
     ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on stateless
     ./modules/impermanence.nix
     ./modules/nix.nix
+    ./modules/nix-stateless.nix     # 7-day GC retention (state resets on reboot)
     ./modules/locale.nix
     ./modules/users.nix
   ];

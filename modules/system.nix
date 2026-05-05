@@ -40,8 +40,9 @@
       # EFI / systemd-boot — standard bootloader for all vexos-nix hosts.
       # lib.mkDefault allows the host's /etc/nixos/flake.nix thin wrapper
       # to override for BIOS/GRUB systems without conflict.
-      boot.loader.systemd-boot.enable      = lib.mkDefault true;
-      boot.loader.efi.canTouchEfiVariables = lib.mkDefault true;
+      boot.loader.systemd-boot.enable           = lib.mkDefault true;
+      boot.loader.systemd-boot.configurationLimit = 5;  # keep only the 5 latest boot entries
+      boot.loader.efi.canTouchEfiVariables      = lib.mkDefault true;
 
       # ── Kernel parameters ───────────────────────────────────────────────
       boot.kernelParams = [

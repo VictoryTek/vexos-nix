@@ -10,6 +10,7 @@
     ./modules/server       # Optional server services (vexos.server.*.enable)
     ./modules/zfs-server.nix
     ./modules/nix.nix
+    ./modules/nix-server.nix        # 30-day GC retention (production server standard)
     ./modules/locale.nix
     ./modules/users.nix
   ];
