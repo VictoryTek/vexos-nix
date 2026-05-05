@@ -17,6 +17,7 @@ default:
         echo "    disable <service>          Disable a server service module"
         echo "    enable-plex-pass           Enable Plex Pass hardware transcoding"
         echo "    disable-plex-pass          Disable Plex Pass hardware transcoding"
+        echo "    create-zfs-pool            Create a ZFS pool for Proxmox VM storage (interactive)"
     elif [[ "$variant" == *stateless* ]]; then
         echo ""
         echo "Active role: stateless (ephemeral / tmpfs root)"
@@ -462,6 +463,48 @@ _require-server-role:
         echo "       current variant: ${variant:-unknown}"
         exit 1
     fi
+
+# Interactively create a ZFS pool for use as Proxmox VM/container backing storage.
+# Server roles only.  Requires modules/zfs-server.nix in the active build.
+# All work runs as root via sudo. The recipe:
+#   • lists block devices by /dev/disk/by-id/ path,
+#   • prompts for pool name, topology, and disks,
+#   • requires typed confirmation (the pool name) before destroying data,
+#   • runs wipefs + sgdisk --zap-all + zpool create with VM-tuned defaults
+#     (ashift=12, compression=lz4, atime=off, xattr=sa, acltype=posixacl),
+#   • prints the `pvesm add zfspool` command to register the pool with Proxmox.
+#
+# Safe to abort with Ctrl-C at any prompt — destructive actions only run after
+# the typed-name confirmation step.
+create-zfs-pool: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v zpool >/dev/null 2>&1 || ! command -v zfs >/dev/null 2>&1; then
+        echo "error: zpool/zfs not found — ZFS userland is not installed in this build." >&2
+        echo "       Ensure modules/zfs-server.nix is imported by your active configuration-*.nix" >&2
+        echo "       and rebuild:  just switch <role> <gpu>" >&2
+        exit 1
+    fi
+
+    # Locate scripts/create-zfs-pool.sh — same resolution pattern as `enable-ssh`.
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    _jf_dir=$(dirname "$_jf_real")
+
+    SCRIPT=""
+    for _candidate in "$_jf_dir/scripts" "/etc/nixos/scripts" "$HOME/Projects/vexos-nix/scripts"; do
+        if [ -f "$_candidate/create-zfs-pool.sh" ]; then
+            SCRIPT="$_candidate/create-zfs-pool.sh"
+            break
+        fi
+    done
+    if [ -z "$SCRIPT" ]; then
+        echo "error: scripts/create-zfs-pool.sh not found in any known location." >&2
+        echo "       searched: $_jf_dir/scripts /etc/nixos/scripts $HOME/Projects/vexos-nix/scripts" >&2
+        exit 1
+    fi
+
+    sudo bash "$SCRIPT"
 
 # List all available server service modules (catalog view, no role required).
 [private]

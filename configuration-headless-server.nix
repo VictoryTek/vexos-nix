@@ -8,6 +8,7 @@
     ./modules/packages-common.nix
     ./modules/system.nix
     ./modules/server       # Optional server services (vexos.server.*.enable)
+    ./modules/zfs-server.nix
     ./modules/nix.nix
     ./modules/locale.nix
     ./modules/users.nix
