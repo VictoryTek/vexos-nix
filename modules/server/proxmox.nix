@@ -80,6 +80,11 @@ in
     # does it will race with the kernel bridge and drop the DHCP lease.
     networking.networkmanager.unmanaged = [ cfg.bridgeInterface "vmbr0" ];
 
+    # ── Firewall ────────────────────────────────────────────────────────────
+    # 8006 = Proxmox web UI / API
+    # 8007 = VNC/SPICE websocket proxy (noVNC console)
+    networking.firewall.allowedTCPPorts = [ 8006 8007 ];
+
     # Allow the kernel to forward packets between the bridge and VM tap interfaces.
     boot.kernel.sysctl = {
       "net.ipv4.ip_forward"          = 1;
