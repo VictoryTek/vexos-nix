@@ -35,6 +35,18 @@ in
         and the web-UI TLS certificate. Must be set when enable = true.
       '';
     };
+
+    bridgeInterface = lib.mkOption {
+      type        = lib.types.str;
+      default     = "";
+      example     = "enp2s0";
+      description = ''
+        Name of the physical NIC to enslave into the vmbr0 bridge.
+        vmbr0 is the standard Proxmox bridge — VMs and LXC containers attach
+        to it for network access. Must be set when enable = true.
+        Find the name with: ip link show
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -43,11 +55,35 @@ in
         assertion = cfg.ipAddress != "";
         message   = "vexos.server.proxmox.ipAddress must be set to this host's IP address when vexos.server.proxmox.enable = true.";
       }
+      {
+        assertion = cfg.bridgeInterface != "";
+        message   = "vexos.server.proxmox.bridgeInterface must be set to the physical NIC name (e.g. \"enp2s0\") when vexos.server.proxmox.enable = true.";
+      }
     ];
 
     services.proxmox-ve = {
       enable    = true;
       ipAddress = cfg.ipAddress;
+    };
+
+    # ── vmbr0 bridge ─────────────────────────────────────────────────────────
+    # Proxmox VMs and LXC containers attach to vmbr0 for network access.
+    # The physical NIC is enslaved into the bridge; the bridge itself gets the
+    # DHCP lease. NetworkManager is told to leave both interfaces unmanaged so
+    # it doesn't fight the kernel bridge stack.
+    networking.bridges.vmbr0.interfaces = [ cfg.bridgeInterface ];
+
+    networking.interfaces.vmbr0.useDHCP              = lib.mkDefault true;
+    networking.interfaces.${cfg.bridgeInterface}.useDHCP = false;
+
+    # NetworkManager must not manage the physical NIC or the bridge — if it
+    # does it will race with the kernel bridge and drop the DHCP lease.
+    networking.networkmanager.unmanaged = [ cfg.bridgeInterface "vmbr0" ];
+
+    # Allow the kernel to forward packets between the bridge and VM tap interfaces.
+    boot.kernel.sysctl = {
+      "net.ipv4.ip_forward"          = 1;
+      "net.ipv6.conf.all.forwarding" = 1;
     };
   };
 }

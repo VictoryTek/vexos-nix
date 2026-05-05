@@ -823,7 +823,7 @@ enable service: _require-server-role
         fi
     fi
 
-    # Proxmox IP prompt — ipAddress is required, ask at enable time
+    # Proxmox IP + bridge NIC prompts — both are required at enable time
     if [ "$SERVICE" = "proxmox" ]; then
         IP_OPTION="vexos.server.proxmox.ipAddress"
         _proxmox_ip=""
@@ -839,6 +839,23 @@ enable service: _require-server-role
             sudo sed -i -E "s|^(\s*)#?\s*(${IP_OPTION//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${IP_OPTION} = \"${_proxmox_ip}\";|" "$SVC_FILE"
         else
             sudo sed -i "s|${OPTION} = true;|${OPTION} = true;\n  ${IP_OPTION} = \"${_proxmox_ip}\";|" "$SVC_FILE"
+        fi
+
+        NIC_OPTION="vexos.server.proxmox.bridgeInterface"
+        _proxmox_nic=""
+        echo "  The bridge NIC is the physical ethernet interface that vmbr0 will use."
+        echo "  Find it with: ip link show   (look for enp*, eno*, eth*, etc.)"
+        while [ -z "$_proxmox_nic" ]; do
+            read -r -p "  Enter the physical NIC name (e.g. enp2s0): " _proxmox_nic
+            if ! echo "$_proxmox_nic" | grep -qP '^[a-zA-Z][a-zA-Z0-9@._-]+$'; then
+                echo "  Invalid interface name. Examples: enp2s0, eno1, eth0, bond0"
+                _proxmox_nic=""
+            fi
+        done
+        if grep -qP "^\s*#?\s*${NIC_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+            sudo sed -i -E "s|^(\s*)#?\s*(${NIC_OPTION//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${NIC_OPTION} = \"${_proxmox_nic}\";|" "$SVC_FILE"
+        else
+            sudo sed -i "s|${IP_OPTION} = \"${_proxmox_ip}\";|${IP_OPTION} = \"${_proxmox_ip}\";\n  ${NIC_OPTION} = \"${_proxmox_nic}\";|" "$SVC_FILE"
         fi
     fi
 
