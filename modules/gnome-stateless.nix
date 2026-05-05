@@ -57,6 +57,12 @@ in
           ];
         };
 
+        "org/gnome/shell/extensions/dash-to-dock" = {
+          dock-position = "LEFT";
+          autohide      = false;
+          intellihide   = false;
+        };
+
         "org/gnome/desktop/app-folders" = {
           folder-children = [ "Office" "Utilities" "System" ];
         };

@@ -60,6 +60,12 @@ in
           ];
         };
 
+        "org/gnome/shell/extensions/dash-to-dock" = {
+          dock-position = "LEFT";
+          autohide      = false;
+          intellihide   = false;
+        };
+
         "org/gnome/settings-daemon/plugins/power" = {
           sleep-inactive-ac-type      = "nothing";
           sleep-inactive-battery-type = "nothing";
