@@ -262,27 +262,25 @@ zfs list -r "$POOL"
 
 echo ""
 echo "── Register with Proxmox VE ──────────────────────────────────"
-if command -v pvesm >/dev/null 2>&1; then
+PVE_STOR_CFG="/etc/pve/storage.cfg"
+if [ -f "$PVE_STOR_CFG" ]; then
     printf "Proxmox storage ID [vm-store]: "
     read -r STOR_ID
     STOR_ID="${STOR_ID:-vm-store}"
-    if pvesm status 2>/dev/null | awk '{print $1}' | grep -qx "$STOR_ID"; then
-        warn "storage ID '$STOR_ID' already exists in Proxmox — skipping registration"
-        warn "To register manually: pvesm add zfspool $STOR_ID --pool $PVE_TARGET --content images,rootdir --sparse 1"
+    if grep -qE "^zfspool:[[:space:]]*${STOR_ID}[[:space:]]*$" "$PVE_STOR_CFG" 2>/dev/null; then
+        warn "storage ID '$STOR_ID' already exists in $PVE_STOR_CFG — skipping"
     else
-        echo "  pvesm add zfspool $STOR_ID --pool $PVE_TARGET --content images,rootdir --sparse 1"
-        if pvesm add zfspool "$STOR_ID" --pool "$PVE_TARGET" --content images,rootdir --sparse 1; then
-            ok "storage '$STOR_ID' registered in Proxmox (pool: $PVE_TARGET)"
-        else
-            warn "pvesm registration failed — register manually:"
-            warn "  pvesm add zfspool $STOR_ID --pool $PVE_TARGET --content images,rootdir --sparse 1"
+        printf '\nzfspool: %s\n\tpool %s\n\tcontent images,rootdir\n\tsparse 1\n' \
+            "$STOR_ID" "$PVE_TARGET" | tee -a "$PVE_STOR_CFG" >/dev/null
+        ok "storage '$STOR_ID' added to $PVE_STOR_CFG (pool: $PVE_TARGET)"
+        # Attempt a live reload so changes appear immediately without a restart.
+        if command -v pvesm >/dev/null 2>&1; then
+            pvesm status >/dev/null 2>&1 && ok "pvesm reloaded" || true
         fi
     fi
 else
-    warn "pvesm not found — not running on a Proxmox VE host, or pvesm is not in PATH"
-    echo "  Register manually:"
-    echo "    pvesm add zfspool vm-store --pool $PVE_TARGET --content images,rootdir --sparse 1"
-    echo "  …or in the web UI:"
+    warn "$PVE_STOR_CFG not found — not running on a Proxmox VE host"
+    echo "  Register manually in the Proxmox web UI:"
     echo "    Datacenter → Storage → Add → ZFS"
     echo "      ID:      vm-store"
     echo "      Pool:    $PVE_TARGET"
