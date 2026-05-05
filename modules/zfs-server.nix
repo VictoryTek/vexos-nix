@@ -28,13 +28,16 @@
   #  variant escaped because modules/gpu/vm.nix already pins the kernel to
   #  linuxPackages_6_6 for VirtualBox guest-additions compatibility.)
   #
-  # Pin server roles to the newest kernel the chosen ZFS package still
-  # supports. Priority 75 beats the plain assignment in modules/system.nix
+  # Pin server roles to the LTS kernel to maintain ZFS compatibility.
+  # Priority 75 beats the plain assignment in modules/system.nix
   # (priority 100, `pkgs.linuxPackages_latest`) but intentionally loses to
   # `lib.mkForce` (priority 50) in modules/gpu/vm.nix, so the headless-server
-  # VM variant keeps its 6.6 LTS pin (which ZFS already supports) without
-  # raising a duplicate-priority conflict.
-  boot.kernelPackages = lib.mkOverride 75 config.boot.zfs.package.latestCompatibleLinuxPackages;
+  # VM variant keeps its own LTS pin without raising a duplicate-priority conflict.
+  #
+  # Note: zfs.package.latestCompatibleLinuxPackages was deprecated in NixOS 25.05
+  # and now just aliases the default kernel without any ZFS-specific pinning logic.
+  # Using pkgs.linuxPackages (the default LTS, currently 6.12) directly is the correct replacement.
+  boot.kernelPackages = lib.mkOverride 75 pkgs.linuxPackages;
 
 
   boot.zfs.extraPools              = [ ];     # auto-imported pools added by `just create-zfs-pool` are cached in /etc/zfs/zpool.cache, not listed here
