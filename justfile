@@ -366,31 +366,17 @@ reset-defaults:
     echo "Done. Log out and back in (or reboot) for all changes to take effect."
     echo "App folders will be restored on the next graphical login."
 
-# Generate an SSH ed25519 key for nimda (if needed) and register it
-# declaratively via authorized_keys, then rebuild the current variant.
-# Safe to run multiple times — key generation and key registration are both idempotent.
-# After first run: git add authorized_keys && git commit to persist the key.
+# Generate an SSH ed25519 key for the current user (if needed) and enable SSH access.
+# Writes the public key to ~/.ssh/authorized_keys — no rebuild required.
+# SSH access persists across rebuilds: NixOS sshd always reads ~/.ssh/authorized_keys
+# in addition to any declaratively managed keys.
+# Safe to run multiple times — all steps are idempotent.
 enable-ssh:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    if ! command -v nix >/dev/null 2>&1; then
-        echo "error: 'nix' command not found. Run this recipe on a Nix-enabled Linux host." >&2
-        exit 127
-    fi
-    if ! command -v sudo >/dev/null 2>&1; then
-        echo "error: 'sudo' command not found. Use a Linux host with sudo configured." >&2
-        exit 127
-    fi
     if [ "$(uname -s 2>/dev/null || echo unknown)" != "Linux" ]; then
         echo "error: just enable-ssh must be run on Linux (NixOS target host)." >&2
-        exit 1
-    fi
-
-    TARGET=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
-    if [ -z "$TARGET" ]; then
-        echo "error: /etc/nixos/vexos-variant not found." >&2
-        echo "       Run 'just switch' first to build and activate a vexos variant." >&2
         exit 1
     fi
 
@@ -415,61 +401,22 @@ enable-ssh:
 
     PUB_KEY=$(cat "$PUB_FILE")
 
-    # ── Step 2: Append public key to authorized_keys (idempotent) ─────────
-    # Locate the writable repo clone that contains flake.nix.
-    # justfile_directory() / justfile() can resolve into the read-only nix store
-    # when the justfile is managed as a nix-store symlink (e.g. by home-manager).
-    # Walk up from $PWD first — this works whenever the user runs `just` from
-    # anywhere inside the repo, regardless of how the justfile was found.
-    _jf_raw="{{justfile_directory()}}"
-    _jf_real=$(readlink -f "$_jf_raw" 2>/dev/null || echo "$_jf_raw")
-    _repo_dir=""
-    _walk="$PWD"
-    while [ "$_walk" != "/" ] && [ -z "$_repo_dir" ]; do
-        if [ -f "$_walk/flake.nix" ] && [ -w "$_walk" ]; then
-            _repo_dir="$_walk"
-        fi
-        _walk=$(dirname "$_walk")
-    done
-    for _d in "$_jf_raw" "$_jf_real" "$HOME/Projects/vexos-nix"; do
-        [ -n "$_repo_dir" ] && break
-        if [ -f "${_d}/flake.nix" ] && [ -w "$_d" ]; then
-            _repo_dir="$_d"
-        fi
-    done
-    if [ -z "$_repo_dir" ]; then
-        echo "error: could not find a writable repo directory containing flake.nix." >&2
-        echo "       Searched up from: $PWD" >&2
-        echo "       Also checked: $_jf_raw, $_jf_real, $HOME/Projects/vexos-nix" >&2
-        echo "       Run 'just enable-ssh' from inside the cloned vexos-nix repo." >&2
-        exit 1
-    fi
-    AUTH_KEYS="${_repo_dir}/authorized_keys"
-
-    if [ ! -f "$AUTH_KEYS" ]; then
-        echo "Creating ${AUTH_KEYS}..."
-        touch "$AUTH_KEYS"
-    fi
-
-    if grep -qF "$PUB_KEY" "$AUTH_KEYS" 2>/dev/null; then
-        echo "Public key already present in authorized_keys (skipping append)"
+    # ── Step 2: Register in ~/.ssh/authorized_keys ────────────────────────
+    # NixOS sshd reads this alongside any declarative keys — no rebuild needed.
+    # This file is not managed by NixOS activation and persists across rebuilds.
+    mkdir -p "$HOME/.ssh"
+    chmod 700 "$HOME/.ssh"
+    touch "$HOME/.ssh/authorized_keys"
+    chmod 600 "$HOME/.ssh/authorized_keys"
+    if grep -qF "$PUB_KEY" "$HOME/.ssh/authorized_keys" 2>/dev/null; then
+        echo "Public key already in ~/.ssh/authorized_keys (skipping)"
     else
-        echo "$PUB_KEY" >> "$AUTH_KEYS"
-        echo "Public key appended to authorized_keys"
-        echo ""
-        echo "Reminder: commit the updated authorized_keys file to persist the key:"
-        echo "  git add authorized_keys && git commit -m 'chore: register nimda SSH key'"
+        echo "$PUB_KEY" >> "$HOME/.ssh/authorized_keys"
+        echo "Public key written to ~/.ssh/authorized_keys — SSH access is now active."
     fi
 
-    # ── Step 3: Rebuild and switch ─────────────────────────────────────────
     echo ""
-    echo "Rebuilding: ${TARGET}"
-    echo ""
-    _flake_dir=$(just _resolve-flake-dir "${TARGET}" "")
-    sudo nixos-rebuild switch --flake "path:${_flake_dir}#${TARGET}"
-
-    echo ""
-    echo "SSH enabled. Connect with: ssh nimda@$(hostname)"
+    echo "SSH enabled. Connect with: ssh ${USER}@$(hostname)"
     echo ""
 
 # ── Server Services Management ───────────────────────────────────────────────
@@ -534,10 +481,18 @@ create-zfs-pool: _require-server-role
             SCRIPT="$_candidate/create-zfs-pool.sh"
         fi
     done
+    # Last resort: find the vexos-nix source in the nix store via /etc/nixos flake input.
+    if [ -z "$SCRIPT" ] && [ -f /etc/nixos/flake.nix ]; then
+        _vexos_store=$(nix eval --raw --expr '(builtins.getFlake "path:/etc/nixos").inputs.vexos-nix.outPath' 2>/dev/null || true)
+        if [ -n "$_vexos_store" ] && [ -f "$_vexos_store/scripts/create-zfs-pool.sh" ]; then
+            SCRIPT="$_vexos_store/scripts/create-zfs-pool.sh"
+        fi
+    fi
     if [ -z "$SCRIPT" ]; then
         echo "error: scripts/create-zfs-pool.sh not found in any known location." >&2
         echo "       searched up from: $PWD" >&2
         echo "       also checked: $_jf_raw/scripts $_jf_dir/scripts /etc/nixos/scripts $HOME/Projects/vexos-nix/scripts" >&2
+        echo "       also tried: nix store path via /etc/nixos flake input" >&2
         exit 1
     fi
 

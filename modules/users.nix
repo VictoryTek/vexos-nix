@@ -13,9 +13,10 @@
     ];
 
     # Declarative SSH authorized keys.
-    # The authorized_keys file at the repo root is populated by `just enable-ssh`.
-    # builtins.pathExists guard: the build succeeds on fresh checkouts where the
-    # file has not yet been created.
+    # builtins.pathExists guard: evaluates against the nix store path of the fetched
+    # flake — only applies if authorized_keys is committed to the upstream repo.
+    # For runtime SSH access, use `just enable-ssh` which writes to
+    # ~/.ssh/authorized_keys (persists across rebuilds, no repo commit required).
     openssh.authorizedKeys.keyFiles =
       lib.optional (builtins.pathExists ../authorized_keys) ../authorized_keys;
   };
