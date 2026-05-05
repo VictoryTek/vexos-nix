@@ -146,19 +146,16 @@ in
         touch "$STAMP"
         echo "flatpak: sync complete"
       else
-        echo "flatpak: one or more apps failed — will retry on next start"
-        exit 1
+        # Do NOT exit 1 — a non-zero exit would cause nixos-rebuild switch to
+        # report failure (exit code 4) even though the NixOS config applied fine.
+        # The stamp is left unwritten; the service will re-run on the next reboot
+        # or the next nixos-rebuild activation that starts a fresh unit.
+        echo "flatpak: one or more apps failed — will retry on next boot"
       fi
     '';
-    unitConfig = {
-      StartLimitIntervalSec = 600;
-      StartLimitBurst       = 10;
-    };
     serviceConfig = {
       Type            = "oneshot";
       RemainAfterExit = true;
-      Restart         = "on-failure";
-      RestartSec      = 60;
     };
   };
 

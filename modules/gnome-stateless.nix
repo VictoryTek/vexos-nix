@@ -26,7 +26,7 @@ let
     "restartto@tiagoporsch.github.io"
     "blur-my-shell@aunetx"
     "background-logo@fedorahosted.org"
-    "tiling-assistant@leleat-on.github.com"
+    "tiling-assistant@leleat-on-github"
   ];
 in
 {
@@ -55,6 +55,12 @@ in
             "com.mitchellh.ghostty.desktop"
             "io.github.up.desktop"
           ];
+        };
+
+        "org/gnome/shell/extensions/dash-to-dock" = {
+          dock-position = "LEFT";
+          autohide      = true;
+          intellihide   = true;
         };
 
         "org/gnome/desktop/app-folders" = {

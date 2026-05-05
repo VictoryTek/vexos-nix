@@ -416,9 +416,25 @@ enable-ssh:
     PUB_KEY=$(cat "$PUB_FILE")
 
     # ── Step 2: Append public key to authorized_keys (idempotent) ─────────
-    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-    _jf_dir=$(dirname "$_jf_real")
-    AUTH_KEYS="${_jf_dir}/authorized_keys"
+    # {{justfile_directory()}} may canonicalise into the read-only nix store
+    # when just is invoked via a nix-store wrapper.  Walk the known locations
+    # and use the first writable directory that contains flake.nix.
+    _jf_raw="{{justfile_directory()}}"
+    _jf_real=$(readlink -f "$_jf_raw" 2>/dev/null || echo "$_jf_raw")
+    _repo_dir=""
+    for _d in "$_jf_real" "$HOME/Projects/vexos-nix"; do
+        if [ -f "${_d}/flake.nix" ] && [ -w "$_d" ]; then
+            _repo_dir="$_d"
+            break
+        fi
+    done
+    if [ -z "$_repo_dir" ]; then
+        echo "error: could not find a writable repo directory containing flake.nix." >&2
+        echo "       Checked: $_jf_real, $HOME/Projects/vexos-nix" >&2
+        echo "       Clone the vexos-nix repo and run 'just enable-ssh' from within it." >&2
+        exit 1
+    fi
+    AUTH_KEYS="${_repo_dir}/authorized_keys"
 
     if [ ! -f "$AUTH_KEYS" ]; then
         echo "Creating ${AUTH_KEYS}..."

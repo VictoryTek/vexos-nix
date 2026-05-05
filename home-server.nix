@@ -127,5 +127,36 @@
     Install.WantedBy = [ "graphical-session.target" ];
   };
 
+  # ── First-run extension enablement ────────────────────────────────────────
+  # GNOME Shell initialises org/gnome/shell/enabled-extensions to [] on first
+  # session start, shadowing the system dconf defaults (same issue as
+  # folder-children — see vexos-init-app-folders comment above).
+  # A stamp file prevents re-running, so manual changes survive future rebuilds.
+  # To reset: delete ~/.local/share/vexos/.dconf-extensions-initialized
+  systemd.user.services.vexos-init-extensions = {
+    Unit = {
+      Description = "VexOS: initialise GNOME enabled-extensions (once)";
+      After       = [ "graphical-session.target" ];
+      PartOf      = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type            = "oneshot";
+      RemainAfterExit = true;
+      ExecStart       = toString (pkgs.writeShellScript "vexos-init-extensions-server" ''
+        STAMP="$HOME/.local/share/vexos/.dconf-extensions-initialized"
+        [ -f "$STAMP" ] && exit 0
+
+        D="${pkgs.dconf}/bin/dconf"
+
+        $D write /org/gnome/shell/enabled-extensions \
+          "['appindicatorsupport@rgcjonas.gmail.com', 'dash-to-dock@micxgx.gmail.com', 'AlphabeticalAppGrid@stuarthayhurst', 'gnome-ui-tune@itstime.tech', 'nothing-to-say@extensions.gnome.wouter.bolsterl.ee', 'steal-my-focus-window@steal-my-focus-window', 'tailscale-status@maxgallup.github.com', 'caffeine@patapon.info', 'restartto@tiagoporsch.github.io', 'blur-my-shell@aunetx', 'background-logo@fedorahosted.org', 'tiling-assistant@leleat-on-github']"
+
+        mkdir -p "$HOME/.local/share/vexos"
+        touch "$STAMP"
+      '');
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
   home.stateVersion = "24.05";
 }
