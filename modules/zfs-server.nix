@@ -15,6 +15,28 @@
   boot.supportedFilesystems        = [ "zfs" ];
   boot.zfs.forceImportRoot         = false;   # backing pools are not the rootfs
   boot.zfs.forceImportAll          = false;
+
+  # ── Kernel pinning for ZFS compatibility ─────────────────────────────────
+  # ZFS releases regularly lag behind linuxPackages_latest, and when nixpkgs'
+  # `pkgs.linuxPackages_latest` advances past ZFS's "latest supported kernel"
+  # the zfs-kernel derivation is marked broken and evaluation fails with:
+  #
+  #   error: Package 'zfs-kernel-X.Y.Z-A.B.C' is marked as broken,
+  #          refusing to evaluate.
+  #
+  # (Observed in CI for vexos-headless-server-{amd,nvidia,intel}; the vm
+  #  variant escaped because modules/gpu/vm.nix already pins the kernel to
+  #  linuxPackages_6_6 for VirtualBox guest-additions compatibility.)
+  #
+  # Pin server roles to the newest kernel the chosen ZFS package still
+  # supports. Priority 75 beats the plain assignment in modules/system.nix
+  # (priority 100, `pkgs.linuxPackages_latest`) but intentionally loses to
+  # `lib.mkForce` (priority 50) in modules/gpu/vm.nix, so the headless-server
+  # VM variant keeps its 6.6 LTS pin (which ZFS already supports) without
+  # raising a duplicate-priority conflict.
+  boot.kernelPackages = lib.mkOverride 75 config.boot.zfs.package.latestCompatibleLinuxPackages;
+
+
   boot.zfs.extraPools              = [ ];     # auto-imported pools added by `just create-zfs-pool` are cached in /etc/zfs/zpool.cache, not listed here
   services.zfs.autoScrub.enable    = true;
   services.zfs.autoScrub.interval  = "monthly";
