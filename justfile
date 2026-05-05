@@ -419,10 +419,12 @@ enable-ssh:
     # {{justfile_directory()}} may canonicalise into the read-only nix store
     # when just is invoked via a nix-store wrapper.  Walk the known locations
     # and use the first writable directory that contains flake.nix.
+    # Try the unresolved path first — readlink -f can follow symlinks into the
+    # nix store and produce a path that is no longer the writable repo clone.
     _jf_raw="{{justfile_directory()}}"
     _jf_real=$(readlink -f "$_jf_raw" 2>/dev/null || echo "$_jf_raw")
     _repo_dir=""
-    for _d in "$_jf_real" "$HOME/Projects/vexos-nix"; do
+    for _d in "$_jf_raw" "$_jf_real" "$HOME/Projects/vexos-nix"; do
         if [ -f "${_d}/flake.nix" ] && [ -w "$_d" ]; then
             _repo_dir="$_d"
             break
@@ -430,7 +432,7 @@ enable-ssh:
     done
     if [ -z "$_repo_dir" ]; then
         echo "error: could not find a writable repo directory containing flake.nix." >&2
-        echo "       Checked: $_jf_real, $HOME/Projects/vexos-nix" >&2
+        echo "       Checked: $_jf_raw, $_jf_real, $HOME/Projects/vexos-nix" >&2
         echo "       Clone the vexos-nix repo and run 'just enable-ssh' from within it." >&2
         exit 1
     fi
@@ -503,12 +505,15 @@ create-zfs-pool: _require-server-role
         exit 1
     fi
 
-    # Locate scripts/create-zfs-pool.sh — same resolution pattern as `enable-ssh`.
+    # Locate scripts/create-zfs-pool.sh.
+    # Use the unresolved justfile_directory() first — readlink -f can follow
+    # symlinks into the nix store and produce a path without a scripts/ dir.
+    _jf_raw="{{justfile_directory()}}"
     _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
     _jf_dir=$(dirname "$_jf_real")
 
     SCRIPT=""
-    for _candidate in "$_jf_dir/scripts" "/etc/nixos/scripts" "$HOME/Projects/vexos-nix/scripts"; do
+    for _candidate in "$_jf_raw/scripts" "$_jf_dir/scripts" "/etc/nixos/scripts" "$HOME/Projects/vexos-nix/scripts"; do
         if [ -f "$_candidate/create-zfs-pool.sh" ]; then
             SCRIPT="$_candidate/create-zfs-pool.sh"
             break
@@ -516,7 +521,7 @@ create-zfs-pool: _require-server-role
     done
     if [ -z "$SCRIPT" ]; then
         echo "error: scripts/create-zfs-pool.sh not found in any known location." >&2
-        echo "       searched: $_jf_dir/scripts /etc/nixos/scripts $HOME/Projects/vexos-nix/scripts" >&2
+        echo "       searched: $_jf_raw/scripts $_jf_dir/scripts /etc/nixos/scripts $HOME/Projects/vexos-nix/scripts" >&2
         exit 1
     fi
 
