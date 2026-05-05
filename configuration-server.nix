@@ -14,6 +14,8 @@
     ./modules/packages-common.nix
     ./modules/packages-desktop.nix
     ./modules/system.nix
+    ./modules/security.nix          # AppArmor MAC baseline (all roles)
+    ./modules/security-server.nix   # auditd + server audit ruleset
     ./modules/server       # Optional server services (vexos.server.*.enable)
     ./modules/zfs-server.nix
     ./modules/nix.nix

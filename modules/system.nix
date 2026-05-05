@@ -44,6 +44,11 @@
       boot.loader.systemd-boot.configurationLimit = 5;  # keep only the 5 latest boot entries
       boot.loader.efi.canTouchEfiVariables      = lib.mkDefault true;
 
+      # EDK2 UEFI Shell — enables booting other OSes on separate drives and
+      # provides a diagnostic shell for EFI troubleshooting. Required for
+      # boot.loader.systemd-boot.windows entries to function.
+      boot.loader.systemd-boot.edk2-uefi-shell.enable = true;
+
       # ── Kernel parameters ───────────────────────────────────────────────
       boot.kernelParams = [
         # I/O scheduler: Kyber is low-latency; well suited for NVMe SSDs.

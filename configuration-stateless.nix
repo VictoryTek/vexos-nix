@@ -15,6 +15,7 @@
     ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix
     ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on stateless
+    ./modules/security.nix          # AppArmor MAC baseline (all roles)
     ./modules/impermanence.nix
     ./modules/nix.nix
     ./modules/nix-stateless.nix     # 7-day GC retention (state resets on reboot)
