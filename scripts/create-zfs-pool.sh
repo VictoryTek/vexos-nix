@@ -246,7 +246,7 @@ if ! zpool create -f -o ashift=12 \
 fi
 ok "pool '$POOL' created"
 
-# ---------- [8/8] Optional dataset + Proxmox hint ----------------------------
+# ---------- [8/8] Optional dataset + Proxmox registration -------------------
 hdr "[8/8] Optional Proxmox child dataset"
 printf "Create a child dataset '%s/vm' for Proxmox VM disks? [Y/n]: " "$POOL"
 read -r MAKE_DS
@@ -262,15 +262,34 @@ zfs list -r "$POOL"
 
 echo ""
 echo "── Register with Proxmox VE ──────────────────────────────────"
-echo ""
-echo "  pvesm add zfspool vm-store -pool $PVE_TARGET -content images,rootdir -sparse"
-echo ""
-echo "  …or in the web UI:"
-echo "    Datacenter → Storage → Add → ZFS"
-echo "      ID:      vm-store"
-echo "      Pool:    $PVE_TARGET"
-echo "      Content: Disk image, Container"
-echo "      Thin provision: enabled"
+if command -v pvesm >/dev/null 2>&1; then
+    printf "Proxmox storage ID [vm-store]: "
+    read -r STOR_ID
+    STOR_ID="${STOR_ID:-vm-store}"
+    if pvesm status 2>/dev/null | awk '{print $1}' | grep -qx "$STOR_ID"; then
+        warn "storage ID '$STOR_ID' already exists in Proxmox — skipping registration"
+        warn "To register manually: pvesm add zfspool $STOR_ID --pool $PVE_TARGET --content images,rootdir --sparse 1"
+    else
+        echo "  pvesm add zfspool $STOR_ID --pool $PVE_TARGET --content images,rootdir --sparse 1"
+        if pvesm add zfspool "$STOR_ID" --pool "$PVE_TARGET" --content images,rootdir --sparse 1; then
+            ok "storage '$STOR_ID' registered in Proxmox (pool: $PVE_TARGET)"
+        else
+            warn "pvesm registration failed — register manually:"
+            warn "  pvesm add zfspool $STOR_ID --pool $PVE_TARGET --content images,rootdir --sparse 1"
+        fi
+    fi
+else
+    warn "pvesm not found — not running on a Proxmox VE host, or pvesm is not in PATH"
+    echo "  Register manually:"
+    echo "    pvesm add zfspool vm-store --pool $PVE_TARGET --content images,rootdir --sparse 1"
+    echo "  …or in the web UI:"
+    echo "    Datacenter → Storage → Add → ZFS"
+    echo "      ID:      vm-store"
+    echo "      Pool:    $PVE_TARGET"
+    echo "      Content: Disk image, Container"
+    echo "      Thin provision: enabled"
+fi
+
 echo ""
 echo "Persistence: the pool will auto-import on next boot via /etc/zfs/zpool.cache."
 echo "No flake, fstab, or NixOS module changes are needed for the pool itself."
