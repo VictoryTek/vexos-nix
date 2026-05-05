@@ -48,6 +48,7 @@
 
   # ── Justfile ───────────────────────────────────────────────────────────────
   home.file."justfile".source = ./justfile;
+  home.file."scripts/create-zfs-pool.sh".source = ./scripts/create-zfs-pool.sh;
   home.file."template/server-services.nix".source = ./template/server-services.nix;
 
   home.stateVersion = "24.05";

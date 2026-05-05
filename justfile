@@ -429,6 +429,7 @@ _require-server-role:
 #
 # Safe to abort with Ctrl-C at any prompt — destructive actions only run after
 # the typed-name confirmation step.
+[private]
 create-zfs-pool: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
