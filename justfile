@@ -307,6 +307,71 @@ update:
     sudo nix flake update --flake path:/etc/nixos
     sudo nixos-rebuild switch --flake path:/etc/nixos#"${target}"
 
+# Upgrade the NixOS release version (e.g. 25.11 → 26.05).
+# Updates flake inputs (nixpkgs, home-manager) and system.stateVersion in all
+# configuration files.  Run `just rebuild` or `just switch` afterwards to apply.
+version-upgrade:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    FLAKE_DIR=$(dirname "$_jf_real")
+
+    # Detect current version from flake.nix
+    CURRENT=$(grep -oP 'nixpkgs\.url\s*=\s*"github:NixOS/nixpkgs/nixos-\K[^"]+' "$FLAKE_DIR/flake.nix")
+    if [ -z "$CURRENT" ]; then
+        echo "error: could not detect current nixpkgs version from flake.nix" >&2
+        exit 1
+    fi
+
+    echo ""
+    echo "Current NixOS version: ${CURRENT}"
+    echo ""
+    printf "Enter the version to upgrade to (e.g. 26.05): "
+    read -r NEW_VERSION
+
+    if [ -z "$NEW_VERSION" ]; then
+        echo "error: no version entered." >&2
+        exit 1
+    fi
+
+    # Validate format (YY.MM)
+    if ! echo "$NEW_VERSION" | grep -qP '^\d{2}\.\d{2}$'; then
+        echo "error: invalid version format '${NEW_VERSION}' — expected YY.MM (e.g. 26.05)" >&2
+        exit 1
+    fi
+
+    if [ "$NEW_VERSION" = "$CURRENT" ]; then
+        echo "Already on version ${CURRENT}. Nothing to do."
+        exit 0
+    fi
+
+    echo ""
+    echo "Upgrading: ${CURRENT} → ${NEW_VERSION}"
+    echo ""
+
+    # 1. Update nixpkgs URL in flake.nix
+    sed -i "s|github:NixOS/nixpkgs/nixos-${CURRENT}|github:NixOS/nixpkgs/nixos-${NEW_VERSION}|g" "$FLAKE_DIR/flake.nix"
+    echo "✓ Updated nixpkgs input → nixos-${NEW_VERSION}"
+
+    # 2. Update home-manager URL in flake.nix
+    sed -i "s|github:nix-community/home-manager/release-${CURRENT}|github:nix-community/home-manager/release-${NEW_VERSION}|g" "$FLAKE_DIR/flake.nix"
+    echo "✓ Updated home-manager input → release-${NEW_VERSION}"
+
+    # 3. Update system.stateVersion in all configuration-*.nix files
+    for cfg in "$FLAKE_DIR"/configuration-*.nix; do
+        if grep -q "system\.stateVersion" "$cfg"; then
+            sed -i "s|system\.stateVersion = \"${CURRENT}\"|system.stateVersion = \"${NEW_VERSION}\"|g" "$cfg"
+            echo "✓ Updated system.stateVersion in $(basename "$cfg")"
+        fi
+    done
+
+    echo ""
+    echo "Done. Next steps:"
+    echo "  1. Run 'nix flake update' to refresh the lock file"
+    echo "  2. Run 'just rebuild' or 'just switch' to apply the upgrade"
+    echo ""
+
 # Roll back to the previous NixOS generation and set it as the boot default.
 rollback:
     #!/usr/bin/env bash
