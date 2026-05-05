@@ -62,8 +62,8 @@ in
 
         "org/gnome/shell/extensions/dash-to-dock" = {
           dock-position = "LEFT";
-          autohide      = false;
-          intellihide   = false;
+          autohide      = true;
+          intellihide   = true;
         };
 
         "org/gnome/settings-daemon/plugins/power" = {
