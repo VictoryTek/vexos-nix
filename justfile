@@ -366,57 +366,80 @@ reset-defaults:
     echo "Done. Log out and back in (or reboot) for all changes to take effect."
     echo "App folders will be restored on the next graphical login."
 
-# Generate an SSH ed25519 key for the current user (if needed) and enable SSH access.
-# Writes the public key to ~/.ssh/authorized_keys — no rebuild required.
-# SSH access persists across rebuilds: NixOS sshd always reads ~/.ssh/authorized_keys
-# in addition to any declaratively managed keys.
-# Safe to run multiple times — all steps are idempotent.
-enable-ssh:
+# Register a client's SSH public key so it can connect to this machine.
+# Run this on the SERVER (at the console or via another session).
+#
+# Usage:
+#   just enable-ssh                          — prompts to paste a public key
+#   just enable-ssh "ssh-ed25519 AAAA..."   — pass the key directly
+#
+# On your CLIENT machine, find your public key with:
+#   Linux/macOS:  cat ~/.ssh/id_ed25519.pub
+#   Windows:      type %USERPROFILE%\.ssh\id_ed25519.pub
+#   (generate one first with: ssh-keygen -t ed25519)
+#
+# Safe to run multiple times — idempotent.
+enable-ssh pubkey="":
     #!/usr/bin/env bash
     set -euo pipefail
 
     if [ "$(uname -s 2>/dev/null || echo unknown)" != "Linux" ]; then
-        echo "error: just enable-ssh must be run on Linux (NixOS target host)." >&2
+        echo "error: just enable-ssh must be run on the Linux server." >&2
         exit 1
     fi
 
-    if [ "$(id -u)" -eq 0 ]; then
-        echo "warning: running as root — SSH key will be generated at /root/.ssh/." >&2
-        echo "         Consider running as nimda: sudo -u nimda just enable-ssh" >&2
+    PUB_KEY="{{pubkey}}"
+
+    # If no key was passed as an argument, prompt for it interactively.
+    if [ -z "$PUB_KEY" ]; then
+        echo ""
+        echo "Paste the PUBLIC key from your CLIENT machine, then press Enter:"
+        echo "  (Linux/macOS: cat ~/.ssh/id_ed25519.pub)"
+        echo "  (Windows:     type %USERPROFILE%\\.ssh\\id_ed25519.pub)"
+        echo ""
+        printf "> "
+        read -r PUB_KEY
+        PUB_KEY="${PUB_KEY//[$'\r']}"  # strip Windows carriage returns
     fi
 
-    KEY_FILE="$HOME/.ssh/id_ed25519"
-    PUB_FILE="${KEY_FILE}.pub"
-
-    # ── Step 1: Generate key pair if not present ──────────────────────────
-    if [ ! -f "$KEY_FILE" ]; then
-        echo "Generating SSH ed25519 key pair for $USER..."
-        mkdir -p "$HOME/.ssh"
-        chmod 700 "$HOME/.ssh"
-        ssh-keygen -t ed25519 -f "$KEY_FILE" -N "" -C "${USER}@$(hostname)"
-        echo "Key written: $PUB_FILE"
-    else
-        echo "SSH key already exists: $PUB_FILE (skipping generation)"
+    if [ -z "$PUB_KEY" ]; then
+        echo "error: no public key provided." >&2
+        exit 1
     fi
 
-    PUB_KEY=$(cat "$PUB_FILE")
+    # Basic sanity check — public keys start with a key-type word.
+    case "$PUB_KEY" in
+        ssh-ed25519\ *|ssh-rsa\ *|ssh-ecdsa\ *|ecdsa-sha2-*|sk-ssh-*) ;;
+        *)
+            echo "error: input does not look like an SSH public key." >&2
+            echo "       Expected format: ssh-ed25519 AAAA... comment" >&2
+            exit 1
+            ;;
+    esac
 
-    # ── Step 2: Register in ~/.ssh/authorized_keys ────────────────────────
-    # NixOS sshd reads this alongside any declarative keys — no rebuild needed.
-    # This file is not managed by NixOS activation and persists across rebuilds.
     mkdir -p "$HOME/.ssh"
     chmod 700 "$HOME/.ssh"
     touch "$HOME/.ssh/authorized_keys"
     chmod 600 "$HOME/.ssh/authorized_keys"
+
     if grep -qF "$PUB_KEY" "$HOME/.ssh/authorized_keys" 2>/dev/null; then
-        echo "Public key already in ~/.ssh/authorized_keys (skipping)"
+        echo "Key already in ~/.ssh/authorized_keys — nothing to do."
     else
         echo "$PUB_KEY" >> "$HOME/.ssh/authorized_keys"
-        echo "Public key written to ~/.ssh/authorized_keys — SSH access is now active."
+        echo "Key added to ~/.ssh/authorized_keys — SSH access is now active."
     fi
 
+    # Show IP addresses so the user knows what to connect to.
+    _ips=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -v '^$' | head -5 || true)
     echo ""
-    echo "SSH enabled. Connect with: ssh ${USER}@$(hostname)"
+    echo "Connect from your client with:"
+    if [ -n "$_ips" ]; then
+        while IFS= read -r _ip; do
+            echo "  ssh ${USER}@${_ip}"
+        done <<< "$_ips"
+    else
+        echo "  ssh ${USER}@<server-ip>"
+    fi
     echo ""
 
 # ── Server Services Management ───────────────────────────────────────────────
