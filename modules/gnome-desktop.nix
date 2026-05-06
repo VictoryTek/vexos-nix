@@ -1,14 +1,14 @@
 # modules/gnome-desktop.nix
 # Desktop-only GNOME additions: GameMode shell extension, blue accent,
 # desktop favourites, and the Flatpak install service for the desktop role
-# (TextEditor, Loupe, Totem, Calculator, Calendar, Papers, Snapshot).
+# (TextEditor, Loupe, Calculator, Calendar, Papers, Snapshot). mpv is the
+# video player (nixpkgs, via packages-desktop.nix).
 { config, pkgs, lib, ... }:
 let
   # Local app lists for the systemd flatpak-install service.
   gnomeBaseApps = [
     "org.gnome.TextEditor"
     "org.gnome.Loupe"
-    "org.gnome.Totem"
   ];
 
   gnomeDesktopOnlyApps = [
@@ -175,6 +175,12 @@ in
       if [ "$AVAIL_MB" -lt 1536 ]; then
         echo "flatpak: only ''${AVAIL_MB} MB free — need 1536 MB; skipping this boot"
         exit 0
+      fi
+
+      # Migration: uninstall Totem — mpv is the designated player.
+      if flatpak list --app --columns=application 2>/dev/null | grep -qx "org.gnome.Totem"; then
+        echo "flatpak: removing org.gnome.Totem (desktop role uses mpv)"
+        flatpak uninstall --noninteractive --assumeyes org.gnome.Totem || true
       fi
 
       flatpak install --noninteractive --assumeyes flathub \

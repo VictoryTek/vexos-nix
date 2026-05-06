@@ -1,13 +1,13 @@
 # modules/gnome-server.nix
 # Server-only GNOME additions: yellow accent, server dock favourites, and
-# the Flatpak install service for the server role (TextEditor, Loupe, Totem).
+# the Flatpak install service for the server role (TextEditor, Loupe). mpv
+# is the video player (nixpkgs, via packages-desktop.nix).
 { config, pkgs, lib, ... }:
 let
   # Local app list for the systemd flatpak-install service.
   gnomeAppsToInstall = [
     "org.gnome.TextEditor"
     "org.gnome.Loupe"
-    "org.gnome.Totem"
   ];
 
   gnomeAppsHash = builtins.substring 0 16
@@ -138,6 +138,12 @@ in
           flatpak uninstall --noninteractive --assumeyes "$app" || true
         fi
       done
+
+      # Migration: uninstall Totem — mpv is the designated player.
+      if flatpak list --app --columns=application 2>/dev/null | grep -qx "org.gnome.Totem"; then
+        echo "flatpak: removing org.gnome.Totem (server role uses mpv)"
+        flatpak uninstall --noninteractive --assumeyes org.gnome.Totem || true
+      fi
 
       flatpak install --noninteractive --assumeyes flathub \
         ${lib.concatStringsSep " \\\n        " gnomeAppsToInstall}

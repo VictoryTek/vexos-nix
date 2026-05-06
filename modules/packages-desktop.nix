@@ -7,5 +7,6 @@
     brave  # Chromium-based browser
     joplin-desktop  # Note-taking app (testing)
     jdk21  # Java 21 (LTS)
+    mpv    # Video player (replaces Totem Flatpak on desktop/stateless/server)
   ];
 }

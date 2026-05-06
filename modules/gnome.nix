@@ -185,7 +185,7 @@
     xterm
     gnome-music
     rhythmbox
-    totem         # Flatpak org.gnome.Totem is installed instead (auto-updated by Up)
+    totem         # mpv (nixpkgs) is the video player; Flatpak Totem is not installed
     showtime      # GNOME 49 video player ("Video Player") — duplicate of Flatpak Totem
     gnome-calculator  # Flatpak org.gnome.Calculator installed on desktop only
     gnome-calendar    # Flatpak org.gnome.Calendar installed on desktop only
