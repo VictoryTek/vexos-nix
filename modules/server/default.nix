@@ -33,6 +33,7 @@
     # ── Development ──────────────────────────────────────────────────────────
     ./forgejo.nix
     ./code-server.nix
+    ./attic.nix
     # ── Security ─────────────────────────────────────────────────────────────
     ./vaultwarden.nix
     ./authelia.nix

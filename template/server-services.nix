@@ -8,7 +8,7 @@
 #   overseerr, jellyseerr,
 #   arr (SABnzbd + Sonarr + Radarr + Lidarr + Prowlarr),
 #   komga, kavita, papermc, nextcloud, syncthing, immich, minio, photoprism,
-#   paperless, forgejo, code-server, vaultwarden, authelia,
+#   paperless, forgejo, code-server, attic, vaultwarden, authelia,
 #   nginx, caddy, traefik, adguard, headscale, unbound, nginx-proxy-manager,
 #   cockpit, uptime-kuma, homepage, grafana, scrutiny, prometheus, loki, netdata,
 #   dozzle, portainer, ntfy, mealie, listmonk, rustdesk, home-assistant,
@@ -55,6 +55,8 @@
   # vexos.server.forgejo.enable = false;
   # vexos.server.code-server.enable = false;             # Port 4444 — VS Code in the browser
   # vexos.server.code-server.hashedPassword = "";       # Set to argon2 hash: echo -n 'pass' | nix run nixpkgs#libargon2 -- "$(head -c 20 /dev/random | base64)" -e
+  # vexos.server.attic.enable = false;                  # Port 8400 — Nix binary cache server
+  # vexos.server.attic.port = 8400;                     # Change if needed
 
   # ── Security ─────────────────────────────────────────────────────────────
   # vexos.server.vaultwarden.enable = false;

@@ -468,7 +468,7 @@ ssh target="":
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita komga listmonk loki matrix-conduit mealie minio navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy overseerr paperless papermc photoprism plex portainer prometheus proxmox rustdesk scrutiny stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita komga listmonk loki matrix-conduit mealie minio navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy overseerr paperless papermc photoprism plex portainer prometheus proxmox rustdesk scrutiny stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -556,7 +556,7 @@ available-services:
     _hdr "Communications";             _svc matrix-conduit
     _hdr "Files & Storage";            _svc immich;           _svc nextcloud;       _svc syncthing;       _svc minio;           _svc photoprism
     _hdr "Gaming";                     _svc papermc
-    _hdr "Infrastructure";             _svc caddy;            _svc docker;          _svc nginx;           _svc nginx-proxy-manager;  _svc portainer;  _svc traefik
+    _hdr "Infrastructure";             _svc attic;            _svc caddy;            _svc docker;          _svc nginx;           _svc nginx-proxy-manager;  _svc portainer;  _svc traefik
     _hdr "Media";                      _svc audiobookshelf;   _svc jellyfin;        _svc navidrome;       _svc plex;            _svc tautulli
     _hdr "Media Requests & Automation";_svc arr;              _svc jellyseerr;      _svc overseerr
     _hdr "Monitoring & Admin";         _svc cockpit;          _svc dozzle;          _svc grafana;         _svc loki;            _svc netdata;     _svc prometheus;  _svc scrutiny;  _svc uptime-kuma
@@ -583,6 +583,7 @@ service-info service="":
       case "$1" in
         adguard)         printf "  %-18s  Web UI  http://<server-ip>:3080   |  DNS on :53\n"                           "$1" ;;
         arr)             printf "  %-18s  SABnzbd :8080  Sonarr :8989  Radarr :7878  Lidarr :8686  Prowlarr :9696\n"   "$1" ;;
+        attic)           printf "  %-18s  HTTP    http://<server-ip>:8400   (Nix binary cache)\n"                      "$1" ;;
         audiobookshelf)  printf "  %-18s  Web UI  http://<server-ip>:8234\n"                                           "$1" ;;
         caddy)           printf "  %-18s  Ports :80, :443\n"                                                           "$1" ;;
         cockpit)         printf "  %-18s  Web UI  http://<server-ip>:9090\n"                                           "$1" ;;
@@ -705,6 +706,7 @@ status service: _require-server-role
       adguard)        UNITS="adguardhome";          URLS="http://localhost:3080" ;;
       arr)            UNITS="sabnzbd sonarr radarr lidarr prowlarr";
                       URLS="http://localhost:8080 http://localhost:8989 http://localhost:7878 http://localhost:8686 http://localhost:9696" ;;
+      attic)          UNITS="atticd";               URLS="http://localhost:8400" ;;
       audiobookshelf) UNITS="audiobookshelf";       URLS="http://localhost:8234" ;;
       caddy)          UNITS="caddy";                URLS="http://localhost:80" ;;
       cockpit)        UNITS="cockpit";              URLS="http://localhost:9090" ;;
@@ -809,7 +811,7 @@ services: _require-server-role
     _hdr "Communications";             _check matrix-conduit
     _hdr "Files & Storage";            _check immich;         _check nextcloud;     _check syncthing;     _check minio;         _check photoprism
     _hdr "Gaming";                     _check papermc
-    _hdr "Infrastructure";             _check caddy;          _check docker;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
+    _hdr "Infrastructure";             _check attic;          _check caddy;          _check docker;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
     _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
     _hdr "Media Requests & Automation";_check arr;            _check jellyseerr;    _check overseerr
     _hdr "Monitoring & Admin";         _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma
@@ -942,6 +944,17 @@ enable service: _require-server-role
         echo "    Lidarr   → http://<server-ip>:8686"
         echo "    Prowlarr → http://<server-ip>:9696"
         echo "  About:    Full *arr media automation stack — SABnzbd downloads, Sonarr/Radarr/Lidarr manage libraries, Prowlarr proxies indexers."
+        ;;
+      attic)
+        echo "  Service:  atticd.service"
+        echo "  HTTP:     http://<server-ip>:8400"
+        echo "  About:    Modern, purpose-built Nix binary cache server. Push derivations from any machine; pull on rebuild."
+        echo "  Note:     Create /etc/nixos/secrets/attic-credentials before first start:"
+        echo "              ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64=<secret>"
+        echo "            Generate secret:  openssl rand -base64 32"
+        echo "  Client:   attic login myserver http://<server-ip>:8400 <token>"
+        echo "            attic cache create mycache"
+        echo "            attic push mycache <store-path>"
         ;;
       audiobookshelf)
         echo "  Service:  audiobookshelf.service"
