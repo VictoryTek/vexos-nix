@@ -30,8 +30,6 @@
         workgroup            = "WORKGROUP";
         "server string"      = "NixOS";
         "server role"        = "standalone";
-        "client min protocol" = "SMB2";
-        "client max protocol" = "SMB3";
         "load printers"       = "no";
       };
     };
@@ -55,15 +53,10 @@
   };
 
   # ── WS-Discovery (WSDD) — RESPONDER + DISCOVERY ─────────────────────────
-  # `enable` alone runs wsdd as a responder only — it announces this host to
-  # Windows but never enumerates other WSD hosts on the LAN. GVfs's gvfsd-wsdd
-  # backend reads the wsdd discovery socket (default /run/wsdd/wsdd.sock),
-  # which only exists when `discovery = true`. Without that, the Nautilus
-  # "Network" view stays empty even though smb.conf, libsmbclient, and Avahi
-  # are all correctly configured. This was the root cause of three prior
-  # failed attempts (commits bec7bec, da6e40c, 3082227).
-  # Opens TCP 5357 and UDP 3702 via openFirewall. The discovery socket is a
-  # local Unix socket and requires no firewall rules.
+  # Runs wsdd as a system-level responder+discoverer. Announces this host to
+  # Windows/Samba clients and provides a discovery socket for gvfsd-wsdd.
+  # GVFS also spawns its own per-user wsdd (--no-host --discovery) as a
+  # fallback if the system socket isn't reachable at /run/wsdd.socket.
   services.samba-wsdd = {
     enable       = true;
     openFirewall = true;
