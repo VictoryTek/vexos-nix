@@ -32,6 +32,12 @@
       gnome-disk-utility     = u.gnome-disk-utility;
       baobab                 = u.baobab;             # Disk Usage Analyzer
       gnome-software         = u.gnome-software;
+
+      # GNOME Virtual File System — pinned to unstable for IPC parity
+      # with the unstable nautilus build above. Provides the dnssd,
+      # network, smb, smb-browse, wsdd, nfs, sftp backends used by
+      # the Nautilus → Network sidebar entry.
+      gvfs                   = u.gvfs;
       # NOTE: gnome-text-editor, gnome-system-monitor, loupe, and totem are
       # installed via Flatpak on all roles; gnome-calculator, gnome-calendar,
       # evince/papers, and gnome-snapshot are installed via Flatpak on the
@@ -125,6 +131,18 @@
           # ── Housekeeping ────────────────────────────────────────────────
           "org/gnome/settings-daemon/plugins/housekeeping" = {
             donation-reminder-enabled = false;
+          };
+
+          # ── Network share discovery (Nautilus "Network" sidebar) ────────
+          # Pin GNOME's DNS-SD aggregation behaviour so that locally-
+          # discovered mDNS services are merged into the same Network view
+          # as remote ones. "merged" is the GNOME 49 schema default; we pin
+          # it system-wide so an unexpected upgrade-path stale value in any
+          # user database cannot silently hide auto-discovered SMB/NFS/SFTP
+          # hosts. vexos builds always run on fresh dconf, so this is purely
+          # defensive.
+          "org/gnome/system/dns-sd" = {
+            display-local = "merged";
           };
         };
       }

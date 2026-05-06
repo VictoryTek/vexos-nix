@@ -48,6 +48,10 @@
     addresses    = true;
     workstation  = true;
     userServices = true;
+    domain       = true;   # publishes _browse._dns-sd._udp.local —
+                           # parity with stock GNOME-on-NixOS, which
+                           # publishes the browse domain via gvfs's
+                           # own avahi calls.
   };
 
   # ── WS-Discovery (WSDD) — RESPONDER + DISCOVERY ─────────────────────────
