@@ -72,6 +72,17 @@
     noDisplay = true;
   };
 
+  # ── Desktop entry overrides ───────────────────────────────────────────────
+  # gparted: nixpkgs 25.05 ships its .desktop file with NoDisplay=true.
+  # Override at the user level to restore visibility in the app grid.
+  xdg.desktopEntries."gparted" = {
+    name       = "GParted";
+    exec       = "gparted %f";
+    icon       = "gparted";
+    comment    = "Create, reorganize, and delete disk partitions";
+    categories = [ "System" ];
+  };
+
   # ── Session environment variables ─────────────────────────────────────────
   home.sessionVariables = {
     NIXOS_OZONE_WL     = "1";
