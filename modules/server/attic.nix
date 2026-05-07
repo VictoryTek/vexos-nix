@@ -2,8 +2,8 @@
 # Attic — modern, purpose-built NixOS binary cache server.
 # Default port: 8400 (avoids conflicts with SABnzbd/scrutiny on 8080).
 # Requires: /etc/nixos/secrets/attic-credentials containing:
-#   ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64=<secret>
-# Generate secret with: openssl rand -base64 32
+#   ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64=<secret>
+# Generate secret with: openssl genrsa -traditional 4096 | base64 -w0
 # After enabling, use `attic login` on clients pointing to http://<host>:8400
 { config, lib, pkgs, ... }:
 let
@@ -29,7 +29,7 @@ in
   config = lib.mkIf cfg.enable {
     services.atticd = {
       enable = true;
-      credentialsFile = "/etc/nixos/secrets/attic-credentials";
+      environmentFile = "/etc/nixos/secrets/attic-credentials";
       settings = {
         listen = "[::]:${toString cfg.port}";
         database.url = "sqlite://${cfg.dataDir}/db.sqlite?mode=rwc";
