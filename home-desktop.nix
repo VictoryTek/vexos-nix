@@ -38,7 +38,7 @@
 
     # System utilities
     fastfetch
-    gparted
+    # NOTE: gparted is installed system-wide via modules/packages-desktop.nix.
     # NOTE: btop and inxi are installed system-wide via modules/packages-common.nix.
 
     # NOTE: pavucontrol and protonplus are installed via Flatpak (see modules/flatpak.nix).

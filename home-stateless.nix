@@ -31,7 +31,7 @@
 
     # System utilities
     fastfetch
-    gparted
+    # NOTE: gparted is installed system-wide via modules/packages-desktop.nix.
     # NOTE: btop and inxi are installed system-wide via modules/packages-common.nix.
 
     # NOTE: brave is installed as a Nix package (see modules/packages-common.nix).
