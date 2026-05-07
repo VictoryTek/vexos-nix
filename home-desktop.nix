@@ -38,7 +38,7 @@
 
     # System utilities
     fastfetch
-    blivet-gui
+    gparted
     # NOTE: btop and inxi are installed system-wide via modules/packages-common.nix.
 
     # NOTE: pavucontrol and protonplus are installed via Flatpak (see modules/flatpak.nix).
@@ -153,7 +153,7 @@
 
         $D write /org/gnome/desktop/app-folders/folders/System/name    "'System'"
         $D write /org/gnome/desktop/app-folders/folders/System/apps \
-          "['org.pulseaudio.pavucontrol.desktop', 'rog-control-center.desktop', 'io.missioncenter.MissionCenter.desktop', 'org.gnome.Settings.desktop', 'org.gnome.seahorse.Application.desktop', 'nixos-manual.desktop', 'cups.desktop', 'blivet-gui.desktop', 'blueman-manager.desktop', 'btop.desktop', 'ca.desrt.dconf-editor.desktop', 'org.gnome.baobab.desktop', 'org.gnome.DiskUtility.desktop', 'org.gnome.font-viewer.desktop', 'org.gnome.Logs.desktop', 'btrfs-assistant.desktop', 'org.gnome.SystemMonitor.desktop', 'com.system76.Popsicle.desktop']"
+          "['org.pulseaudio.pavucontrol.desktop', 'rog-control-center.desktop', 'io.missioncenter.MissionCenter.desktop', 'org.gnome.Settings.desktop', 'org.gnome.seahorse.Application.desktop', 'nixos-manual.desktop', 'cups.desktop', 'gparted.desktop', 'blueman-manager.desktop', 'btop.desktop', 'ca.desrt.dconf-editor.desktop', 'org.gnome.baobab.desktop', 'org.gnome.DiskUtility.desktop', 'org.gnome.font-viewer.desktop', 'org.gnome.Logs.desktop', 'btrfs-assistant.desktop', 'org.gnome.SystemMonitor.desktop', 'com.system76.Popsicle.desktop']"
 
         mkdir -p "$HOME/.local/share/vexos"
         touch "$STAMP"

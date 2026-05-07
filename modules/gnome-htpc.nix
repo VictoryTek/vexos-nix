@@ -105,7 +105,7 @@ in
             "org.gnome.seahorse.Application.desktop"
             "nixos-manual.desktop"
             "cups.desktop"
-            "blivet-gui.desktop"
+            "gparted.desktop"
             "blueman-manager.desktop"
             "btop.desktop"
             "ca.desrt.dconf-editor.desktop"
