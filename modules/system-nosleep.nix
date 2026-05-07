@@ -1,7 +1,6 @@
 # modules/system-nosleep.nix
 # Permanently disable sleep, suspend, and hibernation.
-# Import in configuration-desktop.nix, configuration-htpc.nix, and configuration-stateless.nix.
-# Do NOT import in server or headless-server roles.
+# Import in all role configurations.
 { pkgs, lib, config, ... }:
 {
   # ── Layer 4: mask all systemd sleep targets ───────────────────────────────

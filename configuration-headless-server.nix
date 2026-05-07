@@ -7,6 +7,7 @@
     ./modules/network.nix
     ./modules/packages-common.nix
     ./modules/system.nix
+    ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on headless-server
     ./modules/security.nix          # AppArmor MAC baseline (all roles)
     ./modules/security-server.nix   # auditd + server audit ruleset
     ./modules/server       # Optional server services (vexos.server.*.enable)
