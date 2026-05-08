@@ -427,7 +427,7 @@ reset-defaults:
         *) echo "Aborted."; exit 0 ;;
     esac
     dconf reset -f /
-    rm -f "$HOME/.local/share/vexos/.dconf-app-folders-initialized"
+    rm -f "$HOME/.local/share/vexos/.dconf-app-folders-initialized-v2"
     echo "Done. Log out and back in (or reboot) for all changes to take effect."
     echo "App folders will be restored on the next graphical login."
 
