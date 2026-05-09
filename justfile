@@ -468,7 +468,7 @@ ssh target="":
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita komga listmonk loki matrix-conduit mealie minio navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy overseerr paperless papermc photoprism plex portainer prometheus proxmox rustdesk scrutiny stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita komga listmonk loki matrix-conduit mealie minio navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex portainer prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -558,7 +558,7 @@ available-services:
     _hdr "Gaming";                     _svc papermc
     _hdr "Infrastructure";             _svc attic;            _svc caddy;            _svc docker;          _svc nginx;           _svc nginx-proxy-manager;  _svc portainer;  _svc traefik
     _hdr "Media";                      _svc audiobookshelf;   _svc jellyfin;        _svc navidrome;       _svc plex;            _svc tautulli
-    _hdr "Media Requests & Automation";_svc arr;              _svc jellyseerr;      _svc overseerr
+    _hdr "Media Requests & Automation";_svc arr;              _svc jellyseerr;      _svc seerr
     _hdr "Monitoring & Admin";         _svc cockpit;          _svc dozzle;          _svc grafana;         _svc loki;            _svc netdata;     _svc prometheus;  _svc scrutiny;  _svc uptime-kuma
     _hdr "Networking & Security";      _svc adguard;          _svc authelia;        _svc headscale;       _svc unbound;         _svc vaultwarden
     _hdr "Productivity";               _svc code-server;      _svc forgejo;         _svc homepage;        _svc listmonk;        _svc mealie;      _svc paperless;   _svc stirling-pdf
@@ -585,24 +585,24 @@ service-info service="":
         arr)             printf "  %-18s  SABnzbd :8080  Sonarr :8989  Radarr :7878  Lidarr :8686  Prowlarr :9696\n"   "$1" ;;
         attic)           printf "  %-18s  HTTP    http://<server-ip>:8400   (Nix binary cache)\n"                      "$1" ;;
         audiobookshelf)  printf "  %-18s  Web UI  http://<server-ip>:8234\n"                                           "$1" ;;
-        caddy)           printf "  %-18s  Ports :80, :443\n"                                                           "$1" ;;
+        caddy)           printf "  %-18s  Ports :8880, :8443\n"                                                           "$1" ;;
         cockpit)         printf "  %-18s  Web UI  http://<server-ip>:9090\n"                                           "$1" ;;
         docker)          printf "  %-18s  No web UI — docker / docker compose CLI\n"                                   "$1" ;;
-        forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000   ⚠ conflicts with grafana\n"                "$1" ;;
-        grafana)         printf "  %-18s  Web UI  http://<server-ip>:3000   ⚠ conflicts with forgejo\n"                "$1" ;;
+        forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000\n"                                           "$1" ;;
+        grafana)         printf "  %-18s  Web UI  http://<server-ip>:3030\n"                                           "$1" ;;
         headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
         home-assistant)  printf "  %-18s  Web UI  http://<server-ip>:8123\n"                                           "$1" ;;
         homepage)        printf "  %-18s  Web UI  http://<server-ip>:3010   (requires docker)\n"                       "$1" ;;
         immich)          printf "  %-18s  Web UI  http://<server-ip>:2283\n"                                           "$1" ;;
         jellyfin)        printf "  %-18s  Web UI  http://<server-ip>:8096\n"                                           "$1" ;;
-        jellyseerr)      printf "  %-18s  Web UI  http://<server-ip>:5055   ⚠ conflicts with overseerr\n"              "$1" ;;
+        jellyseerr)      printf "  %-18s  Web UI  http://<server-ip>:5056\n"                                           "$1" ;;
         kavita)          printf "  %-18s  Web UI  http://<server-ip>:5000\n"                                           "$1" ;;
         komga)           printf "  %-18s  Web UI  http://<server-ip>:8090\n"                                           "$1" ;;
-        mealie)          printf "  %-18s  Web UI  http://<server-ip>:9000\n"                                           "$1" ;;
+        mealie)          printf "  %-18s  Web UI  http://<server-ip>:9010\n"                                           "$1" ;;
         nextcloud)       printf "  %-18s  Web UI  http://nextcloud.local     (Nginx frontend)\n"                       "$1" ;;
         nginx)           printf "  %-18s  Ports :80, :443\n"                                                           "$1" ;;
         ntfy)            printf "  %-18s  Web UI  http://<server-ip>:2586\n"                                           "$1" ;;
-        overseerr)       printf "  %-18s  Web UI  http://<server-ip>:5055   ⚠ conflicts with jellyseerr\n"             "$1" ;;
+        seerr)           printf "  %-18s  Web UI  http://<server-ip>:5055\n"                                           "$1" ;;
         papermc)
             _mc_ver=$(nix eval --raw nixpkgs#papermc.version 2>/dev/null) || true
             [ -z "$_mc_ver" ] && _mc_ver="unknown"
@@ -621,30 +621,30 @@ service-info service="":
             ;;
         plex)            printf "  %-18s  Web UI  http://<server-ip>:32400/web\n"                                      "$1" ;;
         rustdesk)        printf "  %-18s  Ports :21115-21117 / :21118-21119 (no web UI)\n"                             "$1" ;;
-        scrutiny)        printf "  %-18s  Web UI  http://<server-ip>:8080   ⚠ conflicts with arr/traefik dashboard\n" "$1" ;;
-        stirling-pdf)    printf "  %-18s  Web UI  http://<server-ip>:8080   ⚠ conflicts with arr/scrutiny\n"           "$1" ;;
+        scrutiny)        printf "  %-18s  Web UI  http://<server-ip>:8078\n"                                           "$1" ;;
+        stirling-pdf)    printf "  %-18s  Web UI  http://<server-ip>:8077\n"                                           "$1" ;;
         syncthing)       printf "  %-18s  Web UI  http://<server-ip>:8384\n"                                           "$1" ;;
         tautulli)        printf "  %-18s  Web UI  http://<server-ip>:8181\n"                                           "$1" ;;
-        traefik)         printf "  %-18s  Ports :80, :443  |  Dashboard http://<server-ip>:8080/dashboard/\n"         "$1" ;;
+        traefik)         printf "  %-18s  Ports :8882, :8445  |  Dashboard http://<server-ip>:8079/dashboard/\n"       "$1" ;;
         uptime-kuma)     printf "  %-18s  Web UI  http://<server-ip>:3001\n"                                           "$1" ;;
         vaultwarden)     printf "  %-18s  Web UI  http://<server-ip>:8222   |  Admin .../admin\n"                      "$1" ;;
         authelia)        printf "  %-18s  Web UI  http://<server-ip>:9091\n"                                                   "$1" ;;
         code-server)     printf "  %-18s  Web UI  http://<server-ip>:4444\n"                                                   "$1" ;;
         dozzle)          printf "  %-18s  Web UI  http://<server-ip>:8888   (requires docker)\n"                               "$1" ;;
-        listmonk)        printf "  %-18s  Web UI  http://<server-ip>:9025   ⚠ check port — may conflict with mealie/minio\n"  "$1" ;;
+        listmonk)        printf "  %-18s  Web UI  http://<server-ip>:9025\n"                                                   "$1" ;;
         loki)            printf "  %-18s  API     http://<server-ip>:3100   (no web UI — pair with Grafana)\n"                 "$1" ;;
         matrix-conduit)  printf "  %-18s  API     http://<server-ip>:6167   |  Federation :8448\n"                             "$1" ;;
-        minio)           printf "  %-18s  API :9000  Console http://<server-ip>:9001   ⚠ conflicts with mealie\n"             "$1" ;;
+        minio)           printf "  %-18s  API :9000  Console http://<server-ip>:9001\n"                                   "$1" ;;
         navidrome)       printf "  %-18s  Web UI  http://<server-ip>:4533\n"                                                   "$1" ;;
         netdata)         printf "  %-18s  Web UI  http://<server-ip>:19999\n"                                                  "$1" ;;
-        nginx-proxy-manager) printf "  %-18s  Admin http://<server-ip>:81   |  Ports :80, :443\n"                             "$1" ;;
+        nginx-proxy-manager) printf "  %-18s  Admin http://<server-ip>:81   |  Ports :8881, :8444\n"                         "$1" ;;
         node-red)        printf "  %-18s  Web UI  http://<server-ip>:1880\n"                                                   "$1" ;;
         paperless)       printf "  %-18s  Web UI  http://<server-ip>:28981\n"                                                  "$1" ;;
         photoprism)      printf "  %-18s  Web UI  http://<server-ip>:2342\n"                                                   "$1" ;;
         portainer)       printf "  %-18s  Web UI  https://<server-ip>:9443  (requires docker)\n"                               "$1" ;;
-        prometheus)      printf "  %-18s  Web UI  http://<server-ip>:9090   ⚠ conflicts with cockpit\n"                        "$1" ;;
+        prometheus)      printf "  %-18s  Web UI  http://<server-ip>:9092\n"                                               "$1" ;;
         proxmox)         printf "  %-18s  Web UI  https://<server-ip>:8006  |  Ports :3128 (SPICE), :5900-5999 (VNC)\n"        "$1" ;;
-        unbound)         printf "  %-18s  DNS on :53   ⚠ conflicts with adguard\n"                                             "$1" ;;
+        unbound)         printf "  %-18s  DNS on :5353\n"                                                                  "$1" ;;
         zigbee2mqtt)     printf "  %-18s  Web UI  http://<server-ip>:8088\n"                                                   "$1" ;;
         *)               printf "  %-18s  (no info available)\n"                                                       "$1" ;;
       esac
@@ -708,32 +708,32 @@ status service: _require-server-role
                       URLS="http://localhost:8080 http://localhost:8989 http://localhost:7878 http://localhost:8686 http://localhost:9696" ;;
       attic)          UNITS="atticd";               URLS="http://localhost:8400" ;;
       audiobookshelf) UNITS="audiobookshelf";       URLS="http://localhost:8234" ;;
-      caddy)          UNITS="caddy";                URLS="http://localhost:80" ;;
+      caddy)          UNITS="caddy";                URLS="http://localhost:8880" ;;
       cockpit)        UNITS="cockpit";              URLS="http://localhost:9090" ;;
       docker)         UNITS="docker";               URLS="" ;;
       forgejo)        UNITS="forgejo";              URLS="http://localhost:3000" ;;
-      grafana)        UNITS="grafana";              URLS="http://localhost:3000" ;;
+      grafana)        UNITS="grafana";              URLS="http://localhost:3030" ;;
       headscale)      UNITS="headscale";            URLS="http://localhost:8085" ;;
       home-assistant) UNITS="home-assistant";       URLS="http://localhost:8123" ;;
       homepage)       UNITS="docker-homepage";      URLS="http://localhost:3010" ;;
       immich)         UNITS="immich-server";        URLS="http://localhost:2283" ;;
       jellyfin)       UNITS="jellyfin";             URLS="http://localhost:8096" ;;
-      jellyseerr)     UNITS="jellyseerr";           URLS="http://localhost:5055" ;;
+      jellyseerr)     UNITS="jellyseerr";           URLS="http://localhost:5056" ;;
       kavita)         UNITS="kavita";               URLS="http://localhost:5000" ;;
       komga)          UNITS="komga";                URLS="http://localhost:8090" ;;
-      mealie)         UNITS="mealie";               URLS="http://localhost:9000" ;;
+      mealie)         UNITS="mealie";               URLS="http://localhost:9010" ;;
       nextcloud)      UNITS="phpfpm-nextcloud nginx"; URLS="http://localhost:80" ;;
       nginx)          UNITS="nginx";                URLS="http://localhost:80" ;;
       ntfy)           UNITS="ntfy";                 URLS="http://localhost:2586" ;;
-      overseerr)      UNITS="overseerr";            URLS="http://localhost:5055" ;;
+      seerr)          UNITS="seerr";               URLS="http://localhost:5055" ;;
       papermc)        UNITS="minecraft-server";     URLS="" ;;
       plex)           UNITS="plex";                 URLS="http://localhost:32400/web" ;;
       rustdesk)       UNITS="rustdesk-server hbbr hbbs"; URLS="" ;;
-      scrutiny)       UNITS="scrutiny";             URLS="http://localhost:8080" ;;
-      stirling-pdf)   UNITS="docker-stirling-pdf";   URLS="http://localhost:8080" ;;
+      scrutiny)       UNITS="scrutiny";             URLS="http://localhost:8078" ;;
+      stirling-pdf)   UNITS="docker-stirling-pdf";   URLS="http://localhost:8077" ;;
       syncthing)      UNITS="syncthing";            URLS="http://localhost:8384" ;;
       tautulli)       UNITS="tautulli";             URLS="http://localhost:8181" ;;
-      traefik)        UNITS="traefik";              URLS="http://localhost:8080/dashboard/" ;;
+      traefik)        UNITS="traefik";              URLS="http://localhost:8079/dashboard/" ;;
       uptime-kuma)    UNITS="docker-uptime-kuma";   URLS="http://localhost:3001" ;;
       vaultwarden)    UNITS="vaultwarden";          URLS="http://localhost:8222" ;;
       authelia)       UNITS="docker-authelia";          URLS="http://localhost:9091" ;;
@@ -750,7 +750,7 @@ status service: _require-server-role
       paperless)      UNITS="paperless";                URLS="http://localhost:28981" ;;
       photoprism)     UNITS="photoprism";               URLS="http://localhost:2342" ;;
       portainer)      UNITS="docker-portainer";         URLS="https://localhost:9443" ;;
-      prometheus)     UNITS="prometheus";               URLS="http://localhost:9090" ;;
+      prometheus)     UNITS="prometheus";               URLS="http://localhost:9092" ;;
       proxmox)        UNITS="pve-cluster pvedaemon pveproxy pvestatd pvescheduler"; URLS="https://localhost:8006" ;;
       unbound)        UNITS="unbound";                  URLS="" ;;
       zigbee2mqtt)    UNITS="zigbee2mqtt";              URLS="http://localhost:8088" ;;
@@ -813,7 +813,7 @@ services: _require-server-role
     _hdr "Gaming";                     _check papermc
     _hdr "Infrastructure";             _check attic;          _check caddy;          _check docker;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
     _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
-    _hdr "Media Requests & Automation";_check arr;            _check jellyseerr;    _check overseerr
+    _hdr "Media Requests & Automation";_check arr;            _check jellyseerr;    _check seerr
     _hdr "Monitoring & Admin";         _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma
     _hdr "Networking & Security";      _check adguard;        _check authelia;      _check headscale;     _check unbound;       _check vaultwarden
     _hdr "Productivity";               _check code-server;    _check forgejo;       _check homepage;      _check listmonk;      _check mealie;    _check paperless;   _check stirling-pdf
@@ -963,7 +963,7 @@ enable service: _require-server-role
         ;;
       caddy)
         echo "  Service:  caddy.service"
-        echo "  Ports:    :80 (redirects to HTTPS), :443"
+        echo "  Ports:    :8880 (redirects to HTTPS), :8443"
         echo "  About:    Reverse proxy with automatic HTTPS via Let's Encrypt. Configure virtual hosts in the module or a Caddyfile."
         ;;
       cockpit)
@@ -982,14 +982,12 @@ enable service: _require-server-role
         echo "  Service:  forgejo.service"
         echo "  Web UI:   http://<server-ip>:3000"
         echo "  About:    Lightweight self-hosted Git forge (Gitea fork) — issues, pull requests, CI. Registration is disabled by default."
-        echo "  Warning:  Port 3000 conflicts with Grafana — enable only one."
         ;;
       grafana)
         echo "  Service:  grafana.service"
-        echo "  Web UI:   http://<server-ip>:3000"
+        echo "  Web UI:   http://<server-ip>:3030"
         echo "  About:    Metrics and observability dashboard. Pair with Prometheus to graph system and application metrics."
         echo "  Login:    Default admin / admin — change on first login."
-        echo "  Warning:  Port 3000 conflicts with Forgejo — enable only one."
         ;;
       headscale)
         echo "  Service:  headscale.service"
@@ -1022,9 +1020,8 @@ enable service: _require-server-role
         ;;
       jellyseerr)
         echo "  Service:  jellyseerr.service"
-        echo "  Web UI:   http://<server-ip>:5055"
+        echo "  Web UI:   http://<server-ip>:5056"
         echo "  About:    Media request and discovery manager for Jellyfin. Routes requests to Radarr/Sonarr."
-        echo "  Warning:  Port 5055 conflicts with Overseerr — enable only one."
         ;;
       kavita)
         echo "  Service:  kavita.service"
@@ -1040,7 +1037,7 @@ enable service: _require-server-role
         ;;
       mealie)
         echo "  Service:  mealie.service"
-        echo "  Web UI:   http://<server-ip>:9000"
+        echo "  Web UI:   http://<server-ip>:9010"
         echo "  About:    Self-hosted recipe manager and meal planner with ingredient parsing and recipe import from URLs."
         echo "  Login:    Default changeme@example.com / MyPassword — change immediately after first login."
         ;;
@@ -1062,11 +1059,10 @@ enable service: _require-server-role
         echo "  About:    Self-hosted push notification server. Send alerts to phones or scripts via simple HTTP PUT/POST."
         echo "  Example:  curl -d 'message' http://<server-ip>:2586/mytopic"
         ;;
-      overseerr)
-        echo "  Service:  overseerr.service"
+      seerr)
+        echo "  Service:  seerr.service"
         echo "  Web UI:   http://<server-ip>:5055"
-        echo "  About:    Media request management frontend for Plex — routes requests to Radarr and Sonarr."
-        echo "  Warning:  Port 5055 conflicts with Jellyseerr — enable only one."
+        echo "  About:    Open-source media request manager for Jellyfin, Plex, and Emby — successor to Jellyseerr/Overseerr."
         ;;
       papermc)
         _mc_ver=$(grep -m1 'Starting minecraft server version\|server version' /var/lib/minecraft/logs/latest.log 2>/dev/null \
@@ -1125,15 +1121,13 @@ enable service: _require-server-role
         ;;
       scrutiny)
         echo "  Service:  scrutiny.service"
-        echo "  Web UI:   http://<server-ip>:8080"
+        echo "  Web UI:   http://<server-ip>:8078"
         echo "  About:    Hard drive health dashboard powered by S.M.A.R.T. data with alerts on failing metrics."
-        echo "  Warning:  Port 8080 conflicts with SABnzbd (arr) and the Traefik dashboard — check for conflicts."
         ;;
       stirling-pdf)
         echo "  Container: stirling-pdf (NixOS OCI container)"
-        echo "  Web UI:    http://<server-ip>:8080"
+        echo "  Web UI:    http://<server-ip>:8077"
         echo "  About:     Web-based PDF toolbox — merge, split, rotate, compress, OCR, watermark, and convert. All processing is local."
-        echo "  Warning:   Port 8080 conflicts with SABnzbd (arr) and Scrutiny — check for conflicts."
         ;;
       syncthing)
         echo "  Service:  syncthing.service"
@@ -1149,10 +1143,9 @@ enable service: _require-server-role
         ;;
       traefik)
         echo "  Service:   traefik.service"
-        echo "  Ports:     :80 (HTTP), :443 (HTTPS)"
-        echo "  Dashboard: http://<server-ip>:8080/dashboard/"
+        echo "  Ports:     :8882 (HTTP), :8445 (HTTPS)"
+        echo "  Dashboard: http://<server-ip>:8079/dashboard/"
         echo "  About:     Cloud-native reverse proxy with automatic Let's Encrypt TLS and Docker label-based route discovery."
-        echo "  Warning:   Dashboard port 8080 conflicts with SABnzbd (arr) and Scrutiny — adjust if running alongside them."
         ;;
       uptime-kuma)
         echo "  Container: uptime-kuma (NixOS OCI container)"
@@ -1236,7 +1229,6 @@ enable service: _require-server-role
         echo "  API:      http://<server-ip>:9000"
         echo "  Console:  http://<server-ip>:9001"
         echo "  About:    S3-compatible object storage server. Use as a backend for Nextcloud, Immich, or S3 clients."
-        echo "  Warning:  Port 9000 conflicts with Mealie — enable only one."
         echo "  Note:     Create /etc/nixos/minio-credentials with:"
         echo "              MINIO_ROOT_USER=yourusername"
         echo "              MINIO_ROOT_PASSWORD=yourpassword"
@@ -1255,10 +1247,9 @@ enable service: _require-server-role
       nginx-proxy-manager)
         echo "  Container: nginx-proxy-manager (NixOS OCI container)"
         echo "  Admin UI: http://<server-ip>:81"
-        echo "  Ports:    :80 (HTTP proxy), :443 (HTTPS proxy)"
+        echo "  Ports:    :8881 (HTTP proxy), :8444 (HTTPS proxy)"
         echo "  About:    Web UI for managing Nginx reverse proxy rules with automatic Let's Encrypt TLS."
         echo "  Login:    Default admin@example.com / changeme — change immediately after first login."
-        echo "  Warning:  Ports 80 and 443 conflict with Caddy, Nginx, and Traefik — enable only one reverse proxy."
         ;;
       node-red)
         echo "  Service:  node-red.service"
@@ -1286,16 +1277,14 @@ enable service: _require-server-role
         ;;
       prometheus)
         echo "  Service:  prometheus.service"
-        echo "  Web UI:   http://<server-ip>:9090"
+        echo "  Web UI:   http://<server-ip>:9092"
         echo "  About:    Time-series metrics collection and alerting. Pair with Grafana for dashboards."
-        echo "  Warning:  Port 9090 conflicts with Cockpit — enable only one."
         echo "  Note:     Add scrape targets in the module. Node Exporter is not auto-enabled — add it separately."
         ;;
       unbound)
         echo "  Service:  unbound.service"
-        echo "  DNS:      Port 53 (UDP/TCP)"
+        echo "  DNS:      Port 5353 (UDP/TCP)"
         echo "  About:    Validating, recursive DNS resolver with DNS-over-TLS forwarding to Cloudflare (1.1.1.1)."
-        echo "  Warning:  Port 53 conflicts with AdGuard Home — enable only one DNS service."
         ;;
       zigbee2mqtt)
         Z2M_PORT=""

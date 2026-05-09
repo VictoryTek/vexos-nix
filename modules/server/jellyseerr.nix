@@ -1,6 +1,6 @@
 # modules/server/jellyseerr.nix
 # Jellyseerr — media request management for Jellyfin/Emby/Plex.
-# Note: Jellyseerr and Overseerr both default to port 5055 — enable only one.
+# Default port: 5056 (Seerr uses 5055).
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.jellyseerr;
@@ -11,8 +11,8 @@ in
 
     port = lib.mkOption {
       type    = lib.types.port;
-      default = 5055;
-      description = "Port Jellyseerr listens on. Change if co-hosting with Overseerr.";
+      default = 5056;
+      description = "Port Jellyseerr listens on.";
     };
   };
 

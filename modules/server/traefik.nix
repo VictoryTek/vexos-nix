@@ -9,6 +9,24 @@ in
 {
   options.vexos.server.traefik = {
     enable = lib.mkEnableOption "Traefik reverse proxy";
+
+    httpPort = lib.mkOption {
+      type = lib.types.port;
+      default = 8882;
+      description = "Port for the Traefik HTTP entrypoint.";
+    };
+
+    httpsPort = lib.mkOption {
+      type = lib.types.port;
+      default = 8445;
+      description = "Port for the Traefik HTTPS entrypoint.";
+    };
+
+    dashboardPort = lib.mkOption {
+      type = lib.types.port;
+      default = 8079;
+      description = "Port for the Traefik dashboard (insecure API).";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -17,17 +35,17 @@ in
       staticConfigOptions = {
         api = {
           dashboard = true;
-          insecure = true; # Dashboard on port 8080; restrict or disable in production
+          insecure = true; # Dashboard on dashboardPort; restrict or disable in production
         };
         entryPoints = {
-          web.address = ":80";
-          websecure.address = ":443";
+          web.address = ":${toString cfg.httpPort}";
+          websecure.address = ":${toString cfg.httpsPort}";
+          traefik.address = ":${toString cfg.dashboardPort}";
         };
         log.level = "INFO";
       };
     };
 
-    # 80/443 for proxied traffic; 8080 for the Traefik dashboard
-    networking.firewall.allowedTCPPorts = [ 80 443 8080 ];
+    networking.firewall.allowedTCPPorts = [ cfg.httpPort cfg.httpsPort cfg.dashboardPort ];
   };
 }

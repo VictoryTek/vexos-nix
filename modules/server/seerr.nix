@@ -1,7 +1,7 @@
 # modules/server/seerr.nix
 # Seerr — open-source media request and discovery manager for Jellyfin, Plex, and Emby.
 # Successor to Jellyseerr/Overseerr. Package sourced from nixpkgs-unstable.
-# Note: Seerr, Jellyseerr, and Overseerr all default to port 5055 — enable only one.
+# Note: Seerr and Jellyseerr both listen on ports 5055/5056 respectively — enable only one.
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.seerr;

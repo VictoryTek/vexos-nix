@@ -14,7 +14,6 @@
     ./navidrome.nix
     # ── Media Requests ───────────────────────────────────────────────────────
     ./seerr.nix
-    ./overseerr.nix
     ./jellyseerr.nix
     # ── Media Automation (Arr Stack) ─────────────────────────────────────────
     ./arr.nix

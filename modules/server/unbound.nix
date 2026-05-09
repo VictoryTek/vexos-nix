@@ -1,6 +1,6 @@
 # modules/server/unbound.nix
 # Unbound — validating, recursive, caching DNS resolver.
-# ⚠ Port 53 conflicts with AdGuard Home (adguard) — enable only one DNS service.
+# Uses port 5353 to avoid conflict with AdGuard Home (port 53).
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.unbound;
@@ -16,6 +16,7 @@ in
       settings = {
         server = {
           interface = [ "0.0.0.0" "::" ];
+          port = 5353;
           access-control = [
             "127.0.0.0/8 allow"
             "10.0.0.0/8 allow"
@@ -28,7 +29,7 @@ in
       };
     };
 
-    networking.firewall.allowedTCPPorts = [ 53 ];
-    networking.firewall.allowedUDPPorts = [ 53 ];
+    networking.firewall.allowedTCPPorts = [ 5353 ];
+    networking.firewall.allowedUDPPorts = [ 5353 ];
   };
 }

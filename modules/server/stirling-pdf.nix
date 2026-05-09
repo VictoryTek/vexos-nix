@@ -10,7 +10,7 @@ in
 
     port = lib.mkOption {
       type = lib.types.port;
-      default = 8080;
+      default = 8077;
       description = "Port for the Stirling PDF web interface.";
     };
   };

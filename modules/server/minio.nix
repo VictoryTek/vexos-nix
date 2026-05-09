@@ -1,6 +1,6 @@
 # modules/server/minio.nix
 # MinIO — S3-compatible object storage server.
-# API default port: 9000  ⚠ conflicts with Mealie — set apiPort if both are enabled.
+# API default port: 9000
 # Console default port: 9001
 # Credentials: create /etc/nixos/secrets/minio-credentials containing:
 #   MINIO_ROOT_USER=admin
@@ -16,7 +16,7 @@ in
     apiPort = lib.mkOption {
       type = lib.types.port;
       default = 9000;
-      description = "Port for the MinIO S3 API. ⚠ Conflicts with Mealie on port 9000.";
+      description = "Port for the MinIO S3 API.";
     };
 
     consolePort = lib.mkOption {

@@ -23,7 +23,7 @@ in
       port = cfg.port;
       serverUrl = "http://0.0.0.0:${toString cfg.port}";
       settings = {
-        metrics_listen_addr = "127.0.0.1:9090";
+        metrics_listen_addr = "127.0.0.1:9093";
         log.level = "info";
       };
     };

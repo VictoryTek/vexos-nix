@@ -7,15 +7,21 @@ in
 {
   options.vexos.server.mealie = {
     enable = lib.mkEnableOption "Mealie recipe manager";
+
+    port = lib.mkOption {
+      type = lib.types.port;
+      default = 9010;
+      description = "Port for the Mealie web interface.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
     services.mealie = {
       enable = true;
       listenAddress = "0.0.0.0";
-      port = 9000; # Default port: 9000
+      port = cfg.port;
     };
 
-    networking.firewall.allowedTCPPorts = [ 9000 ];
+    networking.firewall.allowedTCPPorts = [ cfg.port ];
   };
 }
