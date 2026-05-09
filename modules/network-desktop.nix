@@ -27,10 +27,15 @@
     winbindd.enable     = lib.mkDefault false;
     settings = {
       global = {
-        workgroup            = "WORKGROUP";
-        "server string"      = "NixOS";
-        "server role"        = "standalone";
+        workgroup             = "WORKGROUP";
+        "server string"       = "NixOS";
+        "server role"         = "standalone";
         "load printers"       = "no";
+        # Explicitly allow SMB1 connections from this client.
+        # Without this, Samba 4.13+ defaults to SMB2_02 minimum, which
+        # prevents gvfsd-smb-browse and CLI tools from connecting to
+        # NAS devices that only support SMBv1.
+        "client min protocol" = "NT1";
       };
     };
   };
@@ -64,21 +69,24 @@
   };
 
   # ── /etc/samba symlink safety net ────────────────────────────────────────
-  # NixOS generates smb.conf at /etc/static/samba/smb.conf, but the
-  # /etc/samba → /etc/static/samba symlink may not be created during etc
-  # activation (observed after first samba enable).  This tmpfiles rule
-  # guarantees the symlink exists on every boot so that libsmbclient
-  # (and therefore GVfs gvfsd-smb-browse) can find smb.conf.
-  # L+ (recreate) handles a stale /etc/samba directory left by a previous
-  # activation — it removes the existing entry and replaces it with the
-  # symlink unconditionally.
-  systemd.tmpfiles.settings."10-samba-etc" = {
-    "/etc/samba" = {
-      "L+" = {
-        argument = "/etc/static/samba";
-      };
-    };
-  };
+  # NixOS generates smb.conf at /etc/static/samba/smb.conf but does not
+  # automatically create /etc/samba → /etc/static/samba in all activation
+  # code paths.  Without this symlink, libsmbclient (used by gvfsd-smb-browse
+  # and nmblookup) cannot find smb.conf, causing:
+  #   "Can't load /etc/samba/smb.conf - run testparm to debug it"
+  #
+  # systemd.tmpfiles.rules (a plain rule string) is the correct mechanism:
+  # NixOS's activation script writes it to /etc/tmpfiles.d/ and runs
+  # systemd-tmpfiles --create immediately, creating the symlink on every
+  # rebuild and on every boot via systemd-tmpfiles-setup.service.
+  #
+  # L+ = create symlink, removing any existing file/directory/symlink first.
+  # NOTE: systemd.tmpfiles.settings was used here previously but its output
+  # was NOT picked up by systemd-tmpfiles (confirmed on live system:
+  # /etc/samba/ was absent and smb.conf unreachable).  rules is the fix.
+  systemd.tmpfiles.rules = [
+    "L+ /etc/samba - - - - /etc/static/samba"
+  ];
 
   # ── NFS client support ──────────────────────────────────────────────────
   # Loads the NFS kernel module and pulls in nfs-utils so that GVfs can
