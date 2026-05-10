@@ -15,6 +15,15 @@
     enable       = true;
     nssmdns4     = true;     # enables mDNS resolution for .local in NSS
     openFirewall = true;     # opens UDP 5353 (mDNS)
+    # Exclude the Tailscale VPN interface from mDNS.
+    # mDNS is link-local (224.0.0.251); multicast sent on tailscale0
+    # goes into the VPN tunnel, not the LAN.  When Avahi joins the
+    # multicast group on tailscale0 it splits its socket attention
+    # across eno1 + tailscale0, causing it to miss NAS advertisements
+    # that arrive exclusively on the physical LAN interface.  Default
+    # NixOS GNOME has no Tailscale interface — this is the exact delta
+    # that broke auto-discovery in vexos.
+    denyInterfaces = [ "tailscale0" ];
   };
 
   # ── Firewall baseline ─────────────────────────────────────────────────────

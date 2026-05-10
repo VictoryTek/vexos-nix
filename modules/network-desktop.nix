@@ -62,6 +62,11 @@
   # Windows/Samba clients and provides a discovery socket for gvfsd-wsdd.
   # GVFS also spawns its own per-user wsdd (--no-host --discovery) as a
   # fallback if the system socket isn't reachable at /run/wsdd.socket.
+  #
+  # wsdd will join multicast on all interfaces including tailscale0, but
+  # WSD responses from LAN NAS devices still arrive on the LAN interface.
+  # The primary fix for mDNS-based discovery (Nautilus "Network" view) is
+  # services.avahi.denyInterfaces in network.nix, not wsdd interface scoping.
   services.samba-wsdd = {
     enable       = true;
     openFirewall = true;
