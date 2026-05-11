@@ -47,6 +47,7 @@
     ./nginx-proxy-manager.nix
     # ── Monitoring & Management ──────────────────────────────────────────────
     ./cockpit.nix
+    ./nas.nix          # Phase D: NAS stack umbrella (cockpit + plugins)
     ./uptime-kuma.nix
     ./homepage.nix
     ./grafana.nix

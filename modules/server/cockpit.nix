@@ -52,6 +52,19 @@ in
       '';
     };
 
+    identities.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = cfg.enable;
+      description = ''
+        Install the 45Drives cockpit-identities plugin (user and group
+        management GUI — Linux users, Samba passwords, groups, SSH keys,
+        login history). Defaults to the value of
+        vexos.server.cockpit.enable so that enabling Cockpit also installs
+        Identities — set to false to opt out, or to true on its own to
+        stage the package without enabling Cockpit (no effect at runtime).
+      '';
+    };
+
   };
 
   config = lib.mkMerge [
@@ -127,6 +140,11 @@ in
         allowedUDPPorts = [ 2049 111 ];
       };
 
+    })
+
+    # ── Identities plugin ─────────────────────────────────────────────────
+    (lib.mkIf (cfg.enable && cfg.identities.enable) {
+      environment.systemPackages = [ pkgs.vexos.cockpit-identities ];
     })
 
   ];

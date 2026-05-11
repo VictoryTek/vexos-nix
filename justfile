@@ -468,7 +468,7 @@ ssh target="":
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita komga listmonk loki matrix-conduit mealie minio navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex portainer prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex portainer prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]

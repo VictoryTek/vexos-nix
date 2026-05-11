@@ -72,9 +72,13 @@
   # vexos.server.nginx-proxy-manager.enable = false;     # Port 81 admin + 8881/8444
 
   # ── Monitoring & Management ──────────────────────────────────────────────
+  # vexos.server.nas.enable = true;                     # ONE-SHOT: enables full NAS stack
+  #                                                       # (Cockpit + navigator + file-sharing + identities)
+  #                                                       # Individual sub-options below can still override it
   # vexos.server.cockpit.enable = false;                # Port 9090
   # vexos.server.cockpit.navigator.enable = true;       # 45Drives file browser plugin
   # vexos.server.cockpit.fileSharing.enable = true;     # 45Drives Samba + NFS share manager (requires cockpit.enable = true)
+  # vexos.server.cockpit.identities.enable = true;      # 45Drives user/group management plugin
   # vexos.server.uptime-kuma.enable = false;
   # vexos.server.homepage.enable = false;
   # vexos.server.grafana.enable = false;                # Port 3030 — metrics dashboards

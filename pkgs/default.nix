@@ -8,5 +8,6 @@ final: prev: {
   vexos = (prev.vexos or { }) // {
     cockpit-navigator    = final.callPackage ./cockpit-navigator { };
     cockpit-file-sharing = final.callPackage ./cockpit-file-sharing { };
+    cockpit-identities   = final.callPackage ./cockpit-identities { };  # Phase D
   };
 }
