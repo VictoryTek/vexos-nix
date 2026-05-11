@@ -6,6 +6,7 @@
 # helper in flake.nix.
 final: prev: {
   vexos = (prev.vexos or { }) // {
-    cockpit-navigator = final.callPackage ./cockpit-navigator { };
+    cockpit-navigator    = final.callPackage ./cockpit-navigator { };
+    cockpit-file-sharing = final.callPackage ./cockpit-file-sharing { };
   };
 }

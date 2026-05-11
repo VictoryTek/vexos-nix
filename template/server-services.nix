@@ -73,7 +73,8 @@
 
   # ── Monitoring & Management ──────────────────────────────────────────────
   # vexos.server.cockpit.enable = false;                # Port 9090
-  # vexos.server.cockpit.navigator.enable = true;       # 45Drives file browser plugin (Phase A)
+  # vexos.server.cockpit.navigator.enable = true;       # 45Drives file browser plugin
+  # vexos.server.cockpit.fileSharing.enable = true;     # 45Drives Samba + NFS share manager (requires cockpit.enable = true)
   # vexos.server.uptime-kuma.enable = false;
   # vexos.server.homepage.enable = false;
   # vexos.server.grafana.enable = false;                # Port 3030 — metrics dashboards
