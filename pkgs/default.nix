@@ -1,0 +1,11 @@
+# pkgs/default.nix
+# vexos-nix custom package overlay.
+# All custom packages are exposed under the `vexos` namespace
+# (pkgs.vexos.<name>) to avoid future collisions with upstream nixpkgs.
+# Wired into every nixosConfiguration via the `customPkgsOverlayModule`
+# helper in flake.nix.
+final: prev: {
+  vexos = (prev.vexos or { }) // {
+    cockpit-navigator = final.callPackage ./cockpit-navigator { };
+  };
+}

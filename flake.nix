@@ -63,6 +63,14 @@
       nixpkgs.overlays = [ inputs.proxmox-nixos.overlays.${system} ];
     };
 
+    # Custom in-tree packages — exposes pkgs.vexos.* via pkgs/default.nix.
+    # Applied to every role so any host can opt in to vexos.cockpit-navigator,
+    # vexos.cockpit-zfs (Phase B), etc., simply by enabling the matching
+    # vexos.server.cockpit.<plugin>.enable option.
+    customPkgsOverlayModule = {
+      nixpkgs.overlays = [ (import ./pkgs) ];
+    };
+
     # Optional opt-in services module loaded from the host's /etc/nixos.
     # Empty list when the file is absent so server/headless-server outputs stay
     # buildable on machines that haven't deployed server-services.nix yet.
@@ -78,17 +86,17 @@
     roles = {
       desktop = {
         homeFile     = ./home-desktop.nix;
-        baseModules  = [ unstableOverlayModule upModule ];
+        baseModules  = [ unstableOverlayModule upModule customPkgsOverlayModule ];
         extraModules = [];
       };
       htpc = {
         homeFile     = ./home-htpc.nix;
-        baseModules  = [ unstableOverlayModule upModule ];
+        baseModules  = [ unstableOverlayModule upModule customPkgsOverlayModule ];
         extraModules = [];
       };
       stateless = {
         homeFile     = ./home-stateless.nix;
-        baseModules  = [ unstableOverlayModule upModule ];
+        baseModules  = [ unstableOverlayModule upModule customPkgsOverlayModule ];
         extraModules = [ impermanence.nixosModules.impermanence ];
       };
       server = {
@@ -97,7 +105,7 @@
         # modules/server/proxmox.nix) to avoid infinite recursion — `imports`
         # cannot safely reference _module.args.
         # proxmoxOverlayModule must also be listed to make pkgs.proxmox-ve available.
-        baseModules  = [ unstableOverlayModule upModule proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
+        baseModules  = [ unstableOverlayModule upModule proxmoxOverlayModule customPkgsOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
         extraModules = serverServicesModule;
       };
       headless-server = {
@@ -105,7 +113,7 @@
         # No upModule — headless servers have no display, so the GUI update
         # app is intentionally omitted.
         # proxmoxOverlayModule must also be listed to make pkgs.proxmox-ve available.
-        baseModules  = [ unstableOverlayModule proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
+        baseModules  = [ unstableOverlayModule proxmoxOverlayModule customPkgsOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
         extraModules = serverServicesModule;
       };
     };
@@ -240,6 +248,7 @@
             inherit (final.stdenv.hostPlatform) system;
           };
         })
+        (import ./pkgs)
       ];
       environment.systemPackages =
         lib.optional (role != "headless-server") up.packages.x86_64-linux.default;
