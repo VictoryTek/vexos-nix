@@ -33,11 +33,15 @@
       baobab                 = u.baobab;             # Disk Usage Analyzer
       gnome-software         = u.gnome-software;
 
-      # GNOME Virtual File System — pinned to unstable for IPC parity
-      # with the unstable nautilus build above. Provides the dnssd,
-      # network, smb, smb-browse, wsdd, nfs, sftp backends used by
-      # the Nautilus → Network sidebar entry.
-      gvfs                   = u.gvfs;
+      # NOTE: gvfs is NOT pinned to unstable here. Stable gvfs (from nixpkgs
+      # 25.05) provides all required backends: dnssd, network, smb,
+      # smb-browse, wsdd, nfs, sftp. The unstable pin was previously added
+      # for "IPC parity" with unstable Nautilus, but gvfs communicates with
+      # Nautilus via D-Bus (not direct linking), so the stable/unstable
+      # combination is safe. The unstable gvfs caused the wsdd backend to
+      # malfunction, preventing NAS devices from appearing in Nautilus →
+      # Network. Reverting to stable gvfs matches default NixOS behaviour,
+      # which discovers network shares correctly.
       # NOTE: gnome-text-editor, gnome-system-monitor, loupe, and totem are
       # installed via Flatpak on all roles; gnome-calculator, gnome-calendar,
       # evince/papers, and gnome-snapshot are installed via Flatpak on the
