@@ -12,9 +12,10 @@
 #   portbook watch --json       — streaming JSON snapshots for scripts/agents
 #   portbook explain <port>     — paste-ready diagnostic block for a single port
 #
-# Note: the service runs as a dedicated non-root user.  Port discovery via `ss`
-# works system-wide; process-name/cwd detection is limited to processes owned
-# by the portbook service user (expected, not a bug).
+# Note: the service runs as a dedicated non-root user with CAP_SYS_PTRACE.
+# That capability lets `ss -p` resolve process owners across all UIDs so that
+# system services (nginx, postgres, etc.) appear in the web UI alongside any
+# user-level HTTP servers.
 #
 # ⚠ The package hash in pkgs/portbook/default.nix is set automatically by
 #   `just enable portbook`.  See that file if you need to set it manually.
@@ -51,6 +52,11 @@ in
         RestartSec     = "5s";
         StandardOutput = "journal";
         StandardError  = "journal";
+        # CAP_SYS_PTRACE lets `ss -p` read /proc/<pid>/fd/ for all UIDs so
+        # that portbook can resolve process owners for system services (nginx,
+        # postgres, etc.), not just processes running as the portbook user.
+        AmbientCapabilities  = [ "CAP_SYS_PTRACE" ];
+        CapabilityBoundingSet = [ "CAP_SYS_PTRACE" ];
       };
     };
 
