@@ -11,5 +11,6 @@ final: prev: {
     cockpit-identities   = final.callPackage ./cockpit-identities { };  # Phase D
     # ── AI & Privacy ────────────────────────────────────────────────────────
     kiji-proxy           = final.callPackage ./kiji-proxy { };
+    portbook             = final.callPackage ./portbook { };
   };
 }

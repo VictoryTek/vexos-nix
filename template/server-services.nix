@@ -12,7 +12,7 @@
 #   nginx, caddy, traefik, adguard, headscale, unbound, nginx-proxy-manager,
 #   cockpit, uptime-kuma, homepage, grafana, scrutiny, prometheus, loki, netdata,
 #   dozzle, portainer, ntfy, mealie, listmonk, rustdesk, home-assistant,
-#   node-red, zigbee2mqtt, matrix-conduit, stirling-pdf, kiji-proxy, proxmox
+#   node-red, zigbee2mqtt, matrix-conduit, stirling-pdf, kiji-proxy, portbook, proxmox
 {
   # ── Container Runtime ────────────────────────────────────────────────────
   # vexos.server.docker.enable = false;
@@ -118,6 +118,9 @@
   # vexos.server.kiji-proxy.port = 8080;              # Forward proxy + health API port
   # vexos.server.kiji-proxy.environmentFile = "";    # Optional: path to env file with OPENAI_API_KEY etc.
   #   (package hash auto-fetched by `just enable kiji-proxy`)
+
+  # vexos.server.portbook.enable = false;              # Port 7777 — localhost port discovery dashboard
+  #   (package hash auto-fetched by `just enable portbook`)
 
   # ── Virtualisation ────────────────────────────────────────────────────────────
   # vexos.server.proxmox.enable = false;              # Web UI https://<ip>:8006 — ⚠ experimental

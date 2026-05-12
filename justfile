@@ -468,7 +468,7 @@ ssh target="":
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex portainer prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -559,7 +559,7 @@ available-services:
     _hdr "Infrastructure";             _svc attic;            _svc caddy;            _svc docker;          _svc nginx;           _svc nginx-proxy-manager;  _svc portainer;  _svc traefik
     _hdr "Media";                      _svc audiobookshelf;   _svc jellyfin;        _svc navidrome;       _svc plex;            _svc tautulli
     _hdr "Media Requests & Automation";_svc arr;              _svc jellyseerr;      _svc seerr
-    _hdr "Monitoring & Admin";         _svc cockpit;          _svc dozzle;          _svc grafana;         _svc loki;            _svc netdata;     _svc prometheus;  _svc scrutiny;  _svc uptime-kuma
+    _hdr "Monitoring & Admin";         _svc nas;             _svc cockpit;          _svc dozzle;          _svc grafana;         _svc loki;            _svc netdata;     _svc prometheus;  _svc scrutiny;  _svc uptime-kuma;  _svc portbook
     _hdr "Networking & Security";      _svc adguard;          _svc authelia;        _svc headscale;       _svc unbound;         _svc vaultwarden
     _hdr "Productivity";               _svc code-server;      _svc forgejo;         _svc homepage;        _svc listmonk;        _svc mealie;      _svc paperless;   _svc stirling-pdf
     _hdr "Remote Access";              _svc rustdesk
@@ -587,6 +587,7 @@ service-info service="":
         attic)           printf "  %-18s  HTTP    http://<server-ip>:8400   (Nix binary cache)\n"                      "$1" ;;
         audiobookshelf)  printf "  %-18s  Web UI  http://<server-ip>:8234\n"                                           "$1" ;;
         caddy)           printf "  %-18s  Ports :8880, :8443\n"                                                           "$1" ;;
+        nas)             printf "  %-18s  Web UI  http://<server-ip>:9090   (Cockpit + NAS plugins)\n"               "$1" ;;
         cockpit)         printf "  %-18s  Web UI  http://<server-ip>:9090\n"                                           "$1" ;;
         docker)          printf "  %-18s  No web UI — docker / docker compose CLI\n"                                   "$1" ;;
         forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000\n"                                           "$1" ;;
@@ -644,6 +645,7 @@ service-info service="":
         paperless)       printf "  %-18s  Web UI  http://<server-ip>:28981\n"                                                  "$1" ;;
         photoprism)      printf "  %-18s  Web UI  http://<server-ip>:2342\n"                                                   "$1" ;;
         portainer)       printf "  %-18s  Web UI  https://<server-ip>:9443  (requires docker)\n"                               "$1" ;;
+        portbook)        printf "  %-18s  Web UI  http://<server-ip>:7777   |  CLI: portbook ls / tui / watch\n"       "$1" ;;
         prometheus)      printf "  %-18s  Web UI  http://<server-ip>:9092\n"                                               "$1" ;;
         proxmox)         printf "  %-18s  Web UI  https://<server-ip>:8006  |  Ports :3128 (SPICE), :5900-5999 (VNC)\n"        "$1" ;;
         unbound)         printf "  %-18s  DNS on :5353\n"                                                                  "$1" ;;
@@ -711,6 +713,7 @@ status service: _require-server-role
       attic)          UNITS="atticd";               URLS="http://localhost:8400" ;;
       audiobookshelf) UNITS="audiobookshelf";       URLS="http://localhost:8234" ;;
       caddy)          UNITS="caddy";                URLS="http://localhost:8880" ;;
+      nas)            UNITS="cockpit";              URLS="http://localhost:9090" ;;
       cockpit)        UNITS="cockpit";              URLS="http://localhost:9090" ;;
       docker)         UNITS="docker";               URLS="" ;;
       forgejo)        UNITS="forgejo";              URLS="http://localhost:3000" ;;
@@ -753,6 +756,7 @@ status service: _require-server-role
       paperless)      UNITS="paperless";                URLS="http://localhost:28981" ;;
       photoprism)     UNITS="photoprism";               URLS="http://localhost:2342" ;;
       portainer)      UNITS="docker-portainer";         URLS="https://localhost:9443" ;;
+      portbook)       UNITS="portbook";             URLS="http://localhost:7777" ;;
       prometheus)     UNITS="prometheus";               URLS="http://localhost:9092" ;;
       proxmox)        UNITS="pve-cluster pvedaemon pveproxy pvestatd pvescheduler"; URLS="https://localhost:8006" ;;
       unbound)        UNITS="unbound";                  URLS="" ;;
@@ -817,7 +821,7 @@ services: _require-server-role
     _hdr "Infrastructure";             _check attic;          _check caddy;          _check docker;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
     _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
     _hdr "Media Requests & Automation";_check arr;            _check jellyseerr;    _check seerr
-    _hdr "Monitoring & Admin";         _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma
+    _hdr "Monitoring & Admin";         _check nas;            _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma;  _check portbook
     _hdr "Networking & Security";      _check adguard;        _check authelia;      _check headscale;     _check unbound;       _check vaultwarden
     _hdr "Productivity";               _check code-server;    _check forgejo;       _check homepage;      _check listmonk;      _check mealie;    _check paperless;   _check stirling-pdf
     _hdr "Remote Access";              _check rustdesk
@@ -969,6 +973,15 @@ enable service: _require-server-role
         echo "  Service:  caddy.service"
         echo "  Ports:    :8880 (redirects to HTTPS), :8443"
         echo "  About:    Reverse proxy with automatic HTTPS via Let's Encrypt. Configure virtual hosts in the module or a Caddyfile."
+        ;;
+      nas)
+        echo "  About:    Umbrella option that enables the full NAS stack in one step:"
+        echo "            Cockpit web UI  → http://<server-ip>:9090"
+        echo "            + cockpit-navigator   (file browser)"
+        echo "            + cockpit-file-sharing (Samba/NFS share manager)"
+        echo "            + cockpit-identities   (user/group/password manager)"
+        echo "  Note:     Individual sub-options can still be overridden after enabling:"
+        echo "              vexos.server.cockpit.navigator.enable = false;"
         ;;
       cockpit)
         echo "  Service:  cockpit.service"
@@ -1328,6 +1341,52 @@ enable service: _require-server-role
         echo "  Web UI:   https://<server-ip>:9443"
         echo "  About:    Web UI for managing Docker containers, images, volumes, and networks."
         echo "  Note:     Requires Docker to be enabled (just enable docker)."
+        ;;
+      portbook)
+        # ── Auto-patch the package hash if still a placeholder ──────────────────
+        _PB_PKG=""
+        _jf_raw="{{justfile_directory()}}"
+        _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+        _jf_dir=$(dirname "$_jf_real")
+        _walk="$PWD"
+        while [ "$_walk" != "/" ] && [ -z "$_PB_PKG" ]; do
+          [ -f "$_walk/pkgs/portbook/default.nix" ] && _PB_PKG="$_walk/pkgs/portbook/default.nix"
+          _walk=$(dirname "$_walk")
+        done
+        for _cand in "$_jf_raw" "$_jf_dir" "$HOME/Projects/vexos-nix"; do
+          [ -n "$_PB_PKG" ] && break
+          [ -f "$_cand/pkgs/portbook/default.nix" ] && _PB_PKG="$_cand/pkgs/portbook/default.nix"
+        done
+        if [ -n "$_PB_PKG" ] && grep -q 'lib\.fakeHash' "$_PB_PKG"; then
+          echo ""
+          echo "  Fetching portbook package hash (~5 MB download)..."
+          _PB_URL="https://github.com/a-grasso/portbook/releases/download/v0.2.1/portbook-x86_64-unknown-linux-gnu.tar.xz"
+          _PB_B32=$(nix-prefetch-url --unpack "$_PB_URL" 2>/dev/null) || _PB_B32=""
+          _PB_SRI=""
+          [ -n "$_PB_B32" ] && _PB_SRI=$(nix hash to-sri --type sha256 "$_PB_B32" 2>/dev/null) || true
+          if [ -n "$_PB_SRI" ]; then
+            sed -i "s|lib\.fakeHash|\"${_PB_SRI}\"|" "$_PB_PKG"
+            echo "  ✓ Package hash set: ${_PB_SRI}"
+          else
+            echo "  ⚠ Could not fetch hash automatically. Run manually then rebuild:"
+            echo "      HASH=\$(nix-prefetch-url --unpack $_PB_URL)"
+            echo "      SRI=\$(nix hash to-sri --type sha256 \"\$HASH\")"
+            echo "      sed -i \"s|lib\\.fakeHash|\\\"\$SRI\\\"|\" $_PB_PKG"
+          fi
+        elif [ -n "$_PB_PKG" ]; then
+          echo "  ✓ Package hash already set."
+        else
+          echo "  ⚠ Could not find pkgs/portbook/default.nix — set the hash manually before rebuilding."
+        fi
+        echo ""
+        echo "  Service:  portbook.service"
+        echo "  Web UI:   http://<server-ip>:7777"
+        echo "  About:    Auto-discovers HTTP servers on localhost ports. Classifies each as"
+        echo "            live/error/dead and labels with project name and page title."
+        echo "  CLI:      portbook ls                — one-shot grouped terminal list"
+        echo "            portbook tui               — interactive TUI with live updates"
+        echo "            portbook watch --json      — streaming JSON for scripts/agents"
+        echo "            portbook explain <port>    — diagnostic block for a single port"
         ;;
       prometheus)
         echo "  Service:  prometheus.service"

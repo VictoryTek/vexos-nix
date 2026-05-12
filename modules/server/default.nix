@@ -36,6 +36,7 @@
     ./attic.nix
     # ── AI & Privacy ─────────────────────────────────────────────────────────
     ./kiji-proxy.nix
+    ./portbook.nix
     # ── Security ─────────────────────────────────────────────────────────────
     ./vaultwarden.nix
     ./authelia.nix
