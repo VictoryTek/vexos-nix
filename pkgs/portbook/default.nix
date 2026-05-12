@@ -16,7 +16,7 @@ stdenv.mkDerivation rec {
 
   src = fetchurl {
     url  = "https://github.com/a-grasso/portbook/releases/download/v${version}/portbook-x86_64-unknown-linux-gnu.tar.xz";
-    hash = lib.fakeHash;
+    hash = "sha256-rMKS/ylTWgE05/J/HL/5t8BoRQsXafWyN7PJYnAAvt4=";
   };
 
   nativeBuildInputs = [ autoPatchelfHook makeWrapper ];
