@@ -468,7 +468,7 @@ ssh target="":
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex portainer prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex portainer prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -564,6 +564,7 @@ available-services:
     _hdr "Productivity";               _svc code-server;      _svc forgejo;         _svc homepage;        _svc listmonk;        _svc mealie;      _svc paperless;   _svc stirling-pdf
     _hdr "Remote Access";              _svc rustdesk
     _hdr "Smart Home & Notifications"; _svc home-assistant;   _svc node-red;        _svc ntfy;            _svc zigbee2mqtt
+    _hdr "AI & Privacy";               _svc kiji-proxy
     _hdr "Experimental";               _svc proxmox
     echo ""
     echo "Use 'just enable <service>' to enable a module on a server host."
@@ -597,6 +598,7 @@ service-info service="":
         jellyfin)        printf "  %-18s  Web UI  http://<server-ip>:8096\n"                                           "$1" ;;
         jellyseerr)      printf "  %-18s  Web UI  http://<server-ip>:5056\n"                                           "$1" ;;
         kavita)          printf "  %-18s  Web UI  http://<server-ip>:5000\n"                                           "$1" ;;
+        kiji-proxy)      printf "  %-18s  Proxy   http://127.0.0.1:8080   |  Health: http://localhost:8080/health\n"    "$1" ;;
         komga)           printf "  %-18s  Web UI  http://<server-ip>:8090\n"                                           "$1" ;;
         mealie)          printf "  %-18s  Web UI  http://<server-ip>:9010\n"                                           "$1" ;;
         nextcloud)       printf "  %-18s  Web UI  http://nextcloud.local     (Nginx frontend)\n"                       "$1" ;;
@@ -721,6 +723,7 @@ status service: _require-server-role
       jellyseerr)     UNITS="jellyseerr";           URLS="http://localhost:5056" ;;
       kavita)         UNITS="kavita";               URLS="http://localhost:5000" ;;
       komga)          UNITS="komga";                URLS="http://localhost:8090" ;;
+      kiji-proxy)     UNITS="kiji-proxy";           URLS="http://localhost:8080/health" ;;
       mealie)         UNITS="mealie";               URLS="http://localhost:9010" ;;
       nextcloud)      UNITS="phpfpm-nextcloud nginx"; URLS="http://localhost:80" ;;
       nginx)          UNITS="nginx";                URLS="http://localhost:80" ;;
@@ -819,6 +822,7 @@ services: _require-server-role
     _hdr "Productivity";               _check code-server;    _check forgejo;       _check homepage;      _check listmonk;      _check mealie;    _check paperless;   _check stirling-pdf
     _hdr "Remote Access";              _check rustdesk
     _hdr "Smart Home & Notifications"; _check home-assistant; _check node-red;      _check ntfy;          _check zigbee2mqtt
+    _hdr "AI & Privacy";               _check kiji-proxy
     _hdr "Experimental";               _check proxmox
     echo ""
 
@@ -1159,6 +1163,56 @@ enable service: _require-server-role
         echo "  Admin:    http://<server-ip>:8222/admin  (set ADMIN_TOKEN in the environment file to enable)"
         echo "  About:    Lightweight Bitwarden-compatible password manager. Use any official Bitwarden client — point it at this server."
         echo "  Warning:  Put Vaultwarden behind a TLS reverse proxy (Caddy/Nginx/Traefik) before exposing outside your local network."
+        ;;
+      kiji-proxy)
+        # ── Auto-patch the package hash if still a placeholder ────────────────
+        _KIJI_PKG=""
+        _jf_raw="{{justfile_directory()}}"
+        _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+        _jf_dir=$(dirname "$_jf_real")
+        _walk="$PWD"
+        while [ "$_walk" != "/" ] && [ -z "$_KIJI_PKG" ]; do
+          [ -f "$_walk/pkgs/kiji-proxy/default.nix" ] && _KIJI_PKG="$_walk/pkgs/kiji-proxy/default.nix"
+          _walk=$(dirname "$_walk")
+        done
+        for _cand in "$_jf_raw" "$_jf_dir" "$HOME/Projects/vexos-nix"; do
+          [ -n "$_KIJI_PKG" ] && break
+          [ -f "$_cand/pkgs/kiji-proxy/default.nix" ] && _KIJI_PKG="$_cand/pkgs/kiji-proxy/default.nix"
+        done
+        if [ -n "$_KIJI_PKG" ] && grep -q 'lib\.fakeHash' "$_KIJI_PKG"; then
+          echo ""
+          echo "  Fetching kiji-proxy package hash (~150 MB download)..."
+          _KIJI_URL="https://github.com/dataiku/kiji-proxy/releases/download/v1.0.0/kiji-privacy-proxy-1.0.0-linux-amd64.tar.gz"
+          _KIJI_B32=$(nix-prefetch-url --unpack "$_KIJI_URL" 2>/dev/null) || _KIJI_B32=""
+          _KIJI_SRI=""
+          [ -n "$_KIJI_B32" ] && _KIJI_SRI=$(nix hash to-sri --type sha256 "$_KIJI_B32" 2>/dev/null) || true
+          if [ -n "$_KIJI_SRI" ]; then
+            sed -i "s|lib\.fakeHash|\"${_KIJI_SRI}\"|" "$_KIJI_PKG"
+            echo "  ✓ Package hash set: ${_KIJI_SRI}"
+          else
+            echo "  ⚠ Could not fetch hash automatically. Run manually then rebuild:"
+            echo "      HASH=\$(nix-prefetch-url --unpack $_KIJI_URL)"
+            echo "      SRI=\$(nix hash to-sri --type sha256 \"\$HASH\")"
+            echo "      sed -i \"s|lib\\.fakeHash|\\\"\$SRI\\\"|\" $_KIJI_PKG"
+          fi
+        elif [ -n "$_KIJI_PKG" ]; then
+          echo "  ✓ Package hash already set."
+        else
+          echo "  ⚠ Could not find pkgs/kiji-proxy/default.nix — run from the repo root or"
+          echo "    set it manually before rebuilding (see pkgs/kiji-proxy/default.nix)."
+        fi
+        echo ""
+        echo "  Service:  kiji-proxy.service"
+        echo "  Port:     :8080 (forward proxy + health API)"
+        echo "  Health:   http://<server-ip>:8080/health"
+        echo "  About:    Local PII-masking proxy for AI API requests (OpenAI, Anthropic, etc.)."
+        echo "            Intercepts requests, masks PII with a local ONNX ML model, and restores"
+        echo "            originals in responses — all inference runs on-device."
+        echo "  Usage:    export HTTP_PROXY=http://localhost:8080"
+        echo "            export HTTPS_PROXY=http://localhost:8080"
+        echo "  Secrets:  Optional — create an env file and set:"
+        echo "              vexos.server.kiji-proxy.environmentFile = \"/etc/nixos/secrets/kiji-proxy.env\";"
+        echo "            File contents example: OPENAI_API_KEY=sk-...  LOG_PII_CHANGES=true"
         ;;
       proxmox)
         echo "  Service:  pve-manager.service (+ pvedaemon, pveproxy, pvestatd)"

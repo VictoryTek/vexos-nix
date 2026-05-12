@@ -12,7 +12,7 @@
 #   nginx, caddy, traefik, adguard, headscale, unbound, nginx-proxy-manager,
 #   cockpit, uptime-kuma, homepage, grafana, scrutiny, prometheus, loki, netdata,
 #   dozzle, portainer, ntfy, mealie, listmonk, rustdesk, home-assistant,
-#   node-red, zigbee2mqtt, matrix-conduit, stirling-pdf, proxmox
+#   node-red, zigbee2mqtt, matrix-conduit, stirling-pdf, kiji-proxy, proxmox
 {
   # ── Container Runtime ────────────────────────────────────────────────────
   # vexos.server.docker.enable = false;
@@ -112,6 +112,12 @@
 
   # ── PDF Tools ────────────────────────────────────────────────────────────
   # vexos.server.stirling-pdf.enable = false;
+
+  # ── AI & Privacy ─────────────────────────────────────────────────────────────
+  # vexos.server.kiji-proxy.enable = false;           # Port 8080 — PII-masking proxy for AI APIs
+  # vexos.server.kiji-proxy.port = 8080;              # Forward proxy + health API port
+  # vexos.server.kiji-proxy.environmentFile = "";    # Optional: path to env file with OPENAI_API_KEY etc.
+  #   (package hash auto-fetched by `just enable kiji-proxy`)
 
   # ── Virtualisation ────────────────────────────────────────────────────────────
   # vexos.server.proxmox.enable = false;              # Web UI https://<ip>:8006 — ⚠ experimental

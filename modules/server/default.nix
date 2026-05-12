@@ -34,6 +34,8 @@
     ./forgejo.nix
     ./code-server.nix
     ./attic.nix
+    # ── AI & Privacy ─────────────────────────────────────────────────────────
+    ./kiji-proxy.nix
     # ── Security ─────────────────────────────────────────────────────────────
     ./vaultwarden.nix
     ./authelia.nix
