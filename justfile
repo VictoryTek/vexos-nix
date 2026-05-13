@@ -472,14 +472,24 @@ static-ip:
     #!/usr/bin/env bash
     set -euo pipefail
 
+    _jf_raw="{{justfile_directory()}}"
     _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-    REPO_DIR=$(dirname "$_jf_real")
-    NETWORK_NIX="$REPO_DIR/modules/network.nix"
-
-    if [ ! -f "$NETWORK_NIX" ]; then
-        echo "error: modules/network.nix not found at $NETWORK_NIX" >&2
+    _jf_dir=$(dirname "$_jf_real")
+    NETWORK_NIX=""
+    _walk="$PWD"
+    while [ "$_walk" != "/" ] && [ -z "$NETWORK_NIX" ]; do
+        [ -f "$_walk/modules/network.nix" ] && NETWORK_NIX="$_walk/modules/network.nix"
+        _walk=$(dirname "$_walk")
+    done
+    for _candidate in "$_jf_raw" "$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
+        [ -n "$NETWORK_NIX" ] && break
+        [ -f "$_candidate/modules/network.nix" ] && NETWORK_NIX="$_candidate/modules/network.nix"
+    done
+    if [ -z "$NETWORK_NIX" ]; then
+        echo "error: modules/network.nix not found — run from within the vexos-nix repo." >&2
         exit 1
     fi
+    REPO_DIR=$(dirname "$(dirname "$NETWORK_NIX")")
 
     echo ""
     echo "Configure static IP — this will fill in the wired-static profile"
