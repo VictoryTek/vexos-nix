@@ -1,41 +1,48 @@
 # pkgs/portbook/default.nix
-# Pre-built portbook Linux binary package.
-# Source: https://github.com/a-grasso/portbook/releases
+# Portbook built from source so that NixOS-specific patches can be applied.
+# Source: https://github.com/a-grasso/portbook
 #
-# The hash placeholder below is replaced automatically by `just enable portbook`.
-# To set it manually:
-#   HASH=$(nix-prefetch-url --unpack \
-#     https://github.com/a-grasso/portbook/releases/download/v0.2.1/portbook-x86_64-unknown-linux-gnu.tar.xz)
-#   SRI=$(nix hash to-sri --type sha256 "$HASH")
-#   sed -i "s|lib.fakeHash|\"$SRI\"|" pkgs/portbook/default.nix
-{ lib, stdenv, fetchurl, autoPatchelfHook, makeWrapper, iproute2 }:
+# NixOS patch applied here (assets/app.js):
+#   On NixOS every executable lives under /nix/store/…, so the `cmdline`
+#   field is a long unreadable hash path.  We swap the display priority so
+#   `command` (the short process name returned by `ss`, e.g. "code-server")
+#   is shown first and cmdline is shown only as a fallback.
+#
+# To update to a new version:
+#   1. Update `version` and fetch the new source hash:
+#        nix-prefetch-url --unpack \
+#          https://github.com/a-grasso/portbook/archive/refs/tags/v<VER>.tar.gz
+#        nix hash to-sri --type sha256 <hash>
+#   2. Set `cargoHash = lib.fakeHash;`, run `nix build .#vexos.portbook`,
+#      copy the "got:" hash from the error, then update cargoHash.
+{ lib, rustPlatform, fetchFromGitHub, makeWrapper, iproute2 }:
 
-stdenv.mkDerivation rec {
+rustPlatform.buildRustPackage rec {
   pname   = "portbook";
   version = "0.2.1";
 
-  src = fetchurl {
-    url  = "https://github.com/a-grasso/portbook/releases/download/v${version}/portbook-x86_64-unknown-linux-gnu.tar.xz";
-    hash = "sha256-rMKS/ylTWgE05/J/HL/5t8BoRQsXafWyN7PJYnAAvt4=";
+  src = fetchFromGitHub {
+    owner = "a-grasso";
+    repo  = "portbook";
+    rev   = "v${version}";
+    hash  = "sha256-fVNvpZm7cCTo9+GyFy+wsyk5GUm3fSGBLc+BR0cq6V0=";
   };
 
-  nativeBuildInputs = [ autoPatchelfHook makeWrapper ];
-  buildInputs       = [ stdenv.cc.cc.lib ];
+  cargoHash = "sha256-OfiHUp3x3iuaDE1OJmr2QWLpIkBgn4tTd34GFZK1r30=";
 
-  # cargo-dist archives may place the binary at root or in a subdirectory.
-  # Use find so the install is robust to either layout.
-  sourceRoot    = ".";
-  dontConfigure = true;
-  dontBuild     = true;
-
-  installPhase = ''
-    runHook preInstall
-
-    _bin=$(find . -maxdepth 2 -name portbook -type f -perm /111 | head -1)
-    install -Dm755 "$_bin" $out/bin/portbook
-
-    runHook postInstall
+  # NixOS display patch: prefer the short process name (e.g. "code-server")
+  # over the full /nix/store/… cmdline in the portbook web UI card.
+  postPatch = ''
+    sed -i \
+      's/c\.cmdline || c\.command || ""/c.command || c.cmdline || ""/g' \
+      assets/app.js
   '';
+
+  nativeBuildInputs = [ makeWrapper ];
+
+  # Disable the test suite — tests spawn real TCP listeners on fixed ports
+  # which can conflict in the Nix sandbox.
+  doCheck = false;
 
   # Wrap with iproute2 so that `ss` is on PATH for port discovery on Linux.
   postFixup = ''
@@ -47,7 +54,7 @@ stdenv.mkDerivation rec {
     description = "Auto-discovers localhost HTTP servers and labels them in a web UI or terminal list";
     homepage    = "https://github.com/a-grasso/portbook";
     license     = lib.licenses.mit;
-    platforms   = [ "x86_64-linux" ];
+    platforms   = lib.platforms.linux;
     maintainers = [];
   };
 }

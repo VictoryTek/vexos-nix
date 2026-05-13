@@ -1343,41 +1343,6 @@ enable service: _require-server-role
         echo "  Note:     Requires Docker to be enabled (just enable docker)."
         ;;
       portbook)
-        # ── Auto-patch the package hash if still a placeholder ──────────────────
-        _PB_PKG=""
-        _jf_raw="{{justfile_directory()}}"
-        _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-        _jf_dir=$(dirname "$_jf_real")
-        _walk="$PWD"
-        while [ "$_walk" != "/" ] && [ -z "$_PB_PKG" ]; do
-          [ -f "$_walk/pkgs/portbook/default.nix" ] && _PB_PKG="$_walk/pkgs/portbook/default.nix"
-          _walk=$(dirname "$_walk")
-        done
-        for _cand in "$_jf_raw" "$_jf_dir" "$HOME/Projects/vexos-nix"; do
-          [ -n "$_PB_PKG" ] && break
-          [ -f "$_cand/pkgs/portbook/default.nix" ] && _PB_PKG="$_cand/pkgs/portbook/default.nix"
-        done
-        if [ -n "$_PB_PKG" ] && grep -q 'lib\.fakeHash' "$_PB_PKG"; then
-          echo ""
-          echo "  Fetching portbook package hash (~5 MB download)..."
-          _PB_URL="https://github.com/a-grasso/portbook/releases/download/v0.2.1/portbook-x86_64-unknown-linux-gnu.tar.xz"
-          _PB_B32=$(nix-prefetch-url --unpack "$_PB_URL" 2>/dev/null) || _PB_B32=""
-          _PB_SRI=""
-          [ -n "$_PB_B32" ] && _PB_SRI=$(nix hash to-sri --type sha256 "$_PB_B32" 2>/dev/null) || true
-          if [ -n "$_PB_SRI" ]; then
-            sed -i "s|lib\.fakeHash|\"${_PB_SRI}\"|" "$_PB_PKG"
-            echo "  ✓ Package hash set: ${_PB_SRI}"
-          else
-            echo "  ⚠ Could not fetch hash automatically. Run manually then rebuild:"
-            echo "      HASH=\$(nix-prefetch-url --unpack $_PB_URL)"
-            echo "      SRI=\$(nix hash to-sri --type sha256 \"\$HASH\")"
-            echo "      sed -i \"s|lib\\.fakeHash|\\\"\$SRI\\\"|\" $_PB_PKG"
-          fi
-        elif [ -n "$_PB_PKG" ]; then
-          echo "  ✓ Package hash already set."
-        else
-          echo "  ⚠ Could not find pkgs/portbook/default.nix — set the hash manually before rebuilding."
-        fi
         echo ""
         echo "  Service:  portbook.service"
         echo "  Web UI:   http://<server-ip>:7777"
