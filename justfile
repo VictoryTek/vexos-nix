@@ -464,6 +464,145 @@ ssh target="":
     echo "Done. Connect with: ssh ${TARGET}"
     echo ""
 
+# Configure a declarative static IP profile in modules/network.nix.
+# Prompts for IP address, prefix length, gateway, and DNS servers, then
+# uncomments and fills in the wired-static profile block.  Run
+# 'just switch' or 'just rebuild' afterwards to deploy.
+static-ip:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    REPO_DIR=$(dirname "$_jf_real")
+    NETWORK_NIX="$REPO_DIR/modules/network.nix"
+
+    if [ ! -f "$NETWORK_NIX" ]; then
+        echo "error: modules/network.nix not found at $NETWORK_NIX" >&2
+        exit 1
+    fi
+
+    echo ""
+    echo "Configure static IP — this will fill in the wired-static profile"
+    echo "in modules/network.nix and enable it."
+    echo ""
+
+    # ── Collect and validate inputs ──────────────────────────────────────────
+
+    _ip=""
+    while [ -z "$_ip" ]; do
+        printf "IP address (e.g. 192.168.1.10): "
+        read -r _ip
+        if ! echo "$_ip" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
+            echo "  Invalid — enter a dotted IPv4 address."
+            _ip=""
+        fi
+    done
+
+    _prefix=""
+    while [ -z "$_prefix" ]; do
+        printf "Prefix length (e.g. 24 for /24 = 255.255.255.0): "
+        read -r _prefix
+        if ! echo "$_prefix" | grep -qP '^\d+$' || [ "$_prefix" -lt 1 ] || [ "$_prefix" -gt 32 ]; then
+            echo "  Invalid — enter a number between 1 and 32."
+            _prefix=""
+        fi
+    done
+
+    _gw=""
+    while [ -z "$_gw" ]; do
+        printf "Default gateway (e.g. 192.168.1.1): "
+        read -r _gw
+        if ! echo "$_gw" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
+            echo "  Invalid — enter a dotted IPv4 address."
+            _gw=""
+        fi
+    done
+
+    _dns1=""
+    while [ -z "$_dns1" ]; do
+        printf "Primary DNS server (e.g. 1.1.1.1): "
+        read -r _dns1
+        if ! echo "$_dns1" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
+            echo "  Invalid — enter a dotted IPv4 address."
+            _dns1=""
+        fi
+    done
+
+    printf "Secondary DNS server (leave blank to skip): "
+    read -r _dns2
+
+    if [ -n "$_dns2" ] && ! echo "$_dns2" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
+        echo "  Invalid secondary DNS — ignoring it."
+        _dns2=""
+    fi
+
+    # Build the NM keyfile values
+    ADDR="${_ip}/${_prefix}"
+    DNS_VAL="${_dns1}"
+    [ -n "$_dns2" ] && DNS_VAL="${_dns1};${_dns2}"
+
+    echo ""
+    echo "Settings to apply:"
+    echo "  Address : ${ADDR}"
+    echo "  Gateway : ${_gw}"
+    echo "  DNS     : ${DNS_VAL}"
+    echo ""
+    printf "Write these into modules/network.nix? [y/N]: "
+    read -r _confirm
+    case "${_confirm,,}" in
+        y|yes) ;;
+        *) echo "Aborted — nothing was changed."; exit 0 ;;
+    esac
+
+    # ── Uncomment the wired-static block and fill in placeholders ────────────
+    # Use a Python one-liner so we can do multi-line regex replacement safely
+    # without relying on GNU sed -z (not always available).
+    python3 - "$NETWORK_NIX" "$ADDR" "$_gw" "$DNS_VAL" <<'PYEOF'
+import sys, re
+
+path, addr, gw, dns = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+
+with open(path, 'r') as f:
+    text = f.read()
+
+# Strip leading '#   ' or '  # ' from the wired-static block lines
+# The block is delimited by the first '# networking.networkmanager...'
+# comment line and the closing '# };' line.
+def uncomment_block(m):
+    block = m.group(0)
+    # Remove the comment prefix '  # ' from each line inside the block
+    block = re.sub(r'^  # ', '  ', block, flags=re.MULTILINE)
+    return block
+
+text = re.sub(
+    r'  # networking\.networkmanager\.ensureProfiles\.profiles\."wired-static".*?  # \};',
+    uncomment_block,
+    text,
+    flags=re.DOTALL
+)
+
+# Fill in placeholders
+text = text.replace('PLACEHOLDER_IP/PLACEHOLDER_PREFIX', addr)
+text = text.replace('PLACEHOLDER_GATEWAY', gw)
+text = text.replace('PLACEHOLDER_DNS1;PLACEHOLDER_DNS2', dns)
+# Handle single-DNS case where the value has no semicolon
+text = re.sub(r'PLACEHOLDER_DNS1', dns, text)
+
+with open(path, 'w') as f:
+    f.write(text)
+
+print("Done.")
+PYEOF
+
+    echo ""
+    echo "✓ modules/network.nix updated with static IP ${ADDR}."
+    echo ""
+    echo "Next steps:"
+    echo "  1. Review the change:  git diff modules/network.nix"
+    echo "  2. Commit:             git add modules/network.nix && git commit -m 'net: configure static IP ${ADDR}'"
+    echo "  3. Deploy:             just switch   (or just rebuild)"
+    echo ""
+
 # ── Server Services Management ───────────────────────────────────────────────
 # Run `just services` to see available modules and their status.
 

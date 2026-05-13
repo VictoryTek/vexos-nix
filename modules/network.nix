@@ -58,6 +58,35 @@
     };
   };
 
+  # ── Wired static IP profile ───────────────────────────────────────────────
+  # Declares the server's static IP configuration as a NM keyfile profile so
+  # that it survives nixos-rebuild switches and kernel-driven interface renames.
+  # Because the profile has no interface-name binding, NM matches it by
+  # connection type (ethernet) and priority — it will activate on whatever the
+  # physical NIC is called after a rename, so the static address is never lost
+  # from mutable NM state.  Replace all PLACEHOLDER_* values with the actual
+  # network settings for this host before enabling; leave commented out until
+  # the values are filled in.
+  #
+  # networking.networkmanager.ensureProfiles.profiles."wired-static" = {
+  #   connection = {
+  #     id                   = "Wired Static";
+  #     type                 = "ethernet";
+  #     autoconnect          = "true";
+  #     autoconnect-priority = "10";   # beats wired-fallback (-999) and ad-hoc (0)
+  #   };
+  #   ipv4 = {
+  #     method    = "manual";
+  #     addresses = "PLACEHOLDER_IP/PLACEHOLDER_PREFIX";  # e.g. "192.168.1.10/24"
+  #     gateway   = "PLACEHOLDER_GATEWAY";                # e.g. "192.168.1.1"
+  #     dns       = "PLACEHOLDER_DNS1;PLACEHOLDER_DNS2";  # e.g. "1.1.1.1;9.9.9.9"
+  #   };
+  #   ipv6 = {
+  #     method        = "auto";
+  #     addr-gen-mode = "stable-privacy";
+  #   };
+  # };
+
   # Default hostname — hosts/*.nix can override with a plain assignment.
   networking.hostName = lib.mkDefault "vexos";
 
