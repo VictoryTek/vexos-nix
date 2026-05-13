@@ -33,11 +33,6 @@ in
 {
   imports = [ ./gnome.nix ];
 
-  # ── HTPC bloat reduction (in addition to the universal list) ──────────────
-  environment.gnome.excludePackages = with pkgs; [
-    papers            # Flatpak org.gnome.Papers installed on desktop only
-  ];
-
   # ── Role-specific dconf overlay ───────────────────────────────────────────
   programs.dconf.profiles.user.databases = [
     {

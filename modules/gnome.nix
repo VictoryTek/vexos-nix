@@ -188,8 +188,6 @@
 
   # ── GNOME bloat reduction ─────────────────────────────────────────────────
   # Common bloat list — applies to every role that imports this module.
-  # Role-specific additions (e.g. `papers` on non-desktop roles) live in
-  # the role's gnome-<role>.nix module.
   environment.gnome.excludePackages = with pkgs; [
     gnome-photos
     gnome-tour
@@ -212,6 +210,7 @@
     gnome-calculator  # Flatpak org.gnome.Calculator installed on desktop only
     gnome-calendar    # Flatpak org.gnome.Calendar installed on desktop only
     snapshot          # GNOME Camera — Flatpak org.gnome.Snapshot installed on desktop only
+    papers            # winnow 0.7.x fails with rustc 1.91.1; desktop gets Papers via Flatpak
   ];
 
   # ── GNOME tooling & Shell extensions ─────────────────────────────────────
