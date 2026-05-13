@@ -555,44 +555,9 @@ static-ip:
     esac
 
     # ── Uncomment the wired-static block and fill in placeholders ────────────
-    # Use a Python one-liner so we can do multi-line regex replacement safely
-    # without relying on GNU sed -z (not always available).
-    python3 - "$NETWORK_NIX" "$ADDR" "$_gw" "$DNS_VAL" <<'PYEOF'
-import sys, re
-
-path, addr, gw, dns = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
-
-with open(path, 'r') as f:
-    text = f.read()
-
-# Strip leading '#   ' or '  # ' from the wired-static block lines
-# The block is delimited by the first '# networking.networkmanager...'
-# comment line and the closing '# };' line.
-def uncomment_block(m):
-    block = m.group(0)
-    # Remove the comment prefix '  # ' from each line inside the block
-    block = re.sub(r'^  # ', '  ', block, flags=re.MULTILINE)
-    return block
-
-text = re.sub(
-    r'  # networking\.networkmanager\.ensureProfiles\.profiles\."wired-static".*?  # \};',
-    uncomment_block,
-    text,
-    flags=re.DOTALL
-)
-
-# Fill in placeholders
-text = text.replace('PLACEHOLDER_IP/PLACEHOLDER_PREFIX', addr)
-text = text.replace('PLACEHOLDER_GATEWAY', gw)
-text = text.replace('PLACEHOLDER_DNS1;PLACEHOLDER_DNS2', dns)
-# Handle single-DNS case where the value has no semicolon
-text = re.sub(r'PLACEHOLDER_DNS1', dns, text)
-
-with open(path, 'w') as f:
-    f.write(text)
-
-print("Done.")
-PYEOF
+    # Invoke the extracted helper script — avoids heredoc unindented lines
+    # that confuse the just parser.
+    python3 "$REPO_DIR/scripts/configure-network.py" "$NETWORK_NIX" "$ADDR" "$_gw" "$DNS_VAL"
 
     echo ""
     echo "✓ modules/network.nix updated with static IP ${ADDR}."
