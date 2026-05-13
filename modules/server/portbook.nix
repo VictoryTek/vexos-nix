@@ -12,10 +12,11 @@
 #   portbook watch --json       — streaming JSON snapshots for scripts/agents
 #   portbook explain <port>     — paste-ready diagnostic block for a single port
 #
-# Note: the service runs as a dedicated non-root user with CAP_SYS_PTRACE.
-# That capability lets `ss -p` resolve process owners across all UIDs so that
-# system services (nginx, postgres, etc.) appear in the web UI alongside any
-# user-level HTTP servers.
+# Note: the service runs as root so that `ss -p` can read /proc/<pid>/fd/ for
+# all system service UIDs (nginx, postgres, etc.) and resolve process owners.
+# Non-root execution — even with CAP_SYS_PTRACE — is unreliable across kernel
+# versions and ptrace_scope configurations.  Systemd hardening options below
+# provide a meaningful sandbox even for root.
 #
 # ⚠ The package hash in pkgs/portbook/default.nix is set automatically by
 #   `just enable portbook`.  See that file if you need to set it manually.
@@ -30,13 +31,6 @@ in
 
   config = lib.mkIf cfg.enable {
 
-    users.groups.portbook = {};
-    users.users.portbook = {
-      isSystemUser = true;
-      group        = "portbook";
-      description  = "Portbook service user";
-    };
-
     systemd.services.portbook = {
       description = "Portbook localhost port discovery dashboard";
       after       = [ "network.target" ];
@@ -44,19 +38,29 @@ in
 
       serviceConfig = {
         Type           = "simple";
-        User           = "portbook";
-        Group          = "portbook";
         ExecStart      = "${pkgs.vexos.portbook}/bin/portbook serve";
         Environment    = [ "PORTBOOK_NO_OPEN=1" ];
         Restart        = "on-failure";
         RestartSec     = "5s";
         StandardOutput = "journal";
         StandardError  = "journal";
-        # CAP_SYS_PTRACE lets `ss -p` read /proc/<pid>/fd/ for all UIDs so
-        # that portbook can resolve process owners for system services (nginx,
-        # postgres, etc.), not just processes running as the portbook user.
-        AmbientCapabilities  = [ "CAP_SYS_PTRACE" ];
-        CapabilityBoundingSet = [ "CAP_SYS_PTRACE" ];
+
+        # Hardening: portbook runs as root to allow ss -p to read
+        # /proc/<pid>/fd/ for all system service UIDs.  The options below
+        # create a meaningful sandbox even for root.
+        ProtectSystem             = "strict";
+        ProtectHome               = true;
+        PrivateTmp                = true;
+        ProtectKernelTunables     = true;
+        ProtectKernelModules      = true;
+        ProtectKernelLogs         = true;
+        ProtectControlGroups      = true;
+        RestrictAddressFamilies   = [ "AF_INET" "AF_INET6" "AF_UNIX" "AF_NETLINK" ];
+        RestrictNamespaces        = true;
+        LockPersonality           = true;
+        MemoryDenyWriteExecute    = true;
+        SystemCallFilter          = [ "@system-service" ];
+        NoNewPrivileges           = true;
       };
     };
 
