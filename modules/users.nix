@@ -10,8 +10,6 @@
     extraGroups  = [
       "wheel"
       "networkmanager"
-      "samba-wsdd"   # allows gvfsd-wsdd to connect to the system wsdd socket
-                     # at /run/wsdd/wsdd.sock (dir mode 0750, socket mode 0775)
     ];
   };
 }

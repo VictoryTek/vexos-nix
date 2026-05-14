@@ -77,14 +77,19 @@
     discovery    = true;
   };
 
-  # The NixOS samba-wsdd module sets UMask = "0027", which means the wsdd.sock
-  # file is created with mode 0750 (0777 & ~0027).  With the directory also at
-  # 0750, gvfsd-wsdd (running as the desktop user) can traverse the directory
-  # via group membership but cannot connect() to the socket because group only
-  # gets r-x (no write).  Lowering UMask to "0002" gives the socket mode 0775
-  # (0777 & ~0002), which grants group write — required for AF_UNIX connect().
-  # The desktop user is added to the samba-wsdd group in modules/users.nix.
-  systemd.services.samba-wsdd.serviceConfig.UMask = lib.mkOverride 0 "0002";
+  # gvfsd-wsdd (running as the desktop user) must connect to the system wsdd
+  # socket at /run/wsdd/wsdd.sock.  The NixOS samba-wsdd module sets:
+  #   RuntimeDirectoryMode = 0750  →  directory only traversable by owner group
+  #   UMask = 0027                 →  socket mode 0750 (group cannot write → connect() denied)
+  # Both must be overridden.  0755 makes the directory world-traversable;
+  # UMask 0111 gives the socket mode 0666 (world read/write), allowing any
+  # local user to connect() without group membership or a new login session.
+  # The wsdd socket carries only WSD multicast discovery traffic — no
+  # credentials or sensitive data — so 0666 is safe for a single-user desktop.
+  systemd.services.samba-wsdd.serviceConfig = {
+    RuntimeDirectoryMode = lib.mkForce "0755";
+    UMask = lib.mkOverride 0 "0111";
+  };
 
   # NOTE: /etc/samba/smb.conf is created by the NixOS samba module via
   # environment.etc."samba/smb.conf" (the standard NixOS etc.install
