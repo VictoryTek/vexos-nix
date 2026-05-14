@@ -77,7 +77,14 @@
     discovery    = true;
   };
 
-  systemd.services.samba-wsdd.serviceConfig.RuntimeDirectoryMode = lib.mkForce "0755";
+  # The NixOS samba-wsdd module sets UMask = "0027", which means the wsdd.sock
+  # file is created with mode 0750 (0777 & ~0027).  With the directory also at
+  # 0750, gvfsd-wsdd (running as the desktop user) can traverse the directory
+  # via group membership but cannot connect() to the socket because group only
+  # gets r-x (no write).  Lowering UMask to "0002" gives the socket mode 0775
+  # (0777 & ~0002), which grants group write — required for AF_UNIX connect().
+  # The desktop user is added to the samba-wsdd group in modules/users.nix.
+  systemd.services.samba-wsdd.serviceConfig.UMask = lib.mkOverride 0 "0002";
 
   # NOTE: /etc/samba/smb.conf is created by the NixOS samba module via
   # environment.etc."samba/smb.conf" (the standard NixOS etc.install
