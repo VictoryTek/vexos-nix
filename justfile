@@ -464,6 +464,120 @@ ssh target="":
     echo "Done. Connect with: ssh ${TARGET}"
     echo ""
 
+# Configure a declarative static IP profile in modules/network.nix.
+# Prompts for IP address, prefix length, gateway, and DNS servers, then
+# uncomments and fills in the wired-static profile block.  Run
+# 'just switch' or 'just rebuild' afterwards to deploy.
+static-ip:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    _jf_raw="{{justfile_directory()}}"
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    _jf_dir=$(dirname "$_jf_real")
+    NETWORK_NIX=""
+    _walk="$PWD"
+    while [ "$_walk" != "/" ] && [ -z "$NETWORK_NIX" ]; do
+        [ -f "$_walk/modules/network.nix" ] && NETWORK_NIX="$_walk/modules/network.nix"
+        _walk=$(dirname "$_walk")
+    done
+    for _candidate in "$_jf_raw" "$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
+        [ -n "$NETWORK_NIX" ] && break
+        [ -f "$_candidate/modules/network.nix" ] && NETWORK_NIX="$_candidate/modules/network.nix"
+    done
+    if [ -z "$NETWORK_NIX" ]; then
+        echo "error: modules/network.nix not found — run from within the vexos-nix repo." >&2
+        exit 1
+    fi
+    REPO_DIR=$(dirname "$(dirname "$NETWORK_NIX")")
+
+    echo ""
+    echo "Configure static IP — this will fill in the wired-static profile"
+    echo "in modules/network.nix and enable it."
+    echo ""
+
+    # ── Collect and validate inputs ──────────────────────────────────────────
+
+    _ip=""
+    while [ -z "$_ip" ]; do
+        printf "IP address (e.g. 192.168.1.10): "
+        read -r _ip
+        if ! echo "$_ip" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
+            echo "  Invalid — enter a dotted IPv4 address."
+            _ip=""
+        fi
+    done
+
+    _prefix=""
+    while [ -z "$_prefix" ]; do
+        printf "Prefix length (e.g. 24 for /24 = 255.255.255.0): "
+        read -r _prefix
+        if ! echo "$_prefix" | grep -qP '^\d+$' || [ "$_prefix" -lt 1 ] || [ "$_prefix" -gt 32 ]; then
+            echo "  Invalid — enter a number between 1 and 32."
+            _prefix=""
+        fi
+    done
+
+    _gw=""
+    while [ -z "$_gw" ]; do
+        printf "Default gateway (e.g. 192.168.1.1): "
+        read -r _gw
+        if ! echo "$_gw" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
+            echo "  Invalid — enter a dotted IPv4 address."
+            _gw=""
+        fi
+    done
+
+    _dns1=""
+    while [ -z "$_dns1" ]; do
+        printf "Primary DNS server (e.g. 1.1.1.1): "
+        read -r _dns1
+        if ! echo "$_dns1" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
+            echo "  Invalid — enter a dotted IPv4 address."
+            _dns1=""
+        fi
+    done
+
+    printf "Secondary DNS server (leave blank to skip): "
+    read -r _dns2
+
+    if [ -n "$_dns2" ] && ! echo "$_dns2" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
+        echo "  Invalid secondary DNS — ignoring it."
+        _dns2=""
+    fi
+
+    # Build the NM keyfile values
+    ADDR="${_ip}/${_prefix}"
+    DNS_VAL="${_dns1}"
+    [ -n "$_dns2" ] && DNS_VAL="${_dns1};${_dns2}"
+
+    echo ""
+    echo "Settings to apply:"
+    echo "  Address : ${ADDR}"
+    echo "  Gateway : ${_gw}"
+    echo "  DNS     : ${DNS_VAL}"
+    echo ""
+    printf "Write these into modules/network.nix? [y/N]: "
+    read -r _confirm
+    case "${_confirm,,}" in
+        y|yes) ;;
+        *) echo "Aborted — nothing was changed."; exit 0 ;;
+    esac
+
+    # ── Uncomment the wired-static block and fill in placeholders ────────────
+    # Invoke the extracted helper script — avoids heredoc unindented lines
+    # that confuse the just parser.
+    python3 "$REPO_DIR/scripts/configure-network.py" "$NETWORK_NIX" "$ADDR" "$_gw" "$DNS_VAL"
+
+    echo ""
+    echo "✓ modules/network.nix updated with static IP ${ADDR}."
+    echo ""
+    echo "Next steps:"
+    echo "  1. Review the change:  git diff modules/network.nix"
+    echo "  2. Commit:             git add modules/network.nix && git commit -m 'net: configure static IP ${ADDR}'"
+    echo "  3. Deploy:             just switch   (or just rebuild)"
+    echo ""
+
 # ── Server Services Management ───────────────────────────────────────────────
 # Run `just services` to see available modules and their status.
 
