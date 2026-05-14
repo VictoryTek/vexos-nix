@@ -60,38 +60,30 @@
   # ── WS-Discovery (WSDD) — RESPONDER + DISCOVERY ─────────────────────────
   # Runs wsdd as a system-level responder+discoverer. Announces this host to
   # Windows/Samba clients and provides a discovery socket for gvfsd-wsdd.
-  # GVFS also spawns its own per-user wsdd (--no-host --discovery) as a
-  # fallback if the system socket isn't reachable at /run/wsdd.socket.
   #
-  # wsdd will join multicast on all interfaces including tailscale0, but
-  # WSD responses from LAN NAS devices still arrive on the LAN interface.
-  # The primary fix for mDNS-based discovery (Nautilus "Network" view) is
-  # services.avahi.denyInterfaces in network.nix, not wsdd interface scoping.
+  # CRITICAL: gvfsd-wsdd (running as the desktop user) must connect to the
+  # system wsdd socket at /run/wsdd/wsdd.sock to receive WSD responses from
+  # NAS devices.  If it cannot connect it falls back to spawning its own wsdd
+  # process, which competes with the system wsdd for the multicast socket on
+  # UDP 3702.  Because the system wsdd already owns the socket, NAS responses
+  # go to it and the user wsdd receives nothing — Nautilus "Network" stays
+  # empty.  The system wsdd service runs as 'nobody' and systemd creates
+  # /run/wsdd/ with mode 0700 (default RuntimeDirectoryMode), making it
+  # inaccessible to the desktop user.  Setting 0755 makes the directory
+  # traversable; wsdd itself sets the socket to 0666 via os.chmod().
   services.samba-wsdd = {
     enable       = true;
     openFirewall = true;
     discovery    = true;
   };
 
-  # ── /etc/samba symlink safety net ────────────────────────────────────────
-  # NixOS generates smb.conf at /etc/static/samba/smb.conf but does not
-  # automatically create /etc/samba → /etc/static/samba in all activation
-  # code paths.  Without this symlink, libsmbclient (used by gvfsd-smb-browse
-  # and nmblookup) cannot find smb.conf, causing:
-  #   "Can't load /etc/samba/smb.conf - run testparm to debug it"
-  #
-  # systemd.tmpfiles.rules (a plain rule string) is the correct mechanism:
-  # NixOS's activation script writes it to /etc/tmpfiles.d/ and runs
-  # systemd-tmpfiles --create immediately, creating the symlink on every
-  # rebuild and on every boot via systemd-tmpfiles-setup.service.
-  #
-  # L+ = create symlink, removing any existing file/directory/symlink first.
-  # NOTE: systemd.tmpfiles.settings was used here previously but its output
-  # was NOT picked up by systemd-tmpfiles (confirmed on live system:
-  # /etc/samba/ was absent and smb.conf unreachable).  rules is the fix.
-  systemd.tmpfiles.rules = [
-    "L+ /etc/samba - - - - /etc/static/samba"
-  ];
+  systemd.services.samba-wsdd.serviceConfig.RuntimeDirectoryMode = lib.mkForce "0755";
+
+  # NOTE: /etc/samba/smb.conf is created by the NixOS samba module via
+  # environment.etc."samba/smb.conf" (the standard NixOS etc.install
+  # mechanism).  No manual symlink or tmpfiles rule is needed here; adding
+  # one conflicts with etc.install and causes the entry to be marked
+  # "obsolete" and removed on the next boot activation.
 
   # ── NFS client support ──────────────────────────────────────────────────
   # Loads the NFS kernel module and pulls in nfs-utils so that GVfs can
