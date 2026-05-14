@@ -58,38 +58,40 @@
   };
 
   # ── WS-Discovery (WSDD) — RESPONDER + DISCOVERY ─────────────────────────
-  # Runs wsdd as a system-level responder+discoverer. Announces this host to
-  # Windows/Samba clients and provides a discovery socket for gvfsd-wsdd.
+  # Runs wsdd as a system-level responder+discoverer that gvfsd-wsdd connects
+  # to for NAS discovery in Nautilus → Network.
   #
-  # CRITICAL: gvfsd-wsdd (running as the desktop user) must connect to the
-  # system wsdd socket at /run/wsdd/wsdd.sock to receive WSD responses from
-  # NAS devices.  If it cannot connect it falls back to spawning its own wsdd
-  # process, which competes with the system wsdd for the multicast socket on
-  # UDP 3702.  Because the system wsdd already owns the socket, NAS responses
-  # go to it and the user wsdd receives nothing — Nautilus "Network" stays
-  # empty.  The system wsdd service runs as 'nobody' and systemd creates
-  # /run/wsdd/ with mode 0700 (default RuntimeDirectoryMode), making it
-  # inaccessible to the desktop user.  Setting 0755 makes the directory
-  # traversable; wsdd itself sets the socket to 0666 via os.chmod().
+  # CRITICAL — socket path: gvfsd-wsdd looks for the socket at the hardcoded
+  # path /run/wsdd.socket (confirmed by strings on the gvfsd-wsdd binary).
+  # The NixOS samba-wsdd module's default --listen path is /run/wsdd/wsdd.sock.
+  # When gvfsd-wsdd cannot find /run/wsdd.socket it spawns its own wsdd with
+  # --listen /run/user/<uid>/gvfsd/wsdd.  That user wsdd never receives WSD
+  # responses because the system wsdd already owns the UDP 3702 multicast
+  # socket.  Nautilus → Network stays empty as a result.
+  # Fix: pass --listen /run/wsdd.socket to the system wsdd via extraOptions,
+  # and make the socket world-readable/writable (UMask 0111, dir mode 0755)
+  # so the desktop user can connect without group membership.
   services.samba-wsdd = {
     enable       = true;
     openFirewall = true;
     discovery    = true;
+    # socket is created at /run/wsdd/wsdd.sock (default listen path)
   };
 
-  # gvfsd-wsdd (running as the desktop user) must connect to the system wsdd
-  # socket at /run/wsdd/wsdd.sock.  The NixOS samba-wsdd module sets:
-  #   RuntimeDirectoryMode = 0750  →  directory only traversable by owner group
-  #   UMask = 0027                 →  socket mode 0750 (group cannot write → connect() denied)
-  # Both must be overridden.  0755 makes the directory world-traversable;
-  # UMask 0111 gives the socket mode 0666 (world read/write), allowing any
-  # local user to connect() without group membership or a new login session.
-  # The wsdd socket carries only WSD multicast discovery traffic — no
-  # credentials or sensitive data — so 0666 is safe for a single-user desktop.
   systemd.services.samba-wsdd.serviceConfig = {
     RuntimeDirectoryMode = lib.mkForce "0755";
-    UMask = lib.mkOverride 0 "0111";
+    UMask                = lib.mkOverride 0 "0111";
   };
+
+  # gvfsd-wsdd hardcodes /run/wsdd.socket as the path to connect to.
+  # The system wsdd daemon writes its socket to /run/wsdd/wsdd.sock.
+  # Create a symlink so gvfsd-wsdd finds the socket without spawning
+  # its own wsdd fallback (which can't receive responses because the
+  # system wsdd already owns the UDP 3702 multicast socket).
+  # /run/ is a tmpfs so this rule is re-applied every boot.
+  systemd.tmpfiles.rules = [
+    "L+ /run/wsdd.socket - - - - /run/wsdd/wsdd.sock"
+  ];
 
   # NOTE: /etc/samba/smb.conf is created by the NixOS samba module via
   # environment.etc."samba/smb.conf" (the standard NixOS etc.install
