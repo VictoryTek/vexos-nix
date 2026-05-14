@@ -75,7 +75,6 @@
     enable       = true;
     openFirewall = true;
     discovery    = true;
-    # socket is created at /run/wsdd/wsdd.sock (default listen path)
   };
 
   systemd.services.samba-wsdd.serviceConfig = {
@@ -84,14 +83,19 @@
   };
 
   # gvfsd-wsdd hardcodes /run/wsdd.socket as the path to connect to.
-  # The system wsdd daemon writes its socket to /run/wsdd/wsdd.sock.
-  # Create a symlink so gvfsd-wsdd finds the socket without spawning
-  # its own wsdd fallback (which can't receive responses because the
-  # system wsdd already owns the UDP 3702 multicast socket).
-  # /run/ is a tmpfs so this rule is re-applied every boot.
-  systemd.tmpfiles.rules = [
-    "L+ /run/wsdd.socket - - - - /run/wsdd/wsdd.sock"
-  ];
+  # The system wsdd daemon writes its socket at /run/wsdd/wsdd.sock.
+  # Create a symlink at the expected path after wsdd starts so gvfsd-wsdd
+  # connects to the system daemon instead of spawning a useless fallback.
+  systemd.services.wsdd-socket-link = {
+    description   = "Create /run/wsdd.socket symlink for gvfsd-wsdd";
+    after         = [ "samba-wsdd.service" ];
+    wantedBy      = [ "multi-user.target" ];
+    serviceConfig = {
+      Type      = "oneshot";
+      ExecStart = "/bin/sh -c 'ln -sf /run/wsdd/wsdd.sock /run/wsdd.socket'";
+      RemainAfterExit = true;
+    };
+  };
 
   # NOTE: /etc/samba/smb.conf is created by the NixOS samba module via
   # environment.etc."samba/smb.conf" (the standard NixOS etc.install
