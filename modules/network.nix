@@ -125,8 +125,14 @@
 
   # ── Tailscale ─────────────────────────────────────────────────────────────
   services.tailscale = {
-    enable = true;
+    enable       = true;
     openFirewall = true;   # opens UDP 41641 (WireGuard/Tailscale data plane)
+    # Do NOT accept subnet routes advertised by other nodes on the tailnet.
+    # Without this, if any other Tailscale node advertises a subnet that
+    # overlaps the local LAN (e.g. 192.168.100.0/24), the kernel installs a
+    # policy route that sends all LAN traffic into the VPN — making every
+    # LAN host unreachable even though the physical interface is up.
+    extraUpFlags = [ "--accept-routes=false" ];
   };
 
   # ── DNS resolver ──────────────────────────────────────────────────────────
