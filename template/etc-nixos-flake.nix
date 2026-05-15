@@ -202,6 +202,7 @@
     };
 
     # Headless server role: CLI only, no desktop environment.
+    # See the mkServerVariant comment above for the ZFS hostId requirement.
     mkHeadlessServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       specialArgs = { inputs = vexos-nix.inputs; };
@@ -222,6 +223,19 @@
     };
 
     # Server role: GUI server stack.
+    #
+    # ── ZFS hostId — required before creating ZFS pools ─────────────────────
+    # ZFS bakes the host's hostId into every pool's vdev label at creation time.
+    # If the hostId changes later (e.g. rebuilding from a workstation), ZFS will
+    # refuse to import the pool on next boot.
+    #
+    # Before running `just create-zfs-pool`, add to your
+    # /etc/nixos/hardware-configuration.nix (or a local override module):
+    #
+    #   networking.hostId = "deadbeef";  # ← replace: head -c 8 /etc/machine-id
+    #
+    # Fresh installs without any ZFS pools will see a build warning until this is
+    # set — the warning is informational and does not block the build.
     mkServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       specialArgs = { inputs = vexos-nix.inputs; };

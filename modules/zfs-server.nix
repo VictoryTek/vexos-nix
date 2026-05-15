@@ -81,15 +81,18 @@
   # and continues to provide fast in-RAM compressed swap on all server roles.
   vexos.swap.enable = lib.mkDefault false;
 
-  assertions = [
-    {
-      assertion = config.networking.hostId != "00000000";
-      message = ''
-        ZFS requires a unique networking.hostId per machine.
-        Set it in hosts/<role>-<gpu>.nix or hardware-configuration.nix:
-          networking.hostId = "deadbeef";   # replace with real value
-        Generate with: head -c 8 /etc/machine-id
-      '';
-    }
+  # Warn (not assert) so fresh installs that haven't yet created any ZFS pools
+  # can still complete their first build.  Once you run `just create-zfs-pool`,
+  # the pool vdev label is stamped with the current hostId — at that point you
+  # MUST have a real value here or ZFS will refuse to import the pool on reboot.
+  warnings = lib.optionals (config.networking.hostId == "00000000") [
+    ''
+      ZFS: networking.hostId is still set to the placeholder "00000000".
+      This is fine for a fresh install, but you MUST set a real value before
+      creating any ZFS pools (just create-zfs-pool / zpool create).
+      Add to /etc/nixos/hardware-configuration.nix (or a local override):
+        networking.hostId = "deadbeef";   # replace with real value
+      Generate: head -c 8 /etc/machine-id
+    ''
   ];
 }
