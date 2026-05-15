@@ -90,9 +90,10 @@
       ZFS: networking.hostId is still set to the placeholder "00000000".
       This is fine for a fresh install, but you MUST set a real value before
       creating any ZFS pools (just create-zfs-pool / zpool create).
-      Add to /etc/nixos/hardware-configuration.nix (or a local override):
+      Preferred: set it in your hosts/<role>-<gpu>.nix file:
         networking.hostId = "deadbeef";   # replace with real value
-      Generate: head -c 8 /etc/machine-id
+      Alternatively: /etc/nixos/hardware-configuration.nix
+      Generate with: head -c 8 /etc/machine-id
     ''
   ];
 }

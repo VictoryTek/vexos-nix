@@ -83,6 +83,32 @@ _resolve-flake-dir target flake_override="":
         fi
     done
 
+    # Diagnosis: find the most-likely candidate (has flake.nix) and explain why it failed.
+    for _t in "${TRIED[@]}"; do
+        [ -f "$_t/flake.nix" ] || continue
+        echo "" >&2
+        echo "Diagnosis for: $_t" >&2
+        # Pure check: does the target attribute exist at all?
+        _has_attr=$(nix eval --impure "$_t#nixosConfigurations" \
+            --apply 'x: builtins.attrNames x' --json 2>/dev/null \
+            | grep -o "\"${TARGET}\"" || true)
+        if [ -z "$_has_attr" ]; then
+            echo "  '${TARGET}' is not in nixosConfigurations." >&2
+            echo "  This flake may be out of date — run: git pull (or git fetch + merge)" >&2
+            echo "  Available outputs matching 'vexos-':" >&2
+            nix eval --impure "$_t#nixosConfigurations" \
+                --apply 'x: builtins.attrNames x' --json 2>/dev/null \
+                | tr -d '[]"' | tr ',' '\n' | grep 'vexos-' | head -10 \
+                | sed 's/^/    /' >&2 || true
+        else
+            echo "  '${TARGET}' exists but failed to evaluate. Error:" >&2
+            nix eval --impure --raw \
+                "$_t#nixosConfigurations.${TARGET}.config.system.build.toplevel.drvPath" \
+                2>&1 | head -30 | sed 's/^/    /' >&2 || true
+        fi
+        break
+    done
+
     echo "error: no flake provided target '${TARGET}'" >&2
     echo "attempted directories:" >&2
     for _t in "${TRIED[@]}"; do
