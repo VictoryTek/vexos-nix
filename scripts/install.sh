@@ -15,6 +15,7 @@
 #   htpc            — Home theatre PC (AMD, NVIDIA, Intel, VM)
 #   server          — GUI server / self-hosted services (AMD, NVIDIA, Intel, VM)
 #   headless-server — CLI-only server, no desktop environment (AMD, NVIDIA, Intel, VM)
+#   vanilla         — Stock NixOS baseline for system restore (AMD, NVIDIA, Intel, VM)
 #
 # SECURITY NOTICE:
 #   This script is fetched from raw.githubusercontent.com and executed directly.
@@ -49,26 +50,26 @@ echo -e "${YELLOW}Verify: https://github.com/VictoryTek/vexos-nix/blob/main/scri
 echo ""
 
 # ---------- Role selection ---------------------------------------------------
-# Only one role exists today; the selector is here so adding htpc/server later
-# requires nothing more than uncommenting the extra options below.
 echo -e "${BOLD}Select your role:${RESET}"
-echo "  1) Desktop — Full gaming / workstation stack"
+echo "  1) Desktop  — Full gaming / workstation stack"
 echo "  2) Stateless — Minimal build (no gaming / dev / virt / ASUS)"
 echo "  3) HTPC    — Home theatre PC"
 echo "  4) Server  — Server (GUI or Headless)"
+echo "  5) Vanilla  — Stock NixOS baseline (system restore)"
 echo ""
 
 ROLE=""
 while [ -z "$ROLE" ]; do
-  printf "Enter choice [1-4] or name (desktop / stateless / htpc / server): "
+  printf "Enter choice [1-5] or name (desktop / stateless / htpc / server / vanilla): "
   read -r INPUT </dev/tty
   case "${INPUT,,}" in
     1|desktop)  ROLE="desktop"  ;;
     2|stateless) ROLE="stateless" ;;
     3|htpc)     ROLE="htpc"     ;;
     4|server)   ROLE="server"   ;;
+    5|vanilla)  ROLE="vanilla"  ;;
     *)
-      echo -e "${RED}Invalid selection '${INPUT}'. Choose 1-4 or a role name.${RESET}"
+      echo -e "${RED}Invalid selection '${INPUT}'. Choose 1-5 or a role name.${RESET}"
       ;;
   esac
 done
@@ -129,7 +130,7 @@ fi
 
 # ---------- GPU variant selection --------------------------------------------
 VARIANT=""
-if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || [ "$ROLE" = "headless-server" ] || [ "$ROLE" = "stateless" ]; then
+if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || [ "$ROLE" = "headless-server" ] || [ "$ROLE" = "stateless" ] || [ "$ROLE" = "vanilla" ]; then
   echo ""
   echo -e "${BOLD}Select your GPU variant:${RESET}"
   echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
@@ -154,8 +155,9 @@ if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || 
 fi
 
 # ---------- NVIDIA driver branch selection -----------------------------------
+# Vanilla always uses the kernel nouveau driver — no proprietary driver branches.
 NVIDIA_SUFFIX=""
-if [ "$VARIANT" = "nvidia" ]; then
+if [ "$VARIANT" = "nvidia" ] && [ "$ROLE" != "vanilla" ]; then
   echo ""
   echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
   echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"

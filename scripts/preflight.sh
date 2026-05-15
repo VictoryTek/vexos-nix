@@ -111,7 +111,8 @@ if [ -z "$TARGETS" ]; then
 vexos-htpc-amd vexos-htpc-nvidia vexos-htpc-nvidia-legacy535 vexos-htpc-nvidia-legacy470 vexos-htpc-intel vexos-htpc-vm
 vexos-server-amd vexos-server-nvidia vexos-server-nvidia-legacy535 vexos-server-nvidia-legacy470 vexos-server-intel vexos-server-vm
 vexos-headless-server-amd vexos-headless-server-nvidia vexos-headless-server-nvidia-legacy535 vexos-headless-server-nvidia-legacy470 vexos-headless-server-intel vexos-headless-server-vm
-vexos-stateless-amd vexos-stateless-nvidia vexos-stateless-nvidia-legacy535 vexos-stateless-nvidia-legacy470 vexos-stateless-intel vexos-stateless-vm"
+vexos-stateless-amd vexos-stateless-nvidia vexos-stateless-nvidia-legacy535 vexos-stateless-nvidia-legacy470 vexos-stateless-intel vexos-stateless-vm
+vexos-vanilla-amd vexos-vanilla-nvidia vexos-vanilla-intel vexos-vanilla-vm"
 fi
 
 TARGET_COUNT=$(echo "$TARGETS" | wc -w)
@@ -175,7 +176,8 @@ for CFG in \
   configuration-htpc.nix \
   configuration-server.nix \
   configuration-headless-server.nix \
-  configuration-stateless.nix; do
+  configuration-stateless.nix \
+  configuration-vanilla.nix; do
   if [ ! -f "$CFG" ]; then
     fail "$CFG does not exist"
     STATEVER_FAIL=1

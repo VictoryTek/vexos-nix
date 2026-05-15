@@ -116,6 +116,11 @@
         baseModules  = [ unstableOverlayModule proxmoxOverlayModule customPkgsOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
         extraModules = serverServicesModule;
       };
+      vanilla = {
+        homeFile     = ./home-vanilla.nix;
+        baseModules  = [];
+        extraModules = [];
+      };
     };
 
     # Home Manager wiring shared by every role. The only thing that varies
@@ -173,7 +178,7 @@
       };
 
     # ── Host descriptor table — single source of truth for which systems exist ──
-    # 30 outputs total: 26 historical + 4 new server/headless-server NVIDIA legacy
+    # 34 outputs total: 30 historical + 4 vanilla role
     # variants (flagged below). Output names use the no-underscore "legacy535" /
     # "legacy470" suffix; the option value uses the underscored form "legacy_535".
     hostList = [
@@ -216,6 +221,11 @@
       { name = "vexos-htpc-nvidia-legacy470"; role = "htpc";               gpu = "nvidia"; nvidiaVariant = "legacy_470"; }
       { name = "vexos-htpc-intel";            role = "htpc";               gpu = "intel"; }
       { name = "vexos-htpc-vm";               role = "htpc";               gpu = "vm"; }
+      # Vanilla (stock NixOS baseline — no NVIDIA legacy variants, no proprietary GPU drivers)
+      { name = "vexos-vanilla-amd";    role = "vanilla"; gpu = "amd"; }
+      { name = "vexos-vanilla-nvidia"; role = "vanilla"; gpu = "nvidia"; }
+      { name = "vexos-vanilla-intel";  role = "vanilla"; gpu = "intel"; }
+      { name = "vexos-vanilla-vm";     role = "vanilla"; gpu = "vm"; }
     ];
 
     # Build a nixosModules.*Base export from the same per-role wiring table.
@@ -251,12 +261,12 @@
         (import ./pkgs)
       ];
       environment.systemPackages =
-        lib.optional (role != "headless-server") up.packages.x86_64-linux.default;
+        lib.optional (role != "headless-server" && role != "vanilla") up.packages.x86_64-linux.default;
     };
   in
   {
     # ── nixosConfigurations — generated from hostList via mkHost ─────────────
-    # 30 outputs. To add/remove a system, edit `hostList` above; nothing else.
+    # 34 outputs. To add/remove a system, edit `hostList` above; nothing else.
     nixosConfigurations = lib.listToAttrs (map (h: {
       name  = h.name;
       value = mkHost {
@@ -282,6 +292,10 @@
       # Headless server stack: no GUI, no audio, no Flatpak.
       # Suitable for production servers accessed via SSH.
       headlessServerBase = mkBaseModule "headless-server" ./configuration-headless-server.nix;
+
+      # Vanilla stack: stock NixOS baseline. No desktop, no custom GPU,
+      # no performance tuning. Suitable for system restore or fresh start.
+      vanillaBase = mkBaseModule "vanilla" ./configuration-vanilla.nix;
 
       # Stateless stack: minimal, without gaming/development/virtualization/asus.
       # Suitable for a clean daily-driver focused on stateless and basic productivity.
