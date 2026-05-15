@@ -133,7 +133,7 @@ systemd.oomd = {
 };
 ```
 
-### [INCONSISTENCY] HTPC dconf `power` keys duplicate but contradict `system-nosleep.nix` order semantics
+### [INCONSISTENCY] HTPC dconf `power` keys duplicate but contradict `system-nosleep.nix` order semantics — ✅ FIXED
 **File:** [modules/gnome-htpc.nix](modules/gnome-htpc.nix#L65-L68) vs [modules/system-nosleep.nix](modules/system-nosleep.nix#L46-L62)
 **Why:** Both modules write `org/gnome/settings-daemon/plugins/power.sleep-inactive-{ac,battery}-type = "nothing"`. `system-nosleep.nix` uses `lib.mkBefore` on its database, so dconf evaluates it first; the htpc database (later) wins on duplicated keys, but it does *not* set the timeout / power-button keys. The pair never disagrees today, but the duplication is fragile (e.g. anyone touching `gnome-htpc.nix` to set `"suspend"` would silently override `system-nosleep` in the user db chain). Remove the duplicate from `gnome-htpc.nix`.
 **Fix:** Delete the redundant block:
@@ -218,7 +218,7 @@ config = lib.mkIf config.vexos.hardware.asus.enable {
 **File:** [modules/network.nix](modules/network.nix#L107-L116)
 **Why:** Universal SSH is reasonable, but `PermitRootLogin = "no"` is the only setting; `PasswordAuthentication`, `KbdInteractiveAuthentication`, `AuthenticationMethods` are all defaults (password auth ON). For a multi-role flake where stateless / server roles may live on the open internet, this is an inconsistency between the project's stated security posture (AppArmor base, audit on server) and SSH defaults. See also Section 6.
 
-### [QUALITY-Option-B-violation] Single shared module gates Flatpak install service on a per-role variable
+### [QUALITY-Option-B-violation] Single shared module gates Flatpak install service on a per-role variable — ⚠️ N/A (enable-flag gate is acceptable under Option B)
 **File:** [modules/flatpak.nix](modules/flatpak.nix#L52-L172) — uses `lib.mkIf config.vexos.flatpak.enable { … }` for the *entire* config block.
 **Why:** This is a clean enable-flag, not a role gate, so it is **acceptable** under Option B. Flagging only as confirmation — no action needed.
 
