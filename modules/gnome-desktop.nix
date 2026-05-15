@@ -5,24 +5,6 @@
 # video player (nixpkgs, via packages-desktop.nix).
 { config, pkgs, lib, ... }:
 let
-  # Local app lists for the systemd flatpak-install service.
-  gnomeBaseApps = [
-    "org.gnome.TextEditor"
-    "org.gnome.Loupe"
-  ];
-
-  gnomeDesktopOnlyApps = [
-    "org.gnome.Calculator"
-    "org.gnome.Calendar"
-    "org.gnome.Papers"
-    "org.gnome.Snapshot"
-  ];
-
-  gnomeAppsToInstall = gnomeBaseApps ++ gnomeDesktopOnlyApps;
-
-  gnomeAppsHash = builtins.substring 0 16
-    (builtins.hashString "sha256" (lib.concatStringsSep "," gnomeAppsToInstall));
-
   # Common shell extensions enabled on every role.
   commonExtensions = [
     "appindicatorsupport@rgcjonas.gmail.com"
@@ -154,50 +136,19 @@ in
   ];
 
   # ── GNOME default app Flatpaks (desktop role) ─────────────────────────────
-  # Installs GNOME apps from Flathub on first boot (stamp is app-list-hash based).
-  # After initial install, Up manages updates.  Skipped entirely when
-  # vexos.flatpak.enable = false (e.g. VM guests).
-  systemd.services.flatpak-install-gnome-apps = lib.mkIf config.services.flatpak.enable {
-    description = "Install GNOME Flatpak apps (once)";
-    wantedBy    = [ "multi-user.target" ];
-    after       = [ "flatpak-install-apps.service" ];
-    requires    = [ "flatpak-add-flathub.service" ];
-    path        = [ pkgs.flatpak ];
-    script = ''
-      STAMP="/var/lib/flatpak/.gnome-apps-installed-${gnomeAppsHash}"
-      if [ -f "$STAMP" ]; then exit 0; fi
-
-      # Require at least 1.5 GB free before attempting installs.
-      # Exit 0 (not 1) so the switch doesn't fail — stamp is not written,
-      # so the service will retry on the next boot.
-      AVAIL_MB=$(df /var/lib/flatpak --output=avail -BM 2>/dev/null | tail -1 | tr -d 'M ' || echo 0)
-      if [ "$AVAIL_MB" -lt 1536 ]; then
-        echo "flatpak: only ''${AVAIL_MB} MB free — need 1536 MB; skipping this boot"
-        exit 0
-      fi
-
-      # Migration: uninstall Totem — mpv is the designated player.
-      if flatpak list --app --columns=application 2>/dev/null | grep -qx "org.gnome.Totem"; then
-        echo "flatpak: removing org.gnome.Totem (desktop role uses mpv)"
-        flatpak uninstall --noninteractive --assumeyes org.gnome.Totem || true
-      fi
-
-      flatpak install --noninteractive --assumeyes flathub \
-        ${lib.concatStringsSep " \\\n        " gnomeAppsToInstall}
-
-      rm -f /var/lib/flatpak/.gnome-apps-installed \
-            /var/lib/flatpak/.gnome-apps-installed-*
-      touch "$STAMP"
-    '';
-    unitConfig = {
-      StartLimitIntervalSec = 600;
-      StartLimitBurst       = 10;
-    };
-    serviceConfig = {
-      Type            = "oneshot";
-      RemainAfterExit = true;
-      Restart         = "on-failure";
-      RestartSec      = 60;
-    };
+  # Defined by modules/gnome-flatpak-install.nix (imported via gnome.nix).
+  # Note: stamp hash changes from the pre-migration value (extraRemoves adds
+  # org.gnome.Totem to the hash string) — service re-runs once on next boot;
+  # re-run is idempotent.
+  vexos.gnome.flatpakInstall = {
+    apps = [
+      "org.gnome.TextEditor"
+      "org.gnome.Loupe"
+      "org.gnome.Calculator"
+      "org.gnome.Calendar"
+      "org.gnome.Papers"
+      "org.gnome.Snapshot"
+    ];
+    extraRemoves = [ "org.gnome.Totem" ];
   };
 }

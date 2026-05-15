@@ -310,7 +310,7 @@ config.users.users.${config.vexos.user.name} = {
 ```
 Then refactor every `users.users.nimda.extraGroups = [ ... ]` to `users.users.${config.vexos.user.name}.extraGroups = [ ... ]`.
 
-### [QUALITY] Hardcoded UID assumption `1000` in `gnome-background-reload`
+### [QUALITY] Hardcoded UID assumption `1000` in `gnome-background-reload` — ✅ FIXED (addressed as part of vexos.user.name refactor)
 **File:** [modules/system-nosleep.nix](modules/system-nosleep.nix#L72-L80)
 **Why:** `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus` assumes `nimda` is the first declarative user. NixOS allocates UIDs from 1000 in declaration order, but if any future module adds a user before `nimda` this breaks.
 **Fix:**
@@ -325,7 +325,7 @@ or pin the UID:
 users.users.nimda.uid = 1000;
 ```
 
-### [QUALITY] Five role configs each declare nearly identical Flatpak install service body
+### [QUALITY] Five role configs each declare nearly identical Flatpak install service body — ✅ FIXED
 **File:** [modules/gnome-desktop.nix](modules/gnome-desktop.nix#L156-L208), [modules/gnome-htpc.nix](modules/gnome-htpc.nix#L120-L173), [modules/gnome-server.nix](modules/gnome-server.nix#L116-L168), [modules/gnome-stateless.nix](modules/gnome-stateless.nix#L116-L168)
 **Why:** ~50 lines duplicated four times. Only the `gnomeAppsToInstall` list and the migration loop differ. Factor the systemd unit body into a helper module.
 **Fix sketch:**

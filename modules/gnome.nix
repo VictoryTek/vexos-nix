@@ -10,6 +10,8 @@
 #   modules/gnome-stateless.nix
 { config, pkgs, lib, ... }:
 {
+  imports = [ ./gnome-flatpak-install.nix ];
+
   # ── GNOME stack sourced from nixpkgs-unstable ──────────────────────────────
   # Replaces the GNOME desktop shell and its default-shipped applications with
   # the latest builds from nixos-unstable.  Everything else on the system stays
