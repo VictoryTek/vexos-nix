@@ -66,19 +66,57 @@ in
       ipAddress = cfg.ipAddress;
     };
 
-    # ── vmbr0 bridge ─────────────────────────────────────────────────────────
-    # Proxmox VMs and LXC containers attach to vmbr0 for network access.
-    # The physical NIC is enslaved into the bridge; the bridge itself gets the
-    # DHCP lease. NetworkManager is told to leave both interfaces unmanaged so
-    # it doesn't fight the kernel bridge stack.
-    networking.bridges.vmbr0.interfaces = [ cfg.bridgeInterface ];
+    # ── vmbr0 bridge — managed by NetworkManager ────────────────────────────
+    # NetworkManager creates vmbr0 as a bridge, slaves the physical NIC into
+    # it, and obtains the DHCP lease on vmbr0 via NM's internal DHCP client.
+    #
+    # Why NM profiles (not scripted networking / dhcpcd):
+    #   network.nix forces networking.dhcpcd.enable = lib.mkForce false to
+    #   prevent dhcpcd/NM conflicts on every role.  networking.interfaces.*.useDHCP
+    #   is a dhcpcd directive — it is completely inert when dhcpcd is off.
+    #   NM is the sole DHCP client on this system; vmbr0 must be managed by NM.
+    #
+    # Why no networking.networkmanager.unmanaged entry:
+    #   The previous code marked both interfaces unmanaged to prevent NM from
+    #   racing with dhcpcd.  With NM as the only client, unmanaged is wrong —
+    #   it would leave vmbr0 with no IP address.
+    #
+    # Why no networking.bridges.vmbr0:
+    #   networking.bridges uses scripted networking (ip link) to create the
+    #   bridge.  Having both scripted networking and NM create the same bridge
+    #   races at boot.  NM creates the bridge when it activates the master
+    #   profile; scripted networking is not needed.
+    networking.networkmanager.ensureProfiles.profiles = {
+      # Bridge master: NM creates vmbr0 and obtains a DHCP lease on it.
+      "vmbr0-bridge" = {
+        connection = {
+          id             = "vmbr0 Bridge";
+          type           = "bridge";
+          interface-name = "vmbr0";
+          autoconnect    = "true";
+        };
+        ipv4 = {
+          method = "auto";
+        };
+        ipv6 = {
+          method        = "auto";
+          addr-gen-mode = "stable-privacy";
+        };
+      };
 
-    networking.interfaces.vmbr0.useDHCP              = lib.mkDefault true;
-    networking.interfaces.${cfg.bridgeInterface}.useDHCP = false;
-
-    # NetworkManager must not manage the physical NIC or the bridge — if it
-    # does it will race with the kernel bridge and drop the DHCP lease.
-    networking.networkmanager.unmanaged = [ cfg.bridgeInterface "vmbr0" ];
+      # Bridge slave: NM enslaves the physical NIC into vmbr0.
+      # The physical NIC carries no IP address; all traffic goes through the bridge.
+      "vmbr0-slave" = {
+        connection = {
+          id             = "vmbr0 Port ${cfg.bridgeInterface}";
+          type           = "ethernet";
+          interface-name = cfg.bridgeInterface;
+          controller     = "vmbr0";
+          port-type      = "bridge";
+          autoconnect    = "true";
+        };
+      };
+    };
 
     # ── Firewall ────────────────────────────────────────────────────────────
     # 8006 = Proxmox web UI / API
