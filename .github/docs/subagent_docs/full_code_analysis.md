@@ -255,11 +255,11 @@ driverPackage =
   else                                  config.boot.kernelPackages.nvidiaPackages.legacy_470;
 ```
 
-### [DEAD CODE] `programs.dconf.profiles.user.databases` block in `branding-display.nix` declares a `gdm` profile only — no user-db key
+### [DEAD CODE] `programs.dconf.profiles.user.databases` block in `branding-display.nix` declares a `gdm` profile only — no user-db key — ⚠️ N/A (verified non-issue)
 **File:** [modules/branding-display.nix](modules/branding-display.nix#L31-L46)
 **Why:** Not dead; correct. (Annotated as "verified non-issue" so reviewers do not flag it as stale.)
 
-### [DEAD CODE] `home/photogimp.nix` PhotoGIMP cleanup activations duplicate the cleanup in `home-stateless.nix`
+### [DEAD CODE] `home/photogimp.nix` PhotoGIMP cleanup activations duplicate the cleanup in `home-stateless.nix` — ✅ FIXED
 **File:** [home/photogimp.nix](home/photogimp.nix#L42-L70) and [home-stateless.nix](home-stateless.nix#L48-L96)
 **Why:** Stateless explicitly does *not* import `./home/photogimp.nix`, but it duplicates the orphan cleanup. After several stateless boots there will be no orphans left; the activation runs every rebuild, performing useless `find`-equivalent loops. Convert to a one-shot stamp.
 **Fix:**

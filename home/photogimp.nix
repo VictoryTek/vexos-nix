@@ -44,28 +44,36 @@ in
     # fails at checkLinkTargets. This runs BEFORE that check.
     home.activation.cleanupPhotogimpOrphanFiles =
       lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-        DESKTOP_FILE="$HOME/.local/share/applications/org.gimp.GIMP.desktop"
-        if [ -f "$DESKTOP_FILE" ] && [ ! -L "$DESKTOP_FILE" ]; then
-          $VERBOSE_ECHO "PhotoGIMP: removing orphaned desktop file"
-          $DRY_RUN_CMD rm -f "$DESKTOP_FILE"
+        STAMP="$HOME/.local/share/vexos/.photogimp-orphan-cleanup-done"
+        if [ -f "$STAMP" ]; then
+          $VERBOSE_ECHO "PhotoGIMP: orphan cleanup already done, skipping"
+        else
+          DESKTOP_FILE="$HOME/.local/share/applications/org.gimp.GIMP.desktop"
+          if [ -f "$DESKTOP_FILE" ] && [ ! -L "$DESKTOP_FILE" ]; then
+            $VERBOSE_ECHO "PhotoGIMP: removing orphaned desktop file"
+            $DRY_RUN_CMD rm -f "$DESKTOP_FILE"
+          fi
+
+          for size in 16x16 32x32 48x48 64x64 128x128 256x256 512x512; do
+            ICON_FILE="$HOME/.local/share/icons/hicolor/$size/apps/photogimp.png"
+            if [ -f "$ICON_FILE" ] && [ ! -L "$ICON_FILE" ]; then
+              $VERBOSE_ECHO "PhotoGIMP: removing orphaned icon $size/apps/photogimp.png"
+              $DRY_RUN_CMD rm -f "$ICON_FILE"
+            fi
+          done
+
+          for stray in \
+            "$HOME/.local/share/icons/hicolor/photogimp.png" \
+            "$HOME/.local/share/icons/hicolor/256x256/256x256.png"; do
+            if [ -f "$stray" ] && [ ! -L "$stray" ]; then
+              $VERBOSE_ECHO "PhotoGIMP: removing stray file $stray"
+              $DRY_RUN_CMD rm -f "$stray"
+            fi
+          done
+
+          $DRY_RUN_CMD mkdir -p "$HOME/.local/share/vexos"
+          $DRY_RUN_CMD touch "$STAMP"
         fi
-
-        for size in 16x16 32x32 48x48 64x64 128x128 256x256 512x512; do
-          ICON_FILE="$HOME/.local/share/icons/hicolor/$size/apps/photogimp.png"
-          if [ -f "$ICON_FILE" ] && [ ! -L "$ICON_FILE" ]; then
-            $VERBOSE_ECHO "PhotoGIMP: removing orphaned icon $size/apps/photogimp.png"
-            $DRY_RUN_CMD rm -f "$ICON_FILE"
-          fi
-        done
-
-        for stray in \
-          "$HOME/.local/share/icons/hicolor/photogimp.png" \
-          "$HOME/.local/share/icons/hicolor/256x256/256x256.png"; do
-          if [ -f "$stray" ] && [ ! -L "$stray" ]; then
-            $VERBOSE_ECHO "PhotoGIMP: removing stray file $stray"
-            $DRY_RUN_CMD rm -f "$stray"
-          fi
-        done
       '';
 
     # ── Step 2: copy GIMP plugin/config files ──────────────────────────────
