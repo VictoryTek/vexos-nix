@@ -117,9 +117,20 @@
   services.openssh = {
     enable = true;
     settings = {
-      PermitRootLogin = "no";
+      PermitRootLogin  = "no";
+      PermitEmptyPasswords = "no";
+      X11Forwarding    = false;
+      MaxAuthTries     = lib.mkDefault "3";
+      LoginGraceTime   = lib.mkDefault "30s";
+      # PasswordAuthentication left at openssh default (enabled) so that
+      # machines remain accessible without requiring key files in authorized_keys.
+      # To harden a specific host: set PasswordAuthentication = false in hosts/<name>.nix
+      # after confirming your public key is present and working.
     };
   };
+
+  users.users.nimda.openssh.authorizedKeys.keyFiles =
+    lib.optional (builtins.pathExists ../authorized_keys) ../authorized_keys;
 
   networking.firewall.allowedTCPPorts = [ 22 ];
 

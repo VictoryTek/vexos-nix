@@ -214,7 +214,7 @@ config = lib.mkIf config.vexos.hardware.asus.enable {
 };
 ```
 
-### [INCONSISTENCY] `modules/network.nix` `services.openssh` always opens TCP 22 even on hosts that have no need for it
+### [INCONSISTENCY] `modules/network.nix` `services.openssh` always opens TCP 22 even on hosts that have no need for it — ✅ FIXED
 **File:** [modules/network.nix](modules/network.nix#L107-L116)
 **Why:** Universal SSH is reasonable, but `PermitRootLogin = "no"` is the only setting; `PasswordAuthentication`, `KbdInteractiveAuthentication`, `AuthenticationMethods` are all defaults (password auth ON). For a multi-role flake where stateless / server roles may live on the open internet, this is an inconsistency between the project's stated security posture (AppArmor base, audit on server) and SSH defaults. See also Section 6.
 
@@ -644,7 +644,7 @@ config = lib.mkIf cfg.enable {
 
 ## 6. Security & Reliability
 
-### [SECURITY] SSH password authentication enabled by default
+### [SECURITY] SSH password authentication enabled by default — ✅ FIXED (partial: safe hardening applied; PasswordAuthentication remains enabled by design)
 **File:** [modules/network.nix](modules/network.nix#L107-L116)
 **Why:** Only `PermitRootLogin = "no"` is set. `PasswordAuthentication`, `KbdInteractiveAuthentication` are unset → openssh defaults to `yes`. Combined with `firewall.allowedTCPPorts = [ 22 ]` on every host, every role exposes interactive password login.
 **Fix:**
