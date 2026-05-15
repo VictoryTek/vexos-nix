@@ -10,25 +10,17 @@ in
   options.vexos.user = {
     name = lib.mkOption {
       type        = lib.types.str;
-      description = "Primary user account name for this system. Auto-detected from the first isNormalUser account.";
+      description = "Primary user account name for this system. Defaults to \"nimda\"; override per-host if needed.";
     };
   };
 
   config = {
-    # Auto-detect the primary user from the first isNormalUser = true account.
-    # lib.mkDefault allows hosts to override explicitly if needed.
-    # Only isNormalUser is checked (not extraGroups) to avoid circular evaluation,
-    # since other modules append extraGroups via config.vexos.user.name.
-    vexos.user.name = lib.mkDefault (
-      let normalUsers = builtins.filter
-        (n: config.users.users.${n}.isNormalUser or false)
-        (builtins.attrNames config.users.users);
-      in
-        if normalUsers == [] then
-          builtins.throw "vexos: no isNormalUser account found — declare a user with isNormalUser = true"
-        else
-          builtins.head normalUsers
-    );
+    # Simple default — modules that append extraGroups use `config.vexos.user.name`
+    # as an attrset key, which the NixOS module system must resolve before it can
+    # enumerate `users.users` attribute names.  Auto-detecting from
+    # `config.users.users` would create an infinite-recursion cycle, so the
+    # default is a plain string.  Override in host files if needed.
+    vexos.user.name = lib.mkDefault "nimda";
 
     users.users.nimda = {
       isNormalUser = true;
