@@ -9,4 +9,8 @@
   ];
 
   system.nixos.distroName = "VexOS Headless Server Intel";
+
+  # REQUIRED: replace with the real value from the target host.
+  # Generate: head -c 8 /etc/machine-id
+  networking.hostId = "b0000003";
 }

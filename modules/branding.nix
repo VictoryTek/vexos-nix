@@ -130,22 +130,20 @@ in
   # Auto-generated: "VexOS Desktop VM (Generation N VexOS Desktop VM Xantusia 25.11 (Linux 6.6.132))"
   # Trimmed to:     "VexOS Desktop VM (Generation N Xantusia 25.11)"
   boot.loader.systemd-boot.extraInstallCommands = lib.mkIf config.boot.loader.systemd-boot.enable ''
-    for f in /boot/loader/entries/*.conf; do
-      [ -f "$f" ] || continue
+    set -eu
+    shopt -s nullglob
+    entries=(/boot/loader/entries/*.conf)
+    [[ ''${#entries[@]} -gt 0 ]] || exit 0
+    for f in "''${entries[@]}"; do
       # Strip ", built on YYYY-MM-DD" date suffix
       ${pkgs.gnused}/bin/sed -i 's/, built on [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}//' "$f"
       # Strip "(Linux X.X.X)" kernel version from generation description
       ${pkgs.gnused}/bin/sed -i 's/ (Linux [0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*)//' "$f"
-      # Normalise outer title label to the current host distroName (fixes old
-      # entries that were built before per-host distroName was set).
-      # Matches "title VexOS <Role> <anything-not-a-paren>(Generation" and
-      # replaces the outer label with the current host's distroName.
+      # Normalise outer title label to the current host distroName
       ${pkgs.gnused}/bin/sed -i 's/^title VexOS [^(]*(Generation/title ${config.system.nixos.distroName} (Generation/' "$f"
-      # Remove redundant "VexOS <Role> <Variant>" from inside generation parens
-      # (new format — distroName includes the variant, e.g. "VexOS Desktop VM").
+      # Remove redundant "VexOS <Role> <Variant>" from inside generation parens (new format)
       ${pkgs.gnused}/bin/sed -i -E 's/\(Generation ([0-9]+) VexOS [A-Za-z]+ (AMD|NVIDIA|Intel|VM) ([A-Za-z]+ [0-9]+\.[0-9]+)\)/(Generation \1 \3)/' "$f"
-      # Remove redundant "VexOS <Role>" from inside generation parens
-      # (old format — no variant suffix in the inner label).
+      # Remove redundant "VexOS <Role>" from inside generation parens (old format)
       ${pkgs.gnused}/bin/sed -i -E 's/\(Generation ([0-9]+) VexOS [A-Za-z]+ ([A-Za-z]+ [0-9]+\.[0-9]+)\)/(Generation \1 \2)/' "$f"
     done
   '';

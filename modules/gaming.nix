@@ -13,8 +13,8 @@
     gamescopeSession.enable = true; # Gamescope session for Steam gaming mode
 
     # Proton-GE as an additional compatibility tool (unfree)
-    extraCompatPackages = with pkgs; [
-      proton-ge-bin
+    extraCompatPackages = [
+      pkgs.proton-ge-bin
     ];
   };
 
@@ -41,31 +41,31 @@
   };
 
   # ── Gaming utilities ──────────────────────────────────────────────────────
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = [
     # Proton / Wine tooling
-    protontricks    # winetricks wrapper for Steam games
-    umu-launcher    # Proton launcher for non-Steam games
+    pkgs.protontricks    # winetricks wrapper for Steam games
+    pkgs.umu-launcher    # Proton launcher for non-Steam games
 
     # Display / overlay
-    mangohud        # In-game performance overlay; use mangohud %command% in Steam launch options
-    vkbasalt        # Vulkan post-processing layer (CAS, FXAA, etc.)
+    pkgs.mangohud        # In-game performance overlay; use mangohud %command% in Steam launch options
+    pkgs.vkbasalt        # Vulkan post-processing layer (CAS, FXAA, etc.)
 
     # Wine (Staging + Wow64 multilib)
-    wineWowPackages.stagingFull
+    pkgs.wineWowPackages.stagingFull
 
     # Disk / prefix maintenance
-    duperemove      # deduplicates Wine prefix content
+    pkgs.duperemove      # deduplicates Wine prefix content
 
     # Container tooling (Distrobox for running other distro environments)
-    distrobox
+    pkgs.distrobox
 
     # Emulation
-    ryubing         # Nintendo Switch emulator (Ryujinx fork)
-    retroarch       # multi-system emulator frontend
+    pkgs.ryubing         # Nintendo Switch emulator (Ryujinx fork)
+    pkgs.retroarch       # multi-system emulator frontend
 
     # Communication
-    vesktop         # feature-rich Discord client (Vencord-based)
-    discord         # official Discord client
+    pkgs.vesktop         # feature-rich Discord client (Vencord-based)
+    pkgs.discord         # official Discord client
 
     # NOTE: lutris, ProtonPlus, and Bottles are installed via Flatpak
     # (net.lutris.Lutris, com.vysp3r.ProtonPlus, and com.usebottles.bottles in modules/flatpak.nix).

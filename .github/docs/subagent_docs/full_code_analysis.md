@@ -11,7 +11,7 @@ Scope notes:
 
 ## 1. Syntax & Correctness
 
-### [BUG] `zfs-server.nix` reads build-host `/etc/machine-id` at flake-eval time
+### [BUG] `zfs-server.nix` reads build-host `/etc/machine-id` at flake-eval time — ✅ FIXED
 **File:** [modules/zfs-server.nix](modules/zfs-server.nix#L57-L72)
 **Why:** `networking.hostId` is evaluated by `builtins.readFile "/etc/machine-id"` during flake evaluation. That file belongs to the *machine running `nixos-rebuild`*, not the target. When you build a server closure on your laptop (the documented thin-flake workflow), every server gets the laptop's `hostId`. Because ZFS refuses to import pools whose `zpool.cache` was written under a different `hostId`, this turns a routine rebuild on a workstation into "all pools fail to import on next boot of the server". `lib.mkDefault` does not protect against this — eval-time reads are baked into the closure.
 **Fix:** Move the derivation to activation time, or require explicit per-host configuration.
@@ -32,7 +32,7 @@ assertions = [
 ];
 ```
 
-### [BUG] `nixosModules.gpu*` wrappers double-declare `virtualisation.virtualbox.guest.enable`
+### [BUG] `nixosModules.gpu*` wrappers double-declare `virtualisation.virtualbox.guest.enable` — ✅ FIXED
 **File:** [flake.nix](flake.nix#L237-L266) and every module under `modules/gpu/` ([modules/gpu/amd.nix](modules/gpu/amd.nix#L33-L36), [modules/gpu/nvidia.nix](modules/gpu/nvidia.nix#L82-L84), [modules/gpu/intel.nix](modules/gpu/intel.nix#L48-L50), [modules/gpu/amd-headless.nix](modules/gpu/amd-headless.nix#L36-L38), [modules/gpu/intel-headless.nix](modules/gpu/intel-headless.nix#L33-L35))
 **Why:** `nixosModules.gpuAmd = { lib, ... }: { imports = [ ./modules/gpu/amd.nix ]; virtualisation.virtualbox.guest.enable = lib.mkForce false; }` — but `modules/gpu/amd.nix` *also* sets the same option to `lib.mkForce false`. Two definitions at the same priority (50) on a non-mergeable type (`bool`) trigger NixOS "The option … has conflicting definition values" even when the values match (`mergeEqualOption` is the historical exception, but the bool type uses the standard merger and emits the warning/error in 25.05+ when two `mkForce` definitions co-exist). The internal flake outputs are unaffected only because `hosts/*.nix` import the underlying `modules/gpu/*.nix` directly — but the documented external `template/etc-nixos-flake.nix` consumer route uses the wrappers and is exposed.
 **Fix:** Drop the duplicate from the wrapper (single source of truth lives in the `modules/gpu/*.nix` file).
@@ -65,7 +65,7 @@ networking.interfaces.vmbr0.useDHCP = true;
 **File:** [flake.nix](flake.nix#L5-L36)
 **Why:** The comment explicitly justifies *not* pinning `nixpkgs-unstable.follows`. Correct. However, `proxmox-nixos` and `up` both bring in their own transitive `nixpkgs-stable` / `nixpkgs` graphs that are not deduplicated. `up` already sets `inputs.nixpkgs.follows = "nixpkgs"` (good). `proxmox-nixos` is intentionally *not* followed (the comment explains why). That is a defensible choice but it doubles your closure size and slows `nix flake check` — call out as a known cost rather than a bug. **No code change** unless evaluation/cache size becomes a problem.
 
-### [BUG] `branding.nix` post-process `sed` against `/boot/loader/entries/*.conf` runs on every rebuild even on grub
+### [BUG] `branding.nix` post-process `sed` against `/boot/loader/entries/*.conf` runs on every rebuild even on grub — ✅ FIXED
 **File:** [modules/branding.nix](modules/branding.nix#L138-L160)
 **Why:** `lib.mkIf config.boot.loader.systemd-boot.enable` correctly gates the *attribute*, but inside the script there is no guard against the directory not existing. On a fresh install where systemd-boot has not yet *installed* (first activation), `/boot/loader/entries/` may be empty or absent. The `for f in /boot/loader/entries/*.conf` glob then expands literally to that string, the `[ -f "$f" ]` test handles it, but the loop body may noop. This is fine — but the same code unconditionally references `${pkgs.gnused}/bin/sed` four times, bloating the activation script. Minor.
 **Fix:** Guard once at the top.
@@ -87,7 +87,7 @@ boot.loader.systemd-boot.extraInstallCommands = lib.mkIf config.boot.loader.syst
 '';
 ```
 
-### [QUALITY] Module-level `with pkgs;` inside large `environment.systemPackages` lists
+### [QUALITY] Module-level `with pkgs;` inside large `environment.systemPackages` lists — ✅ FIXED
 **File:** [modules/gnome.nix](modules/gnome.nix#L181-L210), [modules/development.nix](modules/development.nix#L18-L57), [modules/gaming.nix](modules/gaming.nix#L46-L70)
 **Why:** `with pkgs;` shadows local `let` bindings and any future module argument with the same name (e.g. `bun`, `discord`, `mesa`). Linter/IDE references for these names also break. Acceptable in NixOS practice but explicitly discouraged in modern style (RFC 140-style).
 **Fix:** Use the explicit prefix.
@@ -99,13 +99,14 @@ environment.systemPackages = [
 ];
 ```
 
-### [QUALITY] `system.nixos.label = "25.11";` plain assignment in `branding.nix`
+### [QUALITY] `system.nixos.label = "25.11";` plain assignment in `branding.nix` — ⚠️ WONTFIX
 **File:** [modules/branding.nix](modules/branding.nix#L114)
 **Why:** Plain assignment means hosts cannot override without `lib.mkForce`. Also prevents the value from naturally tracking the actual NixOS release.
 **Fix:**
 ```nix
 system.nixos.label = lib.mkDefault "25.11";
 ```
+> **Investigation note:** `lib.mkDefault "25.11"` was attempted and causes "conflicting definition values" because `nixos/modules/misc/label.nix` in nixpkgs already sets this option with `lib.mkDefault` (both at priority 1000). The bare assignment at priority 100 correctly overrides nixpkgs and is the right approach. WONTFIX — plain assignment is intentional.
 
 ---
 

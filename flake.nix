@@ -303,31 +303,25 @@
       # ensures that value can never survive into a non-VM build, preventing
       # VirtualBox-GuestAdditions from attempting to compile against a kernel
       # that has removed the required DRM symbols (Linux 6.12+).
-      gpuAmd = { lib, ... }: {
+      gpuAmd = { ... }: {
         imports = [ ./modules/gpu/amd.nix ];
-        virtualisation.virtualbox.guest.enable = lib.mkForce false;
       };
-      gpuNvidia = { lib, ... }: {
+      gpuNvidia = { ... }: {
         imports = [ ./modules/gpu/nvidia.nix ];
-        virtualisation.virtualbox.guest.enable = lib.mkForce false;
       };
-      gpuIntel = { lib, ... }: {
+      gpuIntel = { ... }: {
         imports = [ ./modules/gpu/intel.nix ];
-        virtualisation.virtualbox.guest.enable = lib.mkForce false;
       };
 
       # Headless server GPU modules: compute/VA-API without early KMS / display init.
-      gpuAmdHeadless = { lib, ... }: {
+      gpuAmdHeadless = { ... }: {
         imports = [ ./modules/gpu/amd-headless.nix ];
-        virtualisation.virtualbox.guest.enable = lib.mkForce false;
       };
-      gpuNvidiaHeadless = { lib, ... }: {
+      gpuNvidiaHeadless = { ... }: {
         imports = [ ./modules/gpu/nvidia-headless.nix ];
-        virtualisation.virtualbox.guest.enable = lib.mkForce false;
       };
-      gpuIntelHeadless = { lib, ... }: {
+      gpuIntelHeadless = { ... }: {
         imports = [ ./modules/gpu/intel-headless.nix ];
-        virtualisation.virtualbox.guest.enable = lib.mkForce false;
       };
       gpuVm = { ... }: {
         imports = [ ./modules/gpu/vm.nix ];

@@ -169,8 +169,8 @@
   # Required for screen sharing, file pickers, and other portal features.
   xdg.portal = {
     enable = true;
-    extraPortals = with pkgs; [
-      xdg-desktop-portal-gnome
+    extraPortals = [
+      pkgs.xdg-desktop-portal-gnome
     ];
     config.common.default = "gnome";
   };
@@ -188,71 +188,71 @@
 
   # ── GNOME bloat reduction ─────────────────────────────────────────────────
   # Common bloat list — applies to every role that imports this module.
-  environment.gnome.excludePackages = with pkgs; [
-    gnome-photos
-    gnome-tour
-    gnome-connections
-    gnome-weather
-    gnome-clocks
-    gnome-contacts
-    gnome-maps
-    gnome-characters
-    gnome-user-docs
-    yelp
-    simple-scan
-    epiphany    # GNOME Web
-    geary       # GNOME email client
-    xterm
-    gnome-music
-    rhythmbox
-    totem         # mpv (nixpkgs) is the video player; Flatpak Totem is not installed
-    showtime      # GNOME 49 video player ("Video Player") — duplicate of Flatpak Totem
-    gnome-calculator  # Flatpak org.gnome.Calculator installed on desktop only
-    gnome-calendar    # Flatpak org.gnome.Calendar installed on desktop only
-    snapshot          # GNOME Camera — Flatpak org.gnome.Snapshot installed on desktop only
-    papers            # winnow 0.7.x fails with rustc 1.91.1; desktop gets Papers via Flatpak
+  environment.gnome.excludePackages = [
+    pkgs.gnome-photos
+    pkgs.gnome-tour
+    pkgs.gnome-connections
+    pkgs.gnome-weather
+    pkgs.gnome-clocks
+    pkgs.gnome-contacts
+    pkgs.gnome-maps
+    pkgs.gnome-characters
+    pkgs.gnome-user-docs
+    pkgs.yelp
+    pkgs.simple-scan
+    pkgs.epiphany    # GNOME Web
+    pkgs.geary       # GNOME email client
+    pkgs.xterm
+    pkgs.gnome-music
+    pkgs.rhythmbox
+    pkgs.totem         # mpv (nixpkgs) is the video player; Flatpak Totem is not installed
+    pkgs.showtime      # GNOME 49 video player ("Video Player") — duplicate of Flatpak Totem
+    pkgs.gnome-calculator  # Flatpak org.gnome.Calculator installed on desktop only
+    pkgs.gnome-calendar    # Flatpak org.gnome.Calendar installed on desktop only
+    pkgs.snapshot          # GNOME Camera — Flatpak org.gnome.Snapshot installed on desktop only
+    pkgs.papers            # winnow 0.7.x fails with rustc 1.91.1; desktop gets Papers via Flatpak
   ];
 
   # ── GNOME tooling & Shell extensions ─────────────────────────────────────
   # Common extensions only — gamemode-shell-extension is added by
   # modules/gnome-desktop.nix (it is the only role that enables it).
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = [
     # GNOME tooling
-    unstable.gnome-tweaks                               # GNOME customisation GUI
-    unstable.dconf-editor                               # Low-level GNOME settings editor
-    unstable.gnome-extension-manager                    # Install/manage GNOME Shell extensions
+    pkgs.unstable.gnome-tweaks                               # GNOME customisation GUI
+    pkgs.unstable.dconf-editor                               # Low-level GNOME settings editor
+    pkgs.unstable.gnome-extension-manager                    # Install/manage GNOME Shell extensions
 
     # Cursor and icon theme packages — must be in system packages so the
     # system dconf profile (programs.dconf.profiles.user.databases) can
     # reference them before home-manager activation completes.
-    bibata-cursors
-    kora-icon-theme
+    pkgs.bibata-cursors
+    pkgs.kora-icon-theme
 
     # GNOME Shell extensions
-    unstable.gnomeExtensions.appindicator               # System tray icons
-    unstable.gnomeExtensions.dash-to-dock               # macOS-style dock
-    unstable.gnomeExtensions.alphabetical-app-grid      # Sort app grid alphabetically
-    unstable.gnomeExtensions.gnome-40-ui-improvements   # UI tweaks
-    unstable.gnomeExtensions.nothing-to-say             # Mic mute indicator
-    unstable.gnomeExtensions.steal-my-focus-window      # Force window focus
-    unstable.gnomeExtensions.tailscale-status           # Tailscale tray indicator
-    unstable.gnomeExtensions.caffeine                   # Prevent screen sleep
-    unstable.gnomeExtensions.restart-to                 # Restart-to menu entry
-    unstable.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
-    unstable.gnomeExtensions.background-logo            # Desktop background logo
-    unstable.gnomeExtensions.tiling-assistant           # Half- and quarter-tiling support
+    pkgs.unstable.gnomeExtensions.appindicator               # System tray icons
+    pkgs.unstable.gnomeExtensions.dash-to-dock               # macOS-style dock
+    pkgs.unstable.gnomeExtensions.alphabetical-app-grid      # Sort app grid alphabetically
+    pkgs.unstable.gnomeExtensions.gnome-40-ui-improvements   # UI tweaks
+    pkgs.unstable.gnomeExtensions.nothing-to-say             # Mic mute indicator
+    pkgs.unstable.gnomeExtensions.steal-my-focus-window      # Force window focus
+    pkgs.unstable.gnomeExtensions.tailscale-status           # Tailscale tray indicator
+    pkgs.unstable.gnomeExtensions.caffeine                   # Prevent screen sleep
+    pkgs.unstable.gnomeExtensions.restart-to                 # Restart-to menu entry
+    pkgs.unstable.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
+    pkgs.unstable.gnomeExtensions.background-logo            # Desktop background logo
+    pkgs.unstable.gnomeExtensions.tiling-assistant           # Half- and quarter-tiling support
   ];
 
   # ── Fonts ─────────────────────────────────────────────────────────────────
   fonts = {
     enableDefaultPackages = true;
-    packages = with pkgs; [
-      noto-fonts
-      noto-fonts-cjk-sans
-      noto-fonts-color-emoji  # renamed from noto-fonts-emoji
-      liberation_ttf
-      fira-code
-      fira-code-symbols
+    packages = [
+      pkgs.noto-fonts
+      pkgs.noto-fonts-cjk-sans
+      pkgs.noto-fonts-color-emoji  # renamed from noto-fonts-emoji
+      pkgs.liberation_ttf
+      pkgs.fira-code
+      pkgs.fira-code-symbols
       pkgs.nerd-fonts.fira-code
       pkgs.nerd-fonts.jetbrains-mono
     ];

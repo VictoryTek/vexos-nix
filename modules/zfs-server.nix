@@ -55,20 +55,26 @@
   ];
 
   # ── networking.hostId ────────────────────────────────────────────────────
-  # ZFS REQUIRES a stable 8-hex-digit hostId. Without it, pools may refuse to
-  # auto-import on boot. We derive it deterministically from /etc/machine-id
-  # via an activation script so each host gets a unique, reproducible value
-  # without committing per-host secrets to the flake.
+  # ZFS REQUIRES a stable, unique 8-hex-digit hostId per machine.
+  # Do NOT read /etc/machine-id at eval time — that file belongs to the machine
+  # running `nixos-rebuild`, not the target host.  When building a server
+  # closure on a workstation every server would inherit the workstation's
+  # hostId, causing ZFS to refuse pool import on next boot.
   #
-  # If the user has already set networking.hostId in their host file (under
-  # hosts/<role>-<gpu>.nix) or in /etc/nixos/hardware-configuration.nix,
-  # that value wins (lib.mkDefault).
-  networking.hostId = lib.mkDefault (
-    let
-      machineIdFile = "/etc/machine-id";
-    in
-      if builtins.pathExists machineIdFile
-      then builtins.substring 0 8 (builtins.readFile machineIdFile)
-      else "00000000"   # placeholder; first build on a fresh host will recompute
-  );
+  # Set networking.hostId explicitly in hosts/<role>-<gpu>.nix, e.g.:
+  #   networking.hostId = "deadbeef";
+  # Generate a value with:  head -c 8 /etc/machine-id
+  networking.hostId = lib.mkDefault "00000000";
+
+  assertions = [
+    {
+      assertion = config.networking.hostId != "00000000";
+      message = ''
+        ZFS requires a unique networking.hostId per machine.
+        Set it in hosts/<role>-<gpu>.nix or hardware-configuration.nix:
+          networking.hostId = "deadbeef";   # replace with real value
+        Generate with: head -c 8 /etc/machine-id
+      '';
+    }
+  ];
 }

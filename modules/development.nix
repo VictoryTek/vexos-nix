@@ -11,47 +11,47 @@
     defaultNetwork.settings.dns_enabled = true;
   };
 
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = [
 
     # ── Editor ────────────────────────────────────────────────────────────────
-    unstable.vscode-fhs                           # VS Code in FHS env (fixes launch on NixOS)
+    pkgs.unstable.vscode-fhs                      # VS Code in FHS env (fixes launch on NixOS)
 
     # ── Python ────────────────────────────────────────────────────────────────
-    python3                                       # CPython interpreter
-    uv                                            # Fast Python package & project manager
-    ruff                                          # Python linter & formatter
+    pkgs.python3                                  # CPython interpreter
+    pkgs.uv                                       # Fast Python package & project manager
+    pkgs.ruff                                     # Python linter & formatter
 
     # ── TypeScript / Node ─────────────────────────────────────────────────────
-    nodePackages.typescript                       # TypeScript compiler (tsc)
-    pnpm                                          # Fast, disk-efficient Node package manager
-    bun                                           # All-in-one JS/TS runtime & bundler
+    pkgs.nodePackages.typescript                  # TypeScript compiler (tsc)
+    pkgs.pnpm                                     # Fast, disk-efficient Node package manager
+    pkgs.bun                                      # All-in-one JS/TS runtime & bundler
 
     # ── Containers ────────────────────────────────────────────────────────────
-    podman-compose                                # docker-compose compatible CLI for Podman
-    buildah                                       # OCI image builder (rootless)
-    skopeo                                        # Container image inspection & transfer
+    pkgs.podman-compose                           # docker-compose compatible CLI for Podman
+    pkgs.buildah                                  # OCI image builder (rootless)
+    pkgs.skopeo                                   # Container image inspection & transfer
 
     # ── Flatpak development ───────────────────────────────────────────────────
-    flatpak-builder                               # Build Flatpak application bundles
+    pkgs.flatpak-builder                          # Build Flatpak application bundles
 
     # ── General dev utilities ─────────────────────────────────────────────────
-    gh                                            # GitHub CLI
-    git-lfs                                       # Git Large File Storage
-    jq                                            # JSON processor / pretty-printer
-    yq-go                                         # YAML / TOML / XML processor
-    pre-commit                                    # Git hook framework
-    sqlite                                        # Embedded SQL database + CLI
-    httpie                                        # Human-friendly HTTP client
-    mkcert                                        # Locally-trusted dev TLS certificates
-    gcc                                           # C/C++ compiler (for native modules, etc.)
+    pkgs.gh                                       # GitHub CLI
+    pkgs.git-lfs                                  # Git Large File Storage
+    pkgs.jq                                       # JSON processor / pretty-printer
+    pkgs.yq-go                                    # YAML / TOML / XML processor
+    pkgs.pre-commit                               # Git hook framework
+    pkgs.sqlite                                   # Embedded SQL database + CLI
+    pkgs.httpie                                   # Human-friendly HTTP client
+    pkgs.mkcert                                   # Locally-trusted dev TLS certificates
+    pkgs.gcc                                      # C/C++ compiler (for native modules, etc.)
 
     # ── Nix tooling ───────────────────────────────────────────────────────────
-    nil                                           # Nix LSP server
-    nixpkgs-fmt                                   # Nix code formatter
-    nix-output-monitor                            # Enhanced nix build output (nom)
+    pkgs.nil                                      # Nix LSP server
+    pkgs.nixpkgs-fmt                              # Nix code formatter
+    pkgs.nix-output-monitor                       # Enhanced nix build output (nom)
 
     # ── Go ────────────────────────────────────────────────────────────────────
-    go                                            # Go programming language
+    pkgs.go                                       # Go programming language
 
   ];
 }
