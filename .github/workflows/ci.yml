@@ -40,13 +40,26 @@ jobs:
           fi
           echo "PASS: hardware-configuration.nix is not tracked"
 
-      - name: Verify system.stateVersion present in configuration-desktop.nix
+      - name: Verify system.stateVersion present in all configuration files
         run: |
-          if ! grep -q 'system\.stateVersion' configuration-desktop.nix; then
-            echo "FAIL: system.stateVersion missing from configuration-desktop.nix"
+          failed=()
+          for cfg in \
+            configuration-desktop.nix \
+            configuration-htpc.nix \
+            configuration-server.nix \
+            configuration-headless-server.nix \
+            configuration-stateless.nix \
+            configuration-vanilla.nix; do
+            if ! grep -q 'system\.stateVersion' "$cfg"; then
+              echo "FAIL: system.stateVersion missing from $cfg"
+              failed+=("$cfg")
+            else
+              echo "PASS: system.stateVersion present in $cfg"
+            fi
+          done
+          if [ ${#failed[@]} -gt 0 ]; then
             exit 1
           fi
-          echo "PASS: system.stateVersion is present"
 
   # ── Parallel config evaluation (4 groups × ~5 min each) ────────────────────
   # Each group runs on its own runner in parallel instead of all 22 configs
@@ -98,6 +111,12 @@ jobs:
               vexos-htpc-nvidia-legacy470
               vexos-htpc-intel
               vexos-htpc-vm
+          - group: vanilla
+            configs: >-
+              vexos-vanilla-amd
+              vexos-vanilla-nvidia
+              vexos-vanilla-intel
+              vexos-vanilla-vm
     steps:
       - name: Free disk space
         run: |
