@@ -61,7 +61,7 @@ networking.interfaces.${cfg.bridgeInterface}.useDHCP = false;
 networking.interfaces.vmbr0.useDHCP = true;
 ```
 
-### [BUG] `nixpkgs-unstable` input lacks `inputs.nixpkgs.follows = "nixpkgs"` — but that is intentional; unrelated inputs do not declare the same
+### [BUG] `nixpkgs-unstable` input lacks `inputs.nixpkgs.follows = "nixpkgs"` — ⚠️ N/A (intentional; documented known cost)
 **File:** [flake.nix](flake.nix#L5-L36)
 **Why:** The comment explicitly justifies *not* pinning `nixpkgs-unstable.follows`. Correct. However, `proxmox-nixos` and `up` both bring in their own transitive `nixpkgs-stable` / `nixpkgs` graphs that are not deduplicated. `up` already sets `inputs.nixpkgs.follows = "nixpkgs"` (good). `proxmox-nixos` is intentionally *not* followed (the comment explains why). That is a defensible choice but it doubles your closure size and slows `nix flake check` — call out as a known cost rather than a bug. **No code change** unless evaluation/cache size becomes a problem.
 
@@ -120,7 +120,7 @@ system.nixos.label = lib.mkDefault "25.11";
 services.xserver.enable = lib.mkDefault true;
 ```
 
-### [INCONSISTENCY] Gaming role missing systemd-oomd / earlyoom for OOM responsiveness
+### [INCONSISTENCY] Gaming role missing systemd-oomd / earlyoom for OOM responsiveness — ✅ FIXED
 **File:** [configuration-desktop.nix](configuration-desktop.nix#L1-L48), [modules/system.nix](modules/system.nix#L66-L74), [modules/system-gaming.nix](modules/system-gaming.nix#L1-L46)
 **Why:** ZRAM is enabled and `vm.swappiness = 10`, which means the kernel will hit hard memory pressure with a still-mostly-empty swap. On Bazzite-equivalent gaming systems systemd-oomd is enabled to kill the offending game/Electron app instead of letting the desktop freeze. Missing here.
 **Fix:**

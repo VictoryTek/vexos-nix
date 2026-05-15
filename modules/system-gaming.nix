@@ -43,4 +43,10 @@
     enable    = true;
     scheduler = "scx_lavd";
   };
+
+  # Enable oomd monitoring on user and root slices
+  systemd.oomd = {
+    enableRootSlice  = true;
+    enableUserSlices = true;
+  };
 }
