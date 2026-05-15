@@ -70,7 +70,7 @@
   ];
 
   # ── GNOME desktop ─────────────────────────────────────────────────────────
-  services.xserver.enable = true;
+  services.xserver.enable = lib.mkDefault true;
   services.xserver.excludePackages = lib.mkDefault [ pkgs.xterm ];
   services.desktopManager.gnome.enable = true;
 

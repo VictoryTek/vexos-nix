@@ -46,7 +46,7 @@ gpuNvidiaHeadless = { ... }: { imports = [ ./modules/gpu/nvidia-headless.nix ]; 
 gpuIntelHeadless  = { ... }: { imports = [ ./modules/gpu/intel-headless.nix ]; };
 ```
 
-### [BUG] Proxmox bridge has no working DHCP client
+### [BUG] Proxmox bridge has no working DHCP client — ✅ FIXED
 **File:** [modules/server/proxmox.nix](modules/server/proxmox.nix#L73-L82) interacting with [modules/network.nix](modules/network.nix#L31-L32)
 **Why:** `network.nix` does `networking.dhcpcd.enable = lib.mkForce false`, and the proxmox module marks both the physical NIC and `vmbr0` as `networking.networkmanager.unmanaged`. `networking.interfaces.vmbr0.useDHCP = lib.mkDefault true` is a *scripted-networking* directive — it activates dhcpcd, which is forced off. Result: vmbr0 comes up with no IP, the host loses network on activation, and Proxmox's web UI is unreachable.
 **Fix:** Re-enable dhcpcd scoped to vmbr0, or switch to `systemd-networkd`, or hand the bridge to NetworkManager via an `ensureProfiles` keyfile profile.
@@ -112,7 +112,7 @@ system.nixos.label = lib.mkDefault "25.11";
 
 ## 2. Inconsistencies Between Variants
 
-### [INCONSISTENCY] `gnome.nix` `services.xserver.enable = true` is a plain assignment
+### [INCONSISTENCY] `gnome.nix` `services.xserver.enable = true` is a plain assignment — ✅ FIXED
 **File:** [modules/gnome.nix](modules/gnome.nix#L74)
 **Why:** `services.xserver.enable = true;` is plain priority. `configuration-headless-server.nix` correctly forces it off with `lib.mkForce false`, but every display role pays for the X11 server even though all sessions run Wayland. Should be `lib.mkDefault true` so VM headless variants and future Wayland-only roles can disable it without `mkForce`.
 **Fix:**
