@@ -72,10 +72,10 @@
     wantedBy = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" ];
     serviceConfig = {
       Type = "oneshot";
-      User = "nimda";
+      User = config.vexos.user.name;
       Environment = [
-        "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus"
-        "HOME=/home/nimda"
+        "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${toString config.users.users.${config.vexos.user.name}.uid}/bus"
+        "HOME=/home/${config.vexos.user.name}"
       ];
       # Toggle picture-options to force a background repaint, then restore.
       ExecStart = pkgs.writeShellScript "gnome-bg-reload" ''

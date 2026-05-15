@@ -36,6 +36,6 @@ in
       openFirewall = true; # Port 9696
     };
 
-    users.users.nimda.extraGroups = [ "sabnzbd" "sonarr" "radarr" "lidarr" ];
+    users.users.${config.vexos.user.name}.extraGroups = [ "sabnzbd" "sonarr" "radarr" "lidarr" ];
   };
 }

@@ -34,7 +34,7 @@
   # /etc/shadow and writes it to that override file so the original password
   # carries forward.  stateless-setup.sh prompts for one.  "vexos" is only
   # seen on a completely unconfigured first run where neither script ran.
-  users.users.nimda.initialPassword = "vexos";
+  users.users.${config.vexos.user.name}.initialPassword = "vexos";
 
   # ---------- Impermanence ----------
   # Enable tmpfs-rooted ephemeral filesystem for the stateless role.

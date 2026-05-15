@@ -274,15 +274,15 @@ home.activation.cleanupPhotogimpOrphans =
   '';
 ```
 
-### [DEAD CODE] `services.scrutiny.collector.enable = true` without device selection
+### [DEAD CODE] `services.scrutiny.collector.enable = true` without device selection — ⚠️ N/A (acceptable; trivial wrapper, low-value fix)
 **File:** [modules/server/scrutiny.nix](modules/server/scrutiny.nix#L15-L25)
 **Why:** Scrutiny's collector with no `devices` list defaults to "all", which is fine, but this is the entire module's config. The `port` option exists but `services.scrutiny.openFirewall = true` already handles the firewall — the manually-added `cfg.port` in `settings.web.listen.port` is the only customisation. Acceptable, but flag the trivial wrapper as low-value.
 
-### [DEAD CODE] `gnome.nix` excludePackages has duplicate intent with `gnome-htpc/server/stateless` Flatpak install services
+### [DEAD CODE] `gnome.nix` excludePackages has duplicate intent with `gnome-htpc/server/stateless` Flatpak install services — ⚠️ N/A (intentional double-handling; worth a comment but no code change)
 **File:** [modules/gnome.nix](modules/gnome.nix#L168-L186)
 **Why:** Both `papers` and `gnome-calculator/calendar/snapshot` are in `excludePackages` (system-wide) AND the per-role Flatpak migration scripts uninstall them. The double-handling is intentional but worth documenting in the module header.
 
-### [DEAD CODE] `systemd.suppressedSystemUnits` in `system-nosleep.nix` includes `hybrid-sleep.target` which is already a dependency of `suspend.target`
+### [DEAD CODE] `systemd.suppressedSystemUnits` in `system-nosleep.nix` includes `hybrid-sleep.target` which is already a dependency of `suspend.target` — ⚠️ N/A (defensive suppression; not strictly dead, no fix needed)
 **File:** [modules/system-nosleep.nix](modules/system-nosleep.nix#L8-L14)
 **Why:** Not strictly dead — it's defensive. Acceptable, no fix needed.
 
@@ -290,7 +290,7 @@ home.activation.cleanupPhotogimpOrphans =
 
 ## 4. Code Quality & Structure
 
-### [QUALITY] Hardcoded primary username `nimda` in many modules
+### [QUALITY] Hardcoded primary username `nimda` in many modules — ✅ FIXED
 **File:** [modules/users.nix](modules/users.nix#L7-L14), [modules/audio.nix](modules/audio.nix#L48), [modules/gaming.nix](modules/gaming.nix#L102), [modules/virtualization.nix](modules/virtualization.nix#L26), [modules/razer.nix](modules/razer.nix#L13), [modules/server/jellyfin.nix](modules/server/jellyfin.nix#L20), [modules/server/syncthing.nix](modules/server/syncthing.nix#L15), [modules/server/docker.nix](modules/server/docker.nix#L20), [modules/server/komga.nix](modules/server/komga.nix#L18), [modules/server/arr.nix](modules/server/arr.nix#L36), [modules/server/plex.nix](modules/server/plex.nix#L36), [modules/server/jellyfin.nix](modules/server/jellyfin.nix#L20), [modules/system-nosleep.nix](modules/system-nosleep.nix#L74-L78)
 **Why:** Ten-plus modules contain literal `"nimda"`. Renaming the user (or sharing the flake with another operator) requires a project-wide grep. Promote to a single option.
 **Fix:** Add a project-wide option in `users.nix`:

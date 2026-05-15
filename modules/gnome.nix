@@ -162,7 +162,7 @@
   # ── Auto-login ────────────────────────────────────────────────────────────
   services.displayManager.autoLogin = {
     enable = true;
-    user   = "nimda";
+    user   = config.vexos.user.name;
   };
 
   # ── XDG Desktop Portal ────────────────────────────────────────────────────

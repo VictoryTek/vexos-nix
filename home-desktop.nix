@@ -2,7 +2,7 @@
 # Home Manager configuration for user "nimda".
 # Manages user-level packages, shell, GNOME dconf settings, GTK theming, and cursors.
 # Consumed by the homeManagerModule in flake.nix via home-manager.users.nimda.
-{ config, pkgs, lib, inputs, ... }:
+{ config, pkgs, lib, inputs, osConfig, ... }:
 {
   imports = [
     ./home/bash-common.nix
@@ -12,8 +12,8 @@
 
   photogimp.enable = true;
 
-  home.username    = "nimda";
-  home.homeDirectory = "/home/nimda";
+  home.username    = osConfig.vexos.user.name;
+  home.homeDirectory = "/home/${osConfig.vexos.user.name}";
 
   # ── User packages ──────────────────────────────────────────────────────────
   home.packages = with pkgs; [

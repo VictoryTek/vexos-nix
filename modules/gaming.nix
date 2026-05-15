@@ -100,5 +100,5 @@
   '';
 
   # Grant nimda access to GameMode CPU governor, input devices, and USB peripherals.
-  users.users.nimda.extraGroups = [ "gamemode" "input" "plugdev" ];
+  users.users.${config.vexos.user.name}.extraGroups = [ "gamemode" "input" "plugdev" ];
 }

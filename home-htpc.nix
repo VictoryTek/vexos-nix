@@ -1,12 +1,12 @@
 # home-htpc.nix
 # Home Manager configuration for user "nimda" — HTPC role.
 # Manages HTPC-specific wallpapers, GNOME dconf wallpaper settings, and media-centre defaults.
-{ config, pkgs, lib, inputs, ... }:
+{ config, pkgs, lib, inputs, osConfig, ... }:
 {
   imports = [ ./home/bash-common.nix ./home/gnome-common.nix ];
 
-  home.username    = "nimda";
-  home.homeDirectory = "/home/nimda";
+  home.username    = osConfig.vexos.user.name;
+  home.homeDirectory = "/home/${osConfig.vexos.user.name}";
 
   # ── Starship prompt ────────────────────────────────────────────────────────
   programs.starship = {

@@ -17,6 +17,6 @@ in
       openFirewall = true;
     };
 
-    users.users.nimda.extraGroups = [ "komga" ];
+    users.users.${config.vexos.user.name}.extraGroups = [ "komga" ];
   };
 }

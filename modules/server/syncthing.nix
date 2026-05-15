@@ -12,9 +12,9 @@ in
   config = lib.mkIf cfg.enable {
     services.syncthing = {
       enable = true;
-      user = "nimda";
-      dataDir = "/home/nimda";
-      configDir = "/home/nimda/.config/syncthing";
+      user = config.vexos.user.name;
+      dataDir = "/home/${config.vexos.user.name}";
+      configDir = "/home/${config.vexos.user.name}/.config/syncthing";
       openDefaultPorts = true;
       guiAddress = "0.0.0.0:8384";
     };

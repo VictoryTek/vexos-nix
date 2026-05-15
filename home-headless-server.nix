@@ -2,12 +2,12 @@
 # Home Manager configuration for user "nimda" — Headless Server role.
 # Shell environment and sysadmin utilities only.
 # No GNOME, no Wayland, no GUI apps — accessed exclusively via SSH.
-{ config, pkgs, lib, inputs, ... }:
+{ config, pkgs, lib, inputs, osConfig, ... }:
 {
   imports = [ ./home/bash-common.nix ];
 
-  home.username    = "nimda";
-  home.homeDirectory = "/home/nimda";
+  home.username    = osConfig.vexos.user.name;
+  home.homeDirectory = "/home/${osConfig.vexos.user.name}";
 
   # ── User packages ──────────────────────────────────────────────────────────
   home.packages = with pkgs; [

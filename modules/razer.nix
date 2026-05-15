@@ -9,7 +9,7 @@
 {
   hardware.openrazer = {
     enable = true;
-    users                   = [ "nimda" ];
+    users                   = [ config.vexos.user.name ];
     syncEffectsEnabled      = true;
     devicesOffOnScreensaver = true;
   };

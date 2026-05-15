@@ -2,12 +2,12 @@
 # Home Manager configuration for user "nimda" — GUI Server role.
 # Shell environment, theming, and GNOME settings for a server with a GNOME desktop.
 # No gaming, no dev-language tooling. Focus: sysadmin utilities and remote management.
-{ config, pkgs, lib, inputs, ... }:
+{ config, pkgs, lib, inputs, osConfig, ... }:
 {
   imports = [ ./home/bash-common.nix ./home/gnome-common.nix ];
 
-  home.username    = "nimda";
-  home.homeDirectory = "/home/nimda";
+  home.username    = osConfig.vexos.user.name;
+  home.homeDirectory = "/home/${osConfig.vexos.user.name}";
 
   # ── User packages ──────────────────────────────────────────────────────────
   home.packages = with pkgs; [

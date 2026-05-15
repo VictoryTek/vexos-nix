@@ -125,13 +125,13 @@
 
     # Home Manager wiring shared by every role. The only thing that varies
     # between roles is which home-*.nix file feeds users.nimda.
-    mkHomeManagerModule = homeFile: {
+    mkHomeManagerModule = homeFile: { config, ... }: {
       imports = [ home-manager.nixosModules.home-manager ];
       home-manager = {
         useGlobalPkgs    = true;  # share nixpkgs instance (+ overlays) with the system
         useUserPackages  = true;  # install user packages into /etc/profiles instead of ~/.nix-profile
         extraSpecialArgs = { inherit inputs; };
-        users.nimda      = import homeFile;
+        users.${config.vexos.user.name} = import homeFile;
         # Prevents activation abort when managed files (e.g. ~/.bashrc) already
         # exist as regular files on the host. Conflicting files are renamed to
         # *.backup instead of causing checkLinkTargets to exit non-zero.
@@ -236,7 +236,7 @@
     #   • does NOT import /etc/nixos/hardware-configuration.nix — that's already
     #     handled by the consumer flake.
     #   • headless-server omits the `up` GUI app from environment.systemPackages.
-    mkBaseModule = role: configFile: { ... }: {
+    mkBaseModule = role: configFile: { config, ... }: {
       imports =
         [ home-manager.nixosModules.home-manager configFile ]
         ++ roles.${role}.extraModules
@@ -246,7 +246,7 @@
         useGlobalPkgs    = true;
         useUserPackages  = true;
         extraSpecialArgs = { inherit inputs; };
-        users.nimda      = import roles.${role}.homeFile;
+        users.${config.vexos.user.name} = import roles.${role}.homeFile;
         # Drift fix: previously absent on `nixosModules.base` only. This is an
         # additive default — consumers of these *Base modules don't override it.
         backupFileExtension = "backup";

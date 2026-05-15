@@ -129,7 +129,7 @@
     };
   };
 
-  users.users.nimda.openssh.authorizedKeys.keyFiles =
+  users.users.${config.vexos.user.name}.openssh.authorizedKeys.keyFiles =
     lib.optional (builtins.pathExists ../authorized_keys) ../authorized_keys;
 
   networking.firewall.allowedTCPPorts = [ 22 ];

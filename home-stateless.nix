@@ -1,15 +1,15 @@
 # home-stateless.nix
 # Home Manager configuration for user "nimda" — Stateless role.
 # Same as desktop minus gaming app folders and dev-only packages (no development.nix on stateless).
-{ config, pkgs, lib, inputs, ... }:
+{ config, pkgs, lib, inputs, osConfig, ... }:
 {
   imports = [
     ./home/bash-common.nix
     ./home/gnome-common.nix
   ];
 
-  home.username    = "nimda";
-  home.homeDirectory = "/home/nimda";
+  home.username    = osConfig.vexos.user.name;
+  home.homeDirectory = "/home/${osConfig.vexos.user.name}";
 
   # ── User packages ──────────────────────────────────────────────────────────
   home.packages = with pkgs; [
@@ -75,7 +75,7 @@
   # photogimp.nix which only removes real files).
   home.activation.cleanupPhotogimpOrphans =
     lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-      STAMP="/persistent/home/nimda/.local/share/vexos/.stateless-photogimp-cleanup-done"
+      STAMP="/persistent/home/${osConfig.vexos.user.name}/.local/share/vexos/.stateless-photogimp-cleanup-done"
       if [ -f "$STAMP" ]; then
         $VERBOSE_ECHO "Stateless: PhotoGIMP orphan cleanup already done, skipping"
       else
@@ -113,7 +113,7 @@
           $DRY_RUN_CMD ${pkgs.gtk3}/bin/gtk-update-icon-cache -f -t "$ICON_DIR"
         fi
 
-        $DRY_RUN_CMD mkdir -p "/persistent/home/nimda/.local/share/vexos"
+        $DRY_RUN_CMD mkdir -p "/persistent/home/${osConfig.vexos.user.name}/.local/share/vexos"
         $DRY_RUN_CMD touch "$STAMP"
       fi
     '';

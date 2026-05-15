@@ -18,7 +18,7 @@ in
       };
     };
 
-    users.users.nimda.extraGroups = [ "docker" ];
+    users.users.${config.vexos.user.name}.extraGroups = [ "docker" ];
 
     environment.systemPackages = with pkgs; [
       docker-compose

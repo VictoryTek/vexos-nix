@@ -3,7 +3,7 @@
 # - libvirtd + QEMU/KVM as the primary hypervisor (GNOME Boxes & virt-manager)
 # - VirtualBox disabled: kernel 7.0 moved KVM symbols to a restricted namespace
 #   that VirtualBox ≤7.2.6 cannot import. Re-enable when upstream fixes this.
-{ pkgs, ... }:
+{ pkgs, config, ... }:
 {
   # ── libvirt / KVM (backend for GNOME Boxes) ───────────────────────────────
   virtualisation.libvirtd = {
@@ -24,5 +24,5 @@
 
   # ── User groups ───────────────────────────────────────────────────────────
   # libvirtd  — manage GNOME Boxes VMs without sudo
-  users.users.nimda.extraGroups = [ "libvirtd" ];
+  users.users.${config.vexos.user.name}.extraGroups = [ "libvirtd" ];
 }

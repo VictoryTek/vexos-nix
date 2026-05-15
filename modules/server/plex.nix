@@ -31,7 +31,7 @@ in
       accelerationDevices = lib.mkIf cfg.plexPass [ "*" ];
     };
 
-    users.users.nimda.extraGroups = [ "plex" ];
+    users.users.${config.vexos.user.name}.extraGroups = [ "plex" ];
 
     # Without Plex Pass, hardware transcoding is unused. The NixOS plex module
     # unconditionally adds /run/opengl-driver/lib to the service LD_LIBRARY_PATH,
