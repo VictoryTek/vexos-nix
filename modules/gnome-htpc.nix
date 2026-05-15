@@ -111,8 +111,6 @@ in
   ];
 
   # ── GNOME default app Flatpaks (htpc role) ────────────────────────────────
-  # Includes migration cleanup for both the desktop-only apps and Totem,
-  # which may have been installed under previous configurations.
   systemd.services.flatpak-install-gnome-apps = lib.mkIf config.services.flatpak.enable {
     description = "Install GNOME Flatpak apps (once)";
     wantedBy    = [ "multi-user.target" ];
@@ -128,20 +126,6 @@ in
       if [ "$AVAIL_MB" -lt 1536 ]; then
         echo "flatpak: only ''${AVAIL_MB} MB free — need 1536 MB; skipping this boot"
         exit 0
-      fi
-
-      # Migration: uninstall desktop-only apps from the htpc role.
-      for app in org.gnome.Calculator org.gnome.Calendar org.gnome.Papers org.gnome.Snapshot; do
-        if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
-          echo "flatpak: removing desktop-only app $app (role: htpc)"
-          flatpak uninstall --noninteractive --assumeyes "$app" || true
-        fi
-      done
-
-      # Migration: uninstall Totem on HTPC — mpv is the designated player.
-      if flatpak list --app --columns=application 2>/dev/null | grep -qx "org.gnome.Totem"; then
-        echo "flatpak: removing org.gnome.Totem (htpc role uses mpv)"
-        flatpak uninstall --noninteractive --assumeyes org.gnome.Totem || true
       fi
 
       flatpak install --noninteractive --assumeyes flathub \

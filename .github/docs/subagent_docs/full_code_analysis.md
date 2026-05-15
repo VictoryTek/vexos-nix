@@ -226,7 +226,7 @@ config = lib.mkIf config.vexos.hardware.asus.enable {
 
 ## 3. Dead & Stale Code
 
-### [DEAD CODE] Flatpak per-role migration cleanup blocks for apps no role installs anymore
+### [DEAD CODE] Flatpak per-role migration cleanup blocks for apps no role installs anymore — ✅ FIXED
 **File:** [modules/gnome-htpc.nix](modules/gnome-htpc.nix#L132-L143), [modules/gnome-server.nix](modules/gnome-server.nix#L132-L143), [modules/gnome-stateless.nix](modules/gnome-stateless.nix#L132-L143)
 **Why:** Each non-desktop role re-runs an `org.gnome.{Calculator,Calendar,Papers,Snapshot}` uninstall loop on every regeneration of the stamp. These were only ever installed on the desktop role; they are already excluded from the server/htpc/stateless `appsToInstall` lists. The block has done its work for any host that ever migrated; new installs run a no-op uninstall on apps that were never installed. Move to a documented one-shot or remove now that the project has stabilised.
 **Fix:** Delete the migration loop, or guard with a stamp file path that explicitly says "migration".
