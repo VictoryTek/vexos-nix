@@ -235,7 +235,7 @@ config = lib.mkIf config.vexos.hardware.asus.enable {
 # (keep only the Totem migration if still relevant)
 ```
 
-### [DEAD CODE] `gimp-hidden` writeText derivation in stateless config
+### [DEAD CODE] `gimp-hidden` writeText derivation in stateless config — ✅ FIXED
 **File:** [configuration-stateless.nix](configuration-stateless.nix#L51-L66)
 **Why:** GIMP is in `vexos.flatpak.excludeApps` and `home-stateless.nix` already declares `xdg.desktopEntries."org.gimp.GIMP".noDisplay = true`. The `gimp-hidden` system file is a third belt-and-suspenders layer; in practice the Home Manager entry runs at every activation and the Flatpak excludeApps loop uninstalls it. The system writeTextFile cannot in any reasonable order outrace Home Manager because both write into different XDG dirs (system share vs `~/.local/share`).
 **Fix:** Remove the `writeTextFile` block — keep the HM hide and the flatpak excludeApps:
