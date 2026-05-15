@@ -16,10 +16,9 @@ let
 
   # Map variant string to the correct driver package.
   driverPackage =
-    if variant == "latest"          then config.boot.kernelPackages.nvidiaPackages.stable
+    if      variant == "latest"     then config.boot.kernelPackages.nvidiaPackages.stable
     else if variant == "legacy_535" then config.boot.kernelPackages.nvidiaPackages.legacy_535
-    else if variant == "legacy_470" then config.boot.kernelPackages.nvidiaPackages.legacy_470
-    else abort "vexos.gpu.nvidiaDriverVariant: unknown value '${variant}'";  # legacy_390 (Fermi) is broken in nixpkgs
+    else                                 config.boot.kernelPackages.nvidiaPackages.legacy_470;
 
   # Open kernel modules require Turing (RTX 20xx / GTX 16xx) or newer.
   # All legacy variants must use proprietary closed modules.

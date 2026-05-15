@@ -244,7 +244,7 @@ config = lib.mkIf config.vexos.hardware.asus.enable {
 environment.systemPackages = [ pkgs.tor-browser ];
 ```
 
-### [DEAD CODE] `legacy_390 (Fermi) is broken` comments + abort branch
+### [DEAD CODE] `legacy_390 (Fermi) is broken` comments + abort branch — ✅ FIXED
 **File:** [modules/gpu/nvidia.nix](modules/gpu/nvidia.nix#L13-L31), [flake.nix](flake.nix#L173-L209)
 **Why:** Type is already `lib.types.enum [ "latest" "legacy_535" "legacy_470" ]` so the `else abort` branch is unreachable. Drop it.
 **Fix:**
