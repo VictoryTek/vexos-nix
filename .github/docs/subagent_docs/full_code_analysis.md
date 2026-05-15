@@ -145,7 +145,7 @@ systemd.oomd = {
 };
 ```
 
-### [INCONSISTENCY] Server / headless-server are missing `vexos.swap.enable = false` despite often running on ZFS
+### [INCONSISTENCY] Server / headless-server are missing `vexos.swap.enable = false` despite often running on ZFS — ✅ FIXED
 **File:** [configuration-server.nix](configuration-server.nix), [configuration-headless-server.nix](configuration-headless-server.nix), [modules/zfs-server.nix](modules/zfs-server.nix), [modules/system.nix](modules/system.nix#L107-L120)
 **Why:** ZFS strongly recommends *no* swap on the same pool; the default puts an 8 GiB swap file at `/var/lib/swapfile` which on a ZFS-rooted server can cause hangs (kernel writes to ZFS while ZFS is reclaiming → deadlock). Even on an ext4-rooted server with a ZFS data pool the swapfile path is fine, but the project does not declare an opinion. Add an explicit policy.
 **Fix:**

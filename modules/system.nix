@@ -25,7 +25,11 @@
       description = ''
         Enable an 8 GiB persistent swap file at /var/lib/swapfile.
         Provides true overflow capacity beyond RAM + ZRAM, and enables
-        system hibernate support. Set to false on VM guests.
+        system hibernate support.
+        Defaults to false on ZFS server roles (modules/zfs-server.nix) to
+        avoid the ZFS+swap kernel deadlock; false on VM guests (modules/gpu/vm.nix)
+        and stateless hosts (modules/impermanence.nix). All other roles default
+        to true.
       '';
     };
   };

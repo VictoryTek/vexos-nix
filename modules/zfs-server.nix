@@ -66,6 +66,21 @@
   # Generate a value with:  head -c 8 /etc/machine-id
   networking.hostId = lib.mkDefault "00000000";
 
+  # ── Swap policy: disable disk-backed swap on ZFS hosts ───────────────────
+  # Writing a swapfile to a ZFS dataset risks a kernel deadlock: the kernel's
+  # memory-reclaim path writes to swap (on ZFS), ZFS needs to shrink its ARC
+  # to service the write, but ARC shrink itself blocks on memory reclaim.
+  # See: https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Memory%20Management.html
+  #
+  # lib.mkDefault (priority 1000) is weaker than a plain assignment (priority 100),
+  # so a host operator can override this by setting:
+  #   vexos.swap.enable = true;   # in hosts/<role>-<gpu>.nix
+  # only if they have a confirmed non-ZFS swap partition or file.
+  #
+  # ZRAM swap (configured unconditionally in modules/system.nix) is unaffected
+  # and continues to provide fast in-RAM compressed swap on all server roles.
+  vexos.swap.enable = lib.mkDefault false;
+
   assertions = [
     {
       assertion = config.networking.hostId != "00000000";
