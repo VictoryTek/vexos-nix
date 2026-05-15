@@ -344,7 +344,7 @@
         imports = [ ./modules/gpu/vm.nix ];
         vexos.stateless.disk.device = lib.mkForce "/dev/vda";
       };
-      asus = ./modules/asus.nix;
+      asus = ./modules/asus-opt.nix;
     };
   };
 }

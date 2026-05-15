@@ -27,6 +27,7 @@
     ./modules/locale.nix
     ./modules/users.nix
     ./modules/razer.nix
+    ./modules/asus-opt.nix
   ];
 
   # ---------- Branding ----------

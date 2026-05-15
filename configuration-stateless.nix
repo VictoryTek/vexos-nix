@@ -21,6 +21,7 @@
     ./modules/nix-stateless.nix     # 7-day GC retention (state resets on reboot)
     ./modules/locale.nix
     ./modules/users.nix
+    ./modules/asus-opt.nix
   ];
 
   # ---------- Branding ----------

@@ -198,7 +198,7 @@ favorite-apps = [
 **Why:** `virtualisation.virtualbox.host.enable` is commented-out (kernel 7.0 compat issue) — the `virtualbox.desktop` launcher is therefore never installed, leaving a dead favourite slot in the dock.
 **Fix:** Remove `"virtualbox.desktop"` from the favourites list until VirtualBox is re-enabled.
 
-### [INCONSISTENCY] Server / HTPC host configs lose the `asus.nix` import compared to desktop
+### [INCONSISTENCY] Server / HTPC host configs lose the `asus.nix` import compared to desktop — ✅ FIXED
 **File:** [hosts/server-amd.nix](hosts/server-amd.nix), [hosts/htpc-amd.nix](hosts/htpc-amd.nix), [hosts/desktop-amd.nix](hosts/desktop-amd.nix#L4-L10)
 **Why:** The desktop `*-amd.nix` and `*-nvidia.nix` files import `../modules/asus.nix`. The same physical machine running the server or htpc role would lose ASUS fan curves, supergfxctl, asusd. There is no good reason to limit `asus.nix` to the desktop role; it is hardware-dependent, not role-dependent.
 **Fix:** Either move `asus.nix` into the role configs by hardware detection, or expose an option:

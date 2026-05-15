@@ -6,8 +6,8 @@
   imports = [
     ../configuration-desktop.nix
     ../modules/gpu/intel.nix
-    ../modules/asus.nix
   ];
 
+  vexos.hardware.asus.enable = true;
   system.nixos.distroName = "VexOS Desktop Intel";
 }

@@ -21,6 +21,7 @@
     ./modules/nix-desktop.nix       # 14-day GC retention (workstation standard)
     ./modules/locale.nix
     ./modules/users.nix
+    ./modules/asus-opt.nix
   ];
 
   # ---------- State version ----------

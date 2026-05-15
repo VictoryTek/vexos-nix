@@ -10,6 +10,7 @@
     ./modules/locale.nix
     ./modules/users.nix
     ./modules/nix.nix
+    ./modules/asus-opt.nix
   ];
 
   # ---------- Bootloader ----------

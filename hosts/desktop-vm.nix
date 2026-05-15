@@ -17,12 +17,12 @@
   imports = [
     ../configuration-desktop.nix
     ../modules/gpu/vm.nix
-    ../modules/asus.nix
   ];
 
   # vexos.btrfs.enable = false and vexos.swap.enable = false are set in
   # modules/gpu/vm.nix so they apply to both repo builds and the external
   # /etc/nixos/flake.nix template that consumes nixosModules.gpuVm.
 
+  # vexos.hardware.asus.enable = false; # VM — no physical ASUS hardware
   system.nixos.distroName = "VexOS Desktop VM";
 }
