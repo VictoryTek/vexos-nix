@@ -51,7 +51,6 @@ in
             "org.gnome.Nautilus.desktop"
             "io.github.up.desktop"
             "com.mitchellh.ghostty.desktop"
-            "system-update.desktop"
           ];
         };
 

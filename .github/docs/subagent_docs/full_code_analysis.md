@@ -178,7 +178,7 @@ home.packages = with pkgs; [
 ];
 ```
 
-### [INCONSISTENCY] `gnome-server.nix` favourite `system-update.desktop` only exists in HTPC
+### [INCONSISTENCY] `gnome-server.nix` favourite `system-update.desktop` only exists in HTPC — ✅ FIXED
 **File:** [modules/gnome-htpc.nix](modules/gnome-htpc.nix#L52-L60) — `system-update.desktop` is referenced in the htpc favourites but no module installs a `system-update.desktop` file. The `up` package ships `io.github.up.desktop` (which the htpc list also has). Stale leftover from an earlier name.
 **Fix:** Drop `system-update.desktop` from htpc favourites:
 ```nix
@@ -193,7 +193,7 @@ favorite-apps = [
 ];
 ```
 
-### [INCONSISTENCY] Desktop dock favourite `virtualbox.desktop` references a host package that is disabled
+### [INCONSISTENCY] Desktop dock favourite `virtualbox.desktop` references a host package that is disabled — ✅ FIXED
 **File:** [modules/gnome-desktop.nix](modules/gnome-desktop.nix#L66-L75), [modules/virtualization.nix](modules/virtualization.nix#L18-L24)
 **Why:** `virtualisation.virtualbox.host.enable` is commented-out (kernel 7.0 compat issue) — the `virtualbox.desktop` launcher is therefore never installed, leaving a dead favourite slot in the dock.
 **Fix:** Remove `"virtualbox.desktop"` from the favourites list until VirtualBox is re-enabled.

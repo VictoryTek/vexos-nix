@@ -68,7 +68,6 @@ in
             "com.mitchellh.ghostty.desktop"
             "io.github.up.desktop"
             "org.gnome.Boxes.desktop"
-            "virtualbox.desktop"
             "code.desktop"
           ];
         };
