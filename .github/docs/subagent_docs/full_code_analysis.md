@@ -154,7 +154,7 @@ systemd.oomd = {
 vexos.swap.enable = lib.mkDefault false;
 ```
 
-### [INCONSISTENCY] `home-htpc.nix` is missing `home.sessionVariables` for Wayland
+### [INCONSISTENCY] `home-htpc.nix` is missing `home.sessionVariables` for Wayland — ✅ FIXED
 **File:** [home-htpc.nix](home-htpc.nix) vs [home-desktop.nix](home-desktop.nix#L97-L105), [home-server.nix](home-server.nix#L86-L94), [home-stateless.nix](home-stateless.nix#L120-L128)
 **Why:** Every other graphical role exports `NIXOS_OZONE_WL`, `MOZ_ENABLE_WAYLAND`, `QT_QPA_PLATFORM`. HTPC users running Plex Desktop (Electron) or Brave will silently get the X11 backend.
 **Fix:**
@@ -167,7 +167,7 @@ home.sessionVariables = {
 };
 ```
 
-### [INCONSISTENCY] `home-htpc.nix` does not include user terminal utilities
+### [INCONSISTENCY] `home-htpc.nix` does not include user terminal utilities — ✅ FIXED
 **File:** [home-htpc.nix](home-htpc.nix#L1-L40) vs [home-desktop.nix](home-desktop.nix#L18-L40)
 **Why:** Desktop, server, stateless all install `tree, ripgrep, fd, bat, eza, fzf, wl-clipboard, fastfetch, ghostty`. HTPC home file installs *none*. Either intentional (the role is a "10-foot UI") — but the user still has shell access via a terminal app, and `ghostty` is even pinned as the favourite in `gnome-htpc.nix`. Either remove ghostty from the dock favourites or install it.
 **Fix:**

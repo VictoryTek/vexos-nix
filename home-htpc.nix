@@ -125,5 +125,32 @@
   # Deploy the repo's justfile to ~/justfile so 'just' works from home dir.
   home.file."justfile".source = ./justfile;
 
+  # ── Wayland session variables ─────────────────────────────────────────────
+  # NIXOS_OZONE_WL: enables Wayland for Electron-based apps (ghostty, Brave).
+  # MOZ_ENABLE_WAYLAND: forces Firefox/Zen to use the Wayland backend.
+  # QT_QPA_PLATFORM: ensures Qt apps prefer Wayland with XCB as fallback.
+  home.sessionVariables = {
+    NIXOS_OZONE_WL     = "1";
+    MOZ_ENABLE_WAYLAND = "1";
+    QT_QPA_PLATFORM    = "wayland;xcb";
+  };
+
+  # ── User packages ──────────────────────────────────────────────────────────
+  home.packages = with pkgs; [
+    ghostty
+
+    # Terminal utilities
+    tree
+    ripgrep
+    fd
+    bat
+    eza
+    fzf
+    wl-clipboard  # Wayland clipboard CLI (wl-copy / wl-paste)
+
+    # System utilities
+    fastfetch
+  ];
+
   home.stateVersion = "24.05";
 }
