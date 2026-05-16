@@ -21,6 +21,23 @@ in
     services.prometheus = {
       enable = true;
       port = cfg.port;
+
+      exporters.node = {
+        enable = true;
+        openFirewall = false;
+        port = 9100;
+      };
+
+      scrapeConfigs = [
+        {
+          job_name = "node";
+          static_configs = [
+            {
+              targets = [ "localhost:${toString config.services.prometheus.exporters.node.port}" ];
+            }
+          ];
+        }
+      ];
     };
 
     networking.firewall.allowedTCPPorts = [ cfg.port ];

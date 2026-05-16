@@ -469,7 +469,7 @@ config = lib.mkIf cfg.enable {
 ```
 **Resolution:** Added `vexos.server.jellyfin.hardwareAcceleration` (bool, default `true`) in `modules/server/jellyfin.nix`, and when enabled now injects `systemd.services.jellyfin.serviceConfig.SupplementaryGroups = [ "render" "video" ]` so Jellyfin can access GPU render/video devices for hardware transcoding. Added a documented toggle line in `template/server-services.nix` for discoverability.
 
-### [BUG] Grafana module ships no datasource auto-provisioning; Prometheus module ships no `scrape_configs`
+### ✅ FIXED — Grafana module ships no datasource auto-provisioning; Prometheus module ships no `scrape_configs`
 **File:** [modules/server/grafana.nix](modules/server/grafana.nix), [modules/server/prometheus.nix](modules/server/prometheus.nix)
 **Why:** Both can be turned on in `server-services.nix` and end up with Grafana with no datasources and Prometheus with no targets. The "monitoring stack" is functionally inert.
 **Fix:**
@@ -493,6 +493,7 @@ services.grafana.provision.datasources.settings.datasources =
     }
   ];
 ```
+**Resolution:** Implemented in `modules/server/prometheus.nix` by enabling Prometheus node exporter defaults and adding a localhost node exporter scrape target, and in `modules/server/grafana.nix` by conditionally auto-provisioning a Prometheus datasource when `vexos.server.prometheus.enable` is true.
 
 ### [BUG] Cockpit module enables sub-plugins via `default = cfg.enable;` — but the merge order is undefined
 **File:** [modules/server/cockpit.nix](modules/server/cockpit.nix#L34-L73)

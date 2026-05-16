@@ -25,6 +25,23 @@ in
         http_port = cfg.port;
         domain = "localhost";
       };
+    }
+    // lib.optionalAttrs config.vexos.server.prometheus.enable {
+      provision = {
+        enable = true;
+        datasources.settings = {
+          apiVersion = 1;
+          datasources = [
+            {
+              name = "Prometheus";
+              type = "prometheus";
+              access = "proxy";
+              url = "http://localhost:${toString config.vexos.server.prometheus.port}";
+              editable = false;
+            }
+          ];
+        };
+      };
     };
 
     networking.firewall.allowedTCPPorts = [ cfg.port ];
