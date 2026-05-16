@@ -9,8 +9,10 @@ final: prev: {
     cockpit-navigator    = final.callPackage ./cockpit-navigator { };
     cockpit-file-sharing = final.callPackage ./cockpit-file-sharing { };
     cockpit-identities   = final.callPackage ./cockpit-identities { };  # Phase D
-    # ── AI & Privacy ────────────────────────────────────────────────────────
-    kiji-proxy           = final.callPackage ./kiji-proxy { };
     portbook             = final.callPackage ./portbook { };
+    # ── Packages requiring manual setup before use ───────────────────────────
+    optional = {
+      kiji-proxy         = final.callPackage ./kiji-proxy { };
+    };
   };
 }

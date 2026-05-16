@@ -59,9 +59,9 @@ in
         Type            = "simple";
         User            = "kiji-proxy";
         Group           = "kiji-proxy";
-        ExecStart       = "${pkgs.vexos.kiji-proxy}/bin/kiji-proxy";
+        ExecStart       = "${pkgs.vexos.optional.kiji-proxy}/bin/kiji-proxy";
         Environment     = [
-          "LD_LIBRARY_PATH=${pkgs.vexos.kiji-proxy}/lib"
+          "LD_LIBRARY_PATH=${pkgs.vexos.optional.kiji-proxy}/lib"
           "PROXY_PORT=:${toString cfg.port}"
         ];
         Restart         = "on-failure";

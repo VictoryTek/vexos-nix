@@ -400,10 +400,10 @@ boot.tmp.useTmpfs = lib.mkDefault true;
 boot.tmp.tmpfsSize = "50%";
 ```
 
-### [QUALITY] `services.openssh.settings.PermitRootLogin = "no";` is the only SSH hardening
+### [QUALITY] `services.openssh.settings.PermitRootLogin = "no";` is the only SSH hardening — ✅ FIXED (via Section 6)
 **File:** [modules/network.nix](modules/network.nix#L107-L116) — see Section 6 for full fix.
 
-### [QUALITY] `pkgs/kiji-proxy/default.nix` ships `lib.fakeHash`
+### [QUALITY] `pkgs/kiji-proxy/default.nix` ships `lib.fakeHash` — ✅ FIXED
 **File:** [pkgs/kiji-proxy/default.nix](pkgs/kiji-proxy/default.nix#L19)
 **Why:** The package is intentionally broken until `just enable kiji-proxy` substitutes a real hash. That makes `nix flake check` fail when it tries to evaluate `pkgs.vexos.kiji-proxy`. Verify whether the preflight excludes it; if not, it is a CI footgun.
 **Fix:** Either guard the overlay so kiji-proxy is omitted unless `vexos.server.kiji-proxy.enable = true`, or pin a real hash and remove the `just enable` mutation step.
