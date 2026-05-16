@@ -4,23 +4,6 @@
 # (TextEditor, Loupe, Calculator, Calendar, Papers, Snapshot). mpv is the
 # video player (nixpkgs, via packages-desktop.nix).
 { config, pkgs, lib, ... }:
-let
-  # Common shell extensions enabled on every role.
-  commonExtensions = [
-    "appindicatorsupport@rgcjonas.gmail.com"
-    "dash-to-dock@micxgx.gmail.com"
-    "AlphabeticalAppGrid@stuarthayhurst"
-    "gnome-ui-tune@itstime.tech"
-    "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
-    "steal-my-focus-window@steal-my-focus-window"
-    "tailscale-status@maxgallup.github.com"
-    "caffeine@patapon.info"
-    "restartto@tiagoporsch.github.io"
-    "blur-my-shell@aunetx"
-    "background-logo@fedorahosted.org"
-    "tiling-assistant@leleat-on-github"
-  ];
-in
 {
   imports = [ ./gnome.nix ];
 
@@ -42,7 +25,7 @@ in
 
         "org/gnome/shell" = {
           enabled-extensions =
-            commonExtensions ++ [ "gamemodeshellextension@trsnaqe.com" ];
+            config.vexos.gnome.commonExtensions ++ [ "gamemodeshellextension@trsnaqe.com" ];
           favorite-apps = [
             "brave-browser.desktop"
             "app.zen_browser.zen.desktop"

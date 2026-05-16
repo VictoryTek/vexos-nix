@@ -350,7 +350,7 @@ users.users.nimda.uid = 1000;
 }
 ```
 
-### [QUALITY] `commonExtensions` list duplicated in four `gnome-*.nix` files
+### [QUALITY] `commonExtensions` list duplicated in four `gnome-*.nix` files — ✅ FIXED
 **File:** Same four files as above (lines L19-L33 each)
 **Why:** A `let` binding called `commonExtensions` is repeated verbatim in `gnome-desktop`, `gnome-htpc`, `gnome-server`, `gnome-stateless`. Single source of truth missing.
 **Fix:** Move into `modules/gnome.nix` and re-export:

@@ -12,6 +12,28 @@
 {
   imports = [ ./gnome-flatpak-install.nix ];
 
+  options.vexos.gnome.commonExtensions = lib.mkOption {
+    type        = lib.types.listOf lib.types.str;
+    default     = [
+      "appindicatorsupport@rgcjonas.gmail.com"
+      "dash-to-dock@micxgx.gmail.com"
+      "AlphabeticalAppGrid@stuarthayhurst"
+      "gnome-ui-tune@itstime.tech"
+      "nothing-to-say@extensions.gnome.wouter.bolsterl.ee"
+      "steal-my-focus-window@steal-my-focus-window"
+      "tailscale-status@maxgallup.github.com"
+      "caffeine@patapon.info"
+      "restartto@tiagoporsch.github.io"
+      "blur-my-shell@aunetx"
+      "background-logo@fedorahosted.org"
+      "tiling-assistant@leleat-on-github"
+    ];
+    internal    = true;
+    description = "GNOME Shell extensions enabled on every vexos role that imports gnome.nix.";
+  };
+
+  config = {
+
   # ── GNOME stack sourced from nixpkgs-unstable ──────────────────────────────
   # Replaces the GNOME desktop shell and its default-shipped applications with
   # the latest builds from nixos-unstable.  Everything else on the system stays
@@ -272,4 +294,5 @@
   hardware.bluetooth.enable = true;
   services.blueman.enable = true;
 
+  }; # end config
 }
