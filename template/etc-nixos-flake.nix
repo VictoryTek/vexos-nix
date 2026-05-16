@@ -50,6 +50,12 @@
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-intel
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-vm
 #
+#      Vanilla role (stock NixOS baseline — no desktop, no gaming, no branding):
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vanilla-amd
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vanilla-nvidia
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vanilla-intel
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vanilla-vm
+#
 #      No editing required — all variants are exposed automatically.
 #      The chosen variant is written to /etc/nixos/vexos-variant on every
 #      build so vexos-updater always knows which target to use.
@@ -201,6 +207,22 @@
         ] ++ modules;
     };
 
+    # Vanilla role: stock NixOS baseline — no desktop, no gaming, no branding.
+    # Suitable for system restore or a clean starting point.
+    mkVanillaVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules =
+        let
+          modules = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
+        in
+        [
+          { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
+          bootloaderModule
+          ./hardware-configuration.nix
+          vexos-nix.nixosModules.vanillaBase
+        ] ++ modules;
+    };
+
     # Headless server role: CLI only, no desktop environment.
     # See the mkServerVariant comment above for the ZFS hostId requirement.
     mkHeadlessServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
@@ -291,6 +313,12 @@
       vexos-headless-server-nvidia = mkHeadlessServerVariant "vexos-headless-server-nvidia" vexos-nix.nixosModules.gpuNvidiaHeadless;
       vexos-headless-server-intel  = mkHeadlessServerVariant "vexos-headless-server-intel"  vexos-nix.nixosModules.gpuIntelHeadless;
       vexos-headless-server-vm     = mkHeadlessServerVariant "vexos-headless-server-vm"     vexos-nix.nixosModules.gpuVm;
+
+      # ── Vanilla role — stock NixOS baseline ──────────────────────────────
+      vexos-vanilla-amd    = mkVanillaVariant "vexos-vanilla-amd"    vexos-nix.nixosModules.gpuAmd;
+      vexos-vanilla-nvidia = mkVanillaVariant "vexos-vanilla-nvidia" vexos-nix.nixosModules.gpuNvidia;
+      vexos-vanilla-intel  = mkVanillaVariant "vexos-vanilla-intel"  vexos-nix.nixosModules.gpuIntel;
+      vexos-vanilla-vm     = mkVanillaVariant "vexos-vanilla-vm"     vexos-nix.nixosModules.gpuVm;
     };
   };
 }
