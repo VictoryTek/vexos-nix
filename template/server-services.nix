@@ -125,5 +125,7 @@
 
   # ── Virtualisation ────────────────────────────────────────────────────────────
   # vexos.server.proxmox.enable = false;              # Web UI https://<ip>:8006 — ⚠ experimental
+  #   Proxmox mode disables Tailscale by default; opt in from host config with:
+  #   services.tailscale.enable = lib.mkForce true;
   # vexos.server.proxmox.ipAddress = "";              # Required: set to this host's IP address
 }

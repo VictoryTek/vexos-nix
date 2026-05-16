@@ -118,6 +118,10 @@ in
       };
     };
 
+    # Safety default for hypervisor bridge hosts: disable overlay VPN unless
+    # explicitly re-enabled by the operator.
+    services.tailscale.enable = lib.mkOverride 90 false;
+
     # ── Firewall ────────────────────────────────────────────────────────────
     # 8006 = Proxmox web UI / API
     # 8007 = VNC/SPICE websocket proxy (noVNC console)

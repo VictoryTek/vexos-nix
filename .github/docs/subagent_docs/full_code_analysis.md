@@ -517,7 +517,7 @@ config = lib.mkMerge [
 ```
 **Resolution:** Implemented in `modules/server/cockpit.nix` by setting `navigator.enable`, `fileSharing.enable`, and `identities.enable` defaults to `false` and removing `default = cfg.enable` coupling. When `vexos.server.cockpit.enable` is true, a `lib.mkMerge` + `lib.mkIf` block now applies `lib.mkDefault true` to all three sub-options so parent enable cascades by default while explicit user overrides still take precedence.
 
-### [BUG] `services.tailscale` is enabled on every role including server roles where it may interact badly with Proxmox vmbr0
+### ✅ FIXED — `services.tailscale` is enabled on every role including server roles where it may interact badly with Proxmox vmbr0
 **File:** [modules/network.nix](modules/network.nix#L130-L141), [modules/server/proxmox.nix](modules/server/proxmox.nix)
 **Why:** Tailscale's tailscale0 interface plus a Proxmox bridge with NetworkManager unmanaged plus `--accept-routes=false` creates a non-trivial routing table. The mDNS exclusion (`denyInterfaces = [ "tailscale0" ]`) is documented but the equivalent decision for vmbr0 is missing.
 **Fix:**
@@ -525,6 +525,7 @@ config = lib.mkMerge [
 # modules/network.nix
 services.avahi.denyInterfaces = [ "tailscale0" "vmbr0" ];
 ```
+**Resolution:** Implemented with a Proxmox-scoped override in `modules/server/proxmox.nix` that sets `services.tailscale.enable = lib.mkOverride 90 false` when `vexos.server.proxmox.enable = true`. Baseline behavior for non-Proxmox systems remains unchanged. For advanced hosts that need Tailscale on Proxmox anyway, `template/server-services.nix` now includes an opt-in note showing how to re-enable it with `lib.mkForce true`.
 
 ### [BUG] `services.flatpak` is enabled before `xdg.portal` is finalised — XDG portals on stateless include only `xdg-desktop-portal-gnome`
 **File:** [modules/gnome.nix](modules/gnome.nix#L172-L180)
