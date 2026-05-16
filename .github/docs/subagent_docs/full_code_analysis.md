@@ -436,15 +436,16 @@ shellAliases = {
 ```
 **Resolution:** Removed `smbstatus = "systemctl status smbd";` from the shared alias set in `home/bash-common.nix`, so non-server roles no longer expose a broken Samba status alias.
 
-### [QUALITY] `wallpapers/headless-server` directory does not exist; `branding.nix` re-uses `server` via `assetRole`
-**File:** [modules/branding.nix](modules/branding.nix#L11-L20) — verified handled correctly via `assetRole`. **No fix.** Annotated for clarity.
+### [QUALITY] `wallpapers/headless-server` directory does not exist; `branding.nix` re-uses `server` via `assetRole` — ⚠️ N/A (intentional fallback behavior)
+**File:** [modules/branding.nix](modules/branding.nix#L11-L20) — verified handled correctly via `assetRole`.
+**Resolution:** Intentional fallback behavior: `headless-server` reuses `server` branding assets via `assetRole`; no code change required.
 
 ---
 
 ## 5. Feature Implementation Issues
 
-### [BUG] Jellyfin module never enables hardware transcoding even though every role has a GPU module
-**File:** [modules/server/jellyfin.nix](modules/server/jellyfin.nix#L15-L23)
+### ✅ FIXED — [BUG] Jellyfin module never enables hardware transcoding even though every role has a GPU module
+**File:** [modules/server/jellyfin.nix](modules/server/jellyfin.nix#L15-L23), [template/server-services.nix](template/server-services.nix)
 **Why:** Jellyfin in nixpkgs gates VAAPI/QSV transcode on the unit's `DeviceAllow=/dev/dri rw` and the package having access to `/run/opengl-driver/lib`. The current module only sets `enable + openFirewall`. NVIDIA users get nothing; AMD/Intel users get partial decode only. Mirror the Plex pattern.
 **Fix:**
 ```nix
@@ -466,6 +467,7 @@ config = lib.mkIf cfg.enable {
   };
 };
 ```
+**Resolution:** Added `vexos.server.jellyfin.hardwareAcceleration` (bool, default `true`) in `modules/server/jellyfin.nix`, and when enabled now injects `systemd.services.jellyfin.serviceConfig.SupplementaryGroups = [ "render" "video" ]` so Jellyfin can access GPU render/video devices for hardware transcoding. Added a documented toggle line in `template/server-services.nix` for discoverability.
 
 ### [BUG] Grafana module ships no datasource auto-provisioning; Prometheus module ships no `scrape_configs`
 **File:** [modules/server/grafana.nix](modules/server/grafana.nix), [modules/server/prometheus.nix](modules/server/prometheus.nix)

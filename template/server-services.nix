@@ -19,6 +19,7 @@
 
   # ── Media Servers ────────────────────────────────────────────────────────
   # vexos.server.jellyfin.enable = false;
+  # vexos.server.jellyfin.hardwareAcceleration = true;  # adds render/video group access for Jellyfin transcoding
   # vexos.server.plex.enable = false;
   # vexos.server.plex.plexPass = false;                 # true = expose GPU for hardware transcoding (requires Plex Pass sub)
   # vexos.server.audiobookshelf.enable = false;         # Port 8234
