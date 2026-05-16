@@ -364,7 +364,7 @@ options.vexos.gnome.commonExtensions = lib.mkOption {
 ```
 Then in each role file: `enabled-extensions = config.vexos.gnome.commonExtensions ++ [ … ];`.
 
-### [QUALITY] `roles` table in `flake.nix` repeats `unstableOverlayModule customPkgsOverlayModule` four times
+### [QUALITY] `roles` table in `flake.nix` repeats `unstableOverlayModule customPkgsOverlayModule` four times — ✅ FIXED
 **File:** [flake.nix](flake.nix#L86-L120)
 **Why:** Cleaner with a `commonBase` list shared across roles.
 **Fix:**
@@ -382,7 +382,7 @@ let
 in …
 ```
 
-### [QUALITY] `auto-optimise-store = true` plus `nix.optimise.automatic = true`
+### [QUALITY] `auto-optimise-store = true` plus `nix.optimise.automatic = true` — ✅ FIXED
 **File:** [modules/nix.nix](modules/nix.nix#L13-L52)
 **Why:** Both options run nix-store optimise. The combination doubles the work. The current consensus in nixpkgs is to pick one.
 **Fix:** Drop `nix.optimise.automatic` (the daemon flag is sufficient and cheaper):

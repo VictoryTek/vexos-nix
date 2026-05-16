@@ -45,13 +45,6 @@
   nix.daemonCPUSchedPolicy = "idle";
   nix.daemonIOSchedClass = "idle";
 
-  # Hard-link identical files in the store after every build
-  # (complements auto-optimise-store for any files added between GC runs).
-  nix.optimise = {
-    automatic = true;
-    dates = [ "weekly" ];
-  };
-
   # Required for Steam, NVIDIA drivers, proton-ge-bin, etc.
   nixpkgs.config.allowUnfree = true;
 }

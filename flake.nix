@@ -78,6 +78,12 @@
       let path = /etc/nixos/server-services.nix;
       in if builtins.pathExists path then [ path ] else [];
 
+    # Overlay modules shared by every non-vanilla role (unstable channel + custom pkgs).
+    commonBase = [ unstableOverlayModule customPkgsOverlayModule ];
+
+    # Proxmox overlay + NixOS module shared by server and headless-server roles.
+    proxmoxBase = [ proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
+
     # Single source of truth for per-role wiring. Consumed by `mkHost` (per-host
     # nixosConfigurations) AND by `mkBaseModule` (the nixosModules.*Base exports
     # that template/etc-nixos-flake.nix imports). Keeping both pathways derived
@@ -86,34 +92,35 @@
     roles = {
       desktop = {
         homeFile     = ./home-desktop.nix;
-        baseModules  = [ unstableOverlayModule upModule customPkgsOverlayModule ];
+        baseModules  = commonBase ++ [ upModule ];
         extraModules = [];
       };
       htpc = {
         homeFile     = ./home-htpc.nix;
-        baseModules  = [ unstableOverlayModule upModule customPkgsOverlayModule ];
+        baseModules  = commonBase ++ [ upModule ];
         extraModules = [];
       };
       stateless = {
         homeFile     = ./home-stateless.nix;
-        baseModules  = [ unstableOverlayModule upModule customPkgsOverlayModule ];
+        baseModules  = commonBase ++ [ upModule ];
         extraModules = [ impermanence.nixosModules.impermanence ];
       };
       server = {
         homeFile     = ./home-server.nix;
-        # inputs.proxmox-nixos.nixosModules.proxmox-ve is imported here (not in
+        # upModule: server has a display — GUI update app is included.
+        # proxmoxBase: overlay + NixOS module imported here (not in
         # modules/server/proxmox.nix) to avoid infinite recursion — `imports`
         # cannot safely reference _module.args.
-        # proxmoxOverlayModule must also be listed to make pkgs.proxmox-ve available.
-        baseModules  = [ unstableOverlayModule upModule proxmoxOverlayModule customPkgsOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
+        baseModules  = commonBase ++ [ upModule ] ++ proxmoxBase;
         extraModules = serverServicesModule;
       };
       headless-server = {
         homeFile     = ./home-headless-server.nix;
         # No upModule — headless servers have no display, so the GUI update
         # app is intentionally omitted.
-        # proxmoxOverlayModule must also be listed to make pkgs.proxmox-ve available.
-        baseModules  = [ unstableOverlayModule proxmoxOverlayModule customPkgsOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
+        # proxmoxBase: overlay + NixOS module imported here to avoid infinite
+        # recursion (same reason as server above).
+        baseModules  = commonBase ++ proxmoxBase;
         extraModules = serverServicesModule;
       };
       vanilla = {
