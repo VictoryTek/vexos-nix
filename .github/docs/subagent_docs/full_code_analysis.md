@@ -527,9 +527,11 @@ services.avahi.denyInterfaces = [ "tailscale0" "vmbr0" ];
 ```
 **Resolution:** Implemented with a Proxmox-scoped override in `modules/server/proxmox.nix` that sets `services.tailscale.enable = lib.mkOverride 90 false` when `vexos.server.proxmox.enable = true`. Baseline behavior for non-Proxmox systems remains unchanged. For advanced hosts that need Tailscale on Proxmox anyway, `template/server-services.nix` now includes an opt-in note showing how to re-enable it with `lib.mkForce true`.
 
-### [BUG] `services.flatpak` is enabled before `xdg.portal` is finalised — XDG portals on stateless include only `xdg-desktop-portal-gnome`
+### ✅ FIXED — [BUG] `services.flatpak` is enabled before `xdg.portal` is finalised — XDG portals on stateless include only `xdg-desktop-portal-gnome`
 **File:** [modules/gnome.nix](modules/gnome.nix#L172-L180)
 **Why:** Flatpak apps that require non-GNOME portal back-ends (file pickers via `gtk` portal) get a fall-through to GNOME. Current `extraPortals` is fine for GNOME-only desktops; flag for users who add KDE/non-GNOME apps.
+
+**Resolution:** Removed the local `xdg.portal.config.common.default = "gnome"` override in `modules/gnome.nix`. This allows GNOME upstream `configPackages` portal policy to apply, including fallback behavior. Flatpak/portal ordering remains a module-merge fixpoint, so this introduces no startup ordering race.
 
 ### [BUG] `services.minecraft-server` with `eula = true` accepts the EULA on the user's behalf
 **File:** [modules/server/papermc.nix](modules/server/papermc.nix#L17-L26)
