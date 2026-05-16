@@ -416,10 +416,11 @@ final: prev: {
 }
 ```
 
-### [QUALITY] Two systemd activation scripts named `vexosVariant` (one in `impermanence.nix`, one in `template/etc-nixos-flake.nix`)
+### ✅ FIXED — [QUALITY] Two systemd activation scripts named `vexosVariant` (one in `impermanence.nix`, one in `template/etc-nixos-flake.nix`)
 **File:** [modules/impermanence.nix](modules/impermanence.nix#L243-L255), [template/etc-nixos-flake.nix](template/etc-nixos-flake.nix#L98-L108) and `mkStatelessVariant`
 **Why:** When the thin-flake template is used together with the upstream `nixosModules.statelessBase`, both scripts run. NixOS attribute set merge for `system.activationScripts.vexosVariant` is "last writer wins on `text`", so this is a silent override. Confirm intent and document, or merge into one.
 **Fix:** Move the activation script entirely into `modules/impermanence.nix` (already done in the upstream module) and delete the duplicate from `template/etc-nixos-flake.nix`.
+**Resolution:** Replaced both inline `system.activationScripts.vexosVariant` blocks in `template/etc-nixos-flake.nix`: `_mkVariantWith` now uses `environment.etc."nixos/vexos-variant".text`; `mkStatelessVariant` now delegates via `vexos.variant = variant` to the authoritative `impermanence.nix` script.
 
 ### [QUALITY] `home/bash-common.nix` references `smbd` even on roles where it is not enabled
 **File:** [home/bash-common.nix](home/bash-common.nix#L18-L20)
