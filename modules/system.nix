@@ -100,6 +100,10 @@
         "kernel.sysrq" = 1;
       };
 
+      # ── Volatile /tmp (tmpfs) ────────────────────────────────────────────
+      boot.tmp.useTmpfs  = lib.mkDefault true;
+      boot.tmp.tmpfsSize = lib.mkDefault "50%";
+
     }
 
     # ── Swap file (opt-out via vexos.swap.enable = false) ─────────────────

@@ -137,11 +137,6 @@ in
     # ZRAM provides in-RAM compressed swap instead (see zramSwap below).
     vexos.swap.enable = lib.mkForce false;
 
-    # ── Clean /tmp on boot ──────────────────────────────────────────────────
-    # Belt-and-suspenders: / is already a fresh tmpfs on each boot, but
-    # setting cleanOnBoot makes the ephemeral intent explicit.
-    boot.tmp.cleanOnBoot = true;
-
     # ── Declarative user management ─────────────────────────────────────────
     # With tmpfs /, /etc/shadow is recreated from the Nix configuration on
     # every boot.  Passwords changed at runtime will not survive a reboot.

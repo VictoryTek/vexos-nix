@@ -390,7 +390,7 @@ in …
 nix.optimise.automatic = false;
 ```
 
-### [QUALITY] `boot.tmp.cleanOnBoot` only on stateless — desktop/server/htpc never wipe `/tmp`
+### [QUALITY] `boot.tmp.cleanOnBoot` only on stateless — desktop/server/htpc never wipe `/tmp` — ✅ FIXED
 **File:** [modules/impermanence.nix](modules/impermanence.nix#L139-L144), missing in [modules/system.nix](modules/system.nix)
 **Why:** /tmp persisting across reboots is a long-standing complaint with persistent installs; modern NixOS practice is `boot.tmp.useTmpfs = true`. Missing on every role except stateless.
 **Fix:**
