@@ -31,43 +31,53 @@ in
 
     navigator.enable = lib.mkOption {
       type = lib.types.bool;
-      default = cfg.enable;
+      default = false;
       description = ''
         Install the 45Drives cockpit-navigator file-browser plugin.
-        Defaults to the value of vexos.server.cockpit.enable so that
-        enabling Cockpit also installs Navigator (the simplest plugin)
-        — set to false to opt out, or to true on its own to stage the
-        package without enabling Cockpit (no effect at runtime).
+        Defaults to false. When vexos.server.cockpit.enable = true,
+        this option is set to lib.mkDefault true so enabling Cockpit
+        also installs Navigator by default. Set to false to opt out,
+        or to true on its own to stage the package (no runtime effect
+        until Cockpit itself is enabled).
       '';
     };
 
     fileSharing.enable = lib.mkOption {
       type = lib.types.bool;
-      default = cfg.enable;
+      default = false;
       description = ''
         Install the 45Drives cockpit-file-sharing plugin and configure
         Samba (registry mode) + NFS server for GUI-managed file sharing.
-        Defaults to the value of vexos.server.cockpit.enable.
+        Defaults to false. When vexos.server.cockpit.enable = true,
+        this option is set to lib.mkDefault true.
         Requires vexos.server.cockpit.enable = true (enforced by assertion).
       '';
     };
 
     identities.enable = lib.mkOption {
       type = lib.types.bool;
-      default = cfg.enable;
+      default = false;
       description = ''
         Install the 45Drives cockpit-identities plugin (user and group
         management GUI — Linux users, Samba passwords, groups, SSH keys,
-        login history). Defaults to the value of
-        vexos.server.cockpit.enable so that enabling Cockpit also installs
-        Identities — set to false to opt out, or to true on its own to
-        stage the package without enabling Cockpit (no effect at runtime).
+        login history). Defaults to false. When
+        vexos.server.cockpit.enable = true, this option is set to
+        lib.mkDefault true so enabling Cockpit also installs Identities
+        by default. Set to false to opt out, or to true on its own to
+        stage the package (no runtime effect until Cockpit is enabled).
       '';
     };
 
   };
 
   config = lib.mkMerge [
+
+    # ── Parent-enabled sub-plugin defaults ───────────────────────────────
+    (lib.mkIf cfg.enable {
+      vexos.server.cockpit.navigator.enable = lib.mkDefault true;
+      vexos.server.cockpit.fileSharing.enable = lib.mkDefault true;
+      vexos.server.cockpit.identities.enable = lib.mkDefault true;
+    })
 
     # ── Base Cockpit daemon ────────────────────────────────────────────────
     (lib.mkIf cfg.enable {

@@ -495,7 +495,7 @@ services.grafana.provision.datasources.settings.datasources =
 ```
 **Resolution:** Implemented in `modules/server/prometheus.nix` by enabling Prometheus node exporter defaults and adding a localhost node exporter scrape target, and in `modules/server/grafana.nix` by conditionally auto-provisioning a Prometheus datasource when `vexos.server.prometheus.enable` is true.
 
-### [BUG] Cockpit module enables sub-plugins via `default = cfg.enable;` — but the merge order is undefined
+### ✅ FIXED — Cockpit module enables sub-plugins via `default = cfg.enable;` — but the merge order is undefined
 **File:** [modules/server/cockpit.nix](modules/server/cockpit.nix#L34-L73)
 **Why:** `navigator.enable = lib.mkOption { default = cfg.enable; … }` — `cfg.enable` is read at option-default time, *before* `lib.mkIf` resolves. In a deferred-default chain (e.g. `nas.nix` → `cockpit.enable = lib.mkDefault true`) this still works because `cfg.enable = config.vexos.server.cockpit.enable` is recomputed lazily, but it makes the module hard to reason about. Replace with a `lib.mkIf`-style cascade.
 **Fix:**
@@ -515,6 +515,7 @@ config = lib.mkMerge [
   # … rest unchanged
 ];
 ```
+**Resolution:** Implemented in `modules/server/cockpit.nix` by setting `navigator.enable`, `fileSharing.enable`, and `identities.enable` defaults to `false` and removing `default = cfg.enable` coupling. When `vexos.server.cockpit.enable` is true, a `lib.mkMerge` + `lib.mkIf` block now applies `lib.mkDefault true` to all three sub-options so parent enable cascades by default while explicit user overrides still take precedence.
 
 ### [BUG] `services.tailscale` is enabled on every role including server roles where it may interact badly with Proxmox vmbr0
 **File:** [modules/network.nix](modules/network.nix#L130-L141), [modules/server/proxmox.nix](modules/server/proxmox.nix)
