@@ -17,7 +17,6 @@
 
       # System service shortcuts
       sshstatus = "systemctl status sshd";
-      smbstatus = "systemctl status smbd";
     };
   };
 }

@@ -422,7 +422,7 @@ final: prev: {
 **Fix:** Move the activation script entirely into `modules/impermanence.nix` (already done in the upstream module) and delete the duplicate from `template/etc-nixos-flake.nix`.
 **Resolution:** Replaced both inline `system.activationScripts.vexosVariant` blocks in `template/etc-nixos-flake.nix`: `_mkVariantWith` now uses `environment.etc."nixos/vexos-variant".text`; `mkStatelessVariant` now delegates via `vexos.variant = variant` to the authoritative `impermanence.nix` script.
 
-### [QUALITY] `home/bash-common.nix` references `smbd` even on roles where it is not enabled
+### ✅ FIXED — [QUALITY] `home/bash-common.nix` references `smbd` even on roles where it is not enabled
 **File:** [home/bash-common.nix](home/bash-common.nix#L18-L20)
 **Why:** The `smbstatus` alias runs `systemctl status smbd` — on every non-server role that has only the samba *client* (no smbd), it returns "Unit smbd.service could not be found." Trivial, but a bad surface.
 **Fix:** Move the alias into a server-only home module, or guard:
@@ -434,6 +434,7 @@ shellAliases = {
   # smbstatus moved to home-server.nix
 };
 ```
+**Resolution:** Removed `smbstatus = "systemctl status smbd";` from the shared alias set in `home/bash-common.nix`, so non-server roles no longer expose a broken Samba status alias.
 
 ### [QUALITY] `wallpapers/headless-server` directory does not exist; `branding.nix` re-uses `server` via `assetRole`
 **File:** [modules/branding.nix](modules/branding.nix#L11-L20) — verified handled correctly via `assetRole`. **No fix.** Annotated for clarity.
