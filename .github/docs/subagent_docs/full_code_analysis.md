@@ -555,7 +555,7 @@ config = lib.mkIf cfg.enable {
 };
 ```
 
-### [BUG] `services.zigbee2mqtt` assumes mqtt://localhost:1883 but no MQTT broker is enabled
+### ✅ FIXED — [BUG] `services.zigbee2mqtt` assumes mqtt://localhost:1883 but no MQTT broker is enabled
 **File:** [modules/server/zigbee2mqtt.nix](modules/server/zigbee2mqtt.nix#L34-L45)
 **Why:** Module starts and immediately fails because the broker is not running. Either auto-enable mosquitto when zigbee2mqtt is enabled, or document/assert.
 **Fix:**

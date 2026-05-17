@@ -2,7 +2,7 @@
 # Zigbee2MQTT — bridges Zigbee devices to MQTT, no proprietary hub required.
 # Default frontend port: 8088 (non-standard to avoid conflict with port 8080 services)
 # Set serialPort to your Zigbee coordinator device (e.g. /dev/ttyUSB0, /dev/ttyACM0).
-# MQTT broker: this module assumes an MQTT broker is running at localhost:1883.
+# MQTT broker: Mosquitto is started automatically on 127.0.0.1:1883 (loopback-only, not firewalled).
 # Pair with home-assistant or node-red for automations.
 { config, lib, pkgs, ... }:
 let
@@ -40,6 +40,24 @@ in
         mqtt.server = "mqtt://localhost:1883";
         advanced.log_level = "info";
       };
+    };
+
+    services.mosquitto = {
+      enable = true;
+      listeners = [
+        {
+          address = "127.0.0.1";
+          port = 1883;
+          acl = [ "pattern readwrite #" ];
+          omitPasswordAuth = true;
+          settings.allow_anonymous = true;
+        }
+      ];
+    };
+
+    systemd.services.zigbee2mqtt = {
+      after = [ "mosquitto.service" ];
+      requires = [ "mosquitto.service" ];
     };
 
     networking.firewall.allowedTCPPorts = [ cfg.port ];
