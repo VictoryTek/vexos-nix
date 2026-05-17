@@ -22,8 +22,8 @@ in
       config = {
         homeassistant = {
           name = "Home";
-          unit_system = "imperial";
-          time_zone = "America/Chicago";
+          unit_system = lib.mkDefault "imperial";
+          time_zone = lib.mkDefault config.time.timeZone;
         };
         http = {
           server_port = 8123;

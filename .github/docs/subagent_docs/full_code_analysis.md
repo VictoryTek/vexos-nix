@@ -569,7 +569,7 @@ config = lib.mkIf cfg.enable {
 };
 ```
 
-### [BUG] `services.home-assistant` hardcodes `unit_system = "imperial"` and `time_zone = "America/Chicago"`
+### ✅ FIXED — [BUG] `services.home-assistant` hardcodes `unit_system = "imperial"` and `time_zone = "America/Chicago"`
 **File:** [modules/server/home-assistant.nix](modules/server/home-assistant.nix#L21-L25)
 **Why:** Should defer to the system's `time.timeZone`.
 **Fix:**
