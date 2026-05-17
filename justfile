@@ -1607,3 +1607,85 @@ rebuild:
     echo "Rebuilding ${target}..."
     echo ""
     sudo nixos-rebuild switch --flake "path:/etc/nixos#${target}"
+
+# ── PIA VPN ──────────────────────────────────────────────────────────────────
+
+# Download and run PIA's official Linux installer
+pia-install VERSION="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -n "{{VERSION}}" ]; then
+        URL="https://installers.privateinternetaccess.com/download/pia-linux-{{VERSION}}.run"
+    else
+        URL="https://installers.privateinternetaccess.com/download/pia-linux-3.6.1-08585.run"
+    fi
+    DEST="/tmp/pia-installer.run"
+    echo "Downloading PIA installer from $URL..."
+    curl -L -o "$DEST" "$URL"
+    chmod +x "$DEST"
+    sudo "$DEST"
+    rm -f "$DEST"
+
+# Uninstall PIA using PIA's own uninstaller
+pia-uninstall:
+    sudo /opt/piavpn/bin/pia-uninstall || sudo rm -rf /opt/piavpn
+
+# Update PIA: uninstall then reinstall latest
+pia-update:
+    just pia-uninstall
+    just pia-install
+
+# Show PIA connection state, region, and IPs
+pia-status:
+    piactl get connectionstate
+    piactl get region
+    piactl get vpnip || true
+    piactl get pubip || true
+
+# Connect to VPN (optionally specify region, e.g. just pia-connect us_chicago)
+pia-connect REGION="":
+    #!/usr/bin/env bash
+    if [ -n "{{REGION}}" ]; then
+        piactl set region "{{REGION}}"
+    fi
+    piactl connect
+
+# Disconnect from VPN
+pia-disconnect:
+    piactl disconnect
+
+# List available PIA regions
+pia-regions:
+    piactl get regions
+
+# Enable kill switch
+pia-kill-switch-on:
+    piactl set killswitch on
+
+# Disable kill switch
+pia-kill-switch-off:
+    piactl set killswitch off
+
+# Enable port forwarding
+pia-port-forward-on:
+    piactl set portforward on
+
+# Disable port forwarding
+pia-port-forward-off:
+    piactl set portforward off
+
+# Enable PIA background daemon (persist after GUI closes)
+pia-background-on:
+    piactl background enable
+
+# Launch PIA GUI
+pia-gui:
+    pia-client &
+
+# Tail the PIA daemon journal
+pia-logs:
+    journalctl -u piavpn -f
+
+# Print PIA client version
+pia-version:
+    piactl --version

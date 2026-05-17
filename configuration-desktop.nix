@@ -29,6 +29,7 @@
     ./modules/users.nix
     ./modules/razer.nix
     ./modules/asus-opt.nix
+    ./modules/pia.nix
   ];
 
   # ---------- Branding ----------
