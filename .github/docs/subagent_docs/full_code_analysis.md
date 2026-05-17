@@ -533,7 +533,7 @@ services.avahi.denyInterfaces = [ "tailscale0" "vmbr0" ];
 
 **Resolution:** Removed the local `xdg.portal.config.common.default = "gnome"` override in `modules/gnome.nix`. This allows GNOME upstream `configPackages` portal policy to apply, including fallback behavior. Flatpak/portal ordering remains a module-merge fixpoint, so this introduces no startup ordering race.
 
-### [BUG] `services.minecraft-server` with `eula = true` accepts the EULA on the user's behalf
+### ✅ FIXED [BUG] `services.minecraft-server` with `eula = true` accepts the EULA on the user's behalf
 **File:** [modules/server/papermc.nix](modules/server/papermc.nix#L17-L26)
 **Why:** Mojang's EULA must be accepted by the operator. Hard-coding `eula = true` inside the module is a legal risk for redistribution; the option exists *because* nixpkgs does not want to make this decision.
 **Fix:** Require operator opt-in.

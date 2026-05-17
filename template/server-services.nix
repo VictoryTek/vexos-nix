@@ -39,6 +39,7 @@
 
   # ── Game Servers ─────────────────────────────────────────────────────────
   # vexos.server.papermc.enable = false;
+  # vexos.server.papermc.acceptEula = false;         # Set to true only after reading Mojang EULA
   # vexos.server.papermc.memory = "2G";
 
   # ── Cloud & Files ────────────────────────────────────────────────────────
