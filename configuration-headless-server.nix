@@ -13,6 +13,7 @@
     ./modules/security-server.nix   # auditd + server audit ruleset
     ./modules/server       # Optional server services (vexos.server.*.enable)
     ./modules/zfs-server.nix
+    ./modules/pia-server.nix         # PIA VPN CLI support (piactl)
     ./modules/nix.nix
     ./modules/nix-server.nix        # 30-day GC retention (production server standard)
     ./modules/locale.nix
