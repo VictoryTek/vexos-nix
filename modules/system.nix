@@ -38,8 +38,8 @@
 
     # ── Unconditional: kernel, boot, performance ──────────────────────────
     {
-      # Latest upstream kernel — applies to all variants.
-      boot.kernelPackages = pkgs.linuxPackages_latest;
+      # Latest upstream kernel — desktop default; server/htpc override via system-lts-kernel.nix.
+      boot.kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
 
       # EFI / systemd-boot — standard bootloader for all vexos-nix hosts.
       # lib.mkDefault allows the host's /etc/nixos/flake.nix thin wrapper

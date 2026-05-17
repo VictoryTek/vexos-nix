@@ -8,7 +8,7 @@
   # (drm_fb_helper_alloc_info was removed); linuxPackages_latest is currently 7.0.
   # 6.6 LTS is maintained until Dec 2026.
   # lib.mkForce overrides the default set by modules/performance.nix.
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_6_6;
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_6_12;
 
   # QEMU/KVM guest agent — graceful shutdown, memory ballooning, clock sync, file copy
   services.qemuGuest.enable = true;
