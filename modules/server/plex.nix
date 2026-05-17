@@ -39,6 +39,13 @@ in
     # Plex's bundled libc does not provide, causing plex.service to exit 127.
     # Clearing LD_LIBRARY_PATH when hardware transcoding is off prevents Plex
     # from loading the incompatible system VA-API libraries.
+    #
+    # TODO(2026-05): Remove this workaround once the upstream nixpkgs Plex module
+    # no longer unconditionally injects opengl-driver into LD_LIBRARY_PATH.
+    # Track: https://github.com/NixOS/nixpkgs/issues/310792
+    # Verify removal: nix eval .#nixosConfigurations.vexos-server-amd.config \
+    #   .systemd.services.plex.environment.LD_LIBRARY_PATH
+    # If that returns "" or is absent, the upstream fix landed and this mkForce can go.
     systemd.services.plex.environment.LD_LIBRARY_PATH =
       lib.mkIf (!cfg.plexPass) (lib.mkForce "");
   };

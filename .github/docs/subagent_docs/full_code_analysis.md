@@ -636,11 +636,13 @@ config = lib.mkMerge [
 
 **Resolution:** Added `vexos.bootloader` option (enum `["systemd-boot" | "grub"]`, default `"systemd-boot"`) and `vexos.grub.device` option (str, default `"/dev/sda"`) in `modules/system.nix`. Boot loader configuration is now selected via `lib.mkMerge` + `lib.mkIf` blocks instead of bare `lib.mkDefault` assignments. Choosing `"grub"` disables systemd-boot and installs GRUB MBR to the specified device, giving BIOS-only hosts a clean path without requiring `lib.mkForce` in `hardware-configuration.nix`.
 
-### [BUG] Plex `LD_LIBRARY_PATH = lib.mkForce ""` workaround is correct but fragile
+### ✅ FIXED — [BUG] Plex `LD_LIBRARY_PATH = lib.mkForce ""` workaround is correct but fragile
 **File:** [modules/server/plex.nix](modules/server/plex.nix#L37-L43)
 **Why:** Annotated for awareness — when nixpkgs upstream Plex module finally drops the unconditional opengl-driver injection, this `mkForce ""` becomes a no-op masking the real cause if Plex breaks. Add a NixOS version guard or convert to a comment-pinned upstream issue link with a TODO date.
 
-### [BUG] `services.code-server.host = "0.0.0.0"` with `auth = "none"` default
+**Resolution:** Added a TODO comment dated 2026-05 in `modules/server/plex.nix` pinning the nixpkgs upstream issue (https://github.com/NixOS/nixpkgs/issues/310792) and providing an eval command to verify when the workaround can be removed. No runtime behaviour changed.
+
+### ✅ FIXED — [BUG] `services.code-server.host = "0.0.0.0"` with `auth = "none"` default
 **File:** [modules/server/code-server.nix](modules/server/code-server.nix#L31-L42)
 **Why:** Default config exposes a no-auth shell-equivalent on the LAN. Enforce auth.
 **Fix:**
@@ -653,6 +655,7 @@ config = lib.mkIf cfg.enable {
   services.code-server = { … auth = "password"; };
 };
 ```
+**Resolution:** Added an `assertions` block in `modules/server/code-server.nix` requiring `vexos.server.code-server.hashedPassword` to be non-empty. `auth` is now unconditionally set to `"password"`, eliminating the silent `auth=none` fallback when the module is enabled without a password. Updated the module header comment and option description to reflect that a hashed password is required, not optional.
 
 ---
 
@@ -727,8 +730,9 @@ services.caddy.virtualHosts.${cfg.hostName}.extraConfig =
   "reverse_proxy http://localhost:80";
 ```
 
-### [SECURITY] `services.code-server.host = "0.0.0.0"` with auth=none default
+### ✅ FIXED — [SECURITY] `services.code-server.host = "0.0.0.0"` with auth=none default
 See Section 5 fix — also a security finding.
+**Resolution:** See Section 5 fix above.
 
 ### [SECURITY] `services.traefik.api.insecure = true` exposes the dashboard on `cfg.dashboardPort`
 **File:** [modules/server/traefik.nix](modules/server/traefik.nix#L33-L43)
