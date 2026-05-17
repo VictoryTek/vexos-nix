@@ -2,6 +2,8 @@
 # PhotoPrism — AI-powered photo management and organizer.
 # Default port: 2342
 # Admin password: create /etc/nixos/secrets/photoprism-password (plaintext, single line)
+#   Create with: sudo install -m 0600 -o root -g root /dev/stdin /etc/nixos/secrets/photoprism-password
+#   Permissions enforced at boot by modules/secrets.nix (0700 dir, 0600 files).
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.photoprism;

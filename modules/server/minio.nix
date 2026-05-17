@@ -5,6 +5,8 @@
 # Credentials: create /etc/nixos/secrets/minio-credentials containing:
 #   MINIO_ROOT_USER=admin
 #   MINIO_ROOT_PASSWORD=changeme123
+#   Create with: sudo install -m 0600 -o root -g root /dev/stdin /etc/nixos/secrets/minio-credentials
+#   Permissions enforced at boot by modules/secrets.nix (0700 dir, 0600 files).
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.minio;

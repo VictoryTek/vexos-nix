@@ -1,5 +1,8 @@
 # modules/server/nextcloud.nix
 # Nextcloud — self-hosted file sync, calendar, and contacts.
+# Secrets: /etc/nixos/secrets/nextcloud-admin-pass (plain text, single-line admin password)
+#   Create with: sudo install -m 0600 -o root -g root /dev/stdin /etc/nixos/secrets/nextcloud-admin-pass
+#   Permissions enforced at boot by modules/secrets.nix (0700 dir, 0600 files).
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.nextcloud;

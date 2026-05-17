@@ -4,6 +4,8 @@
 # Requires: /etc/nixos/secrets/attic-credentials containing:
 #   ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64=<secret>
 # Generate secret with: openssl genrsa -traditional 4096 | base64 -w0
+# Create file with: sudo install -m 0600 -o root -g root /dev/stdin /etc/nixos/secrets/attic-credentials
+# Permissions enforced at boot by modules/secrets.nix (0700 dir, 0600 files).
 # After enabling, use `attic login` on clients pointing to http://<host>:8400
 { config, lib, pkgs, ... }:
 let
