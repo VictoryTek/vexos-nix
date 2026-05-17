@@ -113,39 +113,41 @@ while [ -z "$VARIANT" ]; do
   esac
 done
 
-# ---------- Prompt: nimda user password -------------------------------------
-CUSTOM_PASSWORD_SET=false
+# ---------- Prompt: nimda user password (required) --------------------------
+# A locked-account hash ("!") is the compiled-in default in configuration-stateless.nix.
+# This script MUST always write stateless-user-override.nix with a real hash
+# so the user can actually log in after the first boot.
 HASHED_PW=""
 
-if command -v openssl &>/dev/null; then
-  echo ""
-  echo -e "${BOLD}Set a login password for the nimda user:${RESET}"
-  echo -e "${YELLOW}  Press Enter twice to keep the default password ('vexos').${RESET}"
-  echo -e "${YELLOW}  Note: the password resets to this value on every reboot (by design).${RESET}"
-  echo ""
-  while true; do
-    printf "  Password (hidden): "
-    read -rs PW </dev/tty
-    echo ""
-    if [ -z "$PW" ]; then
-      echo -e "${YELLOW}  No password entered — keeping default 'vexos'.${RESET}"
-      break
-    fi
-    printf "  Confirm password:  "
-    read -rs PW2 </dev/tty
-    echo ""
-    if [ "$PW" = "$PW2" ]; then
-      HASHED_PW=$(printf '%s' "$PW" | openssl passwd -6 -stdin)
-      CUSTOM_PASSWORD_SET=true
-      echo -e "${GREEN}  ✓ Password accepted.${RESET}"
-      break
-    else
-      echo -e "${RED}  Passwords do not match. Try again.${RESET}"
-    fi
-  done
-else
-  echo -e "${YELLOW}  openssl not found — skipping password setup (default 'vexos' will be used).${RESET}"
+if ! command -v openssl &>/dev/null; then
+  echo -e "${RED}openssl is required to hash the password but was not found. Aborting.${RESET}"
+  exit 1
 fi
+
+echo ""
+echo -e "${BOLD}Set a login password for the nimda user (required):${RESET}"
+echo -e "${YELLOW}  This password is written to /etc/nixos/stateless-user-override.nix.${RESET}"
+echo -e "${YELLOW}  The password is re-applied from config on every reboot (no runtime persistence).${RESET}"
+echo ""
+while true; do
+  printf "  Password (hidden): "
+  read -rs PW </dev/tty
+  echo ""
+  if [ -z "$PW" ]; then
+    echo -e "${RED}  Password cannot be empty. Please set a password.${RESET}"
+    continue
+  fi
+  printf "  Confirm password:  "
+  read -rs PW2 </dev/tty
+  echo ""
+  if [ "$PW" = "$PW2" ]; then
+    HASHED_PW=$(printf '%s' "$PW" | openssl passwd -6 -stdin)
+    echo -e "${GREEN}  ✓ Password accepted.${RESET}"
+    break
+  else
+    echo -e "${RED}  Passwords do not match. Try again.${RESET}"
+  fi
+done
 
 # ---------- Hostname (auto-set, same as all other roles) --------------------
 HOSTNAME="vexos"
@@ -210,18 +212,15 @@ echo -e "${BOLD}Downloading vexos-nix template flake to /mnt/etc/nixos/...${RESE
 sudo curl -fsSL "${TEMPLATE_URL}" -o /mnt/etc/nixos/flake.nix
 echo -e "${GREEN}✓ /mnt/etc/nixos/flake.nix downloaded.${RESET}"
 
-# ---------- Write stateless-user-override.nix (if custom password was set) --
-if $CUSTOM_PASSWORD_SET; then
-  echo ""
-  echo -e "${BOLD}Writing stateless-user-override.nix with custom password...${RESET}"
-  sudo tee /mnt/etc/nixos/stateless-user-override.nix > /dev/null << NIXEOF
+# ---------- Write stateless-user-override.nix (always required) -------------
+echo ""
+echo -e "${BOLD}Writing stateless-user-override.nix with password hash...${RESET}"
+sudo tee /mnt/etc/nixos/stateless-user-override.nix > /dev/null << NIXEOF
 { lib, ... }: {
-  users.users.nimda.initialHashedPassword = lib.mkOverride 50 "${HASHED_PW}";
-  users.users.nimda.initialPassword       = lib.mkForce null;
+  users.users.nimda.hashedPassword = lib.mkOverride 50 "${HASHED_PW}";
 }
 NIXEOF
-  echo -e "${GREEN}  ✓ /mnt/etc/nixos/stateless-user-override.nix written.${RESET}"
-fi
+echo -e "${GREEN}  ✓ /mnt/etc/nixos/stateless-user-override.nix written.${RESET}"
 
 # ---------- Git-track the flake so Nix uses git+file: not path:+narHash ------
 # Without git tracking, `nixos-install` locks /mnt/etc/nixos as a path: flake

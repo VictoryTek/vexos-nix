@@ -307,7 +307,6 @@ done
 # Capturing the existing hash and writing it to stateless-user-override.nix
 # (persisted to @persist/etc/nixos/) preserves the password across reboots,
 # matching the behaviour of all other vexos roles.
-CUSTOM_PASSWORD_SET=false
 HASHED_PW=""
 
 echo ""
@@ -316,20 +315,41 @@ EXISTING_HASH=$(getent shadow nimda 2>/dev/null | cut -d: -f2 || true)
 # A valid yescrypt/SHA-512 hash starts with $ — "!" or "*" means locked/unset.
 if [[ "${EXISTING_HASH}" == '$'* ]]; then
   HASHED_PW="${EXISTING_HASH}"
-  CUSTOM_PASSWORD_SET=true
   echo -e "${GREEN}  ✓ Password hash found — your existing password will work after reboot.${RESET}"
 else
   echo -e "${YELLOW}  No password hash for nimda found in /etc/shadow (locked or no password set).${RESET}"
-  echo -e "${YELLOW}  The default login password will be 'vexos'. Run 'passwd' after first boot to change it.${RESET}"
+  echo -e "${BOLD}  Please set a new login password for the stateless installation:${RESET}"
+  if ! command -v openssl &>/dev/null; then
+    echo -e "${RED}  openssl is required to hash the password but was not found. Aborting.${RESET}"
+    exit 1
+  fi
+  while true; do
+    printf "  New password (hidden): "
+    read -rs PW </dev/tty
+    echo ""
+    if [ -z "$PW" ]; then
+      echo -e "${RED}  Password cannot be empty. Please set a password.${RESET}"
+      continue
+    fi
+    printf "  Confirm password:  "
+    read -rs PW2 </dev/tty
+    echo ""
+    if [ "$PW" = "$PW2" ]; then
+      HASHED_PW=$(printf '%s' "$PW" | openssl passwd -6 -stdin)
+      echo -e "${GREEN}  ✓ Password accepted.${RESET}"
+      break
+    else
+      echo -e "${RED}  Passwords do not match. Try again.${RESET}"
+    fi
+  done
 fi
 
-if $CUSTOM_PASSWORD_SET; then
+if [ -n "$HASHED_PW" ]; then
   echo ""
   echo -e "${BOLD}Writing /etc/nixos/stateless-user-override.nix...${RESET}"
   tee /etc/nixos/stateless-user-override.nix > /dev/null << NIXEOF
 { lib, ... }: {
-  users.users.nimda.initialHashedPassword = lib.mkOverride 50 "${HASHED_PW}";
-  users.users.nimda.initialPassword       = lib.mkForce null;
+  users.users.nimda.hashedPassword = lib.mkOverride 50 "${HASHED_PW}";
 }
 NIXEOF
   echo -e "${GREEN}  ✓ /etc/nixos/stateless-user-override.nix written.${RESET}"

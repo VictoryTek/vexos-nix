@@ -32,12 +32,13 @@
   boot.plymouth.enable = true;   # graphical boot splash
 
   # ---------- Users ----------
-  # Fallback password — only used when no stateless-user-override.nix exists in
-  # /etc/nixos.  migrate-to-stateless.sh reads the pre-migration hash from
-  # /etc/shadow and writes it to that override file so the original password
-  # carries forward.  stateless-setup.sh prompts for one.  "vexos" is only
-  # seen on a completely unconfigured first run where neither script ran.
-  users.users.${config.vexos.user.name}.initialPassword = "vexos";
+  # Account is locked by default ("!" shadow hash = no password accepted).
+  # stateless-setup.sh and migrate-to-stateless.sh both write a real password
+  # hash to /etc/nixos/stateless-user-override.nix (persisted to @persistent)
+  # before the first build.  The variant builder conditionally imports that
+  # file; without it, the system builds but no user login is possible, which
+  # forces the operator to run a setup script before first use.
+  users.users.${config.vexos.user.name}.hashedPassword = lib.mkDefault "!";
 
   # ---------- Impermanence ----------
   # Enable tmpfs-rooted ephemeral filesystem for the stateless role.

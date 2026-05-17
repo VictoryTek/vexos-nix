@@ -23,9 +23,10 @@ default:
         echo "Active role: stateless (ephemeral / tmpfs root)"
         echo ""
         echo "Reminder:"
-        echo "    Login password resets to 'vexos' on every reboot (by design)."
-        echo "    To change permanently, update initialPassword in"
-        echo "    configuration-stateless.nix and rebuild."
+        echo "    Login password is set via stateless-setup.sh / migrate-to-stateless.sh"
+        echo "    and stored in /etc/nixos/stateless-user-override.nix (persisted)."
+        echo "    Password changes at runtime do not survive a reboot (by design)."
+        echo "    To update permanently, re-run the setup script or edit the override file."
     fi
 
 # Print the active role and GPU variant (e.g. vexos-desktop-amd).
