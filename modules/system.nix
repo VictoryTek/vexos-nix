@@ -32,9 +32,52 @@
         to true.
       '';
     };
+    vexos.bootloader = lib.mkOption {
+      type = lib.types.enum [ "systemd-boot" "grub" ];
+      default = "systemd-boot";
+      description = ''
+        Boot loader backend.
+        "systemd-boot"  — UEFI only; installs systemd-boot to the ESP.
+                          Default for all bare-metal and VM UEFI hosts.
+        "grub"          — Legacy BIOS or UEFI-CSM; set
+                          vexos.grub.device to the target disk.
+                          Required for BIOS-only hardware where
+                          systemd-boot would fail with "Cannot find ESP".
+      '';
+    };
+
+    vexos.grub.device = lib.mkOption {
+      type = lib.types.str;
+      default = "/dev/sda";
+      description = ''
+        Target disk for GRUB MBR installation when vexos.bootloader = "grub".
+        Has no effect when using systemd-boot.
+      '';
+    };
+
   };
 
   config = lib.mkMerge [
+
+    # ── systemd-boot (default, UEFI) ──────────────────────────────────────
+    (lib.mkIf (config.vexos.bootloader == "systemd-boot") {
+      boot.loader.systemd-boot.enable             = true;
+      boot.loader.systemd-boot.configurationLimit = 5;
+      boot.loader.efi.canTouchEfiVariables        = true;
+      # EDK2 UEFI Shell — enables booting other OSes and provides a
+      # diagnostic shell. Required for systemd-boot Windows entries.
+      boot.loader.systemd-boot.edk2-uefi-shell.enable = true;
+    })
+
+    # ── GRUB (legacy BIOS or UEFI-CSM) ───────────────────────────────────
+    (lib.mkIf (config.vexos.bootloader == "grub") {
+      boot.loader.systemd-boot.enable = false;
+      boot.loader.grub = {
+        enable     = true;
+        device     = config.vexos.grub.device;
+        efiSupport = false;
+      };
+    })
 
     # ── Unconditional: kernel, boot, performance ──────────────────────────
     {
@@ -42,16 +85,7 @@
       boot.kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
 
       # EFI / systemd-boot — standard bootloader for all vexos-nix hosts.
-      # lib.mkDefault allows the host's /etc/nixos/flake.nix thin wrapper
-      # to override for BIOS/GRUB systems without conflict.
-      boot.loader.systemd-boot.enable           = lib.mkDefault true;
-      boot.loader.systemd-boot.configurationLimit = 5;  # keep only the 5 latest boot entries
-      boot.loader.efi.canTouchEfiVariables      = lib.mkDefault true;
-
-      # EDK2 UEFI Shell — enables booting other OSes on separate drives and
-      # provides a diagnostic shell for EFI troubleshooting. Required for
-      # boot.loader.systemd-boot.windows entries to function.
-      boot.loader.systemd-boot.edk2-uefi-shell.enable = true;
+      # vexos.bootloader selects the backend; see options above.
 
       # ── Kernel parameters ───────────────────────────────────────────────
       boot.kernelParams = [

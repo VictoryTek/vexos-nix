@@ -613,7 +613,7 @@ mkHomeManagerModule = homeFile: { config, ... }: {
 
 **Resolution:** The `users.${config.vexos.user.name}` HM key was already in place from the Section 4 username refactor. Added `userName = config.vexos.user.name` to `extraSpecialArgs` in both `mkHomeManagerModule` and `mkBaseModule` in `flake.nix` so home files can consume it via the `userName` argument if needed. Updated the stale comment in `home-desktop.nix` that still referenced `home-manager.users.nimda`.
 
-### [BUG] `boot.loader.systemd-boot.enable = lib.mkDefault true` has no BIOS fallback path
+### ✅ FIXED — [BUG] `boot.loader.systemd-boot.enable = lib.mkDefault true` has no BIOS fallback path
 **File:** [modules/system.nix](modules/system.nix#L40-L48), [hosts/desktop-vm.nix](hosts/desktop-vm.nix#L9-L18)
 **Why:** Documentation tells the operator to override in `/etc/nixos/hardware-configuration.nix`. Acceptable for VM (the comment explicitly addresses BIOS), but a bare-metal BIOS install will silently try to install systemd-boot and fail with "Cannot find ESP". Add an option.
 **Fix:**
@@ -633,6 +633,8 @@ config = lib.mkMerge [
   })
 ];
 ```
+
+**Resolution:** Added `vexos.bootloader` option (enum `["systemd-boot" | "grub"]`, default `"systemd-boot"`) and `vexos.grub.device` option (str, default `"/dev/sda"`) in `modules/system.nix`. Boot loader configuration is now selected via `lib.mkMerge` + `lib.mkIf` blocks instead of bare `lib.mkDefault` assignments. Choosing `"grub"` disables systemd-boot and installs GRUB MBR to the specified device, giving BIOS-only hosts a clean path without requiring `lib.mkForce` in `hardware-configuration.nix`.
 
 ### [BUG] Plex `LD_LIBRARY_PATH = lib.mkForce ""` workaround is correct but fragile
 **File:** [modules/server/plex.nix](modules/server/plex.nix#L37-L43)
