@@ -1,7 +1,7 @@
 # home-desktop.nix
-# Home Manager configuration for user "nimda".
+# Home Manager configuration for the primary user (vexos.user.name).
 # Manages user-level packages, shell, GNOME dconf settings, GTK theming, and cursors.
-# Consumed by the homeManagerModule in flake.nix via home-manager.users.nimda.
+# Consumed by mkHomeManagerModule in flake.nix via home-manager.users.${osConfig.vexos.user.name}.
 { config, pkgs, lib, inputs, osConfig, ... }:
 {
   imports = [

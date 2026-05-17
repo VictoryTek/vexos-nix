@@ -131,13 +131,13 @@
     };
 
     # Home Manager wiring shared by every role. The only thing that varies
-    # between roles is which home-*.nix file feeds users.nimda.
+    # between roles is which home-*.nix file feeds the primary user.
     mkHomeManagerModule = homeFile: { config, ... }: {
       imports = [ home-manager.nixosModules.home-manager ];
       home-manager = {
         useGlobalPkgs    = true;  # share nixpkgs instance (+ overlays) with the system
         useUserPackages  = true;  # install user packages into /etc/profiles instead of ~/.nix-profile
-        extraSpecialArgs = { inherit inputs; };
+        extraSpecialArgs = { inherit inputs; userName = config.vexos.user.name; };
         users.${config.vexos.user.name} = import homeFile;
         # Prevents activation abort when managed files (e.g. ~/.bashrc) already
         # exist as regular files on the host. Conflicting files are renamed to
@@ -252,7 +252,7 @@
       home-manager = {
         useGlobalPkgs    = true;
         useUserPackages  = true;
-        extraSpecialArgs = { inherit inputs; };
+        extraSpecialArgs = { inherit inputs; userName = config.vexos.user.name; };
         users.${config.vexos.user.name} = import roles.${role}.homeFile;
         # Drift fix: previously absent on `nixosModules.base` only. This is an
         # additive default — consumers of these *Base modules don't override it.

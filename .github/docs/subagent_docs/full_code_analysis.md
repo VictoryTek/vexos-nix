@@ -594,7 +594,7 @@ config.services.matrix-conduit.settings.global.allow_federation = cfg.allowFeder
 ```
 **Resolution:** Added `vexos.server.matrix-conduit.allowFederation` option (bool, default `false`) in `modules/server/matrix-conduit.nix`. Removed the implicit `allow_federation = cfg.serverName != "localhost"` expression and replaced with `allow_federation = cfg.allowFederation`, requiring explicit operator opt-in before enabling outbound Matrix federation.
 
-### [BUG] `home-manager.users.nimda` is hardcoded; flake.nix `mkHomeManagerModule homeFile` builds a per-role HM tree but never validates the user
+### ✅ FIXED — [BUG] `home-manager.users.nimda` is hardcoded; flake.nix `mkHomeManagerModule homeFile` builds a per-role HM tree but never validates the user
 **File:** [flake.nix](flake.nix#L130-L144)
 **Why:** If `vexos.user.name` is added per the Section 4 fix, the HM key here must be generated from that option; the current literal `users.nimda` re-introduces the hardcoded name even after a refactor.
 **Fix:** Pass the user name through `extraSpecialArgs` and consume it in HM:
@@ -610,6 +610,8 @@ mkHomeManagerModule = homeFile: { config, ... }: {
   };
 };
 ```
+
+**Resolution:** The `users.${config.vexos.user.name}` HM key was already in place from the Section 4 username refactor. Added `userName = config.vexos.user.name` to `extraSpecialArgs` in both `mkHomeManagerModule` and `mkBaseModule` in `flake.nix` so home files can consume it via the `userName` argument if needed. Updated the stale comment in `home-desktop.nix` that still referenced `home-manager.users.nimda`.
 
 ### [BUG] `boot.loader.systemd-boot.enable = lib.mkDefault true` has no BIOS fallback path
 **File:** [modules/system.nix](modules/system.nix#L40-L48), [hosts/desktop-vm.nix](hosts/desktop-vm.nix#L9-L18)
