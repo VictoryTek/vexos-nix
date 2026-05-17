@@ -21,6 +21,24 @@
 {
   options.vexos.hardware.asus = {
     enable = lib.mkEnableOption "ASUS ROG/TUF hardware support (asusd, supergfxctl, fan curves)";
+
+    batteryChargeLimit = lib.mkOption {
+      type    = lib.types.ints.between 20 100;
+      default = 100;
+      description = ''
+        Maximum battery charge level as a percentage (20–100).
+        100 = no limit (default).  Set to 80 for daily-driver longevity,
+        or 60 if the laptop is almost always on AC power.
+
+        Applied on every boot via a systemd service that writes directly to
+        the kernel's power_supply sysfs interface — the same mechanism asusd
+        uses internally.  Does not require a full asusd.ron config file.
+
+        Runtime change (no rebuild needed):
+          asusctl charge-control --end 80
+          # verify: cat /sys/class/power_supply/BAT0/charge_control_end_threshold
+      '';
+    };
   };
 
   config = lib.mkIf config.vexos.hardware.asus.enable {
@@ -49,5 +67,21 @@
     environment.systemPackages = with pkgs; [
       asusctl  # CLI: asusctl; GUI: rog-control-center (both included in this package)
     ];
+
+    # Battery charge limit — applied on every boot via sysfs.
+    # Writes to the kernel power_supply interface directly; the same path
+    # that asusd uses internally.  Only active when batteryChargeLimit < 100.
+    systemd.services.asus-battery-charge-limit = lib.mkIf
+      (config.vexos.hardware.asus.batteryChargeLimit < 100)
+      {
+        description = "Set ASUS battery charge limit to ${toString config.vexos.hardware.asus.batteryChargeLimit}%";
+        after        = [ "multi-user.target" ];
+        wantedBy     = [ "multi-user.target" ];
+        serviceConfig = {
+          Type            = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = "${pkgs.bash}/bin/bash -c 'echo ${toString config.vexos.hardware.asus.batteryChargeLimit} > /sys/class/power_supply/BAT0/charge_control_end_threshold'";
+        };
+      };
   };
 }
