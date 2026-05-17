@@ -183,6 +183,21 @@ if [ "$VARIANT" = "nvidia" ] && [ "$ROLE" != "vanilla" ]; then
   done
 fi
 
+# ---------- ASUS ROG/TUF hardware ------------------------------------------
+ASUS_ENABLE=false
+if [ "$VARIANT" != "vm" ] && [ "$ROLE" != "stateless" ]; then
+  echo ""
+  echo -e "${BOLD}Is this an ASUS ROG/TUF laptop?${RESET}"
+  echo "  Enables: asusd (RGB, fan curves, charge limit), supergfxctl, power-profiles-daemon"
+  echo ""
+  printf "ASUS ROG/TUF hardware? [y/N] "
+  read -r INPUT </dev/tty
+  case "${INPUT,,}" in
+    y|yes) ASUS_ENABLE=true ;;
+    *)     ASUS_ENABLE=false ;;
+  esac
+fi
+
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}${NVIDIA_SUFFIX}"
 
 # Headless server cannot be activated live: doing so stops display-manager.service
@@ -284,6 +299,23 @@ else
       echo -e "  ${RED}✗ '${EFI_DEV}' is not a block device. Mount /boot manually and re-run.${RESET}"
       exit 1
     fi
+  fi
+fi
+
+# ---------- ASUS hardware patch ---------------------------------------------
+if [ "$ASUS_ENABLE" = "true" ]; then
+  if grep -qF 'hardwareModule = { ... }: { };' /etc/nixos/flake.nix 2>/dev/null; then
+    echo ""
+    echo "  Patching /etc/nixos/flake.nix to enable ASUS ROG/TUF support..."
+    sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; };/' /etc/nixos/flake.nix
+    echo -e "  ${GREEN}✓ ASUS hardware support enabled.${RESET}"
+    echo ""
+  else
+    echo ""
+    echo -e "  ${YELLOW}⚠ hardwareModule not found in /etc/nixos/flake.nix — skipping ASUS patch.${RESET}"
+    echo "    To enable ASUS support manually, add to your /etc/nixos/flake.nix:"
+    echo "      vexos.hardware.asus.enable = true;"
+    echo ""
   fi
 fi
 

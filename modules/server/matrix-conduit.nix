@@ -26,6 +26,18 @@ in
       default = 6167;
       description = "Port for the Conduit HTTP listener.";
     };
+
+    allowFederation = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Enable Matrix federation. Requires a public domain in serverName, a
+        reverse proxy at /_matrix/ and /.well-known/matrix/, and a valid
+        well-known delegation response.  Do NOT enable on a non-public or
+        misconfigured domain — Conduit will retry outbound well-known discovery
+        indefinitely and loop.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -37,7 +49,7 @@ in
         address = "0.0.0.0";
         database_backend = "rocksdb";
         allow_registration = false;
-        allow_federation = cfg.serverName != "localhost";
+        allow_federation = cfg.allowFederation;
       };
     };
 

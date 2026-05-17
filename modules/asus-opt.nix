@@ -37,6 +37,13 @@
     # The supergfxd module auto-installs pkgs.supergfxctl into environment.systemPackages.
     services.supergfxd.enable = true;
 
+    # power-profiles-daemon: required for `asusctl profile` switching
+    # (Quiet / Balanced / Performance modes).
+    # Note: when ppd is active it takes over CPU governor management, so
+    # powerManagement.cpuFreqGovernor in modules/system.nix becomes advisory
+    # and does not conflict.
+    services.power-profiles-daemon.enable = true;
+
     # asusctl CLI tool + rog-control-center GUI (bundled in the same package).
     # supergfxctl is already added to systemPackages by the supergfxd NixOS module.
     environment.systemPackages = with pkgs; [

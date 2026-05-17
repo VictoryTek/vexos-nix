@@ -581,7 +581,7 @@ config.homeassistant = {
 };
 ```
 
-### [BUG] `services.matrix-conduit.allow_federation = serverName != "localhost"` — federation on a non-public domain causes startup loops
+### ✅ FIXED — [BUG] `services.matrix-conduit.allow_federation = serverName != "localhost"` — federation on a non-public domain causes startup loops
 **File:** [modules/server/matrix-conduit.nix](modules/server/matrix-conduit.nix#L37-L46)
 **Why:** Auto-enabling federation purely on the basis of the name being non-"localhost" is dangerous; conduit will attempt outbound `well-known` discovery and a misconfigured well-known will fail on every retry.
 **Fix:** Add an explicit option:
@@ -592,6 +592,7 @@ options.vexos.server.matrix-conduit.allowFederation = lib.mkOption {
 };
 config.services.matrix-conduit.settings.global.allow_federation = cfg.allowFederation;
 ```
+**Resolution:** Added `vexos.server.matrix-conduit.allowFederation` option (bool, default `false`) in `modules/server/matrix-conduit.nix`. Removed the implicit `allow_federation = cfg.serverName != "localhost"` expression and replaced with `allow_federation = cfg.allowFederation`, requiring explicit operator opt-in before enabling outbound Matrix federation.
 
 ### [BUG] `home-manager.users.nimda` is hardcoded; flake.nix `mkHomeManagerModule homeFile` builds a per-role HM tree but never validates the user
 **File:** [flake.nix](flake.nix#L130-L144)
