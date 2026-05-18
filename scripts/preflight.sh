@@ -385,6 +385,16 @@ else
       EXIT_CODE=1
     fi
   fi
+
+  echo ""
+  echo "  --- 7d: Nextcloud insecure HTTP exposure declarations (WARN) ---"
+  NEXTCLOUD_INSECURE_HTTP_MATCHES=$(echo "$TRACKED_NIX" | xargs grep -En '^[[:space:]]*vexos\.server\.nextcloud\.allowInsecureHttp[[:space:]]*=[[:space:]]*true[[:space:]]*;' 2>/dev/null || true)
+  if [ -n "$NEXTCLOUD_INSECURE_HTTP_MATCHES" ]; then
+    warn "Tracked explicit insecure Nextcloud HTTP exposure detected (allowInsecureHttp = true):"
+    echo "$NEXTCLOUD_INSECURE_HTTP_MATCHES" | sed 's/^/    /'
+  else
+    pass "No tracked explicit insecure Nextcloud HTTP exposure declarations"
+  fi
 fi
 echo ""
 

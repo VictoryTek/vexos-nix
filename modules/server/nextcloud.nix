@@ -19,8 +19,13 @@
 #   Without forceSSL, nginx will serve HTTP but Nextcloud will embed HTTPS in its URLs
 #   (mixed content). Configure forceSSL alongside https = true.
 #
-#   Set https = false ONLY on fully-isolated LANs where no TLS termination is available.
-#   Plain HTTP exposes Nextcloud passwords and OAuth session tokens in cleartext.
+# Reverse proxy mode (https = false, allowInsecureHttp = false):
+#   Nextcloud stays on local HTTP loopback only (127.0.0.1 / ::1), intended for
+#   same-host TLS termination by a reverse proxy.
+#
+# Insecure LAN mode (https = false, allowInsecureHttp = true):
+#   Plain HTTP is exposed on port 80 and may leak passwords/session tokens.
+#   Use only on intentionally isolated networks when no TLS path is available.
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.nextcloud;
@@ -43,7 +48,18 @@ in
         When enabled, Nextcloud sets overwriteprotocol = https and generates HTTPS URLs.
         You must additionally configure TLS in services.nginx.virtualHosts — see the
         module header comment for options A and B.
-        Set to false only on fully-isolated LANs without TLS termination.
+        Set to false for local reverse proxy HTTP backends or isolated LANs.
+      '';
+    };
+
+    allowInsecureHttp = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Allow plaintext HTTP exposure when https = false (default: false).
+        When false and https = false, Nextcloud binds HTTP to loopback only
+        for same-host reverse proxy TLS termination.
+        Set to true only for explicitly accepted insecure LAN-only deployments.
       '';
     };
 
@@ -67,9 +83,18 @@ in
       https = cfg.https;
     };
 
-    # Open port 80 always (HTTP redirect when https=true; direct access when https=false).
-    # Open port 443 when HTTPS is enabled so the nginx TLS listener is reachable.
+    # Default non-HTTPS mode is loopback-only to support same-host reverse proxies safely.
+    services.nginx.virtualHosts.${cfg.hostName} = lib.mkIf (!cfg.https && !cfg.allowInsecureHttp) {
+      listen = [
+        { addr = "127.0.0.1"; port = 80; }
+        { addr = "[::1]"; port = 80; }
+      ];
+    };
+
+    # Port 80 is open in HTTPS mode (redirect path) or explicit insecure mode.
+    # Port 443 is open only when HTTPS mode is enabled.
     networking.firewall.allowedTCPPorts =
-      [ 80 ] ++ lib.optional cfg.https 443;
+      lib.optional (cfg.https || cfg.allowInsecureHttp) 80
+      ++ lib.optional cfg.https 443;
   };
 }

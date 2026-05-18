@@ -62,6 +62,14 @@
 
   # ── Cloud & Files ────────────────────────────────────────────────────────
   # vexos.server.nextcloud.enable = false;
+  # Nextcloud transport modes:
+  #   Default secure mode (recommended): keep defaults (https = true).
+  #   Reverse-proxy backend HTTP on localhost only:
+  # vexos.server.nextcloud.https = false;
+  # vexos.server.nextcloud.allowInsecureHttp = false;
+  #   Explicit insecure LAN HTTP exposure (not recommended):
+  # vexos.server.nextcloud.https = false;
+  # vexos.server.nextcloud.allowInsecureHttp = true;
   # vexos.server.syncthing.enable = false;
   # vexos.server.immich.enable = false;
   # vexos.server.minio.enable = false;                   # Port 9000 API + 9001 console
