@@ -77,7 +77,7 @@ _resolve-flake-dir target flake_override="":
             continue
         fi
 
-        if nix eval --impure --raw "$_d_real#${CHECK_ATTR}" >/dev/null 2>&1; then
+        if nix eval --impure --raw "path:$_d_real#${CHECK_ATTR}" >/dev/null 2>&1; then
             echo "$_d_real"
             exit 0
         fi
@@ -126,9 +126,10 @@ switch role="" variant="" flake="":
         echo "  3) htpc"
         echo "  4) server"
         echo "  5) headless-server"
+        echo "  6) vanilla"
         echo ""
         while [ -z "$ROLE" ]; do
-            printf "Choice [1-5] or name: "
+            printf "Choice [1-6] or name: "
             read -r INPUT
             case "${INPUT,,}" in
                 1|desktop)         ROLE="desktop"         ;;
@@ -136,7 +137,8 @@ switch role="" variant="" flake="":
                 3|htpc)            ROLE="htpc"            ;;
                 4|server)          ROLE="server"          ;;
                 5|headless-server) ROLE="headless-server" ;;
-                *) echo "Invalid — enter 1-5 or desktop/stateless/htpc/server/headless-server" ;;
+                6|vanilla)         ROLE="vanilla"         ;;
+                *) echo "Invalid — enter 1-6 or desktop/stateless/htpc/server/headless-server/vanilla" ;;
             esac
         done
     fi
