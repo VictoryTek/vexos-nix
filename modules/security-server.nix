@@ -10,8 +10,13 @@
 #     the audit subsystem; without auditd they only land in dmesg/journald
 #     with no structured retention. On servers we want persistent, parsable
 #     records of policy violations.
-#   - audit ruleset: minimal "log AppArmor denials" baseline. Custom rules
-#     can be appended in role config later if needed.
+#   - audit ruleset: CIS-aligned baseline covering time changes, execve,
+#     mount/umount, kernel module load/unload, sudoers and sshd_config writes.
+#   - fail2ban: brute-force mitigation for SSH and Cockpit. Enabled by default
+#     on server roles because Cockpit (openFirewall=true), Samba, and NFS
+#     together create a significant combined attack surface. All three services
+#     rely on PAM/system accounts, so SSH brute-force protection is the minimum
+#     required baseline.
 { ... }:
 {
   # Kernel audit daemon: required for proper AppArmor denial logging on
@@ -20,9 +25,9 @@
   security.auditd.enable = true;
 
   # Audit framework configuration: enable rule loading and install a
-  # minimal baseline that captures AppArmor STATUS and DENIED records
-  # along with privilege escalation events. Servers benefit from this
-  # context; desktops would just generate noise.
+  # CIS NixOS-aligned baseline that captures AppArmor STATUS/DENIED records
+  # along with privilege escalation, time changes, exec, mount, and kernel
+  # module events.
   security.audit = {
     enable = true;
     rules = [
@@ -30,6 +35,48 @@
       "-w /etc/apparmor.d/ -p wa -k apparmor_policy"
       # Time changes — useful for forensic timeline reconstruction
       "-a always,exit -F arch=b64 -S adjtimex,settimeofday -k time_change"
+      # All exec calls — noisy but critical for audit trails on servers
+      "-a always,exit -F arch=b64 -S execve -k exec"
+      # Mount and unmount events
+      "-a always,exit -F arch=b64 -S mount -S umount2 -k mounts"
+      # Kernel module load/unload
+      "-a always,exit -F arch=b64 -S init_module -S delete_module -S finit_module -k modules"
+      # Privileged file writes
+      "-w /etc/sudoers -p wa -k sudoers"
+      "-w /etc/ssh/sshd_config -p wa -k sshd_config"
     ];
   };
+
+  # Fail2ban: brute-force mitigation for services exposed via openFirewall.
+  # SSH and Cockpit are the primary targets on server roles. Samba and NFS
+  # do not have fail2ban filters in nixpkgs but benefit from SSH protection
+  # since they share the same system accounts.
+  #
+  # NixOS automatically enables the sshd jail when both services.fail2ban
+  # and services.openssh are enabled. The top-level maxretry / bantime
+  # settings below apply to all jails as defaults.
+  #
+  # To add per-service overrides in your host config:
+  #   services.fail2ban.jails.cockpit = lib.mkForce "enabled = false";
+  services.fail2ban = {
+    enable = true;
+    maxretry = 5;
+    bantime = "1h";
+    # Recidive: escalating ban for repeat offenders across all jails.
+    # Bans for 1 week after 3 bans in 1 day.
+    jails.recidive = ''
+      enabled   = true
+      filter    = recidive
+      maxretry  = 3
+      findtime  = 86400
+      bantime   = 604800
+    '';
+    jails.cockpit = ''
+      enabled  = true
+      filter   = cockpit
+      port     = 9090
+      maxretry = 5
+    '';
+  };
 }
+

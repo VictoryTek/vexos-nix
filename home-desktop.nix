@@ -53,6 +53,37 @@
 
   xdg.configFile."starship.toml".source = ./files/starship.toml;
 
+  # ── VS Code (package + settings managed declaratively) ───────────────────
+  # Installs vscode-fhs into the user profile and deploys userSettings to
+  # ~/.config/Code/User/settings.json on every home-manager activation.
+  programs.vscode = {
+    enable  = true;
+    package = pkgs.unstable.vscode-fhs;
+    userSettings = {
+      # File watcher exclusions — critical on NixOS to prevent watcher runaway
+      "files.watcherExclude" = {
+        "**/node_modules/**" = true;
+        "**/.git/**"         = true;
+        "/nix/store/**"      = true;
+        "**/result/**"       = true;
+        "**/.direnv/**"      = true;
+      };
+      "files.exclude" = {
+        "**/.direnv" = true;
+        "**/result"  = true;
+      };
+      # TypeScript server memory cap
+      "typescript.tsserver.maxTsServerMemory"          = 4096;
+      "typescript.preferences.includePackageJsonAutoImports" = "off";
+      # Extension host
+      "extensions.experimental.affinity" = {
+        "GitHub.copilot-chat" = 1;
+      };
+      # Disable crash recovery accumulation
+      "workbench.enableExperiments" = false;
+    };
+  };
+
   # ── Direnv (per-directory environments) ────────────────────────────────────
   programs.direnv = {
     enable = true;
@@ -113,6 +144,9 @@
     NIXOS_OZONE_WL     = "1";
     MOZ_ENABLE_WAYLAND = "1";
     QT_QPA_PLATFORM    = "wayland;xcb";
+    # Cap Electron / Node heap to 4 GB — prevents VS Code OOM on 32 GB systems
+    ELECTRON_EXTRA_LAUNCH_ARGS = "--max-old-space-size=4096 --js-flags=--max-old-space-size=4096";
+    NODE_OPTIONS               = "--max-old-space-size=4096";
   };
 
   # ── Wallpapers ─────────────────────────────────────────────────────────────
