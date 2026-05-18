@@ -164,6 +164,19 @@ jobs:
           }
           EOF
 
+      - name: Create CI-only stateless password override fixture
+        if: matrix.group == 'stateless'
+        run: |
+          # CI eval fixture only: this mirrors first-boot provisioning behavior
+          # for stateless hosts so assertions evaluate as in production installs.
+          temp_hash="$(openssl passwd -6 "$(openssl rand -base64 24)")"
+          sudo tee /etc/nixos/stateless-user-override.nix << EOF
+          { lib, ... }:
+          {
+            users.users.nimda.hashedPassword = lib.mkOverride 50 "${temp_hash}";
+          }
+          EOF
+
       - name: Evaluate ${{ matrix.group }} configurations
         # Evaluate each config's system derivation path — forces full Nix
         # evaluation including all module assertions without building packages.
