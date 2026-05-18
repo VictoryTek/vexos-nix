@@ -268,17 +268,10 @@ echo "  2. Reboot: sudo reboot"
 echo ""
 echo -e "${BOLD}Default login credentials:${RESET}"
 echo -e "  Username: ${CYAN}nimda${RESET}"
-if $CUSTOM_PASSWORD_SET; then
-  echo -e "  Password: ${CYAN}(your chosen password)${RESET}"
-else
-  echo -e "  Password: ${CYAN}vexos (default)${RESET}"
-fi
+echo -e "  Password: ${CYAN}(your chosen password)${RESET}"
 echo ""
 echo -e "${YELLOW}Note: Passwords changed at runtime do NOT persist across reboots.${RESET}"
 echo -e "${YELLOW}      The password resets to the configured value on every boot (by design).${RESET}"
-if ! $CUSTOM_PASSWORD_SET; then
-  echo -e "${YELLOW}      To set a custom password, re-run stateless-setup.sh.${RESET}"
-fi
 echo ""
 printf "Reboot now? [y/N] "
 read -r REBOOT_CHOICE </dev/tty

@@ -19,7 +19,6 @@
 
   # ── Media Servers ────────────────────────────────────────────────────────
   # vexos.server.jellyfin.enable = false;
-  # vexos.server.jellyfin.hardwareAcceleration = true;  # adds render/video group access for Jellyfin transcoding
   # vexos.server.plex.enable = false;
   # vexos.server.plex.plexPass = false;                 # true = expose GPU for hardware transcoding (requires Plex Pass sub)
   # vexos.server.audiobookshelf.enable = false;         # Port 8234
@@ -39,7 +38,6 @@
 
   # ── Game Servers ─────────────────────────────────────────────────────────
   # vexos.server.papermc.enable = false;
-  # vexos.server.papermc.acceptEula = false;         # Set to true only after reading Mojang EULA
   # vexos.server.papermc.memory = "2G";
 
   # ── Cloud & Files ────────────────────────────────────────────────────────
@@ -126,7 +124,5 @@
 
   # ── Virtualisation ────────────────────────────────────────────────────────────
   # vexos.server.proxmox.enable = false;              # Web UI https://<ip>:8006 — ⚠ experimental
-  #   Proxmox mode disables Tailscale by default; opt in from host config with:
-  #   services.tailscale.enable = lib.mkForce true;
   # vexos.server.proxmox.ipAddress = "";              # Required: set to this host's IP address
 }

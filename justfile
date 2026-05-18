@@ -23,10 +23,9 @@ default:
         echo "Active role: stateless (ephemeral / tmpfs root)"
         echo ""
         echo "Reminder:"
-        echo "    Login password is set via stateless-setup.sh / migrate-to-stateless.sh"
-        echo "    and stored in /etc/nixos/stateless-user-override.nix (persisted)."
-        echo "    Password changes at runtime do not survive a reboot (by design)."
-        echo "    To update permanently, re-run the setup script or edit the override file."
+        echo "    Login password resets to 'vexos' on every reboot (by design)."
+        echo "    To change permanently, update initialPassword in"
+        echo "    configuration-stateless.nix and rebuild."
     fi
 
 # Print the active role and GPU variant (e.g. vexos-desktop-amd).
@@ -84,32 +83,6 @@ _resolve-flake-dir target flake_override="":
         fi
     done
 
-    # Diagnosis: find the most-likely candidate (has flake.nix) and explain why it failed.
-    for _t in "${TRIED[@]}"; do
-        [ -f "$_t/flake.nix" ] || continue
-        echo "" >&2
-        echo "Diagnosis for: $_t" >&2
-        # Pure check: does the target attribute exist at all?
-        _has_attr=$(nix eval --impure "$_t#nixosConfigurations" \
-            --apply 'x: builtins.attrNames x' --json 2>/dev/null \
-            | grep -o "\"${TARGET}\"" || true)
-        if [ -z "$_has_attr" ]; then
-            echo "  '${TARGET}' is not in nixosConfigurations." >&2
-            echo "  This flake may be out of date — run: git pull (or git fetch + merge)" >&2
-            echo "  Available outputs matching 'vexos-':" >&2
-            nix eval --impure "$_t#nixosConfigurations" \
-                --apply 'x: builtins.attrNames x' --json 2>/dev/null \
-                | tr -d '[]"' | tr ',' '\n' | grep 'vexos-' | head -10 \
-                | sed 's/^/    /' >&2 || true
-        else
-            echo "  '${TARGET}' exists but failed to evaluate. Error:" >&2
-            nix eval --impure --raw \
-                "$_t#nixosConfigurations.${TARGET}.config.system.build.toplevel.drvPath" \
-                2>&1 | head -30 | sed 's/^/    /' >&2 || true
-        fi
-        break
-    done
-
     echo "error: no flake provided target '${TARGET}'" >&2
     echo "attempted directories:" >&2
     for _t in "${TRIED[@]}"; do
@@ -153,10 +126,9 @@ switch role="" variant="" flake="":
         echo "  3) htpc"
         echo "  4) server"
         echo "  5) headless-server"
-        echo "  6) vanilla"
         echo ""
         while [ -z "$ROLE" ]; do
-            printf "Choice [1-6] or name: "
+            printf "Choice [1-5] or name: "
             read -r INPUT
             case "${INPUT,,}" in
                 1|desktop)         ROLE="desktop"         ;;
@@ -164,8 +136,7 @@ switch role="" variant="" flake="":
                 3|htpc)            ROLE="htpc"            ;;
                 4|server)          ROLE="server"          ;;
                 5|headless-server) ROLE="headless-server" ;;
-                6|vanilla)         ROLE="vanilla"         ;;
-                *) echo "Invalid — enter 1-6 or desktop/stateless/htpc/server/headless-server/vanilla" ;;
+                *) echo "Invalid — enter 1-5 or desktop/stateless/htpc/server/headless-server" ;;
             esac
         done
     fi
@@ -491,120 +462,6 @@ ssh target="":
 
     echo ""
     echo "Done. Connect with: ssh ${TARGET}"
-    echo ""
-
-# Configure a declarative static IP profile in modules/network.nix.
-# Prompts for IP address, prefix length, gateway, and DNS servers, then
-# uncomments and fills in the wired-static profile block.  Run
-# 'just switch' or 'just rebuild' afterwards to deploy.
-static-ip:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    _jf_raw="{{justfile_directory()}}"
-    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-    _jf_dir=$(dirname "$_jf_real")
-    NETWORK_NIX=""
-    _walk="$PWD"
-    while [ "$_walk" != "/" ] && [ -z "$NETWORK_NIX" ]; do
-        [ -f "$_walk/modules/network.nix" ] && NETWORK_NIX="$_walk/modules/network.nix"
-        _walk=$(dirname "$_walk")
-    done
-    for _candidate in "$_jf_raw" "$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
-        [ -n "$NETWORK_NIX" ] && break
-        [ -f "$_candidate/modules/network.nix" ] && NETWORK_NIX="$_candidate/modules/network.nix"
-    done
-    if [ -z "$NETWORK_NIX" ]; then
-        echo "error: modules/network.nix not found — run from within the vexos-nix repo." >&2
-        exit 1
-    fi
-    REPO_DIR=$(dirname "$(dirname "$NETWORK_NIX")")
-
-    echo ""
-    echo "Configure static IP — this will fill in the wired-static profile"
-    echo "in modules/network.nix and enable it."
-    echo ""
-
-    # ── Collect and validate inputs ──────────────────────────────────────────
-
-    _ip=""
-    while [ -z "$_ip" ]; do
-        printf "IP address (e.g. 192.168.1.10): "
-        read -r _ip
-        if ! echo "$_ip" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
-            echo "  Invalid — enter a dotted IPv4 address."
-            _ip=""
-        fi
-    done
-
-    _prefix=""
-    while [ -z "$_prefix" ]; do
-        printf "Prefix length (e.g. 24 for /24 = 255.255.255.0): "
-        read -r _prefix
-        if ! echo "$_prefix" | grep -qP '^\d+$' || [ "$_prefix" -lt 1 ] || [ "$_prefix" -gt 32 ]; then
-            echo "  Invalid — enter a number between 1 and 32."
-            _prefix=""
-        fi
-    done
-
-    _gw=""
-    while [ -z "$_gw" ]; do
-        printf "Default gateway (e.g. 192.168.1.1): "
-        read -r _gw
-        if ! echo "$_gw" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
-            echo "  Invalid — enter a dotted IPv4 address."
-            _gw=""
-        fi
-    done
-
-    _dns1=""
-    while [ -z "$_dns1" ]; do
-        printf "Primary DNS server (e.g. 1.1.1.1): "
-        read -r _dns1
-        if ! echo "$_dns1" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
-            echo "  Invalid — enter a dotted IPv4 address."
-            _dns1=""
-        fi
-    done
-
-    printf "Secondary DNS server (leave blank to skip): "
-    read -r _dns2
-
-    if [ -n "$_dns2" ] && ! echo "$_dns2" | grep -qP '^\d{1,3}(\.\d{1,3}){3}$'; then
-        echo "  Invalid secondary DNS — ignoring it."
-        _dns2=""
-    fi
-
-    # Build the NM keyfile values
-    ADDR="${_ip}/${_prefix}"
-    DNS_VAL="${_dns1}"
-    [ -n "$_dns2" ] && DNS_VAL="${_dns1};${_dns2}"
-
-    echo ""
-    echo "Settings to apply:"
-    echo "  Address : ${ADDR}"
-    echo "  Gateway : ${_gw}"
-    echo "  DNS     : ${DNS_VAL}"
-    echo ""
-    printf "Write these into modules/network.nix? [y/N]: "
-    read -r _confirm
-    case "${_confirm,,}" in
-        y|yes) ;;
-        *) echo "Aborted — nothing was changed."; exit 0 ;;
-    esac
-
-    # ── Uncomment the wired-static block and fill in placeholders ────────────
-    # Invoke the extracted helper script — avoids heredoc unindented lines
-    # that confuse the just parser.
-    python3 "$REPO_DIR/scripts/configure-network.py" "$NETWORK_NIX" "$ADDR" "$_gw" "$DNS_VAL"
-
-    echo ""
-    echo "✓ modules/network.nix updated with static IP ${ADDR}."
-    echo ""
-    echo "Next steps:"
-    echo "  1. Review the change:  git diff modules/network.nix"
-    echo "  2. Commit:             git add modules/network.nix && git commit -m 'net: configure static IP ${ADDR}'"
-    echo "  3. Deploy:             just switch   (or just rebuild)"
     echo ""
 
 # ── Server Services Management ───────────────────────────────────────────────
@@ -1486,6 +1343,41 @@ enable service: _require-server-role
         echo "  Note:     Requires Docker to be enabled (just enable docker)."
         ;;
       portbook)
+        # ── Auto-patch the package hash if still a placeholder ──────────────────
+        _PB_PKG=""
+        _jf_raw="{{justfile_directory()}}"
+        _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+        _jf_dir=$(dirname "$_jf_real")
+        _walk="$PWD"
+        while [ "$_walk" != "/" ] && [ -z "$_PB_PKG" ]; do
+          [ -f "$_walk/pkgs/portbook/default.nix" ] && _PB_PKG="$_walk/pkgs/portbook/default.nix"
+          _walk=$(dirname "$_walk")
+        done
+        for _cand in "$_jf_raw" "$_jf_dir" "$HOME/Projects/vexos-nix"; do
+          [ -n "$_PB_PKG" ] && break
+          [ -f "$_cand/pkgs/portbook/default.nix" ] && _PB_PKG="$_cand/pkgs/portbook/default.nix"
+        done
+        if [ -n "$_PB_PKG" ] && grep -q 'lib\.fakeHash' "$_PB_PKG"; then
+          echo ""
+          echo "  Fetching portbook package hash (~5 MB download)..."
+          _PB_URL="https://github.com/a-grasso/portbook/releases/download/v0.2.1/portbook-x86_64-unknown-linux-gnu.tar.xz"
+          _PB_B32=$(nix-prefetch-url --unpack "$_PB_URL" 2>/dev/null) || _PB_B32=""
+          _PB_SRI=""
+          [ -n "$_PB_B32" ] && _PB_SRI=$(nix hash to-sri --type sha256 "$_PB_B32" 2>/dev/null) || true
+          if [ -n "$_PB_SRI" ]; then
+            sed -i "s|lib\.fakeHash|\"${_PB_SRI}\"|" "$_PB_PKG"
+            echo "  ✓ Package hash set: ${_PB_SRI}"
+          else
+            echo "  ⚠ Could not fetch hash automatically. Run manually then rebuild:"
+            echo "      HASH=\$(nix-prefetch-url --unpack $_PB_URL)"
+            echo "      SRI=\$(nix hash to-sri --type sha256 \"\$HASH\")"
+            echo "      sed -i \"s|lib\\.fakeHash|\\\"\$SRI\\\"|\" $_PB_PKG"
+          fi
+        elif [ -n "$_PB_PKG" ]; then
+          echo "  ✓ Package hash already set."
+        else
+          echo "  ⚠ Could not find pkgs/portbook/default.nix — set the hash manually before rebuilding."
+        fi
         echo ""
         echo "  Service:  portbook.service"
         echo "  Web UI:   http://<server-ip>:7777"
@@ -1608,85 +1500,3 @@ rebuild:
     echo "Rebuilding ${target}..."
     echo ""
     sudo nixos-rebuild switch --flake "path:/etc/nixos#${target}"
-
-# ── PIA VPN ──────────────────────────────────────────────────────────────────
-
-# Download and run PIA's official Linux installer
-pia-install VERSION="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [ -n "{{VERSION}}" ]; then
-        URL="https://installers.privateinternetaccess.com/download/pia-linux-{{VERSION}}.run"
-    else
-        URL="https://installers.privateinternetaccess.com/download/pia-linux-3.6.1-08585.run"
-    fi
-    DEST="/tmp/pia-installer.run"
-    echo "Downloading PIA installer from $URL..."
-    curl -L -o "$DEST" "$URL"
-    chmod +x "$DEST"
-    sudo "$DEST"
-    rm -f "$DEST"
-
-# Uninstall PIA using PIA's own uninstaller
-pia-uninstall:
-    sudo /opt/piavpn/bin/pia-uninstall || sudo rm -rf /opt/piavpn
-
-# Update PIA: uninstall then reinstall latest
-pia-update:
-    just pia-uninstall
-    just pia-install
-
-# Show PIA connection state, region, and IPs
-pia-status:
-    piactl get connectionstate
-    piactl get region
-    piactl get vpnip || true
-    piactl get pubip || true
-
-# Connect to VPN (optionally specify region, e.g. just pia-connect us_chicago)
-pia-connect REGION="":
-    #!/usr/bin/env bash
-    if [ -n "{{REGION}}" ]; then
-        piactl set region "{{REGION}}"
-    fi
-    piactl connect
-
-# Disconnect from VPN
-pia-disconnect:
-    piactl disconnect
-
-# List available PIA regions
-pia-regions:
-    piactl get regions
-
-# Enable kill switch
-pia-kill-switch-on:
-    piactl set killswitch on
-
-# Disable kill switch
-pia-kill-switch-off:
-    piactl set killswitch off
-
-# Enable port forwarding
-pia-port-forward-on:
-    piactl set portforward on
-
-# Disable port forwarding
-pia-port-forward-off:
-    piactl set portforward off
-
-# Enable PIA background daemon (persist after GUI closes)
-pia-background-on:
-    piactl background enable
-
-# Launch PIA GUI
-pia-gui:
-    pia-client &
-
-# Tail the PIA daemon journal
-pia-logs:
-    journalctl -u piavpn -f
-
-# Print PIA client version
-pia-version:
-    piactl --version

@@ -78,6 +78,14 @@
       let path = /etc/nixos/server-services.nix;
       in if builtins.pathExists path then [ path ] else [];
 
+    # Optional per-machine user override for the stateless role.
+    # Written by stateless-setup.sh / migrate-to-stateless.sh at install time.
+    # Without this file the compiled-in default is a locked account
+    # (hashedPassword = "!") — the setup scripts must run before first use.
+    statelessUserOverrideModule =
+      let path = /etc/nixos/stateless-user-override.nix;
+      in if builtins.pathExists path then [ path ] else [];
+
     # Overlay modules shared by every non-vanilla role (unstable channel + custom pkgs).
     commonBase = [ unstableOverlayModule customPkgsOverlayModule ];
 
@@ -103,7 +111,7 @@
       stateless = {
         homeFile     = ./home-stateless.nix;
         baseModules  = commonBase ++ [ upModule ];
-        extraModules = [ impermanence.nixosModules.impermanence ];
+        extraModules = [ impermanence.nixosModules.impermanence ] ++ statelessUserOverrideModule;
       };
       server = {
         homeFile     = ./home-server.nix;
