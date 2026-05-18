@@ -146,6 +146,12 @@
     extraUpFlags = [ "--accept-routes=false" ];
   };
 
+  # The upstream NixOS tailscale module does not set a Restart policy;
+  # systemd defaults to Restart=no.  Ensure the daemon auto-recovers from
+  # transient failures (e.g. kernel WireGuard hiccups, DERP connectivity
+  # drops) without operator intervention.
+  systemd.services.tailscaled.serviceConfig.Restart = "on-failure";
+
   # ── DNS resolver ──────────────────────────────────────────────────────────
   services.resolved = {
     enable      = true;

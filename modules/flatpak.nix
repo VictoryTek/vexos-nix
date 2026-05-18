@@ -150,6 +150,10 @@ in
         # report failure (exit code 4) even though the NixOS config applied fine.
         # The stamp is left unwritten; the service will re-run on the next reboot
         # or the next nixos-rebuild activation that starts a fresh unit.
+        # Write a failure timestamp so operators can detect silent failures with:
+        #   ls -l /var/lib/flatpak/.last-failed-install
+        #   journalctl -u flatpak-install-apps --since "$(cat /var/lib/flatpak/.last-failed-install)"
+        date -u +%FT%TZ > /var/lib/flatpak/.last-failed-install
         echo "flatpak: one or more apps failed — will retry on next boot"
       fi
     '';
