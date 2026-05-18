@@ -56,8 +56,10 @@ _resolve-flake-dir target flake_override="":
     fi
     CANDIDATES+=("$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix")
 
-    CHECK_ATTR="nixosConfigurations.${TARGET}.config.system.build.toplevel.drvPath"
+    CHECK_ATTR="nixosConfigurations.${TARGET}.config.networking.hostName"
     TRIED=()
+    LAST_ERR=""
+    LAST_ERR_DIR=""
 
     for _d in "${CANDIDATES[@]}"; do
         [ -n "$_d" ] || continue
@@ -77,10 +79,13 @@ _resolve-flake-dir target flake_override="":
             continue
         fi
 
-        if nix eval --impure --raw "path:$_d_real#${CHECK_ATTR}" >/dev/null 2>&1; then
+        _err=$(nix eval --impure --raw "path:$_d_real#${CHECK_ATTR}" 2>&1)
+        if [ $? -eq 0 ]; then
             echo "$_d_real"
             exit 0
         fi
+        LAST_ERR="$_err"
+        LAST_ERR_DIR="$_d_real"
     done
 
     echo "error: no flake provided target '${TARGET}'" >&2
@@ -89,7 +94,11 @@ _resolve-flake-dir target flake_override="":
         echo "  - $_t" >&2
     done
     echo "expected target: nixosConfigurations.${TARGET}" >&2
-    echo "hint: run 'nix flake show /etc/nixos' and 'nix flake show $_jf_dir'" >&2
+    if [ -n "$LAST_ERR" ]; then
+        echo "" >&2
+        echo "nix eval error from ${LAST_ERR_DIR}:" >&2
+        echo "${LAST_ERR}" >&2
+    fi
     exit 1
 
 # Rebuild and switch interactively, or pass role + variant directly.
