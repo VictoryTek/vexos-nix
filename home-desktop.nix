@@ -59,7 +59,7 @@
   programs.vscode = {
     enable  = true;
     package = pkgs.unstable.vscode-fhs;
-    userSettings = {
+    profiles.default.userSettings = {
       # File watcher exclusions — critical on NixOS to prevent watcher runaway
       "files.watcherExclude" = {
         "**/node_modules/**" = true;
