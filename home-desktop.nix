@@ -81,6 +81,8 @@
       };
       # Disable crash recovery accumulation
       "workbench.enableExperiments" = false;
+      # Run Copilot tool calls in the visible terminal panel, not hidden sessions
+      "chat.tools.terminal.outputLocation" = "terminal";
     };
   };
 
