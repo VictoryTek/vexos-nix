@@ -6,7 +6,13 @@
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
 
-    # Trust wheel group users to use additional substituters and caches
+    # Trust wheel group users to use additional substituters and caches.
+    # Security note: trusted-users can specify arbitrary --substituters on the
+    # nix CLI, including untrusted third-party caches. This is acceptable in
+    # single-operator and homelab scenarios where every wheel user is the owner.
+    # On multi-tenant servers (shared hosting, CI builders) consider restricting
+    # to just "root" and managing caches declaratively via nix.settings.substituters:
+    #   nix.settings.trusted-users = lib.mkForce [ "root" ];
     trusted-users = [ "root" "@wheel" ];
 
     # Deduplicate identical files in the store (saves significant disk space)
