@@ -293,12 +293,13 @@ else
 fi
 echo ""
 
-# ---------- CHECK 7: No hardcoded secrets (WARN) -----------------------------
-echo "[7/7] Scanning tracked .nix files for hardcoded secrets..."
+# ---------- CHECK 7: Secret hygiene + backend consistency --------------------
+echo "[7/7] Secret hygiene and backend consistency checks..."
 TRACKED_NIX=$(git ls-files '*.nix' 2>/dev/null || true)
 if [ -z "$TRACKED_NIX" ]; then
   warn "No tracked .nix files found — skipping secret scan"
 else
+  echo "  --- 7a: Generic hardcoded secret pattern scan (WARN) ---"
   SECRET_MATCHES=$(echo "$TRACKED_NIX" | xargs grep -rEn \
     'password[[:space:]]*=[[:space:]]*"[^"]+"|privateKey[[:space:]]*=[[:space:]]*"[^"]+"|AKIA[0-9A-Z]{16}|[aA][pP][iI][-_]?[kK][eE][yY][[:space:]]*=[[:space:]]*"[^"]+"|secret[[:space:]]*=[[:space:]]*"[^"]+"|token[[:space:]]*=[[:space:]]*"[^"]+"' \
     2>/dev/null || true)
@@ -307,6 +308,82 @@ else
     echo "$SECRET_MATCHES"
   else
     pass "No hardcoded secret patterns found"
+  fi
+
+  echo ""
+  echo "  --- 7b: Plaintext service path regression guards (HARD) ---"
+  PLAINTEXT_REGRESSION=0
+
+  if grep -Eq 'config\.adminpassFile[[:space:]]*=[[:space:]]*"/etc/nixos/secrets/nextcloud-admin-pass"' modules/server/nextcloud.nix 2>/dev/null; then
+    fail "Hardcoded plaintext Nextcloud adminpassFile assignment detected in modules/server/nextcloud.nix"
+    PLAINTEXT_REGRESSION=1
+  fi
+
+  if grep -Eq 'rootCredentialsFile[[:space:]]*=[[:space:]]*"/etc/nixos/secrets/minio-credentials"' modules/server/minio.nix 2>/dev/null; then
+    fail "Hardcoded plaintext MinIO rootCredentialsFile assignment detected in modules/server/minio.nix"
+    PLAINTEXT_REGRESSION=1
+  fi
+
+  if grep -Eq 'passwordFile[[:space:]]*=[[:space:]]*"/etc/nixos/secrets/photoprism-password"' modules/server/photoprism.nix 2>/dev/null; then
+    fail "Hardcoded plaintext PhotoPrism passwordFile assignment detected in modules/server/photoprism.nix"
+    PLAINTEXT_REGRESSION=1
+  fi
+
+  if grep -Eq 'environmentFile[[:space:]]*=[[:space:]]*"/etc/nixos/secrets/attic-credentials"' modules/server/attic.nix 2>/dev/null; then
+    fail "Hardcoded plaintext attic environmentFile assignment detected in modules/server/attic.nix"
+    PLAINTEXT_REGRESSION=1
+  fi
+
+  if [ "$PLAINTEXT_REGRESSION" -eq 0 ]; then
+    pass "No hardcoded plaintext secret path assignments in server modules"
+  else
+    EXIT_CODE=1
+  fi
+
+  echo ""
+  echo "  --- 7c: sops backend declaration consistency (HARD when enabled) ---"
+  SOPS_BACKEND_MATCHES=$(echo "$TRACKED_NIX" | xargs grep -En '^[[:space:]]*vexos\.secrets\.backend[[:space:]]*=[[:space:]]*"sops"' 2>/dev/null || true)
+  if [ -z "$SOPS_BACKEND_MATCHES" ]; then
+    pass "No tracked vexos.secrets.backend = \"sops\" setting detected"
+  else
+    pass "Detected tracked sops backend enablement"
+    echo "$SOPS_BACKEND_MATCHES" | sed 's/^/    /'
+
+    SOPS_DECL_FAIL=0
+
+    SOPS_FILE_MATCHES=$(echo "$TRACKED_NIX" | xargs grep -En '^[[:space:]]*vexos\.secrets\.sopsFile[[:space:]]*=' 2>/dev/null || true)
+    if [ -z "$SOPS_FILE_MATCHES" ]; then
+      fail "vexos.secrets.backend = \"sops\" requires vexos.secrets.sopsFile to be configured"
+      SOPS_DECL_FAIL=1
+    fi
+
+    if ! grep -Eq 'sops-nix' flake.nix 2>/dev/null || ! grep -Eq 'nixosModules\.sops' flake.nix 2>/dev/null; then
+      fail "flake.nix must include sops-nix input and nixosModules.sops wiring when sops backend is enabled"
+      SOPS_DECL_FAIL=1
+    fi
+
+    if [ ! -f modules/secrets-sops.nix ]; then
+      fail "modules/secrets-sops.nix is required when sops backend is enabled"
+      SOPS_DECL_FAIL=1
+    else
+      for REQUIRED_TOKEN in \
+        'nextcloud-admin-pass' \
+        'photoprism-password' \
+        'minio-root-user' \
+        'minio-root-password' \
+        'attic-server-token-rs256-secret-base64'; do
+        if ! grep -Fq "$REQUIRED_TOKEN" modules/secrets-sops.nix 2>/dev/null; then
+          fail "modules/secrets-sops.nix missing required declaration token: $REQUIRED_TOKEN"
+          SOPS_DECL_FAIL=1
+        fi
+      done
+    fi
+
+    if [ "$SOPS_DECL_FAIL" -eq 0 ]; then
+      pass "sops backend declarations are present"
+    else
+      EXIT_CODE=1
+    fi
   fi
 fi
 echo ""

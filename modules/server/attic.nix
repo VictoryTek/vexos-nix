@@ -1,7 +1,9 @@
 # modules/server/attic.nix
 # Attic — modern, purpose-built NixOS binary cache server.
 # Default port: 8400 (avoids conflicts with SABnzbd/scrutiny on 8080).
-# Requires: /etc/nixos/secrets/attic-credentials containing:
+# Credentials default path: /etc/nixos/secrets/attic-credentials
+#   Override via vexos.server.attic.environmentFile for alternate backends.
+# Requires file containing:
 #   ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64=<secret>
 # Generate secret with: openssl genrsa -traditional 4096 | base64 -w0
 # Create file with: sudo install -m 0600 -o root -g root /dev/stdin /etc/nixos/secrets/attic-credentials
@@ -26,12 +28,22 @@ in
       default = "/var/lib/atticd";
       description = "Directory for the SQLite database and local cache storage.";
     };
+
+    environmentFile = lib.mkOption {
+      type = lib.types.str;
+      default = "/etc/nixos/secrets/attic-credentials";
+      description = ''
+        Path to the atticd environment file.
+        Default keeps legacy plaintext behavior; the sops backend overrides this
+        to a decrypted runtime template path.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
     services.atticd = {
       enable = true;
-      environmentFile = "/etc/nixos/secrets/attic-credentials";
+      environmentFile = cfg.environmentFile;
       settings = {
         listen = "[::]:${toString cfg.port}";
         database.url = "sqlite://${cfg.dataDir}/db.sqlite?mode=rwc";

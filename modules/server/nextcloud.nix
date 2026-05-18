@@ -1,6 +1,7 @@
 # modules/server/nextcloud.nix
 # Nextcloud — self-hosted file sync, calendar, and contacts.
-# Secrets: /etc/nixos/secrets/nextcloud-admin-pass (plain text, single-line admin password)
+# Secret default path: /etc/nixos/secrets/nextcloud-admin-pass
+#   Override via vexos.server.nextcloud.adminPassFile for alternate backends.
 #   Create with: sudo install -m 0600 -o root -g root /dev/stdin /etc/nixos/secrets/nextcloud-admin-pass
 #   Permissions enforced at boot by modules/secrets.nix (0700 dir, 0600 files).
 #
@@ -45,6 +46,16 @@ in
         Set to false only on fully-isolated LANs without TLS termination.
       '';
     };
+
+    adminPassFile = lib.mkOption {
+      type = lib.types.str;
+      default = "/etc/nixos/secrets/nextcloud-admin-pass";
+      description = ''
+        Path to the Nextcloud admin password file.
+        Default keeps legacy plaintext behavior; the sops backend overrides this
+        to a decrypted runtime secret path.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -52,7 +63,7 @@ in
       enable = true;
       package = pkgs.nextcloud30;
       hostName = cfg.hostName;
-      config.adminpassFile = "/etc/nixos/secrets/nextcloud-admin-pass";
+      config.adminpassFile = cfg.adminPassFile;
       https = cfg.https;
     };
 

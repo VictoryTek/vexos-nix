@@ -21,6 +21,12 @@
     # impermanence has no nixpkgs dependency — follows not required.
     impermanence.url = "github:nix-community/impermanence";
 
+    # sops-nix: declarative encrypted secrets backend for server roles.
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Up — GTK4 + libadwaita system update GUI (all roles and variants).
     up = {
       url = "github:VictoryTek/Up";
@@ -33,7 +39,7 @@
     proxmox-nixos.url = "github:SaumonNet/proxmox-nixos";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, impermanence, up, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, impermanence, sops-nix, up, ... }@inputs:
   let
     inherit (nixpkgs) lib;
 
@@ -92,6 +98,9 @@
     # Proxmox overlay + NixOS module shared by server and headless-server roles.
     proxmoxBase = [ proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
 
+    # sops-nix module shared by server and headless-server roles.
+    sopsBase = [ sops-nix.nixosModules.sops ];
+
     # Single source of truth for per-role wiring. Consumed by `mkHost` (per-host
     # nixosConfigurations) AND by `mkBaseModule` (the nixosModules.*Base exports
     # that template/etc-nixos-flake.nix imports). Keeping both pathways derived
@@ -119,7 +128,7 @@
         # proxmoxBase: overlay + NixOS module imported here (not in
         # modules/server/proxmox.nix) to avoid infinite recursion — `imports`
         # cannot safely reference _module.args.
-        baseModules  = commonBase ++ [ upModule ] ++ proxmoxBase;
+        baseModules  = commonBase ++ [ upModule ] ++ proxmoxBase ++ sopsBase;
         extraModules = serverServicesModule;
       };
       headless-server = {
@@ -128,7 +137,7 @@
         # app is intentionally omitted.
         # proxmoxBase: overlay + NixOS module imported here to avoid infinite
         # recursion (same reason as server above).
-        baseModules  = commonBase ++ proxmoxBase;
+        baseModules  = commonBase ++ proxmoxBase ++ sopsBase;
         extraModules = serverServicesModule;
       };
       vanilla = {
@@ -256,7 +265,7 @@
         [ home-manager.nixosModules.home-manager configFile ]
         ++ roles.${role}.extraModules
         ++ lib.optionals (role == "server" || role == "headless-server")
-             [ proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
+             [ proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve sops-nix.nixosModules.sops ];
       home-manager = {
         useGlobalPkgs    = true;
         useUserPackages  = true;

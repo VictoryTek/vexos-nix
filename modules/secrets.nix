@@ -1,5 +1,5 @@
 # modules/secrets.nix
-# Permissions enforcement for /etc/nixos/secrets.
+# Backend-agnostic permissions enforcement for /etc/nixos/secrets.
 #
 # Project services that need credentials read a secret file from this directory
 # at runtime (e.g. nextcloud-admin-pass, minio-credentials, attic-credentials,
@@ -12,11 +12,11 @@
 #     silently downgrade security)
 #
 # Individual secret files must be created manually before enabling the relevant
-# service.  Use:
+# service when using vexos.secrets.backend = "plaintext". Use:
 #   sudo install -m 0600 -o root -g root /dev/stdin /etc/nixos/secrets/<name>
 #   <paste secret, then Ctrl-D>
 #
-# Future: replace this with sops-nix or agenix for declarative secrets at rest.
+# sops backend support is implemented separately in modules/secrets-sops.nix.
 
 { lib, ... }:
 

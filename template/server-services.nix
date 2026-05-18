@@ -14,6 +14,26 @@
 #   dozzle, portainer, ntfy, mealie, listmonk, rustdesk, home-assistant,
 #   node-red, zigbee2mqtt, matrix-conduit, stirling-pdf, kiji-proxy, portbook, proxmox
 {
+  # ── Secrets Backend (phased migration) ───────────────────────────────────
+  # Default is plaintext compatibility via /etc/nixos/secrets/*.
+  # Uncomment to opt into sops-nix after creating encrypted secrets:
+  # vexos.secrets.backend = "sops";
+  # vexos.secrets.sopsFile = ./secrets/server/secrets.yaml;
+  # vexos.secrets.ageKeyFile = "/var/lib/sops-nix/key.txt";
+  # vexos.secrets.ageSshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  #
+  # Suggested bootstrap (run on a secure workstation/host):
+  #   mkdir -p ~/.config/sops/age
+  #   age-keygen -o ~/.config/sops/age/keys.txt
+  #   sops edit secrets/server/secrets.yaml
+  #
+  # Required keys for server modules:
+  #   nextcloud-admin-pass
+  #   photoprism-password
+  #   minio-root-user
+  #   minio-root-password
+  #   attic-server-token-rs256-secret-base64
+
   # ── Container Runtime ────────────────────────────────────────────────────
   # vexos.server.docker.enable = false;
 

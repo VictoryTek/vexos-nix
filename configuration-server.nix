@@ -19,6 +19,7 @@
     ./modules/security.nix          # AppArmor MAC baseline (all roles)
     ./modules/security-server.nix   # auditd + server audit ruleset
     ./modules/secrets.nix           # enforce /etc/nixos/secrets 0700 root:root
+    ./modules/secrets-sops.nix      # optional encrypted secrets backend (vexos.secrets.backend)
     ./modules/server       # Optional server services (vexos.server.*.enable)
     ./modules/zfs-server.nix
     ./modules/pia-server.nix         # PIA VPN CLI support (piactl)
