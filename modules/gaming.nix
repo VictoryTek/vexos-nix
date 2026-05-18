@@ -101,4 +101,25 @@
 
   # Grant nimda access to GameMode CPU governor, input devices, and USB peripherals.
   users.users.${config.vexos.user.name}.extraGroups = [ "gamemode" "input" "plugdev" ];
+
+  # ── AppArmor Wine baseline ─────────────────────────────────────────────────
+  # wineWowPackages.stagingFull installs setuid wrappers (wineserver, wine-preloader)
+  # that could be misused by a compromised Wine prefix. Place wineserver in
+  # AppArmor complain mode so that deviations from normal operation appear in
+  # audit logs without blocking legitimate games.
+  # Switch to "enforce" once a site-specific profile is tuned.
+  security.apparmor.policies."usr.bin.wineserver".profile = ''
+    #include <tunables/global>
+
+    /usr/bin/wineserver flags=(complain) {
+      #include <abstractions/base>
+      capability sys_ptrace,
+      @{PROC}/@{pid}/mem rw,
+      @{PROC}/@{pid}/task/*/mem rw,
+      /tmp/** rwk,
+      @{HOME}/.wine/** rwlk,
+      @{HOME}/.local/share/Steam/** rwlk,
+      owner @{HOME}/** rwlk,
+    }
+  '';
 }
