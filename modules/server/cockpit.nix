@@ -18,6 +18,62 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.cockpit;
+
+  defaultAllowedCidrs = [
+    "127.0.0.1/32"
+    "::1/128"
+    "10.0.0.0/8"
+    "172.16.0.0/12"
+    "192.168.0.0/16"
+    "fc00::/7"
+  ];
+
+  firewalldEnabled = lib.attrByPath [ "services" "firewalld" "enable" ] false config;
+  hasInterfaceScopes = cfg.firewall.interfaces != [ ];
+  useInterfaceScopedRules = hasInterfaceScopes && !firewalldEnabled;
+
+  cockpitTcpPorts = lib.optional cfg.enable cfg.port;
+
+  sambaTcpPorts =
+    if cfg.fileSharing.enable
+    then [ 445 ] ++ lib.optional cfg.fileSharing.samba.enableNetbios 139
+    else [ ];
+
+  sambaUdpPorts =
+    if cfg.fileSharing.enable && cfg.fileSharing.samba.enableNetbios
+    then [ 137 138 ]
+    else [ ];
+
+  nfsV3TcpPorts = [
+    111
+    2049
+    cfg.fileSharing.nfs.mountdPort
+    cfg.fileSharing.nfs.lockdPort
+    cfg.fileSharing.nfs.statdPort
+  ];
+
+  nfsV3UdpPorts = nfsV3TcpPorts;
+
+  nfsTcpPorts =
+    if !cfg.fileSharing.enable then [ ]
+    else if cfg.fileSharing.nfs.profile == "v3-compatible" then nfsV3TcpPorts
+    else [ 2049 ];
+
+  nfsUdpPorts =
+    if !cfg.fileSharing.enable then [ ]
+    else if cfg.fileSharing.nfs.profile == "v3-compatible" then nfsV3UdpPorts
+    else [ ];
+
+  serviceFirewallTcpPorts = lib.unique (cockpitTcpPorts ++ sambaTcpPorts ++ nfsTcpPorts);
+  serviceFirewallUdpPorts = lib.unique (sambaUdpPorts ++ nfsUdpPorts);
+
+  scopedFirewallRules = lib.genAttrs cfg.firewall.interfaces (_: {
+    allowedTCPPorts = serviceFirewallTcpPorts;
+    allowedUDPPorts = serviceFirewallUdpPorts;
+  });
+
+  sambaAllowedHosts = lib.concatStringsSep " " cfg.firewall.allowedCidrs;
+  sambaInterfaces = lib.concatStringsSep " " cfg.firewall.interfaces;
 in
 {
   options.vexos.server.cockpit = {
@@ -27,6 +83,26 @@ in
       type = lib.types.port;
       default = 9090;
       description = "Port for the Cockpit web interface.";
+    };
+
+    firewall.interfaces = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = [ "eno1" ];
+      description = ''
+        Interface names to scope Cockpit file-sharing firewall rules to.
+        When empty, rules are applied globally and a warning is emitted.
+      '';
+    };
+
+    firewall.allowedCidrs = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = defaultAllowedCidrs;
+      example = [ "192.168.1.0/24" "fd00:1234::/64" ];
+      description = ''
+        CIDR allowlist used for Samba "hosts allow". Defaults to
+        localhost, RFC1918 IPv4 private ranges, and IPv6 ULA.
+      '';
     };
 
     navigator.enable = lib.mkOption {
@@ -52,6 +128,51 @@ in
         this option is set to lib.mkDefault true.
         Requires vexos.server.cockpit.enable = true (enforced by assertion).
       '';
+    };
+
+    fileSharing.samba.enableNetbios = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Enable legacy NetBIOS ports for Samba (TCP 139, UDP 137/138).
+        Disabled by default to reduce exposed surface.
+      '';
+    };
+
+    fileSharing.samba.bindInterfacesOnly = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Set Samba "bind interfaces only" to yes when true.
+        Keep enabled unless you intentionally need broad bind behavior.
+      '';
+    };
+
+    fileSharing.nfs.profile = lib.mkOption {
+      type = lib.types.enum [ "v4-minimal" "v3-compatible" ];
+      default = "v4-minimal";
+      description = ''
+        NFS exposure profile. "v4-minimal" only opens TCP 2049.
+        "v3-compatible" opens rpcbind and fixed auxiliary ports.
+      '';
+    };
+
+    fileSharing.nfs.mountdPort = lib.mkOption {
+      type = lib.types.port;
+      default = 20048;
+      description = "Fixed mountd port used when nfs.profile = \"v3-compatible\".";
+    };
+
+    fileSharing.nfs.lockdPort = lib.mkOption {
+      type = lib.types.port;
+      default = 4001;
+      description = "Fixed lockd port used when nfs.profile = \"v3-compatible\".";
+    };
+
+    fileSharing.nfs.statdPort = lib.mkOption {
+      type = lib.types.port;
+      default = 4000;
+      description = "Fixed statd port used when nfs.profile = \"v3-compatible\".";
     };
 
     identities.enable = lib.mkOption {
@@ -84,8 +205,38 @@ in
       services.cockpit = {
         enable = true;
         port = cfg.port;
-        openFirewall = true;
+        openFirewall = false;
       };
+    })
+
+    # ── Firewall surface controls ─────────────────────────────────────────
+    (lib.mkIf (cfg.enable && !hasInterfaceScopes) {
+      warnings = [
+        ''
+          vexos.server.cockpit.firewall.interfaces is empty, so Cockpit/
+          file-sharing firewall rules are applied globally. Set explicit
+          interface names to reduce exposure on multi-network hosts.
+        ''
+      ];
+    })
+
+    (lib.mkIf (cfg.enable && hasInterfaceScopes && firewalldEnabled) {
+      warnings = [
+        ''
+          vexos.server.cockpit.firewall.interfaces is set while firewalld is
+          enabled. networking.firewall.interfaces scoping is not applied with
+          firewalld backend; falling back to global allowed ports.
+        ''
+      ];
+    })
+
+    (lib.mkIf (cfg.enable && useInterfaceScopedRules) {
+      networking.firewall.interfaces = scopedFirewallRules;
+    })
+
+    (lib.mkIf (cfg.enable && !useInterfaceScopedRules) {
+      networking.firewall.allowedTCPPorts = serviceFirewallTcpPorts;
+      networking.firewall.allowedUDPPorts = serviceFirewallUdpPorts;
     })
 
     # ── Navigator plugin ───────────────────────────────────────────────────
@@ -125,30 +276,36 @@ in
       # configText and extraConfig are removed at the pinned rev; use settings.
       services.samba = {
         enable = true;
-        openFirewall = true;  # TCP 139, 445; UDP 137, 138
-        settings.global = {
-          "include" = "registry";
-        };
+        openFirewall = false;
+        settings.global =
+          {
+            "include" = "registry";
+            "bind interfaces only" = if cfg.fileSharing.samba.bindInterfacesOnly then "yes" else "no";
+            "hosts allow" = sambaAllowedHosts;
+          }
+          // lib.optionalAttrs hasInterfaceScopes {
+            "interfaces" = sambaInterfaces;
+          };
       };
 
       # ── NFS — server enabled, exports managed by plugin ───────────────────
       # The plugin writes to /etc/exports.d/cockpit-file-sharing.exports.
       # NixOS manages /etc/exports (symlink); /etc/exports.d/ is separate.
       # nfsd reads both locations when exportfs -r is invoked by the plugin.
-      services.nfs.server.enable = true;
+      services.nfs.server =
+        {
+          enable = true;
+        }
+        // lib.optionalAttrs (cfg.fileSharing.nfs.profile == "v3-compatible") {
+          mountdPort = cfg.fileSharing.nfs.mountdPort;
+          lockdPort = cfg.fileSharing.nfs.lockdPort;
+          statdPort = cfg.fileSharing.nfs.statdPort;
+        };
 
       # /etc/exports.d/ may not exist by default; create it as a writable dir.
       systemd.tmpfiles.rules = [
         "d /etc/exports.d 0755 root root -"
       ];
-
-      # NFS firewall ports: 2049 (nfsd), 111 (rpcbind/portmapper).
-      # lockd/mountd/statd use ephemeral ports by default; pin them if the
-      # host firewall is restrictive (operator concern, not defaulted here).
-      networking.firewall = {
-        allowedTCPPorts = [ 2049 111 ];
-        allowedUDPPorts = [ 2049 111 ];
-      };
 
     })
 

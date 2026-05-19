@@ -13,10 +13,10 @@
 #   - audit ruleset: CIS-aligned baseline covering time changes, execve,
 #     mount/umount, kernel module load/unload, sudoers and sshd_config writes.
 #   - fail2ban: brute-force mitigation for SSH and Cockpit. Enabled by default
-#     on server roles because Cockpit (openFirewall=true), Samba, and NFS
-#     together create a significant combined attack surface. All three services
-#     rely on PAM/system accounts, so SSH brute-force protection is the minimum
-#     required baseline.
+#     on server roles because Cockpit and optional Samba/NFS file sharing are
+#     usually LAN-exposed via explicit firewall rules in modules/server/cockpit.nix.
+#     These services rely on PAM/system accounts, so SSH brute-force protection
+#     is the minimum required baseline.
 { ... }:
 {
   # Kernel audit daemon: required for proper AppArmor denial logging on
@@ -47,7 +47,7 @@
     ];
   };
 
-  # Fail2ban: brute-force mitigation for services exposed via openFirewall.
+  # Fail2ban: brute-force mitigation for LAN-exposed management services.
   # SSH and Cockpit are the primary targets on server roles. Samba and NFS
   # do not have fail2ban filters in nixpkgs but benefit from SSH protection
   # since they share the same system accounts.

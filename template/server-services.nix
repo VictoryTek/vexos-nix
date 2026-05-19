@@ -107,6 +107,15 @@
   # vexos.server.cockpit.navigator.enable = true;       # 45Drives file browser plugin
   # vexos.server.cockpit.fileSharing.enable = true;     # 45Drives Samba + NFS share manager (requires cockpit.enable = true)
   # vexos.server.cockpit.identities.enable = true;      # 45Drives user/group management plugin
+  # Hardening defaults: NetBIOS disabled, NFS v4-minimal, Samba allowlisted to private CIDRs.
+  # vexos.server.cockpit.firewall.interfaces = [ "eno1" ]; # Recommended: scope exposed ports to LAN interface(s)
+  # vexos.server.cockpit.firewall.allowedCidrs = [ "192.168.1.0/24" "fd00:1234::/64" ];
+  # vexos.server.cockpit.fileSharing.samba.enableNetbios = false; # Set true only for legacy SMB browse clients
+  # vexos.server.cockpit.fileSharing.nfs.profile = "v4-minimal"; # or "v3-compatible"
+  # Optional fixed ports when profile = "v3-compatible":
+  # vexos.server.cockpit.fileSharing.nfs.mountdPort = 20048;
+  # vexos.server.cockpit.fileSharing.nfs.lockdPort = 4001;
+  # vexos.server.cockpit.fileSharing.nfs.statdPort = 4000;
   # vexos.server.uptime-kuma.enable = false;
   # vexos.server.homepage.enable = false;
   # vexos.server.grafana.enable = false;                # Port 3030 — metrics dashboards
