@@ -364,6 +364,12 @@
       gpuVm = { ... }: {
         imports = [ ./modules/gpu/vm.nix ];
       };
+      # Vanilla VM: same guest additions as gpuVm but without vexos.btrfs /
+      # vexos.swap option references — those options are declared in
+      # modules/system.nix which the vanilla role does not import.
+      gpuVanillaVm = { ... }: {
+        imports = [ ./modules/gpu/vanilla-vm.nix ];
+      };
       statelessGpuVm = { lib, ... }: {
         imports = [ ./modules/gpu/vm.nix ];
         vexos.stateless.disk.device = lib.mkForce "/dev/vda";
