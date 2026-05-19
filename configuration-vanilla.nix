@@ -40,6 +40,28 @@
     pulse.enable      = true;
   };
 
+  # ---------- GNOME theme defaults (locked) ----------
+  # Force GNOME to use the stock Adwaita cursor and icon theme.
+  # Without this, stale dconf values from a previous role (e.g. Bibata cursor
+  # from the desktop role) persist in the user's ~/.config/dconf/user after
+  # switching to vanilla.  Bibata is not installed here, so GNOME renders no
+  # cursor.  A dconf lock ensures these keys override whatever the user db
+  # contains, regardless of prior session history.
+  # Vanilla is an intentional stock NixOS baseline; locking to Adwaita is
+  # correct behaviour — switch to a different role for custom theming.
+  programs.dconf.profiles.user.databases = [
+    {
+      settings."org/gnome/desktop/interface" = {
+        cursor-theme = "Adwaita";
+        icon-theme   = "Adwaita";
+      };
+      locks = [
+        "/org/gnome/desktop/interface/cursor-theme"
+        "/org/gnome/desktop/interface/icon-theme"
+      ];
+    }
+  ];
+
   # ---------- State version ----------
   # Do NOT change after initial install.
   system.stateVersion = "25.11";

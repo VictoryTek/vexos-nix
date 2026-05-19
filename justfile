@@ -194,7 +194,21 @@ switch role="" variant="" flake="":
     echo "Switching to: ${TARGET}"
     echo ""
     _flake_dir=$(just _resolve-flake-dir "${TARGET}" "${FLAKE_OVERRIDE}")
-    sudo nixos-rebuild switch --flake "path:${_flake_dir}#${TARGET}"
+    if ! sudo nixos-rebuild switch --flake "path:${_flake_dir}#${TARGET}"; then
+        _rc=$?
+        if [ $_rc -eq 4 ]; then
+            echo ""
+            echo "Note: nixos-rebuild exited $_rc — one or more units could not be stopped or restarted."
+            echo "      This is expected when switching between configs that differ in /tmp or other"
+            echo "      always-mounted resources. The configuration has been applied."
+            echo "      Reboot to complete the transition cleanly."
+            echo ""
+            echo "      If your shell prompt shows errors (e.g. 'starship: No such file or directory'),"
+            echo "      they are from the current session's old profile. Open a new terminal."
+        else
+            exit $_rc
+        fi
+    fi
 
     echo ""
     echo "Switch complete."
