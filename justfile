@@ -56,10 +56,7 @@ _resolve-flake-dir target flake_override="":
     fi
     CANDIDATES+=("$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix")
 
-    CHECK_ATTR="nixosConfigurations.${TARGET}.config.networking.hostName"
     TRIED=()
-    LAST_ERR=""
-    LAST_ERR_DIR=""
 
     for _d in "${CANDIDATES[@]}"; do
         [ -n "$_d" ] || continue
@@ -79,26 +76,25 @@ _resolve-flake-dir target flake_override="":
             continue
         fi
 
-        _err=$(nix eval --impure --raw "path:$_d_real#${CHECK_ATTR}" 2>&1)
-        if [ $? -eq 0 ]; then
+        # Check for the target by looking for its quoted name in flake.nix.
+        # This covers both the repo's hostList format ({ name = "vexos-…"; })
+        # and the template's explicit attrset format (vexos-… = mkVariant …).
+        # Avoids a full `nix eval` which can fail on fresh template installs
+        # before all flake inputs are cached.
+        if grep -qF "\"${TARGET}\"" "$_d_real/flake.nix" 2>/dev/null; then
             echo "$_d_real"
             exit 0
         fi
-        LAST_ERR="$_err"
-        LAST_ERR_DIR="$_d_real"
     done
 
-    echo "error: no flake provided target '${TARGET}'" >&2
+    echo "error: no flake found for target '${TARGET}'" >&2
     echo "attempted directories:" >&2
     for _t in "${TRIED[@]}"; do
         echo "  - $_t" >&2
     done
-    echo "expected target: nixosConfigurations.${TARGET}" >&2
-    if [ -n "$LAST_ERR" ]; then
-        echo "" >&2
-        echo "nix eval error from ${LAST_ERR_DIR}:" >&2
-        echo "${LAST_ERR}" >&2
-    fi
+    echo "expected: nixosConfigurations.${TARGET}" >&2
+    echo "" >&2
+    echo "Hint: pass an explicit flake path: just switch <role> <gpu> /path/to/repo" >&2
     exit 1
 
 # Rebuild and switch interactively, or pass role + variant directly.
