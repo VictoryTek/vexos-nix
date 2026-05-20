@@ -1,8 +1,56 @@
 # modules/nix.nix
 # Nix daemon configuration: flakes, binary caches, GC, store optimisation,
 # and daemon scheduling. Applies to all roles.
-{ lib, ... }:
+{ config, lib, ... }:
+let
+  cfg = config.vexos.attic;
+in
 {
+  # ── Attic client options ──────────────────────────────────────────────────
+  # Configure the project's own Attic binary cache as a substituter so that
+  # every host fetches pre-built custom packages (portbook, cockpit-navigator,
+  # cockpit-file-sharing, etc.) instead of rebuilding them locally.
+  #
+  # Usage in a host or server-services.nix:
+  #   vexos.attic.cacheUrl  = "http://myserver:8400/vexos";
+  #   vexos.attic.publicKey = "vexos-attic:AbCdEf...==";
+  #
+  # Retrieve the public key from the server with:
+  #   attic cache info vexos
+  options.vexos.attic = {
+    cacheUrl = lib.mkOption {
+      type    = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "http://attic.local:8400/vexos";
+      description = ''
+        URL of the Attic binary cache (including cache name).
+        When set, every host uses it as an additional substituter.
+        Leave null to disable (default).
+      '';
+    };
+
+    publicKey = lib.mkOption {
+      type    = lib.types.str;
+      default = "";
+      example = "vexos-attic:AbCdEf1234567890AAAAAAA==";
+      description = ''
+        Ed25519 public key for the Attic cache, as printed by `attic cache info`.
+        Required when vexos.attic.cacheUrl is set.
+      '';
+    };
+  };
+
+  config = {
+    assertions = lib.mkIf (cfg.cacheUrl != null) [
+      {
+        assertion = cfg.publicKey != "";
+        message = ''
+          vexos.attic.publicKey must be set when vexos.attic.cacheUrl is configured.
+          Retrieve it from the server with: attic cache info vexos
+        '';
+      }
+    ];
+
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
 
@@ -21,10 +69,10 @@
     # Binary caches — fetch pre-built derivations instead of compiling locally.
     substituters = [
       "https://cache.nixos.org"
-    ];
+    ] ++ lib.optional (cfg.cacheUrl != null) cfg.cacheUrl;
     trusted-public-keys = [
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-    ];
+    ] ++ lib.optional (cfg.publicKey != "") cfg.publicKey;
 
     # Build concurrency — 1 job at a time, each using all available cores.
     # Prevents OOM on low-RAM machines; raise max-jobs on beefy hardware.
@@ -53,4 +101,5 @@
 
   # Required for Steam, NVIDIA drivers, proton-ge-bin, etc.
   nixpkgs.config.allowUnfree = true;
+  }; # end config
 }
