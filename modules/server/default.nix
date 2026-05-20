@@ -6,6 +6,8 @@
   imports = [
     # ── Container Runtime ────────────────────────────────────────────────────
     ./docker.nix
+    ./podman.nix
+    ./dockhand.nix
     # ── Media Servers ────────────────────────────────────────────────────────
     ./jellyfin.nix
     ./plex.nix

@@ -489,7 +489,7 @@ ssh target="":
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -577,7 +577,7 @@ available-services:
     _hdr "Communications";             _svc matrix-conduit
     _hdr "Files & Storage";            _svc immich;           _svc nextcloud;       _svc syncthing;       _svc minio;           _svc photoprism
     _hdr "Gaming";                     _svc papermc
-    _hdr "Infrastructure";             _svc attic;            _svc caddy;            _svc docker;          _svc nginx;           _svc nginx-proxy-manager;  _svc portainer;  _svc traefik
+    _hdr "Infrastructure";             _svc attic;            _svc caddy;            _svc docker;          _svc dockhand;        _svc podman;          _svc nginx;           _svc nginx-proxy-manager;  _svc portainer;  _svc traefik
     _hdr "Media";                      _svc audiobookshelf;   _svc jellyfin;        _svc navidrome;       _svc plex;            _svc tautulli
     _hdr "Media Requests & Automation";_svc arr;              _svc jellyseerr;      _svc seerr
     _hdr "Monitoring & Admin";         _svc nas;             _svc cockpit;          _svc dozzle;          _svc grafana;         _svc loki;            _svc netdata;     _svc prometheus;  _svc scrutiny;  _svc uptime-kuma;  _svc portbook
@@ -611,6 +611,7 @@ service-info service="":
         nas)             printf "  %-18s  Web UI  http://<server-ip>:9090   (Cockpit + NAS plugins)\n"               "$1" ;;
         cockpit)         printf "  %-18s  Web UI  http://<server-ip>:9090\n"                                           "$1" ;;
         docker)          printf "  %-18s  No web UI — docker / docker compose CLI\n"                                   "$1" ;;
+        dockhand)        printf "  %-18s  Web UI  http://<server-ip>:8073   (Podman container manager)\n"             "$1" ;;
         forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000\n"                                           "$1" ;;
         grafana)         printf "  %-18s  Web UI  http://<server-ip>:3030\n"                                           "$1" ;;
         headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
@@ -644,6 +645,7 @@ service-info service="":
             printf "  %-18s  Monitor: journalctl -fu minecraft-server\n"                              ""
             ;;
         plex)            printf "  %-18s  Web UI  http://<server-ip>:32400/web\n"                                      "$1" ;;
+        podman)          printf "  %-18s  No web UI — podman / podman compose CLI\n"                                   "$1" ;;
         rustdesk)        printf "  %-18s  Ports :21115-21117 / :21118-21119 (no web UI)\n"                             "$1" ;;
         scrutiny)        printf "  %-18s  Web UI  http://<server-ip>:8078\n"                                           "$1" ;;
         stirling-pdf)    printf "  %-18s  Web UI  http://<server-ip>:8077\n"                                           "$1" ;;
@@ -737,6 +739,7 @@ status service: _require-server-role
       nas)            UNITS="cockpit";              URLS="http://localhost:9090" ;;
       cockpit)        UNITS="cockpit";              URLS="http://localhost:9090" ;;
       docker)         UNITS="docker";               URLS="" ;;
+      dockhand)       UNITS="podman-dockhand";       URLS="http://localhost:8073" ;;
       forgejo)        UNITS="forgejo";              URLS="http://localhost:3000" ;;
       grafana)        UNITS="grafana";              URLS="http://localhost:3030" ;;
       headscale)      UNITS="headscale";            URLS="http://localhost:8085" ;;
@@ -755,6 +758,7 @@ status service: _require-server-role
       seerr)          UNITS="seerr";               URLS="http://localhost:5055" ;;
       papermc)        UNITS="minecraft-server";     URLS="" ;;
       plex)           UNITS="plex";                 URLS="http://localhost:32400/web" ;;
+      podman)         UNITS="podman";               URLS="" ;;
       rustdesk)       UNITS="rustdesk-server hbbr hbbs"; URLS="" ;;
       scrutiny)       UNITS="scrutiny";             URLS="http://localhost:8078" ;;
       stirling-pdf)   UNITS="docker-stirling-pdf";   URLS="http://localhost:8077" ;;
@@ -839,7 +843,7 @@ services: _require-server-role
     _hdr "Communications";             _check matrix-conduit
     _hdr "Files & Storage";            _check immich;         _check nextcloud;     _check syncthing;     _check minio;         _check photoprism
     _hdr "Gaming";                     _check papermc
-    _hdr "Infrastructure";             _check attic;          _check caddy;          _check docker;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
+    _hdr "Infrastructure";             _check attic;          _check caddy;          _check docker;        _check dockhand;      _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
     _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
     _hdr "Media Requests & Automation";_check arr;            _check jellyseerr;    _check seerr
     _hdr "Monitoring & Admin";         _check nas;            _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma;  _check portbook
@@ -1015,6 +1019,13 @@ enable service: _require-server-role
         echo "  No web UI — manage containers via 'docker' / 'docker compose' on the CLI."
         echo "  About:    Docker container runtime with Compose. Includes a weekly 'docker system prune' timer."
         echo "  Note:     The nimda user is added to the docker group automatically."
+        ;;
+      dockhand)
+        echo "  Container: dockhand (NixOS OCI container via Podman)"
+        echo "  Web UI:    http://<server-ip>:8073"
+        echo "  About:     Modern container management UI — browse containers, Compose stacks, logs, and terminals from a browser."
+        echo "  Requires:  Podman must be enabled first (just enable podman)."
+        echo "  Note:      Port remapped from upstream default 3000 — Forgejo also uses 3000."
         ;;
       forgejo)
         echo "  Service:  forgejo.service"
@@ -1247,6 +1258,12 @@ enable service: _require-server-role
         echo "  Secrets:  Optional — create an env file and set:"
         echo "              vexos.server.kiji-proxy.environmentFile = \"/etc/nixos/secrets/kiji-proxy.env\";"
         echo "            File contents example: OPENAI_API_KEY=sk-...  LOG_PII_CHANGES=true"
+        ;;
+      podman)
+        echo "  Service:  podman.socket"
+        echo "  No web UI — manage containers via 'podman' / 'podman compose' on the CLI."
+        echo "  About:    Daemonless OCI container engine with a Docker-compatible socket at /run/podman/podman.sock."
+        echo "  Note:     Enable dockhand for a browser-based management UI (just enable dockhand)."
         ;;
       proxmox)
         echo "  Service:  pve-manager.service (+ pvedaemon, pveproxy, pvestatd)"
