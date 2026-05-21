@@ -26,6 +26,8 @@ default:
         echo "    Login password resets to 'vexos' on every reboot (by design)."
         echo "    To change permanently, update initialPassword in"
         echo "    configuration-stateless.nix and rebuild."
+        echo ""
+        echo "Run 'just pia' for the PIA VPN submenu (install, connect, regions, kill-switch, etc.)."
     fi
 
 # Print the active role and GPU variant (e.g. vexos-desktop-amd).
@@ -1538,3 +1540,174 @@ rebuild:
     echo "Rebuilding ${target}..."
     echo ""
     sudo nixos-rebuild switch --flake "path:/etc/nixos#${target}"
+
+# ── PIA VPN ──────────────────────────────────────────────────────────────────
+# Interactive submenu for Private Internet Access VPN.
+# PIA is not a nixpkgs package — install it once with option 1.
+# modules/pia.nix provides the nix-ld shim and wrapper scripts.
+
+# PIA VPN submenu — install, connect, status, and more.
+pia:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    export LD_LIBRARY_PATH=/opt/piavpn/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+    INSTALLED=false
+    [ -x "/opt/piavpn/bin/piactl" ] && INSTALLED=true
+
+    while true; do
+        echo ""
+        echo "PIA VPN"
+        echo "───────────────────────────────────"
+        if $INSTALLED; then
+            _state=$(/opt/piavpn/bin/piactl get connectionstate 2>/dev/null || echo "unknown")
+            echo " Status: ${_state}"
+        else
+            echo " Status: not installed"
+        fi
+        echo ""
+        echo "  1) Install PIA"
+        echo "  2) Uninstall PIA"
+        echo "  3) Start daemon (systemctl start piavpn)"
+        echo "  4) Connect"
+        echo "  5) Disconnect"
+        echo "  6) Status"
+        echo "  7) Regions"
+        echo "  8) Kill switch: ON"
+        echo "  9) Kill switch: OFF"
+        echo " 10) Port forwarding: ON"
+        echo " 11) Port forwarding: OFF"
+        echo " 12) Launch GUI"
+        echo " 13) Logs (Ctrl-C to exit)"
+        echo " 14) Version"
+        echo "  q) Quit"
+        echo ""
+        printf "Choice: "
+        read -r INPUT
+
+        case "${INPUT,,}" in
+
+            1|install)
+                if $INSTALLED; then
+                    echo "PIA is already installed."
+                    /opt/piavpn/bin/piactl --version 2>/dev/null || true
+                else
+                    if ! command -v curl &>/dev/null; then
+                        echo "error: curl not found — install curl and retry." >&2
+                    else
+                        INSTALLER_URL="https://installers.privateinternetaccess.com/download/pia-linux-x86_64.run"
+                        TMP_INSTALLER=$(mktemp --suffix=".run")
+                        trap 'rm -f "$TMP_INSTALLER"' EXIT
+                        echo "Downloading PIA installer..."
+                        curl -L --progress-bar -o "$TMP_INSTALLER" "$INSTALLER_URL"
+                        chmod +x "$TMP_INSTALLER"
+                        echo ""
+                        echo "Running PIA installer (sudo required)..."
+                        sudo "$TMP_INSTALLER"
+                        INSTALLED=true
+                        echo ""
+                        echo "PIA installed. Use option 3 to start the daemon."
+                    fi
+                fi
+                ;;
+
+            2|uninstall)
+                UNINSTALLER="/opt/piavpn/bin/uninstall"
+                if [ ! -x "$UNINSTALLER" ]; then
+                    echo "error: PIA is not installed." >&2
+                else
+                    printf "Remove PIA from this system? [y/N]: "
+                    read -r CONFIRM
+                    case "${CONFIRM,,}" in
+                        y|yes)
+                            sudo "$UNINSTALLER"
+                            INSTALLED=false
+                            echo "PIA uninstalled."
+                            ;;
+                        *) echo "Aborted." ;;
+                    esac
+                fi
+                ;;
+
+            3|daemon|start)
+                sudo systemctl start piavpn
+                echo "PIA daemon started."
+                ;;
+
+            4|connect)
+                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
+                /opt/piavpn/bin/piactl connect
+                echo "Connecting..."
+                sleep 1
+                /opt/piavpn/bin/piactl get connectionstate
+                ;;
+
+            5|disconnect)
+                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
+                /opt/piavpn/bin/piactl disconnect
+                echo "Disconnected."
+                ;;
+
+            6|status)
+                echo ""
+                echo "=== piavpn.service ==="
+                systemctl status piavpn --no-pager 2>/dev/null || true
+                echo ""
+                if $INSTALLED; then
+                    echo "=== PIA connection ==="
+                    /opt/piavpn/bin/piactl get connectionstate
+                fi
+                echo ""
+                ;;
+
+            7|regions)
+                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
+                echo ""
+                /opt/piavpn/bin/piactl get regions
+                echo ""
+                echo "Set region: piactl set region <region-id>"
+                ;;
+
+            8|"kill switch: on"|ks-on)
+                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
+                /opt/piavpn/bin/piactl set killswitch on
+                echo "Kill switch enabled."
+                ;;
+
+            9|"kill switch: off"|ks-off)
+                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
+                /opt/piavpn/bin/piactl set killswitch off
+                echo "Kill switch disabled."
+                ;;
+
+            10|"port forwarding: on"|pf-on)
+                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
+                /opt/piavpn/bin/piactl set portforward on
+                echo "Port forwarding enabled."
+                ;;
+
+            11|"port forwarding: off"|pf-off)
+                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
+                /opt/piavpn/bin/piactl set portforward off
+                echo "Port forwarding disabled."
+                ;;
+
+            12|gui)
+                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
+                /opt/piavpn/bin/pia-client &
+                echo "PIA GUI launched."
+                ;;
+
+            13|logs)
+                journalctl -fu piavpn --no-pager
+                ;;
+
+            14|version)
+                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
+                /opt/piavpn/bin/piactl --version
+                ;;
+
+            q|quit|exit) break ;;
+            *) echo "Invalid choice — enter a number or 'q' to quit." ;;
+        esac
+    done
