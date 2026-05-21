@@ -86,4 +86,24 @@
     "org.gnome.TextEditor"
     "org.gnome.Loupe"
   ];
+
+  # ── Persist display configuration ────────────────────────────────────────
+  # GNOME Wayland stores display resolution and layout in monitors.xml.
+  # On stateless, / is a tmpfs so both files are wiped on every reboot,
+  # resetting the resolution back to the fallback 1024×768.
+  #
+  # Persisting these two files means the user sets the resolution once via
+  # GNOME Settings → Displays and it survives all subsequent reboots.
+  #
+  # /var/lib/gdm/.config/monitors.xml — used by GDM (login screen).
+  # ~/.config/monitors.xml            — used by the GNOME user session.
+  vexos.impermanence.extraPersistFiles = [
+    "/var/lib/gdm/.config/monitors.xml"
+  ];
+
+  environment.persistence."${config.vexos.impermanence.persistentPath}" = {
+    users.${config.vexos.user.name} = {
+      files = [ ".config/monitors.xml" ];
+    };
+  };
 }

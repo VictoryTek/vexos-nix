@@ -84,11 +84,23 @@ in
     # ── Ephemeral root (tmpfs) ──────────────────────────────────────────────
     # Declare / as a tmpfs mount. This is hardware-independent (no UUID).
     # Wiped on every reboot by design — this is the core of the stateless model.
+    # neededForBoot = true is required so that nixos-impermanence's user-level
+    # persistence can bind-mount files into home directories (which live on this
+    # tmpfs) during stage-2 activation.
     fileSystems."/" = {
-      device  = lib.mkForce "none";
-      fsType  = lib.mkForce "tmpfs";
-      options = lib.mkForce [ "defaults" "size=25%" "mode=755" ];
+      device       = lib.mkForce "none";
+      fsType       = lib.mkForce "tmpfs";
+      options      = lib.mkForce [ "defaults" "size=25%" "mode=755" ];
+      neededForBoot = lib.mkForce true;
     };
+
+    # ── Home filesystem: ensure neededForBoot ────────────────────────────────
+    # hardware-configuration.nix may declare a real /home partition (e.g. a
+    # Btrfs @home subvolume from a pre-stateless setup).  nixos-impermanence
+    # requires every filesystem that user-level persistence bind-mounts into to
+    # have neededForBoot = true.  Force it here so the assertion always passes
+    # regardless of what hardware-configuration.nix declares.
+    fileSystems."/home".neededForBoot = lib.mkForce true;
 
     # ── Assertions ──────────────────────────────────────────────────────────
     assertions = [

@@ -10,6 +10,11 @@
       ll  = "ls -la";
       ".." = "cd ..";
 
+      # Always resolve the vexos justfile from /etc/nixos so `just` works
+      # regardless of the current working directory (critical on stateless
+      # where ~ is a tmpfs and contains no justfile).
+      just = "just --justfile /etc/nixos/justfile --working-directory /etc/nixos";
+
       # Tailscale shortcuts
       ts   = "tailscale";
       tss  = "tailscale status";
