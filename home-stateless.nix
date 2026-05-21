@@ -75,7 +75,7 @@
   # photogimp.nix which only removes real files).
   home.activation.cleanupPhotogimpOrphans =
     lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
-      STAMP="/persistent/home/${osConfig.vexos.user.name}/.local/share/vexos/.stateless-photogimp-cleanup-done"
+      STAMP="$HOME/.local/share/vexos/.stateless-photogimp-cleanup-done"
       if [ -f "$STAMP" ]; then
         $VERBOSE_ECHO "Stateless: PhotoGIMP orphan cleanup already done, skipping"
       else
@@ -113,7 +113,7 @@
           $DRY_RUN_CMD ${pkgs.gtk3}/bin/gtk-update-icon-cache -f -t "$ICON_DIR"
         fi
 
-        $DRY_RUN_CMD mkdir -p "/persistent/home/${osConfig.vexos.user.name}/.local/share/vexos"
+        $DRY_RUN_CMD mkdir -p "$HOME/.local/share/vexos"
         $DRY_RUN_CMD touch "$STAMP"
       fi
     '';
