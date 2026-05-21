@@ -94,14 +94,6 @@ in
       neededForBoot = lib.mkForce true;
     };
 
-    # ── Home filesystem: ensure neededForBoot ────────────────────────────────
-    # hardware-configuration.nix may declare a real /home partition (e.g. a
-    # Btrfs @home subvolume from a pre-stateless setup).  nixos-impermanence
-    # requires every filesystem that user-level persistence bind-mounts into to
-    # have neededForBoot = true.  Force it here so the assertion always passes
-    # regardless of what hardware-configuration.nix declares.
-    fileSystems."/home".neededForBoot = lib.mkForce true;
-
     # ── Assertions ──────────────────────────────────────────────────────────
     assertions = [
       {

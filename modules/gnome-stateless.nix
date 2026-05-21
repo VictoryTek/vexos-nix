@@ -92,18 +92,34 @@
   # On stateless, / is a tmpfs so both files are wiped on every reboot,
   # resetting the resolution back to the fallback 1024×768.
   #
-  # Persisting these two files means the user sets the resolution once via
-  # GNOME Settings → Displays and it survives all subsequent reboots.
+  # /var/lib/gdm/.config/monitors.xml — persisted via impermanence (system file).
+  # ~/.config/monitors.xml            — copied from GDM's file on every boot via
+  #                                     activation script. This avoids using
+  #                                     nixos-impermanence's users.*.files which
+  #                                     asserts neededForBoot on the /home
+  #                                     filesystem and creates a broken fstab
+  #                                     entry on systems without a separate /home
+  #                                     partition (e.g. VMs).
   #
-  # /var/lib/gdm/.config/monitors.xml — used by GDM (login screen).
-  # ~/.config/monitors.xml            — used by the GNOME user session.
+  # Workflow: set resolution once in GNOME Settings → Displays. GNOME writes
+  # both ~/.config/monitors.xml and (via GDM) /var/lib/gdm/.config/monitors.xml.
+  # The GDM copy survives reboots; the activation script seeds the user copy
+  # from it on each boot so the session starts at the correct resolution.
   vexos.impermanence.extraPersistFiles = [
     "/var/lib/gdm/.config/monitors.xml"
   ];
 
-  environment.persistence."${config.vexos.impermanence.persistentPath}" = {
-    users.${config.vexos.user.name} = {
-      files = [ ".config/monitors.xml" ];
-    };
+  system.activationScripts.statelessMonitorsXml = {
+    deps = [ "users" "groups" ];
+    text = ''
+      GDM_FILE="/var/lib/gdm/.config/monitors.xml"
+      USER_DIR="/home/${config.vexos.user.name}/.config"
+      USER_FILE="$USER_DIR/monitors.xml"
+      if [ -s "$GDM_FILE" ] && [ ! -f "$USER_FILE" ]; then
+        mkdir -p "$USER_DIR"
+        cp "$GDM_FILE" "$USER_FILE"
+        chown 1000:1000 "$USER_FILE"
+      fi
+    '';
   };
 }
