@@ -264,11 +264,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1778809607,
-        "narHash": "sha256-cWq4ZIltq014ECf84vXknu1FmlO8o0BapF7eOk82bpU=",
+        "lastModified": 1779323697,
+        "narHash": "sha256-4x8I2IpXcD9djtfozjUXt3gY7gltjDzlEJQrOCI5V0Q=",
         "owner": "VictoryTek",
         "repo": "Up",
-        "rev": "22f363ae8e10e80938e06b4d41a250c6c958b53a",
+        "rev": "01473b1e8f76b4fb134ad8d8b7e0eaf8286d98b3",
         "type": "github"
       },
       "original": {
