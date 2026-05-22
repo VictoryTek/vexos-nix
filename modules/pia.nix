@@ -58,4 +58,19 @@
       exec /opt/piavpn/bin/piactl "$@"
     '')
   ];
+
+  # ── systemd service ───────────────────────────────────────────────────────
+  # PIA's installer normally writes this file, but on NixOS /etc/systemd/system
+  # is read-only. Declare it here so `systemctl start piavpn` works after the
+  # PIA binaries have been installed to /opt/piavpn via `just pia`.
+  systemd.services.piavpn = {
+    description = "Private Internet Access daemon";
+    after = [ "syslog.target" "network.target" ];
+    wantedBy = [ ];   # not auto-started; user starts it manually via `just pia`
+    serviceConfig = {
+      Environment = "LD_LIBRARY_PATH=/opt/piavpn/lib";
+      ExecStart   = "/opt/piavpn/bin/pia-daemon";
+      Restart     = "always";
+    };
+  };
 }
