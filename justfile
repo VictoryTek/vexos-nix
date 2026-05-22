@@ -1615,17 +1615,30 @@ pia:
                         echo "Downloading PIA installer..."
                         curl -L --progress-bar -o "$TMP_INSTALLER" "$INSTALLER_URL"
                         echo ""
-                        # NixOS has no /bin/bash and install.sh hard-resets PATH to FHS
-                        # paths that don't exist on NixOS. Patch both the shebang and
-                        # the PATH reset line before running. Run as current user —
-                        # install.sh refuses to run as root and calls sudo internally.
+                        # NixOS-specific install.sh shims:
+                        # 1. No /bin/bash — fix shebang.
+                        # 2. install.sh hard-resets PATH to FHS paths — patch it.
+                        # 3. install.sh calls `sudo /bin/cp` etc. with hardcoded paths
+                        #    that don't exist on NixOS. Create a sudo wrapper in
+                        #    TMP_EXTRACT that strips the FHS prefix from the first
+                        #    argument before delegating to the real setuid sudo.
                         echo "Extracting installer..."
                         bash "$TMP_INSTALLER" --noexec --target "$TMP_EXTRACT"
                         _BASH=$(command -v bash)
-                        # Fix shebang so sudo can execute it directly
+                        _NIX_PATHS="$TMP_EXTRACT:/run/wrappers/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin"
+                        # Fix shebang
                         sed -i '1s|.*|#!'"$_BASH"'|' "$TMP_EXTRACT/install.sh"
-                        # Prepend NixOS paths to the hard-coded PATH reset in install.sh
-                        sed -i 's|^PATH="/usr/bin:|PATH="/run/wrappers/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:|' "$TMP_EXTRACT/install.sh"
+                        # Prepend NixOS paths (including TMP_EXTRACT for our sudo wrapper)
+                        sed -i 's|^PATH="/usr/bin:|PATH="'"$_NIX_PATHS"':/usr/bin:|' "$TMP_EXTRACT/install.sh"
+                        # Create a sudo wrapper that strips hardcoded /bin/, /usr/bin/,
+                        # /sbin/, /usr/sbin/ prefixes from the command argument, so
+                        # calls like `sudo /bin/cp` resolve via PATH instead.
+                        cat > "$TMP_EXTRACT/sudo" << SUDO_WRAPPER
+#!$_BASH
+_cmd="\$(basename "\$1")"; shift
+exec /run/wrappers/bin/sudo /run/current-system/sw/bin/env PATH="$_NIX_PATHS:/usr/bin:/usr/sbin:/bin:/sbin" "\$_cmd" "\$@"
+SUDO_WRAPPER
+                        chmod +x "$TMP_EXTRACT/sudo"
                         chmod +x "$TMP_EXTRACT/install.sh"
                         echo "Running PIA installer (will prompt for sudo internally)..."
                         "$TMP_EXTRACT/install.sh"
