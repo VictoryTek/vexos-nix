@@ -1635,8 +1635,8 @@ pia:
                         # calls like `sudo /bin/cp` resolve via PATH instead.
                         cat > "$TMP_EXTRACT/sudo" << SUDO_WRAPPER
 #!$_BASH
-_cmd="\$(basename "\$1")"; shift
-exec /run/wrappers/bin/sudo /run/current-system/sw/bin/env PATH="$_NIX_PATHS:/usr/bin:/usr/sbin:/bin:/sbin" "\$_cmd" "\$@"
+_cmd=$$(basename "$$1"); shift
+exec /run/wrappers/bin/sudo /run/current-system/sw/bin/env PATH="$_NIX_PATHS:/usr/bin:/usr/sbin:/bin:/sbin" "$$_cmd" "$$@"
 SUDO_WRAPPER
                         chmod +x "$TMP_EXTRACT/sudo"
                         chmod +x "$TMP_EXTRACT/install.sh"
