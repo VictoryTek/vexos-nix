@@ -1635,7 +1635,7 @@ pia:
                         # calls like `sudo /bin/cp` resolve via PATH instead.
                         {
                             echo "#!$_BASH"
-                            echo '_cmd=$(basename "$1"); shift'
+                            echo '_cmd="${1##*/}"; shift'
                             echo 'exec /run/wrappers/bin/sudo /run/current-system/sw/bin/env PATH="'"$_NIX_PATHS"':/usr/bin:/usr/sbin:/bin:/sbin" "$_cmd" "$@"'
                         } > "$TMP_EXTRACT/sudo"
                         chmod +x "$TMP_EXTRACT/sudo"
