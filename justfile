@@ -1552,10 +1552,10 @@ pia:
     set -euo pipefail
 
     export LD_LIBRARY_PATH=/opt/piavpn/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-    INSTALLED=false
-    [ -x "/opt/piavpn/bin/piactl" ] && INSTALLED=true
 
     while true; do
+        INSTALLED=false
+        [ -x "/opt/piavpn/bin/piactl" ] && INSTALLED=true
         echo ""
         echo "PIA VPN"
         echo "───────────────────────────────────"
@@ -1636,13 +1636,14 @@ pia:
                         {
                             echo "#!$_BASH"
                             echo '_cmd="${1##*/}"; shift'
-                            echo 'exec /run/wrappers/bin/sudo /run/current-system/sw/bin/env PATH="'"$_NIX_PATHS"':/usr/bin:/usr/sbin:/bin:/sbin" "$_cmd" "$@"'
+                            echo 'exec /run/wrappers/bin/sudo '"$_BASH"' -c '"'"'export PATH="'"$_NIX_PATHS"':/usr/bin:/usr/sbin:/bin:/sbin"; exec "$@"'"'"' - "$_cmd" "$@"'
                         } > "$TMP_EXTRACT/sudo"
                         chmod +x "$TMP_EXTRACT/sudo"
                         chmod +x "$TMP_EXTRACT/install.sh"
                         echo "Running PIA installer (will prompt for sudo internally)..."
                         "$TMP_EXTRACT/install.sh"
-                        INSTALLED=true
+                        rm -f "$TMP_INSTALLER"; rm -rf "$TMP_EXTRACT"
+                        trap - EXIT
                         echo ""
                         echo "PIA installed. Use option 3 to start the daemon."
                     fi
