@@ -1595,7 +1595,20 @@ pia:
                     if ! command -v curl &>/dev/null; then
                         echo "error: curl not found — install curl and retry." >&2
                     else
-                        INSTALLER_URL="https://installers.privateinternetaccess.com/download/pia-linux-x86_64.run"
+                        # Resolve the latest installer URL from the PIA download page.
+                        # Falls back to a known-good URL if the page can't be fetched.
+                        _FALLBACK_URL="https://installers.privateinternetaccess.com/download/pia-linux-3.7.2-08420.run"
+                        echo "Resolving latest PIA installer URL..."
+                        INSTALLER_URL=$(curl -fsSL "https://www.privateinternetaccess.com/download/linux-vpn" \
+                            | grep -oP 'https://installers\.privateinternetaccess\.com/download/pia-linux-[0-9][^"]+\.run' \
+                            | grep -v arm64 \
+                            | head -1)
+                        if [ -z "$INSTALLER_URL" ]; then
+                            echo "warning: could not detect latest URL, using fallback." >&2
+                            INSTALLER_URL="$_FALLBACK_URL"
+                        else
+                            echo "Found: $INSTALLER_URL"
+                        fi
                         TMP_INSTALLER=$(mktemp --suffix=".run")
                         trap 'rm -f "$TMP_INSTALLER"' EXIT
                         echo "Downloading PIA installer..."
