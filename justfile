@@ -1617,7 +1617,8 @@ pia:
                         echo ""
                         # NixOS has no /bin/bash and install.sh hard-resets PATH to FHS
                         # paths that don't exist on NixOS. Patch both the shebang and
-                        # the PATH reset line before running.
+                        # the PATH reset line before running. Run as current user —
+                        # install.sh refuses to run as root and calls sudo internally.
                         echo "Extracting installer..."
                         bash "$TMP_INSTALLER" --noexec --target "$TMP_EXTRACT"
                         _BASH=$(command -v bash)
@@ -1626,8 +1627,8 @@ pia:
                         # Prepend NixOS paths to the hard-coded PATH reset in install.sh
                         sed -i 's|^PATH="/usr/bin:|PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:|' "$TMP_EXTRACT/install.sh"
                         chmod +x "$TMP_EXTRACT/install.sh"
-                        echo "Running PIA installer (sudo required)..."
-                        sudo "$TMP_EXTRACT/install.sh"
+                        echo "Running PIA installer (will prompt for sudo internally)..."
+                        "$TMP_EXTRACT/install.sh"
                         INSTALLED=true
                         echo ""
                         echo "PIA installed. Use option 3 to start the daemon."
