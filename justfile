@@ -1625,7 +1625,7 @@ pia:
                         # Fix shebang so sudo can execute it directly
                         sed -i '1s|.*|#!'"$_BASH"'|' "$TMP_EXTRACT/install.sh"
                         # Prepend NixOS paths to the hard-coded PATH reset in install.sh
-                        sed -i 's|^PATH="/usr/bin:|PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:|' "$TMP_EXTRACT/install.sh"
+                        sed -i 's|^PATH="/usr/bin:|PATH="/run/wrappers/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:|' "$TMP_EXTRACT/install.sh"
                         chmod +x "$TMP_EXTRACT/install.sh"
                         echo "Running PIA installer (will prompt for sudo internally)..."
                         "$TMP_EXTRACT/install.sh"
