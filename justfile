@@ -1633,11 +1633,11 @@ pia:
                         # Create a sudo wrapper that strips hardcoded /bin/, /usr/bin/,
                         # /sbin/, /usr/sbin/ prefixes from the command argument, so
                         # calls like `sudo /bin/cp` resolve via PATH instead.
-                        cat > "$TMP_EXTRACT/sudo" << SUDO_WRAPPER
-#!$_BASH
-_cmd=$$(basename "$$1"); shift
-exec /run/wrappers/bin/sudo /run/current-system/sw/bin/env PATH="$_NIX_PATHS:/usr/bin:/usr/sbin:/bin:/sbin" "$$_cmd" "$$@"
-SUDO_WRAPPER
+                        {
+                            echo "#!$_BASH"
+                            echo '_cmd=$(basename "$1"); shift'
+                            echo 'exec /run/wrappers/bin/sudo /run/current-system/sw/bin/env PATH="'"$_NIX_PATHS"':/usr/bin:/usr/sbin:/bin:/sbin" "$_cmd" "$@"'
+                        } > "$TMP_EXTRACT/sudo"
                         chmod +x "$TMP_EXTRACT/sudo"
                         chmod +x "$TMP_EXTRACT/install.sh"
                         echo "Running PIA installer (will prompt for sudo internally)..."
