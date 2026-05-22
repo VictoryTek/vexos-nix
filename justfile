@@ -1610,13 +1610,18 @@ pia:
                             echo "Found: $INSTALLER_URL"
                         fi
                         TMP_INSTALLER=$(mktemp --suffix=".run")
-                        trap 'rm -f "$TMP_INSTALLER"' EXIT
+                        TMP_EXTRACT=$(mktemp -d)
+                        trap 'rm -f "$TMP_INSTALLER"; rm -rf "$TMP_EXTRACT"' EXIT
                         echo "Downloading PIA installer..."
                         curl -L --progress-bar -o "$TMP_INSTALLER" "$INSTALLER_URL"
-                        chmod +x "$TMP_INSTALLER"
                         echo ""
+                        # NixOS has no /bin/bash, so the .run shebang would fail.
+                        # Extract the makeself archive and invoke install.sh with
+                        # bash from PATH explicitly.
+                        echo "Extracting installer..."
+                        bash "$TMP_INSTALLER" --noexec --target "$TMP_EXTRACT"
                         echo "Running PIA installer (sudo required)..."
-                        sudo "$TMP_INSTALLER"
+                        sudo bash "$TMP_EXTRACT/install.sh"
                         INSTALLED=true
                         echo ""
                         echo "PIA installed. Use option 3 to start the daemon."
