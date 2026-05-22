@@ -1615,13 +1615,16 @@ pia:
                         echo "Downloading PIA installer..."
                         curl -L --progress-bar -o "$TMP_INSTALLER" "$INSTALLER_URL"
                         echo ""
-                        # NixOS has no /bin/bash, so the .run shebang would fail.
-                        # Extract the makeself archive and invoke install.sh with
-                        # bash from PATH explicitly.
+                        # NixOS has no /bin/bash and sudo strips PATH, so the .run shebang
+                        # and any bare coreutils calls inside install.sh will fail.
+                        # Extract the makeself archive, patch install.sh to inject the
+                        # NixOS coreutils path, then run it with bash by absolute path.
                         echo "Extracting installer..."
                         bash "$TMP_INSTALLER" --noexec --target "$TMP_EXTRACT"
+                        _BASH=$(command -v bash)
+                        sed -i '1a export PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:${PATH:-}"' "$TMP_EXTRACT/install.sh"
                         echo "Running PIA installer (sudo required)..."
-                        sudo /run/current-system/sw/bin/env PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$PATH" bash "$TMP_EXTRACT/install.sh"
+                        sudo "$_BASH" "$TMP_EXTRACT/install.sh"
                         INSTALLED=true
                         echo ""
                         echo "PIA installed. Use option 3 to start the daemon."
