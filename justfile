@@ -1621,7 +1621,7 @@ pia:
                         echo "Extracting installer..."
                         bash "$TMP_INSTALLER" --noexec --target "$TMP_EXTRACT"
                         echo "Running PIA installer (sudo required)..."
-                        sudo env PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$PATH" bash "$TMP_EXTRACT/install.sh"
+                        sudo /run/current-system/sw/bin/env PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$PATH" bash "$TMP_EXTRACT/install.sh"
                         INSTALLED=true
                         echo ""
                         echo "PIA installed. Use option 3 to start the daemon."
