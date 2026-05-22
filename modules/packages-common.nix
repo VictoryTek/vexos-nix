@@ -3,6 +3,10 @@
 # Desktop additionally imports modules/packages-desktop.nix for GUI tools.
 { pkgs, ... }:
 {
+  # Expose the justfile at /etc/nixos/justfile so the `just` alias in
+  # bash-common.nix works on all roles regardless of working directory.
+  environment.etc."nixos/justfile".source = ../justfile;
+
   environment.systemPackages = with pkgs; [
     just    # Command runner (justfile)
     btop    # Terminal process viewer
