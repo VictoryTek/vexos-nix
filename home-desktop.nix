@@ -83,6 +83,15 @@
       "workbench.enableExperiments" = false;
       # Run Copilot tool calls in the visible terminal panel, not hidden sessions
       "chat.tools.terminal.outputLocation" = "terminal";
+      # ── rust-analyzer memory limits ───────────────────────────────────────
+      # RA_MEMORY_LIMIT (MB): instructs rust-analyzer to evict its salsa cache
+      # when it exceeds 4 GB, preventing OOM on large workspaces.
+      "rust-analyzer.server.extraEnv" = { "RA_MEMORY_LIMIT" = "4096"; };
+      # Build scripts (build.rs) execute at index time and can double RAM usage.
+      # Disable unless proc-macro or build-generated code inspection is needed.
+      "rust-analyzer.cargo.buildScripts.enable" = false;
+      # Use cargo check instead of clippy for on-save diagnostics — cheaper.
+      "rust-analyzer.check.command" = "check";
     };
   };
 
@@ -146,8 +155,11 @@
     NIXOS_OZONE_WL     = "1";
     MOZ_ENABLE_WAYLAND = "1";
     QT_QPA_PLATFORM    = "wayland;xcb";
-    # Cap Electron / Node heap to 4 GB — prevents VS Code OOM on 32 GB systems
-    ELECTRON_EXTRA_LAUNCH_ARGS = "--max-old-space-size=4096 --js-flags=--max-old-space-size=4096";
+    # Cap Electron / Node heap — prevents VS Code OOM on 32 GB systems.
+    # NOTE: bare --max-old-space-size is a V8/Node flag, not a Chromium switch;
+    # it must be inside --js-flags to reach the renderer V8 heap.  NODE_OPTIONS
+    # caps each extension-host (NodeService) process independently.
+    ELECTRON_EXTRA_LAUNCH_ARGS = "--js-flags=--max-old-space-size=4096";
     NODE_OPTIONS               = "--max-old-space-size=4096";
   };
 

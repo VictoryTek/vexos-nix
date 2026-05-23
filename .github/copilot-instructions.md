@@ -23,6 +23,9 @@ You do NOT perform direct file operations or code modifications.
 - NEVER ignore review failures  
 - Build or Preflight failure ALWAYS results in NEEDS_REFINEMENT  
 - Work is NOT complete until Phase 6 passes  
+- NEVER run `nix flake check` in any form — it evaluates all 30 nixosConfigurations
+  in parallel and consumes all 32 GB of system RAM, locking up the machine.
+  Use the safe validation commands in the "Build Commands" section instead.
 
 ---
 
@@ -70,10 +73,11 @@ Build Command(s):
 - Example: `sudo nixos-rebuild switch --flake .#vexos-desktop-amd`  
 - See `hostList` in `flake.nix` for the complete list of 30 output names  
 
-Test Command(s):  
-- `nix flake check`  
-- `sudo nixos-rebuild dry-build --flake .#vexos-<role>-<gpu>` (per-variant validation)  
-- At minimum, dry-build one variant per role to catch role-specific regressions  
+Test Command(s):
+- `nix flake show` — validates flake structure and lists all outputs (safe, low RAM)
+- `sudo nixos-rebuild dry-build --flake .#vexos-<role>-<gpu>` (per-variant validation)
+- At minimum, dry-build one variant per role to catch role-specific regressions
+- DO NOT use `nix flake check` — see ABSOLUTE RULES
 
 Package Manager(s): **Nix (nix CLI / nix flake)**  
 
@@ -90,7 +94,8 @@ Repository Notes:
   - `hardware-configuration.nix` MUST NOT be added to this repository; it is generated per-host by `nixos-generate-config`  
   - `system.stateVersion` in `configuration-desktop.nix` MUST NOT be changed after initial installation  
   - All rebuild commands must target a valid `nixosConfigurations` output (see `hostList` in `flake.nix` for the complete list)  
-  - `nix flake check` must pass before any change is considered complete  
+  - `nix flake show` must pass and at least one per-role dry-build must succeed
+    before any change is considered complete (do NOT use `nix flake check`)
   - Flake inputs must maintain `nixpkgs.follows` for any new inputs to avoid duplicate nixpkgs  
 
 ## Module Architecture Pattern
@@ -447,7 +452,7 @@ Verify that any external library usage matches
 the latest official API patterns referenced in the spec.
 
 Build Validation — vexos-nix specific steps:
-- Run `nix flake check` to validate flake structure and evaluate all outputs
+- Run `nix flake show` to validate flake structure and list all outputs (DO NOT use `nix flake check`)
 - Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-amd` to verify the AMD system closure builds
 - Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia` to verify the NVIDIA system closure builds
 - Run `sudo nixos-rebuild dry-build --flake .#vexos-desktop-vm` to verify the VM system closure builds
@@ -582,7 +587,7 @@ The Orchestrator MUST:
    - Identify build/test/lint/security tools
    - Design minimal CI-aligned preflight script for vexos-nix
    - The preflight script MUST include at minimum:
-     - `nix flake check`
+       - `nix flake show` (DO NOT use `nix flake check` — causes OOM on 32GB RAM)
      - `sudo nixos-rebuild dry-build --flake .#vexos-desktop-amd`
      - `sudo nixos-rebuild dry-build --flake .#vexos-desktop-nvidia`
      - `sudo nixos-rebuild dry-build --flake .#vexos-desktop-vm`
@@ -604,7 +609,7 @@ Work CANNOT complete without a preflight.
 ## Preflight Enforcement Expectations
 
 Preflight script may include:
-- Build verification (`nix flake check`)
+- Build verification (`nix flake show` — DO NOT use `nix flake check`, it OOMs this machine)
 - Dry-build test (`nixos-rebuild dry-build --flake .#vexos`)
 - Flake lock file freshness check (`nix flake metadata`)
 - Lint checks (nixpkgs-fmt or alejandra formatting validation)

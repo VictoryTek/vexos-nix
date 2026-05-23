@@ -163,6 +163,40 @@ in
     };
   };
 
+  # Apply system-level Flatpak permission overrides.
+  #
+  # Grant Simplenote access to the Wayland compositor socket.
+  # The Flathub manifest (v2.24.0) only declares --socket=x11.
+  # This system propagates ELECTRON_OZONE_PLATFORM_HINT=auto into the
+  # D-Bus activation environment (via environment.sessionVariables in
+  # modules/gnome.nix), which Flatpak passes into the sandbox unchanged.
+  # Electron detects WAYLAND_DISPLAY and selects the Wayland backend;
+  # without --socket=wayland the sandbox blocks the socket and Electron
+  # exits silently with no window or error.
+  #
+  # flatpak override is idempotent — no stamp file is used. The service
+  # re-runs on every boot to ensure the override persists across Flatpak
+  # database resets and version upgrades.
+  systemd.services.flatpak-configure-overrides = {
+    description = "Apply system-level Flatpak permission overrides";
+    wantedBy    = [ "multi-user.target" ];
+    after       = [ "flatpak-add-flathub.service" ];
+    path        = [ pkgs.flatpak ];
+    script = ''
+      # Simplenote: grant Wayland socket access.
+      # Upstream manifest declares --socket=x11 only. ELECTRON_OZONE_PLATFORM_HINT=auto
+      # (from environment.sessionVariables) causes Electron to select the Wayland
+      # backend inside the sandbox, which then fails silently without this override.
+      flatpak override \
+        --socket=wayland \
+        com.simplenote.Simplenote
+    '';
+    serviceConfig = {
+      Type            = "oneshot";
+      RemainAfterExit = true;
+    };
+  };
+
   # Ensure Flatpak-installed desktop files are visible to GNOME's app launcher.
   environment.sessionVariables = {
     XDG_DATA_DIRS = lib.mkAfter [
