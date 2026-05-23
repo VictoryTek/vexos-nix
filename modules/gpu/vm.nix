@@ -36,4 +36,12 @@
   # VMs rely on hypervisor memory management — no disk swap file needed.
   vexos.swap.enable = false;
 
+  # Disable ZFS in VM builds. zfs-server.nix sets boot.supportedFilesystems.zfs = true
+  # which causes NixOS to create zfs-import.target and make display-manager.service
+  # wait for it. On VM guests with no ZFS pools the import target can fail or hang,
+  # preventing GDM from ever starting (black screen on boot).
+  boot.supportedFilesystems.zfs = lib.mkForce false;
+  services.zfs.autoScrub.enable = lib.mkForce false;
+  services.zfs.trim.enable      = lib.mkForce false;
+
 }
