@@ -121,10 +121,8 @@
     # ZFS bakes this ID into every pool's vdev label at creation time.
     # It must be unique per machine and must not change after pools are created.
     #
-    # REQUIRED: replace XXXXXXXX before your first rebuild.
-    # Generate with:  head -c 8 /etc/machine-id
     hostModule = { ... }: {
-      networking.hostId = "XXXXXXXX"; # REQUIRED: run: head -c 8 /etc/machine-id
+      networking.hostId = builtins.substring 0 8 (builtins.readFile /etc/machine-id);
     };
 
     # ── Variant builder ─────────────────────────────────────────────────────
