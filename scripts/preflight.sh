@@ -8,8 +8,8 @@
 #
 # Stages:
 #   [0/7] Nix + jq availability
-#   [1/7] nix flake check
-#   [2/7] Dry-build all variants (30 outputs)
+#   [1/7] nix flake show (structure validation — safe, low RAM)
+#   [2/7] Dry-build current machine variant only (full CI validation handled by GitHub Actions)
 #   [3/7] hardware-configuration.nix not tracked
 #   [4/7] system.stateVersion (all 5 configuration-*.nix files)
 #   [5/7] flake.lock validation (committed, pinned, freshness)
@@ -75,85 +75,58 @@ else
   warn "jq not found — flake.lock pinning and freshness checks will be skipped"
 fi
 echo ""
-# ---------- CHECK 1: nix flake check (HARD / WARN if no hw-config) ----------
-# --impure is required because hardware-configuration.nix is intentionally
-# kept at /etc/nixos/ (generated per-host, not tracked in this repo).
-# If the host has not yet run nixos-generate-config the check is downgraded to
-# a warning so the preflight can still pass on fresh dev machines.
+# ---------- CHECK 1: nix flake show (structure validation — safe, low RAM) ----------
 echo "[1/7] Validating flake structure..."
-if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
-  warn "Skipping nix flake check — /etc/nixos/hardware-configuration.nix not found."
-  warn "Run 'sudo nixos-generate-config' on the target host and retry."
+# NOTE: nix flake check is FORBIDDEN in this project — it evaluates all 30+
+# nixosConfigurations in parallel and exhausts all 32GB of RAM.
+# nix flake show is the safe alternative: it lists outputs without evaluating them.
+if nix flake show --json > /dev/null 2>&1; then
+  OUTPUT_COUNT=$(nix flake show --json 2>/dev/null | jq '.nixosConfigurations | length' 2>/dev/null || echo "unknown")
+  pass "nix flake show passed — ${OUTPUT_COUNT} nixosConfigurations listed"
 else
-  if nix flake check --no-build --impure --show-trace 2>&1; then
-    pass "nix flake check passed"
-  else
-    fail "nix flake check failed"
-    EXIT_CODE=1
-  fi
+  fail "nix flake show failed — flake structure is invalid"
+  EXIT_CODE=1
 fi
 echo ""
 
-# ---------- CHECK 2: nixos-rebuild dry-build (HARD / WARN if no hw-config) ---
-echo "[2/7] Verifying system closures (dry-build all variants)..."
+# ---------- CHECK 2: nixos-rebuild dry-build (current variant only) ----------
+echo "[2/7] Verifying system closure (dry-build current machine variant)..."
+# NOTE: Dry-building all 30 variants in a loop is FORBIDDEN in this project.
+# Each evaluation loads a full nixpkgs closure into RAM. Running 30 sequentially
+# still risks OOM on a 32GB machine and takes 30+ minutes.
+#
+# SAFE APPROACH: dry-build only the variant matching the currently running machine.
+# Full multi-variant validation is delegated to GitHub Actions CI (see .github/workflows/ci.yml)
+# which runs on dedicated infrastructure with sufficient RAM.
 
-# Dynamically enumerate all nixosConfigurations output names.
-# --impure is required because hardware-configuration.nix lives at /etc/nixos/.
-TARGETS=""
-if [ -f /etc/nixos/hardware-configuration.nix ]; then
-  TARGETS=$(nix eval --impure --json '.#nixosConfigurations' --apply builtins.attrNames 2>/dev/null \
-    | jq -r '.[]' 2>/dev/null || true)
-fi
-
-# Fallback: hardcoded list if dynamic enumeration failed or jq unavailable.
-if [ -z "$TARGETS" ]; then
-  TARGETS="vexos-desktop-amd vexos-desktop-nvidia vexos-desktop-nvidia-legacy535 vexos-desktop-nvidia-legacy470 vexos-desktop-intel vexos-desktop-vm
-vexos-htpc-amd vexos-htpc-nvidia vexos-htpc-nvidia-legacy535 vexos-htpc-nvidia-legacy470 vexos-htpc-intel vexos-htpc-vm
-vexos-server-amd vexos-server-nvidia vexos-server-nvidia-legacy535 vexos-server-nvidia-legacy470 vexos-server-intel vexos-server-vm
-vexos-headless-server-amd vexos-headless-server-nvidia vexos-headless-server-nvidia-legacy535 vexos-headless-server-nvidia-legacy470 vexos-headless-server-intel vexos-headless-server-vm
-vexos-stateless-amd vexos-stateless-nvidia vexos-stateless-nvidia-legacy535 vexos-stateless-nvidia-legacy470 vexos-stateless-intel vexos-stateless-vm
-vexos-vanilla-amd vexos-vanilla-nvidia vexos-vanilla-intel vexos-vanilla-vm"
-fi
-
-TARGET_COUNT=$(echo "$TARGETS" | wc -w)
-echo "  Discovered ${TARGET_COUNT} nixosConfigurations outputs"
-
-if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
+if [ ! -f /etc/nixos/vexos-variant ]; then
+  warn "Skipping dry-build — /etc/nixos/vexos-variant not found."
+  warn "This file is written by the VexOS installer. On a fresh machine, skip is expected."
+elif [ ! -f /etc/nixos/hardware-configuration.nix ]; then
   warn "Skipping dry-build — /etc/nixos/hardware-configuration.nix not found."
   warn "Run 'sudo nixos-generate-config' on the target host and retry."
-elif command -v nixos-rebuild &>/dev/null && sudo -n true 2>/dev/null; then
-  DRY_FAIL=0
-  for TARGET in $TARGETS; do
-    if sudo nixos-rebuild dry-build --flake ".#${TARGET}" 2>&1; then
-      pass "nixos-rebuild dry-build .#${TARGET} passed"
-    else
-      fail "nixos-rebuild dry-build .#${TARGET} failed"
-      DRY_FAIL=1
-    fi
-  done
-  if [ "$DRY_FAIL" -ne 0 ]; then
-    EXIT_CODE=1
-  fi
 else
-  # nixos-rebuild not available or sudo not functional (e.g. developing on a
-  # non-NixOS host, or running in a container/CI without sudo).
-  # Fall back to nix build --dry-run which evaluates the full closure without sudo.
-  if command -v nixos-rebuild &>/dev/null; then
-    warn "sudo not available — falling back to 'nix build --dry-run' for each variant"
+  CURRENT_VARIANT=$(cat /etc/nixos/vexos-variant 2>/dev/null || true)
+  if [ -z "$CURRENT_VARIANT" ]; then
+    warn "Skipping dry-build — /etc/nixos/vexos-variant is empty."
   else
-    warn "nixos-rebuild not found — falling back to 'nix build --dry-run' for each variant"
-  fi
-  DRY_FAIL=0
-  for TARGET in $TARGETS; do
-    if nix build --dry-run --impure ".#nixosConfigurations.${TARGET}.config.system.build.toplevel" 2>&1; then
-      pass "nix build --dry-run .#${TARGET} passed"
+    echo "  Dry-building current machine variant: ${CURRENT_VARIANT}"
+    if command -v nixos-rebuild &>/dev/null && sudo -n true 2>/dev/null; then
+      if sudo nixos-rebuild dry-build --flake ".#${CURRENT_VARIANT}" 2>&1; then
+        pass "nixos-rebuild dry-build .#${CURRENT_VARIANT} passed"
+      else
+        fail "nixos-rebuild dry-build .#${CURRENT_VARIANT} failed"
+        EXIT_CODE=1
+      fi
     else
-      fail "nix build --dry-run .#${TARGET} failed"
-      DRY_FAIL=1
+      TOPLEVEL=".#nixosConfigurations.${CURRENT_VARIANT}.config.system.build.toplevel"
+      if nix build --dry-run --impure "${TOPLEVEL}" 2>&1; then
+        pass "nix build --dry-run .#${CURRENT_VARIANT} passed"
+      else
+        fail "nix build --dry-run .#${CURRENT_VARIANT} failed"
+        EXIT_CODE=1
+      fi
     fi
-  done
-  if [ "$DRY_FAIL" -ne 0 ]; then
-    EXIT_CODE=1
   fi
 fi
 echo ""

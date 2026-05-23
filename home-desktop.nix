@@ -21,7 +21,7 @@
     # NOTE: VS Code is installed as unstable.vscode-fhs in modules/development.nix
     # (FHS env required for VS Code to launch correctly on NixOS).
     rustup
-    unstable.nodejs_25  # pinned to unstable for latest LTS
+    unstable.nodejs  # latest LTS (nodejs_25 removed — EOL 2026-06-01)
 
     # Terminal emulator
     ghostty
