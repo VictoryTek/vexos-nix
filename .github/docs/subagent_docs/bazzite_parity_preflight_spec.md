@@ -1,3 +1,21 @@
+> [!CAUTION]
+> **SUPERSEDED DOCUMENT — DO NOT USE AS CURRENT GUIDANCE**
+>
+> This spec was written before the OOM audit (2026-05-23) and proposes
+> `nix flake check` as the primary preflight gate (see lines 76, 82–83,
+> 308–313, 383). That command evaluates all 30+ nixosConfigurations in
+> parallel and exhausts all 32 GB of RAM on this machine, causing a full
+> system lockup.
+>
+> **Current preflight behaviour is defined in `scripts/preflight.sh`:**
+> - Stage 1 uses `nix flake show --json` (safe, low RAM)
+> - Stage 2 dry-builds only the current machine variant via `/etc/nixos/vexos-variant`
+>
+> **`nix flake check` is listed under ABSOLUTE RULES in
+> `.github/copilot-instructions.md` and must never be added back.**
+
+---
+
 # Preflight Validation Script — Specification
 **Project:** vexos-nix — Personal NixOS Flake  
 **Spec Author:** Research Subagent  

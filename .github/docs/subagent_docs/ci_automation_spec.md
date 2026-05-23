@@ -1,3 +1,23 @@
+> [!CAUTION]
+> **SUPERSEDED DOCUMENT — DO NOT USE AS CURRENT GUIDANCE**
+>
+> This spec was written before the OOM audit (2026-05-23) and proposes
+> `nix flake check --no-build --impure --show-trace` as the primary CI gate
+> (see lines 103, 108, 259, 263, 290, 412). Despite `--no-build`, this flag
+> still evaluates all 30+ nixosConfigurations simultaneously and causes OOM
+> lockup on this machine. It is safe ONLY on GitHub-hosted runners with
+> uncapped RAM — never locally, and never on self-hosted runners.
+>
+> **Current CI behaviour is defined in `.github/workflows/ci.yml`:**
+> - Uses a 6-group matrix on GitHub-hosted `ubuntu-latest` runners
+> - Each config is evaluated individually via single-attribute `nix eval`
+>   of `drvPath` — no bulk evaluation, no `nix flake check`
+>
+> **`nix flake check` is listed under ABSOLUTE RULES in
+> `.github/copilot-instructions.md` and must never be added back.**
+
+---
+
 # CI Automation Specification — vexos-nix
 **Feature:** Automated `nix flake check` via GitHub Actions CI  
 **Spec Version:** 1.0  

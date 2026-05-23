@@ -1,3 +1,20 @@
+> [!CAUTION]
+> **SUPERSEDED DOCUMENT — DO NOT USE AS CURRENT GUIDANCE**
+>
+> This review was written before the OOM audit (2026-05-23). Lines 158–170
+> and 238–247 recommend restoring `nix flake check --impure --no-build
+> --show-trace` to `scripts/preflight.sh` for consistency with CI. That
+> recommendation was NOT followed and must NOT be acted upon.
+>
+> Running `nix flake check` in `scripts/preflight.sh` — in any form — causes
+> a full system OOM lockup on this 32 GB machine. The preflight script
+> deliberately uses `nix flake show --json` instead.
+>
+> **`nix flake check` is listed under ABSOLUTE RULES in
+> `.github/copilot-instructions.md` and must never be added back.**
+
+---
+
 # CI Automation Review — vexos-nix
 **Feature:** Automated `nix flake check` via GitHub Actions CI  
 **Review Version:** 1.0  
