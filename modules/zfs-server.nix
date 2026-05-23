@@ -66,6 +66,18 @@
   # Generate a value with:  head -c 8 /etc/machine-id
   networking.hostId = lib.mkDefault "00000000";
 
+  assertions = [
+    {
+      assertion = config.networking.hostId != "00000000";
+      message = ''
+        ZFS requires a unique networking.hostId per host. Set it in
+        hosts/<role>-<gpu>.nix, e.g.:
+          networking.hostId = "deadbeef";
+        Generate with:  head -c 8 /etc/machine-id
+      '';
+    }
+  ];
+
   # ── Swap policy: disable disk-backed swap on ZFS hosts ───────────────────
   # Writing a swapfile to a ZFS dataset risks a kernel deadlock: the kernel's
   # memory-reclaim path writes to swap (on ZFS), ZFS needs to shrink its ARC
