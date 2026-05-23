@@ -307,7 +307,7 @@ if [ "$ASUS_ENABLE" = "true" ]; then
   if grep -qF 'hardwareModule = { ... }: { };' /etc/nixos/flake.nix 2>/dev/null; then
     echo ""
     echo "  Patching /etc/nixos/flake.nix to enable ASUS ROG/TUF support..."
-    sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; };/' /etc/nixos/flake.nix
+    sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; };/' /etc/nixos/flake.nix
     echo -e "  ${GREEN}✓ ASUS hardware support enabled.${RESET}"
     echo ""
   else
@@ -325,7 +325,7 @@ fi
 # headless-server roles. Safe no-op for all other roles.
 if [ -f /etc/nixos/flake.nix ] && grep -qF '"XXXXXXXX"' /etc/nixos/flake.nix 2>/dev/null; then
   HOST_ID="$(head -c 8 /etc/machine-id)"
-  sed -i "s/networking\.hostId = \"XXXXXXXX\"/networking.hostId = \"${HOST_ID}\"/" /etc/nixos/flake.nix
+  sudo sed -i "s/networking\.hostId = \"XXXXXXXX\"/networking.hostId = \"${HOST_ID}\"/" /etc/nixos/flake.nix
   echo -e "  ${GREEN}✓ hostId set to ${HOST_ID}.${RESET}"
 fi
 
