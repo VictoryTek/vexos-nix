@@ -117,6 +117,16 @@
     #   hardwareModule = { ... }: { vexos.hardware.asus.enable = true; };
     hardwareModule = { ... }: { };
 
+    # ── ZFS host identity (required for server and headless-server roles) ────
+    # ZFS bakes this ID into every pool's vdev label at creation time.
+    # It must be unique per machine and must not change after pools are created.
+    #
+    # REQUIRED: replace XXXXXXXX before your first rebuild.
+    # Generate with:  head -c 8 /etc/machine-id
+    hostModule = { ... }: {
+      networking.hostId = "XXXXXXXX"; # REQUIRED: run: head -c 8 /etc/machine-id
+    };
+
     # ── Variant builder ─────────────────────────────────────────────────────
     # Constructs a complete NixOS configuration for a given variant.
     # • hostname   → the variant name, also written to /etc/nixos/vexos-variant
@@ -231,6 +241,7 @@
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
           bootloaderModule
           hardwareModule
+          hostModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.headlessServerBase
         ]
@@ -240,18 +251,16 @@
 
     # Server role: GUI server stack.
     #
-    # ── ZFS hostId — required before creating ZFS pools ─────────────────────
+    # ── ZFS hostId ───────────────────────────────────────────────────────────
     # ZFS bakes the host's hostId into every pool's vdev label at creation time.
-    # If the hostId changes later (e.g. rebuilding from a workstation), ZFS will
-    # refuse to import the pool on next boot.
+    # If the hostId changes after pools are created, ZFS will refuse to import
+    # the pool on next boot.
     #
-    # Before running `just create-zfs-pool`, add to your
-    # /etc/nixos/hardware-configuration.nix (or a local override module):
+    # networking.hostId is set in `hostModule` above — replace "XXXXXXXX" with
+    # the output of:  head -c 8 /etc/machine-id
     #
-    #   networking.hostId = "deadbeef";  # ← replace: head -c 8 /etc/machine-id
-    #
-    # Fresh installs without any ZFS pools will see a build warning until this is
-    # set — the warning is informational and does not block the build.
+    # Leaving "XXXXXXXX" in place causes an assertion failure that aborts the
+    # build — it is NOT a warning.
     mkServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       specialArgs = { inputs = vexos-nix.inputs; };
@@ -268,6 +277,7 @@
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
           bootloaderModule
           hardwareModule
+          hostModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.serverBase
         ]
