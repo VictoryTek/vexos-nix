@@ -122,7 +122,7 @@
     # It must be unique per machine and must not change after pools are created.
     #
     hostModule = { ... }: {
-      networking.hostId = builtins.substring 0 8 (builtins.readFile /etc/machine-id);
+      networking.hostId = "XXXXXXXX"; # Substituted automatically by install.sh
     };
 
     # ── Variant builder ─────────────────────────────────────────────────────

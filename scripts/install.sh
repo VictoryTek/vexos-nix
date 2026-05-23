@@ -319,6 +319,16 @@ if [ "$ASUS_ENABLE" = "true" ]; then
   fi
 fi
 
+# ---------- hostId substitution ----------------------------------------------
+# Replace the XXXXXXXX placeholder in /etc/nixos/flake.nix with the first 8 hex
+# characters of /etc/machine-id. Required for ZFS pool identity on server and
+# headless-server roles. Safe no-op for all other roles.
+if [ -f /etc/nixos/flake.nix ] && grep -qF '"XXXXXXXX"' /etc/nixos/flake.nix 2>/dev/null; then
+  HOST_ID="$(head -c 8 /etc/machine-id)"
+  sed -i "s/networking\.hostId = \"XXXXXXXX\"/networking.hostId = \"${HOST_ID}\"/" /etc/nixos/flake.nix
+  echo -e "  ${GREEN}✓ hostId set to ${HOST_ID}.${RESET}"
+fi
+
 # ---------- Build & switch ---------------------------------------------------
 if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "/etc/nixos#${FLAKE_TARGET}"; then
   echo ""
