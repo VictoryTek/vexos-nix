@@ -1641,11 +1641,20 @@ pia:
                         chmod +x "$TMP_EXTRACT/sudo"
                         chmod +x "$TMP_EXTRACT/install.sh"
                         echo "Running PIA installer (will prompt for sudo internally)..."
+                        set +e
                         "$TMP_EXTRACT/install.sh"
-                        rm -f "$TMP_INSTALLER"; rm -rf "$TMP_EXTRACT"
+                        _pia_rc=$?
+                        set -e
+                        rm -f "$TMP_INSTALLER"; rm -rf "$TMP_EXTRACT" 2>/dev/null || true
                         trap - EXIT
                         echo ""
-                        echo "PIA installed. Use option 3 to start the daemon."
+                        if [ -x "/opt/piavpn/bin/pia-daemon" ]; then
+                            INSTALLED=true
+                            echo "PIA installed. Use option 3 to start the daemon."
+                        else
+                            echo "warning: installer exited with code $_pia_rc and PIA does not appear"
+                            echo "         to be installed. Check the output above."
+                        fi
                     fi
                 fi
                 ;;

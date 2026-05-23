@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 {
   # PIA VPN — nix-ld shim + wrapper scripts so PIA's official Linux client runs on NixOS
   # Install the client with: just pia-install
@@ -58,6 +58,15 @@
       exec /opt/piavpn/bin/piactl "$@"
     '')
   ];
+
+  # ── Preserve NIX_LD_LIBRARY_PATH through sudo ────────────────────────────
+  # The nix-ld shim reads NIX_LD_LIBRARY_PATH to resolve libraries for
+  # FHS-expecting binaries. sudo strips it by default, so PIA's bundled
+  # utilities (date, rm, etc.) inside the installer can't find libatomic and
+  # other GCC runtime libs — causing the installer to exit non-zero.
+  security.sudo.extraConfig = lib.mkAfter ''
+    Defaults env_keep += "NIX_LD_LIBRARY_PATH"
+  '';
 
   # ── systemd service ───────────────────────────────────────────────────────
   # PIA's installer normally writes this file, but on NixOS /etc/systemd/system
