@@ -70,7 +70,7 @@ jobs:
     name: Evaluate ${{ matrix.group }} configs
     needs: lint
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false   # Run all groups even if one fails
       matrix:
@@ -180,12 +180,14 @@ jobs:
       - name: Evaluate ${{ matrix.group }} configurations
         # Evaluate each config's system derivation path — forces full Nix
         # evaluation including all module assertions without building packages.
-        # Per-config timeout of 8 minutes ensures a hung eval fails cleanly.
+        # Per-config timeout of 12 minutes ensures a hung eval fails cleanly.
+        # nvidia-legacy535/470 configs evaluate slower on GitHub Actions runners
+        # due to the larger NVIDIA driver closure — 8m was too tight.
         run: |
           failed=()
           for config in ${{ matrix.configs }}; do
             echo "::group::${config}"
-            if timeout 8m nix eval --impure \
+            if timeout 12m nix eval --impure \
                 ".#nixosConfigurations.${config}.config.system.build.toplevel.drvPath" \
                 > /dev/null; then
               echo "PASS: ${config}"
