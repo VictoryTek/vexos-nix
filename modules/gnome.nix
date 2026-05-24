@@ -49,6 +49,7 @@
       gnome-settings-daemon  = u.gnome-settings-daemon;
       gnome-control-center   = u.gnome-control-center;
       gnome-shell-extensions = u.gnome-shell-extensions;
+      xdg-desktop-portal-gnome = u.xdg-desktop-portal-gnome;
 
       # Default GNOME applications
       nautilus               = u.nautilus;           # Files
