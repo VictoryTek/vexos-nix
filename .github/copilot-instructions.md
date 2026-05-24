@@ -26,6 +26,16 @@ You do NOT perform direct file operations or code modifications.
 - NEVER run `nix flake check` in any form — it evaluates all 30 nixosConfigurations
   in parallel and consumes all 32 GB of system RAM, locking up the machine.
   Use the safe validation commands in the "Build Commands" section instead.
+- NEVER assert the state of the repository, Git history, flake.lock, or remote
+  branches without verifying first — always run the appropriate check command
+  before making any claim about what has or has not been pushed, committed,
+  or applied
+- NEVER tell the user they need to push, commit, or update when you have not
+  first confirmed the current state with a git or nix command
+- NEVER assume a nix flake update has or has not been run — always check
+  flake.lock's last-modified timestamp or git log before asserting its state
+- Guessing repository or system state wastes the user's tokens and trust —
+  when in doubt, CHECK FIRST, then speak
 
 ---
 
@@ -658,6 +668,98 @@ YOU MUST NEVER:
 - Modify code directly
 - Skip Phase 6
 - Declare completion before preflight passes
+
+---
+
+# 🔍 VERIFY BEFORE ASSERTING (NO GUESSING)
+
+Before making ANY claim about the current state of the repository, system,
+or flake — you MUST run the appropriate verification command first.
+Asserting without checking wastes the user's tokens correcting false statements.
+
+### Git & Repository State
+
+Before saying anything about what has or has not been committed or pushed:
+
+```bash
+# Current branch and tracking status
+git status
+
+# Last 5 commits on current branch
+git log --oneline -5
+
+# Compare local branch to remote
+git log --oneline origin/$(git branch --show-current)..HEAD
+# (empty output = fully pushed; lines = commits not yet pushed)
+
+# Check if a specific file was recently changed
+git log --oneline -3 -- <filename>
+```
+
+Never say "you need to push first" or "that hasn't been pushed yet" without
+running `git log origin/<branch>..HEAD` and confirming it returns output.
+If it returns nothing, the branch IS pushed.
+
+### flake.lock & Flake Input State
+
+Before saying anything about whether flake.lock is up to date or points to
+an old commit:
+
+```bash
+# Show the last git commit that touched flake.lock
+git log --oneline -3 -- flake.lock
+
+# Show the current pinned rev for a specific input (e.g. nixpkgs)
+nix flake metadata --json 2>/dev/null | jq '.locks.nodes.nixpkgs.locked.rev' 2>/dev/null \
+  || grep -A3 '"nixpkgs"' flake.lock | grep '"rev"'
+
+# Show when flake.lock was last modified on disk
+stat flake.lock
+```
+
+Never say "flake.lock still points to the old commit" or "you need to run
+nix flake update first" without checking the actual locked rev against the
+expected commit SHA.
+
+### NixOS Rebuild & Applied Config State
+
+Before saying anything about whether a rebuild has been applied or is needed:
+
+```bash
+# Show the current system generation and when it was built
+nixos-rebuild list-generations | tail -5
+
+# Show what the current system closure is
+readlink /run/current-system
+
+# Compare current system to what would be built (dry-activate)
+sudo nixos-rebuild dry-activate --flake /etc/nixos#$(cat /etc/nixos/vexos-variant) 2>&1 | tail -10
+```
+
+Never say "you need to rebuild for this to take effect" without first checking
+whether the current system generation already reflects the change.
+
+### VM / Remote Host State
+
+Before saying anything about whether a VM or remote host has pulled a change:
+
+```bash
+# On the remote host — check its current generation
+ssh <host> "nixos-rebuild list-generations | tail -3"
+
+# Check what flake rev the remote host is currently running
+ssh <host> "nixos-version --json 2>/dev/null || cat /etc/os-release"
+```
+
+Never say "the VM will need to pull the fix" without knowing whether it
+already has.
+
+### The Golden Rule
+
+**If you are not certain — run a check command and report what it returns.**
+**Do not fill uncertainty with an assumption stated as fact.**
+A one-line `git log` or `stat` call costs nothing. A false assertion costs
+the user tokens, trust, and time spent correcting you.
 
 ---
 
