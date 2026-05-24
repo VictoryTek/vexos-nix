@@ -34,51 +34,12 @@
 
   config = {
 
-  # ── GNOME stack sourced from nixpkgs-unstable ──────────────────────────────
-  # Replaces the GNOME desktop shell and its default-shipped applications with
-  # the latest builds from nixos-unstable.  Everything else on the system stays
-  # on nixos-25.11.  pkgs.unstable is provided by the unstableOverlayModule
-  # defined in flake.nix.
+  # ── GNOME Extensions desktop-file suppression overlay ───────────────────
+  # The GNOME Extensions app (org.gnome.Extensions) cannot be removed via
+  # excludePackages because it is bundled inside gnome-shell.  Drop its
+  # desktop file from both gnome-shell and gnome-shell-extensions so it
+  # never appears in the app grid.
   nixpkgs.overlays = [
-    (final: prev: let u = final.unstable; in {
-      # Core GNOME shell stack
-      gnome-shell            = u.gnome-shell;
-      mutter                 = u.mutter;
-      gdm                    = u.gdm;
-      gnome-session          = u.gnome-session;
-      gnome-settings-daemon  = u.gnome-settings-daemon;
-      gnome-control-center   = u.gnome-control-center;
-      gnome-shell-extensions = u.gnome-shell-extensions;
-
-      # Default GNOME applications
-      nautilus               = u.nautilus;           # Files
-      gnome-console          = u.gnome-console;      # Terminal
-      gnome-disk-utility     = u.gnome-disk-utility;
-      baobab                 = u.baobab;             # Disk Usage Analyzer
-      gnome-software         = u.gnome-software;
-
-      # NOTE: gvfs is NOT pinned to unstable here. Stable gvfs (from nixpkgs
-      # 25.05) provides all required backends: dnssd, network, smb,
-      # smb-browse, wsdd, nfs, sftp. The unstable pin was previously added
-      # for "IPC parity" with unstable Nautilus, but gvfs communicates with
-      # Nautilus via D-Bus (not direct linking), so the stable/unstable
-      # combination is safe. The unstable gvfs caused the wsdd backend to
-      # malfunction, preventing NAS devices from appearing in Nautilus →
-      # Network. Reverting to stable gvfs matches default NixOS behaviour,
-      # which discovers network shares correctly.
-      # NOTE: gnome-text-editor, gnome-system-monitor, loupe, and totem are
-      # installed via Flatpak on all roles; gnome-calculator, gnome-calendar,
-      # evince/papers, and gnome-snapshot are installed via Flatpak on the
-      # desktop role only.
-      # (see modules/flatpak.nix) to avoid local compilation.
-    })
-
-    # The GNOME Extensions app (org.gnome.Extensions) cannot be removed via
-    # excludePackages because it is bundled inside gnome-shell.  Drop its
-    # desktop file from BOTH gnome-shell and gnome-shell-extensions so it
-    # never appears in the app grid regardless of which package installs it.
-    # This overlay runs after the unstable-pin overlay above, so
-    # prev.gnome-shell is already the unstable build.
     (final: prev: {
       gnome-shell = prev.gnome-shell.overrideAttrs (old: {
         postInstall = (old.postInstall or "") + ''
@@ -241,9 +202,9 @@
   # modules/gnome-desktop.nix (it is the only role that enables it).
   environment.systemPackages = [
     # GNOME tooling
-    pkgs.unstable.gnome-tweaks                               # GNOME customisation GUI
-    pkgs.unstable.dconf-editor                               # Low-level GNOME settings editor
-    pkgs.unstable.gnome-extension-manager                    # Install/manage GNOME Shell extensions
+    pkgs.gnome-tweaks                                        # GNOME customisation GUI
+    pkgs.dconf-editor                                        # Low-level GNOME settings editor
+    pkgs.gnome-extension-manager                             # Install/manage GNOME Shell extensions
 
     # Cursor and icon theme packages — must be in system packages so the
     # system dconf profile (programs.dconf.profiles.user.databases) can
@@ -251,19 +212,21 @@
     pkgs.bibata-cursors
     pkgs.kora-icon-theme
 
-    # GNOME Shell extensions
-    pkgs.unstable.gnomeExtensions.appindicator               # System tray icons
-    pkgs.unstable.gnomeExtensions.dash-to-dock               # macOS-style dock
-    pkgs.unstable.gnomeExtensions.alphabetical-app-grid      # Sort app grid alphabetically
-    pkgs.unstable.gnomeExtensions.gnome-40-ui-improvements   # UI tweaks
-    pkgs.unstable.gnomeExtensions.nothing-to-say             # Mic mute indicator
-    pkgs.unstable.gnomeExtensions.steal-my-focus-window      # Force window focus
-    pkgs.unstable.gnomeExtensions.tailscale-status           # Tailscale tray indicator
-    pkgs.unstable.gnomeExtensions.caffeine                   # Prevent screen sleep
-    pkgs.unstable.gnomeExtensions.restart-to                 # Restart-to menu entry
-    pkgs.unstable.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
-    pkgs.unstable.gnomeExtensions.background-logo            # Desktop background logo
-    pkgs.unstable.gnomeExtensions.tiling-assistant           # Half- and quarter-tiling support
+    # GNOME Shell extensions — must match the gnome-shell version (stable).
+    # gnome-shell is intentionally kept on stable; extensions run inside
+    # gnome-shell's JS runtime and are version-checked against it.
+    pkgs.gnomeExtensions.appindicator               # System tray icons
+    pkgs.gnomeExtensions.dash-to-dock               # macOS-style dock
+    pkgs.gnomeExtensions.alphabetical-app-grid      # Sort app grid alphabetically
+    pkgs.gnomeExtensions.gnome-40-ui-improvements   # UI tweaks
+    pkgs.gnomeExtensions.nothing-to-say             # Mic mute indicator
+    pkgs.gnomeExtensions.steal-my-focus-window      # Force window focus
+    pkgs.gnomeExtensions.tailscale-status           # Tailscale tray indicator
+    pkgs.gnomeExtensions.caffeine                   # Prevent screen sleep
+    pkgs.gnomeExtensions.restart-to                 # Restart-to menu entry
+    pkgs.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
+    pkgs.gnomeExtensions.background-logo            # Desktop background logo
+    pkgs.gnomeExtensions.tiling-assistant           # Half- and quarter-tiling support
   ];
 
   # ── Fonts ─────────────────────────────────────────────────────────────────

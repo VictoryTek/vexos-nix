@@ -180,3 +180,57 @@ Reset NixOS back to default configuration:
 ```bash
 sudo rm -f /etc/nixos/flake.nix /etc/nixos/flake.lock && sudo nixos-generate-config --root / && sudo nixos-rebuild switch
 ```
+
+
+## Updating nixpkgs-unstable (GNOME stack)
+
+The GNOME shell, mutter, GDM, and related packages are sourced from `nixpkgs-unstable` to track the latest GNOME releases. The daily CI auto-update job intentionally **skips** `nixpkgs-unstable` because GNOME stack updates occasionally introduce regressions that break Wayland session startup on VM guests (black screen on boot).
+
+Before bumping `nixpkgs-unstable`, always verify a VM build boots correctly.
+
+**To update nixpkgs-unstable manually:**
+
+```bash
+# 1. Bump nixpkgs-unstable in the flake.lock
+cd /path/to/vexos-nix
+nix flake update nixpkgs-unstable
+
+# 2. Verify a VM variant dry-builds
+sudo nixos-rebuild dry-build --flake .#vexos-desktop-vm
+
+# 3. Push and do a live VM test (GNOME Boxes or virt-manager)
+#    Boot the VM and confirm GDM starts — a black screen means the new
+#    nixpkgs-unstable has a GNOME regression. Roll back with:
+git revert HEAD  # or manually restore the previous flake.lock revision
+
+# 4. If the VM boots correctly, the bump is safe to leave in place.
+```
+
+> **Note:** nixpkgs (stable, 25.11) is still updated automatically by CI.
+> Only the unstable channel is gated on manual VM verification.
+
+
+## NixOS stable channel upgrades (e.g. 25.11 → 26.05)
+
+When a new NixOS stable release ships, update the `nixpkgs` input and the
+`system.stateVersion` comment (do **not** change the value itself — it must
+stay at the version the system was first installed on):
+
+```bash
+# 1. Update the stable nixpkgs input to the new release branch
+cd /path/to/vexos-nix
+nix flake update nixpkgs
+
+# 2. Update the flake.nix input ref from nixos-25.11 → nixos-26.05
+#    (edit flake.nix: inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05")
+
+# 3. Dry-build to catch any breakage before switching
+sudo nixos-rebuild dry-build --flake .#vexos-desktop-amd
+
+# 4. Switch when ready
+just switch
+```
+
+> **Do NOT change `system.stateVersion`** even when upgrading to a new
+> NixOS release. It must remain at the version the system was *first installed*
+> on. Changing it can corrupt stateful data managed by NixOS activation scripts.

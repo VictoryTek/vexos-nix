@@ -9,7 +9,7 @@
 
   # ── Desktop-only GNOME Shell extension package ────────────────────────────
   environment.systemPackages = with pkgs; [
-    unstable.gnomeExtensions.gamemode-shell-extension   # GameMode status indicator
+    gnomeExtensions.gamemode-shell-extension   # GameMode status indicator
   ];
 
   # ── Role-specific dconf overlay ───────────────────────────────────────────
