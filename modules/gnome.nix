@@ -39,18 +39,28 @@
   # excludePackages because it is bundled inside gnome-shell.  Drop its
   # desktop file from both gnome-shell and gnome-shell-extensions so it
   # never appears in the app grid.
+  #
+  # symlinkJoin is used instead of overrideAttrs so that gnome-shell and
+  # gnome-shell-extensions are fetched from the binary cache as-is and only
+  # a tiny symlink-farm derivation is built locally.  overrideAttrs changes
+  # the derivation hash, forcing a full from-source compilation of gnome-shell
+  # (several hours) that will never appear in cache.nixos.org.
   nixpkgs.overlays = [
     (final: prev: {
-      gnome-shell = prev.gnome-shell.overrideAttrs (old: {
-        postInstall = (old.postInstall or "") + ''
+      gnome-shell = final.symlinkJoin {
+        name = "gnome-shell-${prev.gnome-shell.version}";
+        paths = [ prev.gnome-shell ];
+        postBuild = ''
           rm -f $out/share/applications/org.gnome.Extensions.desktop
         '';
-      });
-      gnome-shell-extensions = prev.gnome-shell-extensions.overrideAttrs (old: {
-        postInstall = (old.postInstall or "") + ''
+      };
+      gnome-shell-extensions = final.symlinkJoin {
+        name = "gnome-shell-extensions-${prev.gnome-shell-extensions.version}";
+        paths = [ prev.gnome-shell-extensions ];
+        postBuild = ''
           rm -f $out/share/applications/org.gnome.Extensions.desktop
         '';
-      });
+      };
     })
   ];
 

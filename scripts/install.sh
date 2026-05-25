@@ -338,9 +338,15 @@ fi
 echo ""
 echo -e "${CYAN}Checking binary cache for all required packages...${RESET}"
 DRY_OUT=$(sudo nixos-rebuild dry-build --flake "/etc/nixos#${FLAKE_TARGET}" 2>&1 || true)
+# Extract the "will be built" section and keep only versioned package derivations
+# (e.g. gnome-shell-49.4.drv, steam-1.0.0.85.drv). Config-assembly derivations
+# (PAM files, AppArmor rules, systemd units, Home Manager links, etc.) are always
+# rebuilt locally — they contain machine-specific data and are never in the binary
+# cache — but they complete in milliseconds and should not block the install.
 SOURCE_BUILDS=$(printf '%s\n' "$DRY_OUT" \
   | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
-  | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-)' \
+  | grep -E -- '-[0-9]+\.[0-9]+' \
+  | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-|crate-|cargo-vendor)' \
   || true)
 
 if [ -n "$SOURCE_BUILDS" ]; then
