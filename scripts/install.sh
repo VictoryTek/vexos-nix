@@ -330,6 +330,37 @@ if [ -f /etc/nixos/flake.nix ] && grep -qF '"XXXXXXXX"' /etc/nixos/flake.nix 2>/
 fi
 
 # ---------- Build & switch ---------------------------------------------------
+# Cache check: dry-build first to see what would need to be compiled locally.
+# Filters out NixOS system-level derivations that are always built locally and
+# take under a second (activation scripts, unit files, bootloader, initrd, etc.)
+# If any real packages (C++, Rust, Electron, ...) are missing from the binary
+# cache the install aborts cleanly so you can retry once cache.nixos.org catches up.
+echo ""
+echo -e "${CYAN}Checking binary cache for all required packages...${RESET}"
+DRY_OUT=$(sudo nixos-rebuild dry-build --flake "/etc/nixos#${FLAKE_TARGET}" 2>&1 || true)
+SOURCE_BUILDS=$(printf '%s\n' "$DRY_OUT" \
+  | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
+  | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-)' \
+  || true)
+
+if [ -n "$SOURCE_BUILDS" ]; then
+  echo ""
+  echo -e "${YELLOW}${BOLD}⚠ Some packages are not yet in the binary cache and would need to"
+  echo -e "  be compiled from source (this can take hours):${RESET}"
+  echo ""
+  printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/    /'
+  echo ""
+  echo -e "${YELLOW}The install has been aborted. cache.nixos.org usually builds new"
+  echo -e "packages within 24 hours. Run the install script again once they are cached."
+  echo ""
+  echo -e "To install now anyway (accepts local source builds), run:${RESET}"
+  echo "  sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
+  echo ""
+  exit 1
+fi
+echo -e "${GREEN}✓ All packages available in binary cache.${RESET}"
+echo ""
+
 if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "/etc/nixos#${FLAKE_TARGET}"; then
   echo ""
   if [ "$REBUILD_ACTION" = "boot" ]; then
