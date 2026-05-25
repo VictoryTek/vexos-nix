@@ -322,58 +322,16 @@ update:
     fi
 
     echo ""
-    echo "Updating flake inputs and switching to: ${target}"
+    echo "Updating to: ${target}"
     echo ""
-
-    # Back up the current lock so we can roll it back if the cache check fails.
-    sudo cp /etc/nixos/flake.lock /etc/nixos/flake.lock.bak
-
-    # Update /etc/nixos/flake.lock — the thin wrapper whose lock pins the
-    # vexos-nix GitHub commit.  The repo clone's own flake.lock is irrelevant
-    # for end-user updates.
-    sudo nix flake update --flake path:/etc/nixos
-
-    # Dry-run: evaluate the new configuration and list what would be built
-    # locally vs fetched from the binary cache.  Nix writes this to stderr.
-    echo "Checking binary cache for new packages..."
-    DRY=$(sudo nixos-rebuild dry-build \
-        --flake path:/etc/nixos#"${target}" 2>&1 || true)
-
-    # Extract package names in the "will be built" section (not "will be fetched").
-    # Strip /nix/store/<hash>- so names are readable.
-    # Filter out NixOS system-level derivations that are ALWAYS built locally:
-    #   system env (symlink forest), activation scripts, systemd unit files,
-    #   bootloader config, initrd, etc.  These are trivial file operations (<1 s).
-    # Anything remaining is a real package compile (C++, Rust, Electron, ...).
-    SOURCE_BUILDS=$(printf '%s\n' "$DRY" \
-        | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
-        | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-)' \
-        || true)
-
-    if [ -n "$SOURCE_BUILDS" ]; then
-        echo ""
-        echo "────────────────────────────────────────────────────────────────"
-        echo "The following packages are not yet in the binary cache and"
-        echo "would need to be compiled from source:"
-        echo ""
-        printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/  /'
-        echo ""
-        echo "flake.lock restored — your system stays on its current"
-        echo "configuration.  Run 'just update' again in a few hours once"
-        echo "cache.nixos.org has finished building these packages."
-        echo ""
-        echo "To force an update now (accepts local source builds):"
-        echo "  sudo nixos-rebuild switch --flake path:/etc/nixos#${target}"
-        echo "────────────────────────────────────────────────────────────────"
-        sudo cp /etc/nixos/flake.lock.bak /etc/nixos/flake.lock
-        sudo rm -f /etc/nixos/flake.lock.bak
-        exit 1
-    fi
-
-    sudo rm -f /etc/nixos/flake.lock.bak
-    echo "All packages available in binary cache — applying update..."
-    echo ""
-    sudo nixos-rebuild switch --flake path:/etc/nixos#"${target}"
+    # vexos-update (installed by modules/nix.nix) handles:
+    #   1. flake.lock backup
+    #   2. nix flake update
+    #   3. dry-build cache check
+    #   4. rollback + clear error if any package needs a source build
+    #   5. nixos-rebuild switch if everything is cached
+    # Up uses the same script so behaviour is identical regardless of update path.
+    sudo vexos-update
 
 # Deploy config changes only — pulls the latest vexos-nix commit from GitHub
 # WITHOUT updating nixpkgs or any other flake input.

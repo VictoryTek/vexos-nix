@@ -1,7 +1,12 @@
 # modules/nix.nix
 # Nix daemon configuration: flakes, binary caches, GC, store optimisation,
 # and daemon scheduling. Applies to all roles.
-{ config, lib, ... }:
+#
+# Also installs /run/current-system/sw/bin/vexos-update — the canonical
+# cache-safe update script used by both `just update` and the Up GUI app.
+# Both tools run the same logic so the behaviour is identical regardless of
+# how the user triggers an update.
+{ config, pkgs, lib, ... }:
 let
   cfg = config.vexos.attic;
 in
@@ -101,5 +106,71 @@ in
 
   # Required for Steam, NVIDIA drivers, proton-ge-bin, etc.
   nixpkgs.config.allowUnfree = true;
+
+  # ── vexos-update ─────────────────────────────────────────────────────────
+  # Cache-safe update script installed system-wide.  Both `just update` and
+  # the Up GUI app call this instead of raw `nix flake update && nixos-rebuild`
+  # so the hold/rollback logic is identical regardless of how the update is
+  # triggered.
+  #
+  # Exit codes:
+  #   0  — update applied successfully (all packages were in binary cache)
+  #   2  — cache miss (flake.lock restored; system unchanged; retry later)
+  #   1  — other error (bad variant, nix eval failure, etc.)
+  #
+  # Stdout protocol for Up:
+  #   Lines prefixed "VEXOS_CACHE_MISS:" → cache miss; list the blocked pkgs.
+  #   All other lines are forwarded verbatim to the build log view.
+  environment.systemPackages = [
+    (pkgs.writeShellScriptBin "vexos-update" ''
+      set -euo pipefail
+
+      VARIANT=$(cat /etc/nixos/vexos-variant 2>/dev/null || true)
+      if [ -z "$VARIANT" ]; then
+        echo "error: /etc/nixos/vexos-variant not found. Run nixos-rebuild once first." >&2
+        exit 1
+      fi
+
+      # Back up current lock before touching anything.
+      cp /etc/nixos/flake.lock /etc/nixos/flake.lock.bak
+
+      echo "Updating flake inputs..."
+      nix --extra-experimental-features "nix-command flakes" \
+        flake update --flake path:/etc/nixos
+
+      echo "Checking binary cache for new packages..."
+      DRY=$(nixos-rebuild dry-build \
+        --flake path:/etc/nixos#"$VARIANT" 2>&1 || true)
+
+      # Extract names from the "will be built:" section of dry-build output.
+      # Strip the /nix/store/<hash>- prefix so names are readable.
+      # Filter out NixOS system-level derivations that are ALWAYS built locally
+      # and take under a second (symlink forest, activation scripts, unit files,
+      # bootloader config, initrd, kernel, etc.) — these are not source compiles.
+      SOURCE_BUILDS=$(printf '%s\n' "$DRY" \
+        | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
+        | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-)' \
+        || true)
+
+      if [ -n "$SOURCE_BUILDS" ]; then
+        echo ""
+        echo "VEXOS_CACHE_MISS: The following packages are not yet in the binary cache"
+        echo "VEXOS_CACHE_MISS: and would need to be compiled from source:"
+        printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/VEXOS_CACHE_MISS:   /'
+        echo "VEXOS_CACHE_MISS:"
+        echo "VEXOS_CACHE_MISS: flake.lock restored. Run vexos-update again in a few"
+        echo "VEXOS_CACHE_MISS: hours once cache.nixos.org has built these packages."
+        cp /etc/nixos/flake.lock.bak /etc/nixos/flake.lock
+        rm -f /etc/nixos/flake.lock.bak
+        exit 2
+      fi
+
+      rm -f /etc/nixos/flake.lock.bak
+      echo "All packages available in binary cache — applying update..."
+      nixos-rebuild switch \
+        --flake path:/etc/nixos#"$VARIANT" \
+        --print-build-logs
+    '')
+  ];
   }; # end config
 }
