@@ -48,14 +48,14 @@
   nixpkgs.overlays = [
     (final: prev: {
       gnome-shell = final.symlinkJoin {
-        name = "gnome-shell-${prev.gnome-shell.version}";
+        name = "gnome-shell-vexos-no-ext";
         paths = [ prev.gnome-shell ];
         postBuild = ''
           rm -f $out/share/applications/org.gnome.Extensions.desktop
         '';
       };
       gnome-shell-extensions = final.symlinkJoin {
-        name = "gnome-shell-extensions-${prev.gnome-shell-extensions.version}";
+        name = "gnome-shell-extensions-vexos-no-ext";
         paths = [ prev.gnome-shell-extensions ];
         postBuild = ''
           rm -f $out/share/applications/org.gnome.Extensions.desktop

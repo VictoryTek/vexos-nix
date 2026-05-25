@@ -346,7 +346,7 @@ DRY_OUT=$(sudo nixos-rebuild dry-build --flake "/etc/nixos#${FLAKE_TARGET}" 2>&1
 SOURCE_BUILDS=$(printf '%s\n' "$DRY_OUT" \
   | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
   | grep -E -- '-[0-9]+\.[0-9]+' \
-  | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-|crate-|cargo-vendor)' \
+  | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-|crate-|cargo-vendor|up-[0-9]|zvariant|zbus|gtk4-|glib-|gio-|gdk-|pango-|graphene-|cairo-|gettext-rs|serde_yml|libyml|system-deps|cfg-expr|winnow|endi-|enumflags|version-compare|zbus_names|zbus_macros|zvariant_|ureq|uds_windows|env_filter|env_logger|utf8-zero|glib-build-tools|glib-macros|glib-sys|gobject-sys|gio-sys|pango-sys|gdk-pixbuf-sys|graphene-sys|cairo-sys|cairo-rs|gdk-pixbuf-)' \
   || true)
 
 if [ -n "$SOURCE_BUILDS" ]; then
