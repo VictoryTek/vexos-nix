@@ -1640,41 +1640,46 @@ pia:
                         fi
                         TMP_INSTALLER=$(mktemp --suffix=".run")
                         TMP_EXTRACT=$(mktemp -d)
-                        trap 'rm -f "$TMP_INSTALLER"; rm -rf "$TMP_EXTRACT"' EXIT
+                        _WRAP_DIR=$(mktemp -d)
+                        trap 'rm -f "$TMP_INSTALLER"; rm -rf "$TMP_EXTRACT" "$_WRAP_DIR"' EXIT
                         echo "Downloading PIA installer..."
                         curl -L --progress-bar -o "$TMP_INSTALLER" "$INSTALLER_URL"
                         echo ""
-                        # NixOS-specific install.sh shims:
-                        # 1. No /bin/bash — fix shebang.
-                        # 2. install.sh hard-resets PATH to FHS paths — patch it.
-                        # 3. install.sh calls `sudo /bin/cp` etc. with hardcoded paths
-                        #    that don't exist on NixOS. Create a sudo wrapper in
-                        #    TMP_EXTRACT that strips the FHS prefix from the first
-                        #    argument before delegating to the real setuid sudo.
                         echo "Extracting installer..."
                         bash "$TMP_INSTALLER" --noexec --target "$TMP_EXTRACT"
                         _BASH=$(command -v bash)
-                        _NIX_PATHS="$TMP_EXTRACT:/run/wrappers/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin"
+                        _NIX_LD="${NIX_LD_LIBRARY_PATH:-}"
+                        # Sudo wrapper lives in $_WRAP_DIR — NOT in $TMP_EXTRACT.
+                        # PIA bundles FHS-compiled tools (date, rm …) in the extract dir;
+                        # if $TMP_EXTRACT were first in PATH, those bundled tools would be
+                        # picked up instead of NixOS ones.  They depend on nix-ld +
+                        # NIX_LD_LIBRARY_PATH which sudo strips, causing libatomic errors
+                        # and exit 127.  Keeping $TMP_EXTRACT out of PATH forces the
+                        # NixOS system tools to be used for every shell command.
+                        _NIX_PATHS="$_WRAP_DIR:/run/wrappers/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin"
                         # Fix shebang
                         sed -i '1s|.*|#!'"$_BASH"'|' "$TMP_EXTRACT/install.sh"
-                        # Prepend NixOS paths (including TMP_EXTRACT for our sudo wrapper)
+                        # Patch the PATH reset inside install.sh to use NixOS tools.
                         sed -i 's|^PATH="/usr/bin:|PATH="'"$_NIX_PATHS"':/usr/bin:|' "$TMP_EXTRACT/install.sh"
-                        # Create a sudo wrapper that strips hardcoded /bin/, /usr/bin/,
-                        # /sbin/, /usr/sbin/ prefixes from the command argument, so
-                        # calls like `sudo /bin/cp` resolve via PATH instead.
+                        # Create a sudo wrapper that:
+                        # 1. Strips hardcoded FHS prefixes (sudo /bin/cp → cp via NixOS PATH)
+                        # 2. Embeds NIX_LD_LIBRARY_PATH so nix-ld can find libs for any
+                        #    FHS-compiled PIA binaries that run as root after install.
                         {
                             echo "#!$_BASH"
                             echo '_cmd="${1##*/}"; shift'
-                            echo 'exec /run/wrappers/bin/sudo '"$_BASH"' -c '"'"'export PATH="'"$_NIX_PATHS"':/usr/bin:/usr/sbin:/bin:/sbin"; exec "$@"'"'"' - "$_cmd" "$@"'
-                        } > "$TMP_EXTRACT/sudo"
-                        chmod +x "$TMP_EXTRACT/sudo"
+                            printf 'exec /run/wrappers/bin/sudo %s -c %s\n' \
+                                "$_BASH" \
+                                "'export PATH=\"$_NIX_PATHS:/usr/bin:/usr/sbin:/bin:/sbin\"; export NIX_LD_LIBRARY_PATH=\"$_NIX_LD\"; exec \"\$@\"' - \"\$_cmd\" \"\$@\""
+                        } > "$_WRAP_DIR/sudo"
+                        chmod +x "$_WRAP_DIR/sudo"
                         chmod +x "$TMP_EXTRACT/install.sh"
                         echo "Running PIA installer (will prompt for sudo internally)..."
                         set +e
                         "$TMP_EXTRACT/install.sh"
                         _pia_rc=$?
                         set -e
-                        rm -f "$TMP_INSTALLER"; rm -rf "$TMP_EXTRACT" 2>/dev/null || true
+                        rm -f "$TMP_INSTALLER"; rm -rf "$TMP_EXTRACT" "$_WRAP_DIR" 2>/dev/null || true
                         trap - EXIT
                         echo ""
                         if [ -x "/opt/piavpn/bin/pia-daemon" ]; then
