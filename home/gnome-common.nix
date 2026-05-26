@@ -4,6 +4,16 @@
 # Import this from each role's home file.
 { pkgs, lib, ... }:
 {
+  # ── Hide org.gnome.Extensions from the app grid ───────────────────────────
+  # Placing a NoDisplay=true version in ~/.local/share/applications/ takes
+  # precedence over the system path without touching any package derivation
+  # hashes (which would bust the binary cache for gnome-session and friends).
+  xdg.dataFile."applications/org.gnome.Extensions.desktop".text = ''
+    [Desktop Entry]
+    Name=GNOME Extensions
+    NoDisplay=true
+  '';
+
   # ── Theme packages ─────────────────────────────────────────────────────────
   # Required for gtk.iconTheme and home.pointerCursor declarations below.
   home.packages = with pkgs; [
