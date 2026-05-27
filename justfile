@@ -1589,22 +1589,22 @@ pia:
         # Fallback for systems that have PIA installed but no piavpn unit yet.
         # Runtime unit lives in /run and is recreated on demand.
         sudo mkdir -p /run/systemd/system
-        sudo tee /run/systemd/system/piavpn.service >/dev/null <<'UNIT'
-[Unit]
-Description=Private Internet Access daemon (runtime fallback)
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-Environment=LD_LIBRARY_PATH=/opt/piavpn/lib
-ExecStart=/opt/piavpn/bin/pia-daemon
-Restart=always
-RestartSec=2
-
-[Install]
-WantedBy=multi-user.target
-UNIT
+        printf '%s\n' \
+            '[Unit]' \
+            'Description=Private Internet Access daemon (runtime fallback)' \
+            'After=network-online.target' \
+            'Wants=network-online.target' \
+            '' \
+            '[Service]' \
+            'Type=simple' \
+            'Environment=LD_LIBRARY_PATH=/opt/piavpn/lib' \
+            'ExecStart=/opt/piavpn/bin/pia-daemon' \
+            'Restart=always' \
+            'RestartSec=2' \
+            '' \
+            '[Install]' \
+            'WantedBy=multi-user.target' \
+            | sudo tee /run/systemd/system/piavpn.service >/dev/null
         sudo systemctl daemon-reload
     }
 
