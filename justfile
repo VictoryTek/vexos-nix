@@ -1580,6 +1580,34 @@ pia:
     #!/usr/bin/env bash
     set -euo pipefail
 
+    ensure_pia_runtime_unit() {
+        # If a declarative unit exists (from modules/pia.nix), use it.
+        if systemctl cat piavpn >/dev/null 2>&1; then
+            return 0
+        fi
+
+        # Fallback for systems that have PIA installed but no piavpn unit yet.
+        # Runtime unit lives in /run and is recreated on demand.
+        sudo mkdir -p /run/systemd/system
+        sudo tee /run/systemd/system/piavpn.service >/dev/null <<'UNIT'
+[Unit]
+Description=Private Internet Access daemon (runtime fallback)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=LD_LIBRARY_PATH=/opt/piavpn/lib
+ExecStart=/opt/piavpn/bin/pia-daemon
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+        sudo systemctl daemon-reload
+    }
+
     while true; do
         INSTALLED=false
         [ -x "/opt/piavpn/bin/pia-daemon" ] && INSTALLED=true
@@ -1674,7 +1702,7 @@ pia:
                         chmod +x "$TMP_EXTRACT/install.sh"
                         echo "Running PIA installer (will prompt for sudo internally)..."
                         set +e
-                        "$TMP_EXTRACT/install.sh"
+                        "$TMP_EXTRACT/install.sh" --skip-service --force-architecture
                         _pia_rc=$?
                         set -e
                         rm -f "$TMP_INSTALLER"; rm -rf "$TMP_EXTRACT" "$_WRAP_DIR" 2>/dev/null || true
@@ -1711,8 +1739,14 @@ pia:
                 ;;
 
             3|daemon|start)
+                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
+                ensure_pia_runtime_unit
                 sudo systemctl start piavpn
-                echo "PIA daemon started."
+                if systemctl is-active --quiet piavpn; then
+                    echo "PIA daemon started."
+                else
+                    echo "error: piavpn daemon failed to start. Check option 6 (Status)." >&2
+                fi
                 ;;
 
             4|connect)
