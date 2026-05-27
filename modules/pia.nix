@@ -60,6 +60,16 @@
       export LD_LIBRARY_PATH=/opt/piavpn/lib:/run/current-system/sw/share/nix-ld/lib''${LD_LIBRARY_PATH:+:''${LD_LIBRARY_PATH}}
       exec /opt/piavpn/bin/piactl "$@"
     '')
+    (pkgs.makeDesktopItem {
+      name = "pia-client";
+      desktopName = "Private Internet Access";
+      genericName = "VPN Client";
+      comment = "Connect using Private Internet Access";
+      exec = "pia-client";
+      icon = "network-vpn";
+      terminal = false;
+      categories = [ "Network" "Security" ];
+    })
   ];
 
   # ── Preserve NIX_LD_LIBRARY_PATH through sudo ────────────────────────────
