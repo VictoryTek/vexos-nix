@@ -1752,7 +1752,7 @@ pia:
                     case "${CONFIRM,,}" in
                         y|yes)
                             /run/wrappers/bin/sudo /run/current-system/sw/bin/bash \
-                                -c 'export PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$PATH"; exec "$@"' \
+                                -c 'export PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$PATH"; export NIX_LD_LIBRARY_PATH="/run/current-system/sw/share/nix-ld/lib"; exec /run/current-system/sw/bin/bash "$1"' \
                                 - "$UNINSTALLER"
                             echo "PIA uninstalled."
                             ;;
