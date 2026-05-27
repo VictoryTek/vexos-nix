@@ -13,6 +13,7 @@
   programs.nix-ld.libraries = with pkgs; [
     stdenv.cc.cc.lib
     glibc
+    glib
     xorg.libX11
     xorg.libXext
     xorg.libXrender
@@ -49,12 +50,14 @@
   # Qt6 rather than pulling in system Qt6 (version mismatches crash the GUI).
   environment.systemPackages = [
     (pkgs.writeShellScriptBin "pia-client" ''
-      export LD_LIBRARY_PATH=/opt/piavpn/lib''${LD_LIBRARY_PATH:+:''${LD_LIBRARY_PATH}}
+      export NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib
+      export LD_LIBRARY_PATH=/opt/piavpn/lib:/run/current-system/sw/share/nix-ld/lib''${LD_LIBRARY_PATH:+:''${LD_LIBRARY_PATH}}
       export QT_PLUGIN_PATH=/opt/piavpn/lib/qt/plugins''${QT_PLUGIN_PATH:+:''${QT_PLUGIN_PATH}}
       exec /opt/piavpn/bin/pia-client "$@"
     '')
     (pkgs.writeShellScriptBin "piactl" ''
-      export LD_LIBRARY_PATH=/opt/piavpn/lib''${LD_LIBRARY_PATH:+:''${LD_LIBRARY_PATH}}
+      export NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib
+      export LD_LIBRARY_PATH=/opt/piavpn/lib:/run/current-system/sw/share/nix-ld/lib''${LD_LIBRARY_PATH:+:''${LD_LIBRARY_PATH}}
       exec /opt/piavpn/bin/piactl "$@"
     '')
   ];
@@ -77,7 +80,10 @@
     after = [ "syslog.target" "network.target" ];
     wantedBy = [ ];   # not auto-started; user starts it manually via `just pia`
     serviceConfig = {
-      Environment = "LD_LIBRARY_PATH=/opt/piavpn/lib";
+      Environment = [
+        "NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib"
+        "LD_LIBRARY_PATH=/opt/piavpn/lib:/run/current-system/sw/share/nix-ld/lib"
+      ];
       ExecStart   = "/opt/piavpn/bin/pia-daemon";
       Restart     = "always";
     };

@@ -1580,6 +1580,28 @@ pia:
     #!/usr/bin/env bash
     set -euo pipefail
 
+    _PIA_NIX_LD_LIB="/run/current-system/sw/share/nix-ld/lib"
+    _PIA_EXTRA_LIB=""
+    if [ ! -e "${_PIA_NIX_LD_LIB}/libglib-2.0.so.0" ]; then
+        # Fallback for systems not yet rebuilt with glib in programs.nix-ld.libraries.
+        _glib_store_lib=$(ls -d /nix/store/*-glib-2.*/lib 2>/dev/null | head -1 || true)
+        [ -n "$_glib_store_lib" ] && _PIA_EXTRA_LIB=":$_glib_store_lib"
+    fi
+    _PIA_LD_PATH="/opt/piavpn/lib:${_PIA_NIX_LD_LIB}${_PIA_EXTRA_LIB}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+
+    piactl_cmd() {
+        NIX_LD_LIBRARY_PATH="${_PIA_NIX_LD_LIB}" \
+        LD_LIBRARY_PATH="${_PIA_LD_PATH}" \
+        /opt/piavpn/bin/piactl "$@"
+    }
+
+    pia_client_cmd() {
+        NIX_LD_LIBRARY_PATH="${_PIA_NIX_LD_LIB}" \
+        LD_LIBRARY_PATH="${_PIA_LD_PATH}" \
+        QT_PLUGIN_PATH="/opt/piavpn/lib/qt/plugins${QT_PLUGIN_PATH:+:${QT_PLUGIN_PATH}}" \
+        /opt/piavpn/bin/pia-client "$@"
+    }
+
     ensure_pia_runtime_unit() {
         # If a declarative unit exists (from modules/pia.nix), use it.
         if systemctl cat piavpn >/dev/null 2>&1; then
@@ -1597,7 +1619,8 @@ pia:
             '' \
             '[Service]' \
             'Type=simple' \
-            'Environment=LD_LIBRARY_PATH=/opt/piavpn/lib' \
+            "Environment=NIX_LD_LIBRARY_PATH=${_PIA_NIX_LD_LIB}" \
+            "Environment=LD_LIBRARY_PATH=${_PIA_LD_PATH}" \
             'ExecStart=/opt/piavpn/bin/pia-daemon' \
             'Restart=always' \
             'RestartSec=2' \
@@ -1615,7 +1638,7 @@ pia:
         echo "PIA VPN"
         echo "───────────────────────────────────"
         if $INSTALLED; then
-            _state=$(piactl get connectionstate 2>/dev/null || echo "unknown")
+            _state=$(piactl_cmd get connectionstate 2>/dev/null || echo "unknown")
             echo " Status: ${_state}"
         else
             echo " Status: not installed"
@@ -1645,7 +1668,7 @@ pia:
             1|install)
                 if $INSTALLED; then
                     echo "PIA is already installed."
-                    piactl --version 2>/dev/null || true
+                    piactl_cmd --version 2>/dev/null || true
                 else
                     if ! command -v curl &>/dev/null; then
                         echo "error: curl not found — install curl and retry." >&2
@@ -1751,15 +1774,15 @@ pia:
 
             4|connect)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl connect
+                piactl_cmd connect
                 echo "Connecting..."
                 sleep 1
-                piactl get connectionstate
+                piactl_cmd get connectionstate
                 ;;
 
             5|disconnect)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl disconnect
+                piactl_cmd disconnect
                 echo "Disconnected."
                 ;;
 
@@ -1770,7 +1793,7 @@ pia:
                 echo ""
                 if $INSTALLED; then
                     echo "=== PIA connection ==="
-                    piactl get connectionstate
+                    piactl_cmd get connectionstate
                 fi
                 echo ""
                 ;;
@@ -1778,38 +1801,38 @@ pia:
             7|regions)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
                 echo ""
-                piactl get regions
+                piactl_cmd get regions
                 echo ""
                 echo "Set region: piactl set region <region-id>"
                 ;;
 
             8|"kill switch: on"|ks-on)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl set killswitch on
+                piactl_cmd set killswitch on
                 echo "Kill switch enabled."
                 ;;
 
             9|"kill switch: off"|ks-off)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl set killswitch off
+                piactl_cmd set killswitch off
                 echo "Kill switch disabled."
                 ;;
 
             10|"port forwarding: on"|pf-on)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl set portforward on
+                piactl_cmd set portforward on
                 echo "Port forwarding enabled."
                 ;;
 
             11|"port forwarding: off"|pf-off)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl set portforward off
+                piactl_cmd set portforward off
                 echo "Port forwarding disabled."
                 ;;
 
             12|gui)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                /opt/piavpn/bin/pia-client &
+                pia_client_cmd &
                 echo "PIA GUI launched."
                 ;;
 
@@ -1819,7 +1842,7 @@ pia:
 
             14|version)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl --version
+                piactl_cmd --version
                 ;;
 
             q|quit|exit) break ;;
