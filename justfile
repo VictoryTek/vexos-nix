@@ -1580,8 +1580,6 @@ pia:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    export LD_LIBRARY_PATH=/opt/piavpn/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-
     while true; do
         INSTALLED=false
         [ -x "/opt/piavpn/bin/pia-daemon" ] && INSTALLED=true
