@@ -88,4 +88,20 @@
       Restart     = "always";
     };
   };
+
+  # ── Cleanup stale runtime fallback unit ───────────────────────────────────
+  # `just pia` can create /run/systemd/system/piavpn.service as a temporary
+  # fallback before the declarative unit is available. Once this module is
+  # active, remove the runtime fallback so rebuilds always use the declarative
+  # unit (which has the current environment and library paths).
+  system.activationScripts.piaRuntimeUnitCleanup = {
+    deps = [ "etc" ];
+    text = ''
+      if [ -e /etc/systemd/system/piavpn.service ] && [ -e /run/systemd/system/piavpn.service ]; then
+        rm -f /run/systemd/system/piavpn.service
+        ${pkgs.systemd}/bin/systemctl daemon-reload >/dev/null 2>&1 || true
+        ${pkgs.systemd}/bin/systemctl reset-failed piavpn >/dev/null 2>&1 || true
+      fi
+    '';
+  };
 }

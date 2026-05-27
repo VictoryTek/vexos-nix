@@ -1603,13 +1603,18 @@ pia:
     }
 
     ensure_pia_runtime_unit() {
-        # If a declarative unit exists (from modules/pia.nix), use it.
-        if systemctl cat piavpn >/dev/null 2>&1; then
+        # If a declarative unit exists (from modules/pia.nix), prefer it.
+        # Remove any stale runtime fallback unit so it cannot shadow new env.
+        if [ -e /etc/systemd/system/piavpn.service ]; then
+            if [ -e /run/systemd/system/piavpn.service ]; then
+                sudo rm -f /run/systemd/system/piavpn.service
+                sudo systemctl daemon-reload
+            fi
             return 0
         fi
 
         # Fallback for systems that have PIA installed but no piavpn unit yet.
-        # Runtime unit lives in /run and is recreated on demand.
+        # Runtime unit lives in /run and is recreated/refreshed on demand.
         sudo mkdir -p /run/systemd/system
         printf '%s\n' \
             '[Unit]' \
@@ -1622,8 +1627,6 @@ pia:
             "Environment=NIX_LD_LIBRARY_PATH=${_PIA_NIX_LD_LIB}" \
             "Environment=LD_LIBRARY_PATH=${_PIA_LD_PATH}" \
             'ExecStart=/opt/piavpn/bin/pia-daemon' \
-            'Restart=always' \
-            'RestartSec=2' \
             '' \
             '[Install]' \
             'WantedBy=multi-user.target' \
@@ -1754,6 +1757,10 @@ pia:
                             /run/wrappers/bin/sudo /run/current-system/sw/bin/bash \
                                 -c 'export PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$PATH"; export NIX_LD_LIBRARY_PATH="/run/current-system/sw/share/nix-ld/lib"; exec /run/current-system/sw/bin/bash "$1"' \
                                 - "$UNINSTALLER"
+                            sudo systemctl stop piavpn 2>/dev/null || true
+                            sudo rm -f /run/systemd/system/piavpn.service
+                            sudo systemctl daemon-reload 2>/dev/null || true
+                            sudo systemctl reset-failed piavpn 2>/dev/null || true
                             echo "PIA uninstalled."
                             ;;
                         *) echo "Aborted." ;;
@@ -1764,25 +1771,35 @@ pia:
             3|daemon|start)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
                 ensure_pia_runtime_unit
-                sudo systemctl start piavpn
-                if systemctl is-active --quiet piavpn; then
-                    echo "PIA daemon started."
+                if sudo systemctl start piavpn; then
+                    if systemctl is-active --quiet piavpn; then
+                        echo "PIA daemon started."
+                    else
+                        echo "error: piavpn daemon did not become active. Check option 6 (Status)." >&2
+                    fi
                 else
-                    echo "error: piavpn daemon failed to start. Check option 6 (Status)." >&2
+                    echo "error: failed to start piavpn. Check option 6 (Status)." >&2
+                    continue
                 fi
                 ;;
 
             4|connect)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl_cmd connect
+                if ! piactl_cmd connect; then
+                    echo "error: failed to connect. Start daemon first (option 3)." >&2
+                    continue
+                fi
                 echo "Connecting..."
                 sleep 1
-                piactl_cmd get connectionstate
+                piactl_cmd get connectionstate || true
                 ;;
 
             5|disconnect)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl_cmd disconnect
+                if ! piactl_cmd disconnect; then
+                    echo "error: disconnect command failed." >&2
+                    continue
+                fi
                 echo "Disconnected."
                 ;;
 
@@ -1793,7 +1810,7 @@ pia:
                 echo ""
                 if $INSTALLED; then
                     echo "=== PIA connection ==="
-                    piactl_cmd get connectionstate
+                    piactl_cmd get connectionstate || echo "unknown"
                 fi
                 echo ""
                 ;;
@@ -1801,33 +1818,45 @@ pia:
             7|regions)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
                 echo ""
-                piactl_cmd get regions
+                piactl_cmd get regions || true
                 echo ""
                 echo "Set region: piactl set region <region-id>"
                 ;;
 
             8|"kill switch: on"|ks-on)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl_cmd set killswitch on
-                echo "Kill switch enabled."
+                if piactl_cmd set killswitch on; then
+                    echo "Kill switch enabled."
+                else
+                    echo "error: failed to enable kill switch." >&2
+                fi
                 ;;
 
             9|"kill switch: off"|ks-off)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl_cmd set killswitch off
-                echo "Kill switch disabled."
+                if piactl_cmd set killswitch off; then
+                    echo "Kill switch disabled."
+                else
+                    echo "error: failed to disable kill switch." >&2
+                fi
                 ;;
 
             10|"port forwarding: on"|pf-on)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl_cmd set portforward on
-                echo "Port forwarding enabled."
+                if piactl_cmd set portforward on; then
+                    echo "Port forwarding enabled."
+                else
+                    echo "error: failed to enable port forwarding." >&2
+                fi
                 ;;
 
             11|"port forwarding: off"|pf-off)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl_cmd set portforward off
-                echo "Port forwarding disabled."
+                if piactl_cmd set portforward off; then
+                    echo "Port forwarding disabled."
+                else
+                    echo "error: failed to disable port forwarding." >&2
+                fi
                 ;;
 
             12|gui)
@@ -1842,7 +1871,7 @@ pia:
 
             14|version)
                 $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl_cmd --version
+                piactl_cmd --version || true
                 ;;
 
             q|quit|exit) break ;;
