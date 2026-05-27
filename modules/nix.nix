@@ -146,10 +146,11 @@ in
       # Strip the /nix/store/<hash>- prefix so names are readable.
       # Filter out NixOS system-level derivations that are ALWAYS built locally
       # and take under a second (symlink forest, activation scripts, unit files,
-      # bootloader config, initrd, kernel, etc.) — these are not source compiles.
+      # bootloader config, initrd, kernel, home-manager glue, etc.) — these are
+      # not source compiles.
       SOURCE_BUILDS=$(printf '%s\n' "$DRY" \
         | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
-        | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-)' \
+        | grep -Ev '^(nixos-system-|system-units|etc-nixos|etc\.drv$|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-|home-manager-)' \
         || true)
 
       if [ -n "$SOURCE_BUILDS" ]; then
