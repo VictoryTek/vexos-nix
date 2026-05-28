@@ -1,8 +1,12 @@
 { lib, pkgs, ... }:
 {
-  # PIA VPN — nix-ld shim + wrapper scripts so PIA's official Linux client runs on NixOS
-  # Install the client with: just pia-install
-  # Control with piactl or the pia-client GUI
+  # PIA VPN — declarative package + nix-ld shim so PIA's official Linux client runs on NixOS
+  # PIA is now managed via pkgs.vexos.pia-client-bin (binary repack in pkgs/pia-client-bin/).
+  # No manual install required after a system rebuild.
+  # Control with piactl or the pia-client GUI, or use: just pia
+  #
+  # Migration note: /opt/piavpn was the legacy mutable install path; it is no longer used
+  # by this module. The piaRuntimeUnitCleanup activation script below handles the transition.
 
   # ── nix-ld: ELF interpreter shim ─────────────────────────────────────────
   # PIA bundles FHS-expecting binaries with an ELF interpreter path of
@@ -45,31 +49,13 @@
   environment.etc."iproute2/rt_tables".source =
     "${pkgs.iproute2}/share/iproute2/rt_tables";
 
-  # ── Wrapper scripts ───────────────────────────────────────────────────────
-  # Prepend /opt/piavpn/lib to LD_LIBRARY_PATH so PIA loads its own bundled
-  # Qt6 rather than pulling in system Qt6 (version mismatches crash the GUI).
+  # ── PIA package ───────────────────────────────────────────────────────────
+  # pkgs.vexos.pia-client-bin provides pia-client, piactl, and pia-daemon
+  # wrappers in $out/bin with LD_LIBRARY_PATH already set, plus a desktop
+  # entry at $out/share/applications/pia-client.desktop.
+  # Version and hash are pinned in pkgs/pia-client-bin/default.nix.
   environment.systemPackages = [
-    (pkgs.writeShellScriptBin "pia-client" ''
-      export NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib
-      export LD_LIBRARY_PATH=/opt/piavpn/lib:/run/current-system/sw/share/nix-ld/lib''${LD_LIBRARY_PATH:+:''${LD_LIBRARY_PATH}}
-      export QT_PLUGIN_PATH=/opt/piavpn/lib/qt/plugins''${QT_PLUGIN_PATH:+:''${QT_PLUGIN_PATH}}
-      exec /opt/piavpn/bin/pia-client "$@"
-    '')
-    (pkgs.writeShellScriptBin "piactl" ''
-      export NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib
-      export LD_LIBRARY_PATH=/opt/piavpn/lib:/run/current-system/sw/share/nix-ld/lib''${LD_LIBRARY_PATH:+:''${LD_LIBRARY_PATH}}
-      exec /opt/piavpn/bin/piactl "$@"
-    '')
-    (pkgs.makeDesktopItem {
-      name = "pia-client";
-      desktopName = "Private Internet Access";
-      genericName = "VPN Client";
-      comment = "Connect using Private Internet Access";
-      exec = "pia-client";
-      icon = "network-vpn";
-      terminal = false;
-      categories = [ "Network" "Security" ];
-    })
+    pkgs.vexos.pia-client-bin
   ];
 
   # ── Preserve NIX_LD_LIBRARY_PATH through sudo ────────────────────────────
@@ -82,9 +68,9 @@
   '';
 
   # ── systemd service ───────────────────────────────────────────────────────
-  # PIA's installer normally writes this file, but on NixOS /etc/systemd/system
-  # is read-only. Declare it here so `systemctl start piavpn` works after the
-  # PIA binaries have been installed to /opt/piavpn via `just pia`.
+  # Declare the piavpn service here so `systemctl start piavpn` works on
+  # NixOS (where /etc/systemd/system is read-only).
+  # ExecStart and library paths point to the Nix store package.
   systemd.services.piavpn = {
     description = "Private Internet Access daemon";
     after = [ "syslog.target" "network.target" ];
@@ -92,9 +78,9 @@
     serviceConfig = {
       Environment = [
         "NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib"
-        "LD_LIBRARY_PATH=/opt/piavpn/lib:/run/current-system/sw/share/nix-ld/lib"
+        "LD_LIBRARY_PATH=${pkgs.vexos.pia-client-bin}/share/pia-client/lib:/run/current-system/sw/share/nix-ld/lib"
       ];
-      ExecStart   = "/opt/piavpn/bin/pia-daemon";
+      ExecStart   = "${pkgs.vexos.pia-client-bin}/share/pia-client/bin/pia-daemon";
       Restart     = "always";
     };
   };

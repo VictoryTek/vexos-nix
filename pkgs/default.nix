@@ -9,6 +9,8 @@ final: prev: {
     cockpit-navigator    = final.callPackage ./cockpit-navigator { };
     cockpit-file-sharing = final.callPackage ./cockpit-file-sharing { };
     cockpit-identities   = final.callPackage ./cockpit-identities { };  # Phase D
+    # ── VPN ─────────────────────────────────────────────────────────────────
+    pia-client-bin       = final.callPackage ./pia-client-bin { };
     # ── AI & Privacy ────────────────────────────────────────────────────────
     kiji-proxy           = final.callPackage ./kiji-proxy { };
     portbook             = final.callPackage ./portbook { };

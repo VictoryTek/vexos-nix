@@ -252,3 +252,32 @@ just switch
 > **Do NOT change `system.stateVersion`** even when upgrading to a new
 > NixOS release. It must remain at the version the system was *first installed*
 > on. Changing it can corrupt stateful data managed by NixOS activation scripts.
+
+
+## VPN (Private Internet Access)
+
+PIA is managed **declaratively** via `pkgs.vexos.pia-client-bin` — a binary-repack
+package that fetches the official PIA Linux installer, extracts its payload into
+the Nix store, and creates wrappers for `pia-client`, `piactl`, and `pia-daemon`.
+
+After a system rebuild, the PIA binaries are on PATH and the `piavpn.service`
+systemd unit points to the Nix store. No manual installer run is needed on fresh
+systems.
+
+**Control PIA at runtime:**
+```bash
+just pia          # interactive submenu (start daemon, connect, regions, etc.)
+piactl connect
+piactl disconnect
+piactl get connectionstate
+```
+
+**Upgrading PIA to a new version:**
+1. Find the new installer URL on the PIA download page.
+2. Compute the SRI hash:
+   ```bash
+   nix hash to-sri --type sha256 \
+     $(nix-prefetch-url https://installers.privateinternetaccess.com/download/pia-linux-<VER>.run)
+   ```
+3. Update `version` and `hash` in `pkgs/pia-client-bin/default.nix`.
+4. Rebuild: `just switch`

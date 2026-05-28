@@ -1574,8 +1574,10 @@ rebuild:
 
 # ── PIA VPN ──────────────────────────────────────────────────────────────────
 # Interactive submenu for Private Internet Access VPN.
-# PIA is not a nixpkgs package — install it once with option 1.
-# modules/pia.nix provides the nix-ld shim and wrapper scripts.
+# PIA is now managed declaratively via pkgs.vexos.pia-client-bin.
+# After a system rebuild, pia-client/piactl/pia-daemon are on PATH — no manual
+# install needed. Option 1 (Install) is retained as an emergency fallback only.
+# modules/pia.nix provides the nix-ld shim and packaged wrappers.
 
 # PIA VPN submenu — install, connect, status, and more.
 pia:
@@ -1592,16 +1594,26 @@ pia:
     _PIA_LD_PATH="/opt/piavpn/lib:${_PIA_NIX_LD_LIB}${_PIA_EXTRA_LIB}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
     piactl_cmd() {
-        NIX_LD_LIBRARY_PATH="${_PIA_NIX_LD_LIB}" \
-        LD_LIBRARY_PATH="${_PIA_LD_PATH}" \
-        /opt/piavpn/bin/piactl "$@"
+        # Prefer the Nix-packaged wrapper (env vars already set by makeWrapper).
+        if command -v piactl &>/dev/null; then
+            piactl "$@"
+        else
+            NIX_LD_LIBRARY_PATH="${_PIA_NIX_LD_LIB}" \
+            LD_LIBRARY_PATH="${_PIA_LD_PATH}" \
+            /opt/piavpn/bin/piactl "$@"
+        fi
     }
 
     pia_client_cmd() {
-        NIX_LD_LIBRARY_PATH="${_PIA_NIX_LD_LIB}" \
-        LD_LIBRARY_PATH="${_PIA_LD_PATH}" \
-        QT_PLUGIN_PATH="/opt/piavpn/lib/qt/plugins${QT_PLUGIN_PATH:+:${QT_PLUGIN_PATH}}" \
-        /opt/piavpn/bin/pia-client "$@"
+        # Prefer the Nix-packaged wrapper (env vars already set by makeWrapper).
+        if command -v pia-client &>/dev/null; then
+            pia-client "$@"
+        else
+            NIX_LD_LIBRARY_PATH="${_PIA_NIX_LD_LIB}" \
+            LD_LIBRARY_PATH="${_PIA_LD_PATH}" \
+            QT_PLUGIN_PATH="/opt/piavpn/lib/qt/plugins${QT_PLUGIN_PATH:+:${QT_PLUGIN_PATH}}" \
+            /opt/piavpn/bin/pia-client "$@"
+        fi
     }
 
     ensure_pia_runtime_unit() {
@@ -1617,6 +1629,9 @@ pia:
 
         # Fallback for systems that have PIA installed but no piavpn unit yet.
         # Runtime unit lives in /run and is recreated/refreshed on demand.
+        # Prefer the Nix-packaged daemon wrapper; fall back to legacy path.
+        _PIA_DAEMON_CMD="/run/current-system/sw/bin/pia-daemon"
+        [ -x "$_PIA_DAEMON_CMD" ] || _PIA_DAEMON_CMD="/opt/piavpn/bin/pia-daemon"
         sudo mkdir -p /run/systemd/system
         printf '%s\n' \
             '[Unit]' \
@@ -1628,7 +1643,7 @@ pia:
             'Type=simple' \
             "Environment=NIX_LD_LIBRARY_PATH=${_PIA_NIX_LD_LIB}" \
             "Environment=LD_LIBRARY_PATH=${_PIA_LD_PATH}" \
-            'ExecStart=/opt/piavpn/bin/pia-daemon' \
+            "ExecStart=${_PIA_DAEMON_CMD}" \
             '' \
             '[Install]' \
             'WantedBy=multi-user.target' \
@@ -1638,7 +1653,10 @@ pia:
 
     while true; do
         INSTALLED=false
-        [ -x "/opt/piavpn/bin/pia-daemon" ] && INSTALLED=true
+        # Prefer the Nix store wrapper; fall back to legacy /opt/piavpn path.
+        if command -v pia-daemon &>/dev/null || [ -x "/opt/piavpn/bin/pia-daemon" ]; then
+            INSTALLED=true
+        fi
         echo ""
         echo "PIA VPN"
         echo "───────────────────────────────────"
@@ -1675,6 +1693,10 @@ pia:
                     echo "PIA is already installed."
                     piactl_cmd --version 2>/dev/null || true
                 else
+                    # PIA is now managed declaratively via pkgs.vexos.pia-client-bin.
+                    # If the system has been rebuilt, pia-daemon is on PATH and no
+                    # manual install is needed. The installer below is an emergency
+                    # fallback for systems not yet rebuilt or for reinstall scenarios.
                     if ! command -v curl &>/dev/null; then
                         echo "error: curl not found — install curl and retry." >&2
                     else

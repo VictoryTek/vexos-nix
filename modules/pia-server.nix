@@ -2,7 +2,8 @@
 {
   # PIA VPN — CLI-only support for server and headless-server roles
   # No GUI client; use piactl to connect, disconnect, and manage the daemon.
-  # Install the client with: just pia-install
+  # PIA is now managed via pkgs.vexos.pia-client-bin (binary repack).
+  # No manual install required after a system rebuild.
   # Control with: piactl connect, piactl disconnect, piactl get connectionstate
 
   # ── nix-ld: ELF interpreter shim ─────────────────────────────────────────
@@ -29,13 +30,11 @@
   environment.etc."iproute2/rt_tables".source =
     "${pkgs.iproute2}/share/iproute2/rt_tables";
 
-  # ── Wrapper script ────────────────────────────────────────────────────────
-  # Prepend /opt/piavpn/lib to LD_LIBRARY_PATH so piactl and the PIA daemon
-  # load their bundled libraries rather than system ones.
+  # ── PIA package ───────────────────────────────────────────────────────────
+  # pkgs.vexos.pia-client-bin provides piactl and pia-daemon wrappers in
+  # $out/bin with LD_LIBRARY_PATH already set. Version and hash are pinned
+  # in pkgs/pia-client-bin/default.nix.
   environment.systemPackages = [
-    (pkgs.writeShellScriptBin "piactl" ''
-      export LD_LIBRARY_PATH=/opt/piavpn/lib''${LD_LIBRARY_PATH:+:''${LD_LIBRARY_PATH}}
-      exec /opt/piavpn/bin/piactl "$@"
-    '')
+    pkgs.vexos.pia-client-bin
   ];
 }
