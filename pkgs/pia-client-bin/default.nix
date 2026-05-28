@@ -31,34 +31,56 @@ stdenvNoCC.mkDerivation rec {
   installPhase = ''
     runHook preInstall
 
-    # Extract the makeself payload. --noexec prevents the installer from
-    # running; --target sets the extraction destination.
-    mkdir -p $out/share/pia-client
-    bash ${src} --noexec --target $out/share/pia-client
+    # Extract the makeself payload into a staging area.
+    # --noexec prevents the installer script from running; --target sets the
+    # extraction destination.  The archive layout has PIA's runtime files
+    # under a piafiles/ subdirectory which mirrors the installed /opt/piavpn
+    # structure (bin/, lib/, etc.).  We flatten that one level so the
+    # conventional paths (bin/pia-client, lib/, lib/qt/plugins) work directly
+    # under $out/share/pia-client.
+    local stage="$TMPDIR/pia-stage"
+    mkdir -p "$stage"
+    bash ${src} --noexec --target "$stage"
 
-    chmod -R u+rX $out/share/pia-client
-    mkdir -p $out/bin
+    echo "--- PIA extraction layout (top 4 levels) ---"
+    find "$stage" -maxdepth 4 | sort
+    echo "--------------------------------------------"
+
+    mkdir -p "$out/share/pia-client"
+    if [ -d "$stage/piafiles" ]; then
+      # Expected: piafiles/ contains the runtime tree (bin/, lib/, etc.)
+      cp -r "$stage/piafiles/." "$out/share/pia-client/"
+    elif [ -f "$stage/bin/pia-client" ]; then
+      # Fallback: binaries are already at the top level
+      cp -r "$stage/." "$out/share/pia-client/"
+    else
+      echo "ERROR: Could not locate PIA binaries.  See layout dump above."
+      exit 1
+    fi
+
+    chmod -R u+rX "$out/share/pia-client"
+    mkdir -p "$out/bin"
 
     # ── pia-client GUI wrapper ────────────────────────────────────────────
     # Prepend PIA's bundled Qt6 libs so PIA does not clash with system Qt.
-    makeWrapper $out/share/pia-client/bin/pia-client $out/bin/pia-client \
+    makeWrapper "$out/share/pia-client/bin/pia-client" "$out/bin/pia-client" \
       --set    NIX_LD_LIBRARY_PATH "/run/current-system/sw/share/nix-ld/lib" \
       --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:/run/current-system/sw/share/nix-ld/lib" \
       --set    QT_PLUGIN_PATH "$out/share/pia-client/lib/qt/plugins"
 
     # ── piactl CLI wrapper ────────────────────────────────────────────────
-    makeWrapper $out/share/pia-client/bin/piactl $out/bin/piactl \
+    makeWrapper "$out/share/pia-client/bin/piactl" "$out/bin/piactl" \
       --set    NIX_LD_LIBRARY_PATH "/run/current-system/sw/share/nix-ld/lib" \
       --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:/run/current-system/sw/share/nix-ld/lib"
 
     # ── pia-daemon wrapper ────────────────────────────────────────────────
-    makeWrapper $out/share/pia-client/bin/pia-daemon $out/bin/pia-daemon \
+    makeWrapper "$out/share/pia-client/bin/pia-daemon" "$out/bin/pia-daemon" \
       --set    NIX_LD_LIBRARY_PATH "/run/current-system/sw/share/nix-ld/lib" \
       --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:/run/current-system/sw/share/nix-ld/lib"
 
     # ── Desktop entry ─────────────────────────────────────────────────────
-    mkdir -p $out/share/applications
-    cat > $out/share/applications/pia-client.desktop <<EOF
+    mkdir -p "$out/share/applications"
+    cat > "$out/share/applications/pia-client.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Private Internet Access
