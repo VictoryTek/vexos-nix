@@ -166,8 +166,10 @@ in
       ALWAYS_LOCAL_REGEX='^(nixos-system-|system-units|system-path|etc-nixos|etc-|etc\.drv$|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-|home-manager-|ld-library-path|X-Restart-Triggers-|user-units|set-environment|dbus-1\.drv$|abstractions-|apparmor\.d\.drv$|vexos-update\.drv$)'
 
       # pia-client-bin-<version>.drv — the nixified PIA binary-repack package.
-      # Fast to build (just download + extract + wrap); not a source compile.
-      KNOWN_SMALL_LOCAL_REGEX='^(pia-client-bin-[0-9])'
+      # pia-linux-<version>.run.drv — fetchurl derivation that downloads the
+      #   PIA installer binary (~100 MB); this is a download, not a source compile.
+      # Both are fast and expected; allow them without triggering a hold.
+      KNOWN_SMALL_LOCAL_REGEX='^(pia-client-bin-[0-9]|pia-linux-[0-9])'
 
       # Extract all "will be built" candidates and apply class A filter.
       ALL_CANDIDATES=$(printf '%s\n' "$DRY" \
