@@ -324,12 +324,14 @@ update:
     echo ""
     echo "Updating to: ${target}"
     echo ""
-    # vexos-update (installed by modules/nix.nix) handles:
-    #   1. flake.lock backup
-    #   2. nix flake update
-    #   3. dry-build cache check
-    #   4. rollback + clear error if any package needs a source build
-    #   5. nixos-rebuild switch if everything is cached
+    # vexos-update (installed by modules/nix.nix) uses three-class miss
+    # classification before applying any update:
+    #   Class A — NixOS system assembly glue (always local, never blocking).
+    #   Class B — Known small local artifacts (e.g. PIA helpers); allowed,
+    #             logged as VEXOS_CACHE_LOCAL_OK, update proceeds normally.
+    #   Class C — Unknown/heavy packages; update paused, flake.lock restored,
+    #             logged as VEXOS_CACHE_BLOCK.
+    # The script also handles flake.lock backup/restore and nixos-rebuild switch.
     # Up uses the same script so behaviour is identical regardless of update path.
     sudo vexos-update
 

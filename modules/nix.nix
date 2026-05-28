@@ -119,7 +119,9 @@ in
   #   1  — other error (bad variant, nix eval failure, etc.)
   #
   # Stdout protocol for Up:
-  #   Lines prefixed "VEXOS_CACHE_MISS:" → cache miss; list the blocked pkgs.
+  #   Lines prefixed "VEXOS_CACHE_BLOCK:"    → hard blocker; lock restored.
+  #   Lines prefixed "VEXOS_CACHE_LOCAL_OK:" → known small local, proceeding.
+  #   Legacy: "VEXOS_CACHE_MISS:" was the prior single-channel prefix (retired).
   #   All other lines are forwarded verbatim to the build log view.
   environment.systemPackages = [
     (pkgs.writeShellScriptBin "vexos-update" ''
@@ -142,29 +144,65 @@ in
       DRY=$(nixos-rebuild dry-build \
         --flake path:/etc/nixos#"$VARIANT" 2>&1 || true)
 
-      # Extract names from the "will be built:" section of dry-build output.
-      # Strip the /nix/store/<hash>- prefix so names are readable.
-      # Filter out NixOS system-level derivations that are ALWAYS built locally
-      # and take under a second (symlink forest, activation scripts, unit files,
-      # bootloader config, initrd, kernel, home-manager glue, AppArmor profile
-      # directories, /etc population, environment files, etc.) — these are not
-      # source compiles; they're local assembly that cascades from real builds.
-      SOURCE_BUILDS=$(printf '%s\n' "$DRY" \
+      # Miss classification engine — three classes:
+      #
+      #   Class A (ALWAYS_LOCAL_REGEX): NixOS system assembly glue (symlink
+      #   forests, activation scripts, unit files, bootloader config, initrd,
+      #   kernel, home-manager linkage, AppArmor dirs, /etc population, env
+      #   files, etc.) — always local, never a source compile.  Drop silently.
+      #
+      #   Class B (KNOWN_SMALL_LOCAL_REGEX): Known small local artifacts that
+      #   are expected and fast.  Allow them; emit VEXOS_CACHE_LOCAL_OK lines.
+      #
+      #   Class C (BLOCKING_DERIVATIONS): Everything else — unexpected source
+      #   builds.  Restore lock and exit 2.
+      #
+      # VEXOS_UPDATE_STRICT=1: skip class B allowlist; treat all post-A
+      # derivations as blocking (for hosts that must build only from cache).
+      #
+      # Legacy note: VEXOS_CACHE_MISS: was the prior single-channel prefix.
+      # New code uses VEXOS_CACHE_BLOCK: and VEXOS_CACHE_LOCAL_OK: instead.
+
+      ALWAYS_LOCAL_REGEX='^(nixos-system-|system-units|system-path|etc-nixos|etc-|etc\.drv$|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-|home-manager-|ld-library-path|X-Restart-Triggers-|user-units|set-environment|dbus-1\.drv$|abstractions-|apparmor\.d\.drv$|vexos-update\.drv$)'
+
+      KNOWN_SMALL_LOCAL_REGEX='^(pia-client\.drv$|pia-client\.desktop\.drv$|piactl\.drv$)'
+
+      # Extract all "will be built" candidates and apply class A filter.
+      ALL_CANDIDATES=$(printf '%s\n' "$DRY" \
         | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
-        | grep -Ev '^(nixos-system-|system-units|system-path|etc-nixos|etc-|etc\.drv$|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-|home-manager-|ld-library-path|X-Restart-Triggers-|user-units|set-environment|dbus-1\.drv$|abstractions-|apparmor\.d\.drv$)' \
+        | grep -Ev "$ALWAYS_LOCAL_REGEX" \
         || true)
 
-      if [ -n "$SOURCE_BUILDS" ]; then
+      # Partition class B vs class C.
+      if [ -n "$ALL_CANDIDATES" ] && [ "''${VEXOS_UPDATE_STRICT:-0}" = "1" ]; then
+        # Strict mode: all post-A derivations are blocking.
+        KNOWN_SMALL_LOCAL=""
+        BLOCKING_DERIVATIONS="$ALL_CANDIDATES"
+      else
+        KNOWN_SMALL_LOCAL=$(printf '%s\n' "$ALL_CANDIDATES" \
+          | grep -E "$KNOWN_SMALL_LOCAL_REGEX" || true)
+        BLOCKING_DERIVATIONS=$(printf '%s\n' "$ALL_CANDIDATES" \
+          | grep -Ev "$KNOWN_SMALL_LOCAL_REGEX" || true)
+      fi
+
+      if [ -n "$BLOCKING_DERIVATIONS" ]; then
         echo ""
-        echo "VEXOS_CACHE_MISS: The following packages are not yet in the binary cache"
-        echo "VEXOS_CACHE_MISS: and would need to be compiled from source:"
-        printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/VEXOS_CACHE_MISS:   /'
-        echo "VEXOS_CACHE_MISS:"
-        echo "VEXOS_CACHE_MISS: flake.lock restored. Run vexos-update again in a few"
-        echo "VEXOS_CACHE_MISS: hours once cache.nixos.org has built these packages."
+        echo "VEXOS_CACHE_BLOCK: The following packages are not in any cache and"
+        echo "VEXOS_CACHE_BLOCK: would require a local source build (update paused):"
+        printf '%s\n' "$BLOCKING_DERIVATIONS" | sed 's/^/VEXOS_CACHE_BLOCK:   /'
+        echo "VEXOS_CACHE_BLOCK:"
+        echo "VEXOS_CACHE_BLOCK: flake.lock restored. No changes were applied."
+        echo "VEXOS_CACHE_BLOCK: Use 'just deploy' to apply config-only changes without bumping inputs."
         cp /etc/nixos/flake.lock.bak /etc/nixos/flake.lock
         rm -f /etc/nixos/flake.lock.bak
         exit 2
+      fi
+
+      if [ -n "$KNOWN_SMALL_LOCAL" ]; then
+        echo ""
+        echo "VEXOS_CACHE_LOCAL_OK: Small known local artifacts will build (expected, fast):"
+        printf '%s\n' "$KNOWN_SMALL_LOCAL" | sed 's/^/VEXOS_CACHE_LOCAL_OK:   /'
+        echo "VEXOS_CACHE_LOCAL_OK: Proceeding with update..."
       fi
 
       rm -f /etc/nixos/flake.lock.bak

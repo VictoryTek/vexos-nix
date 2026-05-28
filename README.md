@@ -155,7 +155,25 @@ You can switch between variants (and roles) at any time — no reinstall require
 
 ## Updating to the latest config
 
-If the updater "Up" fails for any reason you can run "just update" or run the command below to sync back up with the github flake.
+The canonical update paths are `just update` (terminal) and the **Up** app (GUI).
+Both run the same `vexos-update` script from `modules/nix.nix`, which uses a
+three-class miss classification engine before applying any change:
+
+- **Class A** — NixOS system assembly glue (symlink forests, activation scripts,
+  unit files, bootloader, initrd, kernel, home-manager linkage, etc.) — always
+  local, never blocks an update.
+- **Class B** — Known small local artifacts (e.g. PIA helper derivations) —
+  allowed; logged as `VEXOS_CACHE_LOCAL_OK`; update proceeds normally.
+- **Class C** — Unknown or heavy packages not in any cache — update paused;
+  `flake.lock` restored to its previous state; logged as `VEXOS_CACHE_BLOCK`.
+
+When a class C block occurs, use `just deploy` to apply config-only changes
+from the repo without bumping flake inputs.
+
+### Manual / emergency update (advanced)
+
+> **Warning:** The commands below bypass miss classification and cache safety
+> checks. Use only for recovery or advanced troubleshooting.
 
 ```bash
 cd /etc/nixos && sudo nix flake update
