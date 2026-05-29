@@ -23,8 +23,6 @@
     ./modules/locale.nix
     ./modules/users.nix
     ./modules/asus-opt.nix
-    ./modules/pia.nix
-    ./modules/pia-stateless.nix
   ];
 
   # ---------- Branding ----------

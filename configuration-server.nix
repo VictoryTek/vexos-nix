@@ -22,7 +22,6 @@
     ./modules/secrets-sops.nix      # optional encrypted secrets backend (vexos.secrets.backend)
     ./modules/server       # Optional server services (vexos.server.*.enable)
     ./modules/zfs-server.nix
-    ./modules/pia-server.nix         # PIA VPN CLI support (piactl)
     ./modules/nix.nix
     ./modules/nix-server.nix        # 30-day GC retention (production server standard)
     ./modules/locale.nix
@@ -49,4 +48,11 @@
   # ---------- Server role placeholder ----------
   # This configuration is intentionally minimal. Add server-specific
   # services, firewall rules, and hardening here when fleshing out.
+
+  # ---------- VPN (testing) ----------
+  # nm-applet: standalone NetworkManager tray app for importing and connecting
+  # OpenVPN/WireGuard profiles via .ovpn files. Temporary — evaluate before
+  # rolling out to other roles.
+  environment.systemPackages = [ pkgs.networkmanagerapplet ];
+  services.openvpn.enable = true;
 }
