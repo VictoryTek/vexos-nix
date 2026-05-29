@@ -60,6 +60,12 @@ stdenvNoCC.mkDerivation rec {
 
     chmod -R u+rX "$out/share/pia-client"
 
+    # ── Install real PIA icon ─────────────────────────────────────────────
+    # The installer ships app-icon.png in installfiles/ alongside piafiles/.
+    # Copy it to $out/share/pixmaps/piavpn.png so Icon=piavpn resolves.
+    mkdir -p "$out/share/pixmaps"
+    cp "$stage/installfiles/app-icon.png" "$out/share/pixmaps/piavpn.png"
+
     # ── Patch qt.conf hardcoded /opt/piavpn paths ─────────────────────────
     # The installer stores absolute paths to /opt/piavpn in qt.conf.
     # Rewrite them to point to the actual Nix store layout.
@@ -81,7 +87,8 @@ stdenvNoCC.mkDerivation rec {
       --set    NIX_LD_LIBRARY_PATH "/run/current-system/sw/share/nix-ld/lib" \
       --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:${libglvnd}/lib:/run/opengl-driver/lib:${fontconfig.lib}/lib:${freetype}/lib:${xorg.libXau}/lib:${xorg.libXdmcp}/lib:/run/current-system/sw/share/nix-ld/lib" \
       --set    QT_PLUGIN_PATH "$out/share/pia-client/plugins" \
-      --set    QML2_IMPORT_PATH "$out/share/pia-client/qml"
+      --set    QML2_IMPORT_PATH "$out/share/pia-client/qml" \
+      --set    XDG_SESSION_TYPE x11
 
     # ── piactl CLI wrapper ────────────────────────────────────────────────
     makeWrapper "$out/share/pia-client/bin/piactl" "$out/bin/piactl" \
@@ -99,12 +106,13 @@ stdenvNoCC.mkDerivation rec {
 [Desktop Entry]
 Type=Application
 Name=Private Internet Access
-GenericName=VPN Client
-Comment=Connect using Private Internet Access
-Exec=$out/bin/pia-client
-Icon=network-vpn
+Comment=Private Internet Access VPN client
+Exec=$out/bin/pia-client %u
+Icon=piavpn
 Terminal=false
-Categories=Network;Security;
+Categories=Network;
+StartupWMClass=pia-client
+MimeType=x-scheme-handler/piavpn;
 EOF
 
     runHook postInstall
