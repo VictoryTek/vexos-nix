@@ -80,7 +80,7 @@
         serviceConfig = {
           Type            = "oneshot";
           RemainAfterExit = true;
-          ExecStart = "${pkgs.bash}/bin/bash -c 'echo ${toString config.vexos.hardware.asus.batteryChargeLimit} > /sys/class/power_supply/BAT0/charge_control_end_threshold'";
+          ExecStart = "${pkgs.bash}/bin/bash -c 'f=/sys/class/power_supply/BAT0/charge_control_end_threshold; [ -e \"$f\" ] && echo ${toString config.vexos.hardware.asus.batteryChargeLimit} > \"$f\" || echo \"asus-battery-charge-limit: $f not found, skipping\"'";
         };
       };
   };
