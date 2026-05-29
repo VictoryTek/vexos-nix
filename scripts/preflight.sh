@@ -80,8 +80,8 @@ echo "[1/7] Validating flake structure..."
 # NOTE: nix flake check is FORBIDDEN in this project — it evaluates all 30+
 # nixosConfigurations in parallel and exhausts all 32GB of RAM.
 # nix flake show is the safe alternative: it lists outputs without evaluating them.
-if nix flake show --json > /dev/null 2>&1; then
-  OUTPUT_COUNT=$(nix flake show --json 2>/dev/null | jq '.nixosConfigurations | length' 2>/dev/null || echo "unknown")
+if nix flake show --impure --json > /dev/null 2>&1; then
+  OUTPUT_COUNT=$(nix flake show --impure --json 2>/dev/null | jq '.nixosConfigurations | length' 2>/dev/null || echo "unknown")
   pass "nix flake show passed — ${OUTPUT_COUNT} nixosConfigurations listed"
 else
   fail "nix flake show failed — flake structure is invalid"
@@ -112,7 +112,7 @@ else
   else
     echo "  Dry-building current machine variant: ${CURRENT_VARIANT}"
     if command -v nixos-rebuild &>/dev/null && sudo -n true 2>/dev/null; then
-      if sudo nixos-rebuild dry-build --flake ".#${CURRENT_VARIANT}" 2>&1; then
+      if sudo nixos-rebuild dry-build --impure --flake ".#${CURRENT_VARIANT}" 2>&1; then
         pass "nixos-rebuild dry-build .#${CURRENT_VARIANT} passed"
       else
         fail "nixos-rebuild dry-build .#${CURRENT_VARIANT} failed"

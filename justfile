@@ -196,7 +196,7 @@ switch role="" variant="" flake="":
     echo "Switching to: ${TARGET}"
     echo ""
     _flake_dir=$(just _resolve-flake-dir "${TARGET}" "${FLAKE_OVERRIDE}")
-    if ! sudo nixos-rebuild switch --flake "path:${_flake_dir}#${TARGET}"; then
+    if ! sudo nixos-rebuild switch --impure --flake "path:${_flake_dir}#${TARGET}"; then
         _rc=$?
         if [ $_rc -eq 4 ]; then
             echo ""
