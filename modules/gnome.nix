@@ -23,7 +23,6 @@
       "steal-my-focus-window@steal-my-focus-window"
       "tailscale-status@maxgallup.github.com"
       "caffeine@patapon.info"
-      "restartto@tiagoporsch.github.io"
       "blur-my-shell@aunetx"
       "background-logo@fedorahosted.org"
       "tiling-assistant@leleat-on-github"
@@ -203,7 +202,6 @@
     pkgs.gnomeExtensions.steal-my-focus-window      # Force window focus
     pkgs.gnomeExtensions.tailscale-status           # Tailscale tray indicator
     pkgs.gnomeExtensions.caffeine                   # Prevent screen sleep
-    pkgs.gnomeExtensions.restart-to                 # Restart-to menu entry
     pkgs.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
     pkgs.gnomeExtensions.background-logo            # Desktop background logo
     pkgs.gnomeExtensions.tiling-assistant           # Half- and quarter-tiling support
