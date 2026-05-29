@@ -48,10 +48,4 @@
   # ---------- Server role placeholder ----------
   # This configuration is intentionally minimal. Add server-specific
   # services, firewall rules, and hardening here when fleshing out.
-
-  # ---------- VPN (testing) ----------
-  # nm-applet: standalone NetworkManager tray app for importing and connecting
-  # OpenVPN/WireGuard profiles via .ovpn files. Temporary — evaluate before
-  # rolling out to other roles.
-  environment.systemPackages = with pkgs; [ networkmanagerapplet networkmanager-openvpn ];
 }
