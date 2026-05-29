@@ -53,6 +53,5 @@
   # nm-applet: standalone NetworkManager tray app for importing and connecting
   # OpenVPN/WireGuard profiles via .ovpn files. Temporary — evaluate before
   # rolling out to other roles.
-  environment.systemPackages = [ pkgs.networkmanagerapplet ];
-  services.openvpn.enable = true;
+  environment.systemPackages = with pkgs; [ networkmanagerapplet networkmanager-openvpn ];
 }
