@@ -12,7 +12,7 @@
 #        nix hash to-sri --type sha256 \
 #          $(nix-prefetch-url https://installers.privateinternetaccess.com/download/pia-linux-<VER>.run)
 #   3. Update `version` and `hash` below.
-{ lib, stdenvNoCC, fetchurl, makeWrapper, bash, libglvnd }:
+{ lib, stdenvNoCC, fetchurl, makeWrapper, bash, libglvnd, fontconfig, freetype, xorg }:
 
 stdenvNoCC.mkDerivation rec {
   pname   = "pia-client-bin";
@@ -79,7 +79,7 @@ stdenvNoCC.mkDerivation rec {
     # Prepend PIA's bundled Qt6 libs so PIA does not clash with system Qt.
     makeWrapper "$out/share/pia-client/bin/pia-client" "$out/bin/pia-client" \
       --set    NIX_LD_LIBRARY_PATH "/run/current-system/sw/share/nix-ld/lib" \
-      --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:${libglvnd}/lib:/run/opengl-driver/lib:/run/current-system/sw/share/nix-ld/lib" \
+      --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:${libglvnd}/lib:/run/opengl-driver/lib:${fontconfig.lib}/lib:${freetype}/lib:${xorg.libXau}/lib:${xorg.libXdmcp}/lib:/run/current-system/sw/share/nix-ld/lib" \
       --set    QT_PLUGIN_PATH "$out/share/pia-client/plugins" \
       --set    QML2_IMPORT_PATH "$out/share/pia-client/qml"
 
