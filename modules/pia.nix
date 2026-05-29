@@ -78,7 +78,7 @@
     serviceConfig = {
       Environment = [
         "NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib"
-        "LD_LIBRARY_PATH=${pkgs.vexos.pia-client-bin}/share/pia-client/lib:/run/current-system/sw/share/nix-ld/lib"
+        "LD_LIBRARY_PATH=${pkgs.vexos.pia-client-bin}/share/pia-client/lib"
       ];
       ExecStart   = "${pkgs.vexos.pia-client-bin}/share/pia-client/bin/pia-daemon";
       Restart     = "always";

@@ -85,7 +85,7 @@ stdenvNoCC.mkDerivation rec {
     # Prepend PIA's bundled Qt6 libs so PIA does not clash with system Qt.
     makeWrapper "$out/share/pia-client/bin/pia-client" "$out/bin/pia-client" \
       --set    NIX_LD_LIBRARY_PATH "/run/current-system/sw/share/nix-ld/lib" \
-      --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:${libglvnd}/lib:/run/opengl-driver/lib:${fontconfig.lib}/lib:${freetype}/lib:${xorg.libXau}/lib:${xorg.libXdmcp}/lib:/run/current-system/sw/share/nix-ld/lib" \
+      --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:${libglvnd}/lib:/run/opengl-driver/lib:${fontconfig.lib}/lib:${freetype}/lib:${xorg.libXau}/lib:${xorg.libXdmcp}/lib:${xorg.libSM}/lib:${xorg.libICE}/lib" \
       --set    QT_PLUGIN_PATH "$out/share/pia-client/plugins" \
       --set    QML2_IMPORT_PATH "$out/share/pia-client/qml" \
       --set    XDG_SESSION_TYPE x11
@@ -93,12 +93,12 @@ stdenvNoCC.mkDerivation rec {
     # ── piactl CLI wrapper ────────────────────────────────────────────────
     makeWrapper "$out/share/pia-client/bin/piactl" "$out/bin/piactl" \
       --set    NIX_LD_LIBRARY_PATH "/run/current-system/sw/share/nix-ld/lib" \
-      --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:/run/current-system/sw/share/nix-ld/lib"
+      --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib"
 
     # ── pia-daemon wrapper ────────────────────────────────────────────────
     makeWrapper "$out/share/pia-client/bin/pia-daemon" "$out/bin/pia-daemon" \
       --set    NIX_LD_LIBRARY_PATH "/run/current-system/sw/share/nix-ld/lib" \
-      --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:/run/current-system/sw/share/nix-ld/lib"
+      --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib"
 
     # ── Desktop entry ─────────────────────────────────────────────────────
     mkdir -p "$out/share/applications"
