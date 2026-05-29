@@ -12,7 +12,7 @@
 #        nix hash to-sri --type sha256 \
 #          $(nix-prefetch-url https://installers.privateinternetaccess.com/download/pia-linux-<VER>.run)
 #   3. Update `version` and `hash` below.
-{ lib, stdenvNoCC, fetchurl, makeWrapper, bash }:
+{ lib, stdenvNoCC, fetchurl, makeWrapper, bash, libglvnd }:
 
 stdenvNoCC.mkDerivation rec {
   pname   = "pia-client-bin";
@@ -59,14 +59,29 @@ stdenvNoCC.mkDerivation rec {
     fi
 
     chmod -R u+rX "$out/share/pia-client"
+
+    # ── Patch qt.conf hardcoded /opt/piavpn paths ─────────────────────────
+    # The installer stores absolute paths to /opt/piavpn in qt.conf.
+    # Rewrite them to point to the actual Nix store layout.
+    sed -i \
+      "s|Plugins=/opt/piavpn/plugins|Plugins=$out/share/pia-client/plugins|" \
+      "$out/share/pia-client/bin/qt.conf"
+    sed -i \
+      "s|Libraries=/opt/piavpn/lib|Libraries=$out/share/pia-client/lib|" \
+      "$out/share/pia-client/bin/qt.conf"
+    sed -i \
+      "s|Qml2Imports=/opt/piavpn/qml|Qml2Imports=$out/share/pia-client/qml|" \
+      "$out/share/pia-client/bin/qt.conf"
+
     mkdir -p "$out/bin"
 
     # ── pia-client GUI wrapper ────────────────────────────────────────────
     # Prepend PIA's bundled Qt6 libs so PIA does not clash with system Qt.
     makeWrapper "$out/share/pia-client/bin/pia-client" "$out/bin/pia-client" \
       --set    NIX_LD_LIBRARY_PATH "/run/current-system/sw/share/nix-ld/lib" \
-      --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:/run/current-system/sw/share/nix-ld/lib" \
-      --set    QT_PLUGIN_PATH "$out/share/pia-client/lib/qt/plugins"
+      --prefix LD_LIBRARY_PATH : "$out/share/pia-client/lib:${libglvnd}/lib:/run/opengl-driver/lib:/run/current-system/sw/share/nix-ld/lib" \
+      --set    QT_PLUGIN_PATH "$out/share/pia-client/plugins" \
+      --set    QML2_IMPORT_PATH "$out/share/pia-client/qml"
 
     # ── piactl CLI wrapper ────────────────────────────────────────────────
     makeWrapper "$out/share/pia-client/bin/piactl" "$out/bin/piactl" \

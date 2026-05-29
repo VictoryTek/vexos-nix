@@ -74,7 +74,7 @@
   systemd.services.piavpn = {
     description = "Private Internet Access daemon";
     after = [ "syslog.target" "network.target" ];
-    wantedBy = [ ];   # not auto-started; user starts it manually via `just pia`
+    wantedBy = [ "multi-user.target" ];   # auto-start daemon at boot (user can stop with systemctl stop piavpn)
     serviceConfig = {
       Environment = [
         "NIX_LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib"
