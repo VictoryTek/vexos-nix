@@ -17,19 +17,23 @@
 {
   nixpkgs.overlays = [
     (final: prev: {
-      linuxKernel = prev.linuxKernel // {
-        packages = builtins.mapAttrs (_name: kpkgs:
-          if kpkgs ? openrazer then
-            kpkgs // {
-              openrazer = kpkgs.openrazer.overrideAttrs (old: {
-                patches = (old.patches or []) ++ [
-                  ../patches/openrazer-hid-report-raw-event-6_18.patch
-                ];
-              });
-            }
-          else kpkgs
-        ) prev.linuxKernel.packages;
-      };
+      # linuxPackages_6_18 is the top-level alias used by boot.kernelPackages.
+      # Use .extend (the standard API for kernel package sets) so that
+      # config.boot.kernelPackages.openrazer resolves to the patched derivation,
+      # which is what hardware.openrazer picks up via boot.extraModulePackages.
+      linuxPackages_6_18 = prev.linuxPackages_6_18.extend (lpFinal: lpPrev: {
+        openrazer = lpPrev.openrazer.overrideAttrs (old: {
+          # Fix: hid_report_raw_event() gained a bufsize parameter in Linux 6.18.32+
+          # (kernel commit 2c85c61, backported into 6.18.32). openrazer 3.10.3 calls
+          # the old 5-arg form; add the include and pass sizeof(xdata) as bufsize.
+          # Fixed upstream in openrazer 3.12.3 / nixpkgs 26.05 (PR #523308 / #524105).
+          # Remove this override once the nixpkgs input is bumped to 26.05+.
+          postPatch = (old.postPatch or "") + ''
+            sed -i 's|#include <linux/input-event-codes.h>|#include <linux/input-event-codes.h>\n#include <linux/version.h>|' driver/razerkbd_driver.c
+            sed -i 's|hid_report_raw_event(hdev, HID_INPUT_REPORT, xdata, sizeof(xdata), 0);|hid_report_raw_event(hdev, HID_INPUT_REPORT, xdata, sizeof(xdata), sizeof(xdata), 0);|g' driver/razerkbd_driver.c
+          '';
+        });
+      });
     })
   ];
 
