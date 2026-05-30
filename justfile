@@ -327,7 +327,7 @@ update:
     # vexos-update (installed by modules/nix.nix) uses three-class miss
     # classification before applying any update:
     #   Class A — NixOS system assembly glue (always local, never blocking).
-    #   Class B — Known small local artifacts (e.g. PIA helpers); allowed,
+    #   Class B — Known expected local builds (Up GUI, PIA client, etc.); allowed,
     #             logged as VEXOS_CACHE_LOCAL_OK, update proceeds normally.
     #   Class C — Unknown/heavy packages; update paused, flake.lock restored,
     #             logged as VEXOS_CACHE_BLOCK.
@@ -337,13 +337,11 @@ update:
 
 # Update all flake inputs and rebuild unconditionally — no cache-safety check.
 #
-# Use this when:
-#   • just update is blocked (nixpkgs bump requires packages not yet in cache)
-#     and you are willing to wait for a local source compile.
-#   • You want to force-apply all upstream changes regardless of cache state.
+# Use this when you explicitly want to force all updates through regardless of
+# cache state and are willing to wait for a local source compile.
 #
 # WARNING: may compile large packages from source (Rust, LLVM, kernels, etc.)
-# and take a long time.  Use just update for the safe default.
+# and take a long time.  For normal daily use, run 'just update' instead.
 update-all:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -365,11 +363,10 @@ update-all:
 # Deploy config changes only — pulls the latest vexos-nix commit from GitHub
 # WITHOUT updating nixpkgs or any other flake input.
 #
-# Use this when:
-#   • just update is on hold (upstream nixpkgs bump needs source builds)
-#     and you want to apply config changes you pushed to the repo.
-#   • You want to apply your own changes immediately without risking
-#     pulling in a nixpkgs bump that requires compiling large packages.
+# Run this when just update reports a VEXOS_CACHE_BLOCK (nixpkgs has packages
+# not yet in the binary cache).  Your latest config changes land immediately
+# while nixpkgs stays pinned.  Run just update again in 1-2 days once the
+# cache has caught up.
 #
 # nixpkgs and all other inputs stay pinned at whatever version is
 # currently in /etc/nixos/flake.lock — no source builds triggered.
