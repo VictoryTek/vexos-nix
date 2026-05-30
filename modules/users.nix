@@ -33,13 +33,5 @@ in
       subUidRanges = [{ startUid = 100000; count = 65536; }];
       subGidRanges = [{ startGid = 100000; count = 65536; }];
     };
-
-    # NixOS only writes /etc/subuid and /etc/subgid via environment.etc when
-    # users.mutableUsers = false. With the default mutableUsers = true, those
-    # files are never created, breaking rootless Podman UID namespaces.
-    # Write them explicitly so the files are always present regardless of
-    # mutableUsers state.
-    environment.etc."subuid".text = "nimda:100000:65536\n";
-    environment.etc."subgid".text = "nimda:100000:65536\n";
   };
 }

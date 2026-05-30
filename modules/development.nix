@@ -1,15 +1,16 @@
 # modules/development.nix
-# Development tools: VS Code, Python, Rust, TypeScript/Node, Podman, and general
+# Development tools: VS Code, Python, Rust, TypeScript/Node, Docker, and general
 # app-development utilities installed system-wide.
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 {
-  # ── Podman (rootless container engine) ────────────────────────────────────
-  # Provides a Docker-compatible API without a privileged daemon.
-  virtualisation.podman = {
+  # ── Docker ────────────────────────────────────────────────────────────────
+  virtualisation.docker = {
     enable     = true;
-    dockerCompat = true;             # Adds a `docker` → `podman` symlink
-    defaultNetwork.settings.dns_enabled = true;
+    autoPrune.enable = true;         # weekly automatic cleanup of unused images/containers
   };
+
+  # Add the primary user to the docker group so `docker` works without sudo.
+  users.users.${config.vexos.user.name}.extraGroups = [ "docker" ];
 
   environment.systemPackages = [
 
@@ -28,9 +29,7 @@
     pkgs.bun                                      # All-in-one JS/TS runtime & bundler
 
     # ── Containers ────────────────────────────────────────────────────────────
-    pkgs.podman-compose                           # docker-compose compatible CLI for Podman
-    pkgs.buildah                                  # OCI image builder (rootless)
-    pkgs.skopeo                                   # Container image inspection & transfer
+    pkgs.docker-compose                           # docker compose v2 plugin / standalone CLI
 
     # ── Flatpak development ───────────────────────────────────────────────────
     pkgs.flatpak-builder                          # Build Flatpak application bundles
