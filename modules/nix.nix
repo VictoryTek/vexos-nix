@@ -151,8 +151,8 @@ in
       #   kernel, home-manager linkage, AppArmor dirs, /etc population, env
       #   files, etc.) — always local, never a source compile.  Drop silently.
       #
-      #   Class B (KNOWN_SMALL_LOCAL_REGEX): Known small local artifacts that
-      #   are expected and fast.  Allow them; emit VEXOS_CACHE_LOCAL_OK lines.
+      #   Class B (KNOWN_SMALL_LOCAL_REGEX): Known expected local builds that
+      #   always proceed.  Allow them; emit VEXOS_CACHE_LOCAL_OK lines.
       #
       #   Class C (BLOCKING_DERIVATIONS): Everything else — unexpected source
       #   builds.  Restore lock and exit 2.
@@ -168,8 +168,11 @@ in
       # pia-client-bin-<version>.drv — the nixified PIA binary-repack package.
       # pia-linux-<version>.run.drv — fetchurl derivation that downloads the
       #   PIA installer binary (~100 MB); this is a download, not a source compile.
-      # Both are fast and expected; allow them without triggering a hold.
-      KNOWN_SMALL_LOCAL_REGEX='^(pia-client-bin-[0-9]|pia-linux-[0-9])'
+      # up-N.N.N.drv — the Up system update GUI (VictoryTek/Up); always built
+      #   locally because it is never pushed to any binary cache.
+      # cargo-vendor-dir.drv — Rust offline dep-vendoring step for Up; always
+      #   accompanies an Up build and is expected.
+      KNOWN_SMALL_LOCAL_REGEX='^(pia-client-bin-[0-9]|pia-linux-[0-9]|up-[0-9]|cargo-vendor-dir)'
 
       # Extract all "will be built" candidates and apply class A filter.
       ALL_CANDIDATES=$(printf '%s\n' "$DRY" \
