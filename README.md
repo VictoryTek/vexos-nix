@@ -162,7 +162,7 @@ three-class miss classification engine before applying any change:
 - **Class A** — NixOS system assembly glue (symlink forests, activation scripts,
   unit files, bootloader, initrd, kernel, home-manager linkage, etc.) — always
   local, never blocks an update.
-- **Class B** — Known small local artifacts (e.g. PIA helper derivations) —
+- **Class B** — Known expected local builds (e.g. the Up update GUI) —
   allowed; logged as `VEXOS_CACHE_LOCAL_OK`; update proceeds normally.
 - **Class C** — Unknown or heavy packages not in any cache — update paused;
   `flake.lock` restored to its previous state; logged as `VEXOS_CACHE_BLOCK`.
@@ -253,31 +253,3 @@ just switch
 > NixOS release. It must remain at the version the system was *first installed*
 > on. Changing it can corrupt stateful data managed by NixOS activation scripts.
 
-
-## VPN (Private Internet Access)
-
-PIA is managed **declaratively** via `pkgs.vexos.pia-client-bin` — a binary-repack
-package that fetches the official PIA Linux installer, extracts its payload into
-the Nix store, and creates wrappers for `pia-client`, `piactl`, and `pia-daemon`.
-
-After a system rebuild, the PIA binaries are on PATH and the `piavpn.service`
-systemd unit points to the Nix store. No manual installer run is needed on fresh
-systems.
-
-**Control PIA at runtime:**
-```bash
-just pia          # interactive submenu (start daemon, connect, regions, etc.)
-piactl connect
-piactl disconnect
-piactl get connectionstate
-```
-
-**Upgrading PIA to a new version:**
-1. Find the new installer URL on the PIA download page.
-2. Compute the SRI hash:
-   ```bash
-   nix hash to-sri --type sha256 \
-     $(nix-prefetch-url https://installers.privateinternetaccess.com/download/pia-linux-<VER>.run)
-   ```
-3. Update `version` and `hash` in `pkgs/pia-client-bin/default.nix`.
-4. Rebuild: `just switch`

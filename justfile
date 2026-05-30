@@ -27,7 +27,6 @@ default:
         echo "    To change permanently, update initialPassword in"
         echo "    configuration-stateless.nix and rebuild."
         echo ""
-        echo "Run 'just pia' for the PIA VPN submenu (install, connect, regions, kill-switch, etc.)."
     fi
 
 # Print the active role and GPU variant (e.g. vexos-desktop-amd).
@@ -327,7 +326,7 @@ update:
     # vexos-update (installed by modules/nix.nix) uses three-class miss
     # classification before applying any update:
     #   Class A — NixOS system assembly glue (always local, never blocking).
-    #   Class B — Known expected local builds (Up GUI, PIA client, etc.); allowed,
+    #   Class B — Known expected local builds (e.g. Up GUI); allowed,
     #             logged as VEXOS_CACHE_LOCAL_OK, update proceeds normally.
     #   Class C — Unknown/heavy packages; update paused, flake.lock restored,
     #             logged as VEXOS_CACHE_BLOCK.
@@ -384,6 +383,199 @@ deploy:
     echo ""
     echo "Switching to: ${target}"
     sudo nixos-rebuild switch --flake path:/etc/nixos#"${target}"
+
+# Analyse what would happen if you upgrade NixOS to a newer version.
+# Tests your current config against the target nixpkgs WITHOUT modifying
+# anything — no files changed, no lock file touched.
+#
+# Reports:
+#   • Whether your config evaluates cleanly (option renames/removals)
+#   • Which packages are not yet in the new nixpkgs binary cache
+#   • A recommendation on whether it is safe to run just version-upgrade
+#
+# Usage:
+#   just upgrade-analysis 26.05    — analyse upgrade to 26.05
+#   just upgrade-analysis 26.11    — analyse upgrade to 26.11
+upgrade-analysis target_version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    TARGET="{{target_version}}"
+    VARIANT=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [ -z "$VARIANT" ]; then
+        echo "error: /etc/nixos/vexos-variant not found. Run 'just switch' first." >&2
+        exit 1
+    fi
+
+    # Detect current nixpkgs branch from flake.lock
+    CURRENT=$(jq -r '.nodes | to_entries[] | select(.key == "nixpkgs" or (.key | test("nixpkgs"))) | .value.original.ref // "" | select(startswith("nixos-")) | ltrimstr("nixos-")' \
+        /etc/nixos/flake.lock 2>/dev/null | head -1 || echo "unknown")
+
+    NIXPKGS_URL="github:NixOS/nixpkgs/nixos-${TARGET}"
+    HM_URL="github:nix-community/home-manager/release-${TARGET}"
+
+    # Same classification regexes as vexos-update
+    ALWAYS_LOCAL_REGEX='^(nixos-system-|system-units|system-path|etc-nixos|etc-|etc\.drv$|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-|home-manager-|ld-library-path|X-Restart-Triggers-|user-units|set-environment|dbus-1\.drv$|abstractions-|apparmor\.d\.drv$|vexos-update\.drv$)'
+    KNOWN_LOCAL_REGEX='^(up-[0-9]{{"|"}}cargo-vendor-dir)'
+
+    echo ""
+    echo "================================================================"
+    printf "  vexos-nix Upgrade Analysis: %s → %s\n" "${CURRENT}" "${TARGET}"
+    echo "  $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "================================================================"
+    echo ""
+    echo "  Variant:      ${VARIANT}"
+    echo "  nixpkgs:      nixos-${CURRENT} → nixos-${TARGET}"
+    echo "  home-manager: release-${CURRENT} → release-${TARGET}"
+    echo ""
+    echo "  NOTE: This is read-only. Nothing on your system will be changed."
+    echo "  First run may take a minute to fetch new nixpkgs metadata."
+    echo ""
+
+    # ── [1/3] Configuration Evaluation ──────────────────────────────────────
+    echo "────────────────────────────────────────────────────────────────"
+    echo "  [1/3] Configuration Evaluation"
+    echo "────────────────────────────────────────────────────────────────"
+    echo ""
+
+    FLAKE_TARGET="path:/etc/nixos"
+    FLAKE_TARGET="${FLAKE_TARGET}#${VARIANT}"
+
+    DRY_OUTPUT=$(sudo nixos-rebuild dry-build \
+        --flake "${FLAKE_TARGET}" \
+        --override-input vexos-nix/nixpkgs  "${NIXPKGS_URL}" \
+        --override-input vexos-nix/home-manager "${HM_URL}" \
+        2>&1) && EVAL_EXIT=0 || EVAL_EXIT=$?
+
+    if [ "$EVAL_EXIT" -ne 0 ]; then
+        echo "  ✗ FAIL  Configuration evaluation failed against nixos-${TARGET}."
+        echo ""
+        echo "  ── Evaluation errors ──────────────────────────────────────────"
+        echo ""
+        # Show lines that are actually useful — errors, undefined attrs, options
+        ERRORS=$(printf '%s\n' "$DRY_OUTPUT" \
+            | grep -E "(error:|assert failed|undefined variable|infinite recursion|is not of type|has been removed|was renamed|attribute '|option '|warning:)" \
+            || true)
+        if [ -n "$ERRORS" ]; then
+            printf '%s\n' "$ERRORS" | sed 's/^/    /'
+        else
+            # Fallback: show last 20 lines of raw output
+            printf '%s\n' "$DRY_OUTPUT" | tail -20 | sed 's/^/    /'
+        fi
+        echo ""
+        echo "  ── What this means ────────────────────────────────────────────"
+        echo "  These errors must be fixed in the vexos-nix config before you"
+        echo "  can upgrade.  Common causes:"
+        echo "    • A NixOS option was renamed or removed in ${TARGET}"
+        echo "    • A package was removed from nixpkgs"
+        echo "    • A module interface changed"
+        echo ""
+        echo "  Check the release notes:"
+        echo "    https://nixos.org/manual/nixos/stable/release-notes"
+        echo ""
+    else
+        echo "  ✓ PASS  Config evaluates cleanly against nixos-${TARGET}."
+        echo "          No option errors, renames, or removals detected."
+        echo ""
+    fi
+
+    # ── [2/3] Package Cache Analysis ────────────────────────────────────────
+    echo "────────────────────────────────────────────────────────────────"
+    echo "  [2/3] Package Cache Analysis"
+    echo "────────────────────────────────────────────────────────────────"
+    echo ""
+
+    if [ "$EVAL_EXIT" -ne 0 ]; then
+        echo "  ⚠ Skipped — fix evaluation errors first (see [1/3] above)."
+        echo ""
+    else
+        ALL_BUILD=$(printf '%s\n' "$DRY_OUTPUT" \
+            | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
+            || true)
+        ALL_FETCH=$(printf '%s\n' "$DRY_OUTPUT" \
+            | awk '/will be fetched:/{p=1;next} /will be built:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
+            || true)
+
+        FETCH_COUNT=$(printf '%s\n' "$ALL_FETCH" | grep -c '[^[:space:]]' || true)
+        CLASS_A=$(printf '%s\n' "$ALL_BUILD" | grep -E "$ALWAYS_LOCAL_REGEX" || true)
+        CLASS_A_COUNT=$(printf '%s\n' "$CLASS_A" | grep -c '[^[:space:]]' || true)
+        POST_A=$(printf '%s\n' "$ALL_BUILD" | grep -Ev "$ALWAYS_LOCAL_REGEX" || true)
+        CLASS_B=$(printf '%s\n' "$POST_A" | grep -E "$KNOWN_LOCAL_REGEX" || true)
+        CLASS_B_COUNT=$(printf '%s\n' "$CLASS_B" | grep -c '[^[:space:]]' || true)
+        CLASS_C=$(printf '%s\n' "$POST_A" | grep -Ev "$KNOWN_LOCAL_REGEX" || true)
+        CLASS_C_COUNT=$(printf '%s\n' "$CLASS_C" | grep -c '[^[:space:]]' || true)
+
+        printf "  %-48s %s\n" "Packages in binary cache (ready to fetch):"       "${FETCH_COUNT}"
+        printf "  %-48s %s\n" "System assembly glue (always local, not a build):" "${CLASS_A_COUNT}"
+        printf "  %-48s %s\n" "Expected local builds (e.g. Up — Class B):"       "${CLASS_B_COUNT}"
+        printf "  %-48s %s\n" "Packages not in cache yet (must compile — Class C):" "${CLASS_C_COUNT}"
+        echo ""
+
+        if [ -n "$CLASS_B" ] && [ "$CLASS_B_COUNT" -gt 0 ]; then
+            echo "  ── Expected local builds (Class B — these are normal) ─────────"
+            printf '%s\n' "$CLASS_B" | grep '[^[:space:]]' | sed 's/^/    /'
+            echo ""
+        fi
+
+        if [ -n "$CLASS_C" ] && [ "$CLASS_C_COUNT" -gt 0 ]; then
+            echo "  ── Not in cache yet — would compile from source (Class C) ──────"
+            printf '%s\n' "$CLASS_C" | grep '[^[:space:]]' | sed 's/^/    /'
+            echo ""
+            echo "  These packages are not yet in the nixos-${TARGET} binary cache."
+            echo "  If you upgrade now, they will compile locally (could take hours"
+            echo "  depending on the package).  The cache typically fills within"
+            echo "  1-7 days of a release."
+            echo ""
+        else
+            echo "  ✓ All packages are available in the binary cache."
+            echo ""
+        fi
+    fi
+
+    # ── [3/3] Recommendation ────────────────────────────────────────────────
+    echo "────────────────────────────────────────────────────────────────"
+    echo "  [3/3] Recommendation"
+    echo "────────────────────────────────────────────────────────────────"
+    echo ""
+
+    if [ "$EVAL_EXIT" -ne 0 ]; then
+        echo "  ✗ NOT READY — config errors must be resolved first."
+        echo ""
+        echo "  Steps:"
+        echo "  1. Review the evaluation errors in [1/3] above."
+        echo "  2. Fix the affected modules/options in vexos-nix."
+        echo "  3. Push the fix, then re-run:"
+        echo "       just upgrade-analysis ${TARGET}"
+        echo "  4. Once [1/3] shows PASS, proceed to just version-upgrade."
+        echo ""
+    elif [ "$CLASS_C_COUNT" -gt 0 ] 2>/dev/null; then
+        echo "  ⚠ CONFIG OK — but ${CLASS_C_COUNT} package(s) not yet in cache."
+        echo ""
+        echo "  Option A — Wait (recommended):"
+        echo "    Re-run 'just upgrade-analysis ${TARGET}' in a few days."
+        echo "    When [2/3] shows 0 uncached packages, run:"
+        echo "      just version-upgrade"
+        echo "      just update"
+        echo ""
+        echo "  Option B — Upgrade now and compile locally:"
+        echo "    Accept the source build time and run:"
+        echo "      just version-upgrade"
+        echo "      just update-all"
+        echo ""
+    else
+        echo "  ✓ READY — config is clean and all packages are in cache."
+        echo ""
+        echo "  Run:"
+        echo "    just version-upgrade"
+        echo "    just update"
+        echo ""
+    fi
+
+    echo "  Release notes:  https://nixos.org/manual/nixos/stable/release-notes"
+    echo "  Package search: https://search.nixos.org/packages?channel=${TARGET}"
+    echo ""
+    echo "================================================================"
+    echo ""
 
 # Upgrade the NixOS release version (e.g. 25.11 → 26.05).
 # Updates flake inputs (nixpkgs, home-manager) and system.stateVersion in all
@@ -1595,334 +1787,3 @@ rebuild:
     echo "Rebuilding ${target}..."
     echo ""
     sudo nixos-rebuild switch --flake "path:/etc/nixos#${target}"
-
-# ── PIA VPN ──────────────────────────────────────────────────────────────────
-# Interactive submenu for Private Internet Access VPN.
-# PIA is now managed declaratively via pkgs.vexos.pia-client-bin.
-# After a system rebuild, pia-client/piactl/pia-daemon are on PATH — no manual
-# install needed. Option 1 (Install) is retained as an emergency fallback only.
-# modules/pia.nix provides the nix-ld shim and packaged wrappers.
-
-# PIA VPN submenu — install, connect, status, and more.
-pia:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    _PIA_NIX_LD_LIB="/run/current-system/sw/share/nix-ld/lib"
-    _PIA_EXTRA_LIB=""
-    if [ ! -e "${_PIA_NIX_LD_LIB}/libglib-2.0.so.0" ]; then
-        # Fallback for systems not yet rebuilt with glib in programs.nix-ld.libraries.
-        _glib_store_lib=$(ls -d /nix/store/*-glib-2.*/lib 2>/dev/null | head -1 || true)
-        [ -n "$_glib_store_lib" ] && _PIA_EXTRA_LIB=":$_glib_store_lib"
-    fi
-    _PIA_LD_PATH="/opt/piavpn/lib:${_PIA_NIX_LD_LIB}${_PIA_EXTRA_LIB}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-
-    piactl_cmd() {
-        # Prefer the Nix-packaged wrapper (env vars already set by makeWrapper).
-        if command -v piactl &>/dev/null; then
-            piactl "$@"
-        else
-            NIX_LD_LIBRARY_PATH="${_PIA_NIX_LD_LIB}" \
-            LD_LIBRARY_PATH="${_PIA_LD_PATH}" \
-            /opt/piavpn/bin/piactl "$@"
-        fi
-    }
-
-    pia_client_cmd() {
-        # Prefer the Nix-packaged wrapper (env vars already set by makeWrapper).
-        if command -v pia-client &>/dev/null; then
-            pia-client "$@"
-        else
-            NIX_LD_LIBRARY_PATH="${_PIA_NIX_LD_LIB}" \
-            LD_LIBRARY_PATH="${_PIA_LD_PATH}" \
-            QT_PLUGIN_PATH="/opt/piavpn/lib/qt/plugins${QT_PLUGIN_PATH:+:${QT_PLUGIN_PATH}}" \
-            /opt/piavpn/bin/pia-client "$@"
-        fi
-    }
-
-    ensure_pia_runtime_unit() {
-        # If a declarative unit exists (from modules/pia.nix), prefer it.
-        # Remove any stale runtime fallback unit so it cannot shadow new env.
-        if [ -e /etc/systemd/system/piavpn.service ]; then
-            if [ -e /run/systemd/system/piavpn.service ]; then
-                sudo rm -f /run/systemd/system/piavpn.service
-                sudo systemctl daemon-reload
-            fi
-            return 0
-        fi
-
-        # Fallback for systems that have PIA installed but no piavpn unit yet.
-        # Runtime unit lives in /run and is recreated/refreshed on demand.
-        # Prefer the Nix-packaged daemon wrapper; fall back to legacy path.
-        _PIA_DAEMON_CMD="/run/current-system/sw/bin/pia-daemon"
-        [ -x "$_PIA_DAEMON_CMD" ] || _PIA_DAEMON_CMD="/opt/piavpn/bin/pia-daemon"
-        sudo mkdir -p /run/systemd/system
-        printf '%s\n' \
-            '[Unit]' \
-            'Description=Private Internet Access daemon (runtime fallback)' \
-            'After=network-online.target' \
-            'Wants=network-online.target' \
-            '' \
-            '[Service]' \
-            'Type=simple' \
-            "Environment=NIX_LD_LIBRARY_PATH=${_PIA_NIX_LD_LIB}" \
-            "Environment=LD_LIBRARY_PATH=${_PIA_LD_PATH}" \
-            "ExecStart=${_PIA_DAEMON_CMD}" \
-            '' \
-            '[Install]' \
-            'WantedBy=multi-user.target' \
-            | sudo tee /run/systemd/system/piavpn.service >/dev/null
-        sudo systemctl daemon-reload
-    }
-
-    while true; do
-        INSTALLED=false
-        # Prefer the Nix store wrapper; fall back to legacy /opt/piavpn path.
-        if command -v pia-daemon &>/dev/null || [ -x "/opt/piavpn/bin/pia-daemon" ]; then
-            INSTALLED=true
-        fi
-        echo ""
-        echo "PIA VPN"
-        echo "───────────────────────────────────"
-        if $INSTALLED; then
-            _state=$(piactl_cmd get connectionstate 2>/dev/null || echo "unknown")
-            echo " Status: ${_state}"
-        else
-            echo " Status: not installed"
-        fi
-        echo ""
-        echo "  1) Install PIA"
-        echo "  2) Uninstall PIA"
-        echo "  3) Start daemon (systemctl start piavpn)"
-        echo "  4) Connect"
-        echo "  5) Disconnect"
-        echo "  6) Status"
-        echo "  7) Regions"
-        echo "  8) Kill switch: ON"
-        echo "  9) Kill switch: OFF"
-        echo " 10) Port forwarding: ON"
-        echo " 11) Port forwarding: OFF"
-        echo " 12) Launch GUI"
-        echo " 13) Logs (Ctrl-C to exit)"
-        echo " 14) Version"
-        echo "  q) Quit"
-        echo ""
-        printf "Choice: "
-        read -r INPUT
-
-        case "${INPUT,,}" in
-
-            1|install)
-                if $INSTALLED; then
-                    echo "PIA is already installed."
-                    piactl_cmd --version 2>/dev/null || true
-                else
-                    # PIA is now managed declaratively via pkgs.vexos.pia-client-bin.
-                    # If the system has been rebuilt, pia-daemon is on PATH and no
-                    # manual install is needed. The installer below is an emergency
-                    # fallback for systems not yet rebuilt or for reinstall scenarios.
-                    if ! command -v curl &>/dev/null; then
-                        echo "error: curl not found — install curl and retry." >&2
-                    else
-                        # Resolve the latest installer URL from the PIA download page.
-                        # Falls back to a known-good URL if the page can't be fetched.
-                        _FALLBACK_URL="https://installers.privateinternetaccess.com/download/pia-linux-3.7.2-08420.run"
-                        echo "Resolving latest PIA installer URL..."
-                        INSTALLER_URL=$(curl -fsSL "https://www.privateinternetaccess.com/download/linux-vpn" \
-                            | grep -oP 'https://installers\.privateinternetaccess\.com/download/pia-linux-[0-9][^"]+\.run' \
-                            | grep -v arm64 \
-                            | head -1)
-                        if [ -z "$INSTALLER_URL" ]; then
-                            echo "warning: could not detect latest URL, using fallback." >&2
-                            INSTALLER_URL="$_FALLBACK_URL"
-                        else
-                            echo "Found: $INSTALLER_URL"
-                        fi
-                        TMP_INSTALLER=$(mktemp --suffix=".run")
-                        TMP_EXTRACT=$(mktemp -d)
-                        _WRAP_DIR=$(mktemp -d)
-                        trap 'rm -f "$TMP_INSTALLER"; rm -rf "$TMP_EXTRACT" "$_WRAP_DIR"' EXIT
-                        echo "Downloading PIA installer..."
-                        curl -L --progress-bar -o "$TMP_INSTALLER" "$INSTALLER_URL"
-                        echo ""
-                        echo "Extracting installer..."
-                        bash "$TMP_INSTALLER" --noexec --target "$TMP_EXTRACT"
-                        _BASH=$(command -v bash)
-                        _NIX_LD="${NIX_LD_LIBRARY_PATH:-}"
-                        # Sudo wrapper lives in $_WRAP_DIR — NOT in $TMP_EXTRACT.
-                        # PIA bundles FHS-compiled tools (date, rm …) in the extract dir;
-                        # if $TMP_EXTRACT were first in PATH, those bundled tools would be
-                        # picked up instead of NixOS ones.  They depend on nix-ld +
-                        # NIX_LD_LIBRARY_PATH which sudo strips, causing libatomic errors
-                        # and exit 127.  Keeping $TMP_EXTRACT out of PATH forces the
-                        # NixOS system tools to be used for every shell command.
-                        _NIX_PATHS="$_WRAP_DIR:/run/wrappers/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin"
-                        # Fix shebang
-                        sed -i '1s|.*|#!'"$_BASH"'|' "$TMP_EXTRACT/install.sh"
-                        # Patch the PATH reset inside install.sh to use NixOS tools.
-                        sed -i 's|^PATH="/usr/bin:|PATH="'"$_NIX_PATHS"':/usr/bin:|' "$TMP_EXTRACT/install.sh"
-                        # Create a sudo wrapper that:
-                        # 1. Strips hardcoded FHS prefixes (sudo /bin/cp → cp via NixOS PATH)
-                        # 2. Embeds NIX_LD_LIBRARY_PATH so nix-ld can find libs for any
-                        #    FHS-compiled PIA binaries that run as root after install.
-                        {
-                            echo "#!$_BASH"
-                            echo '_cmd="${1##*/}"; shift'
-                            printf 'exec /run/wrappers/bin/sudo %s -c %s\n' \
-                                "$_BASH" \
-                                "'export PATH=\"$_NIX_PATHS:/usr/bin:/usr/sbin:/bin:/sbin\"; export NIX_LD_LIBRARY_PATH=\"$_NIX_LD\"; exec \"\$@\"' - \"\$_cmd\" \"\$@\""
-                        } > "$_WRAP_DIR/sudo"
-                        chmod +x "$_WRAP_DIR/sudo"
-                        chmod +x "$TMP_EXTRACT/install.sh"
-                        echo "Running PIA installer (will prompt for sudo internally)..."
-                        set +e
-                        "$TMP_EXTRACT/install.sh" --skip-service --force-architecture
-                        _pia_rc=$?
-                        set -e
-                        rm -f "$TMP_INSTALLER"; rm -rf "$TMP_EXTRACT" "$_WRAP_DIR" 2>/dev/null || true
-                        trap - EXIT
-                        echo ""
-                        if [ -x "/opt/piavpn/bin/pia-daemon" ]; then
-                            INSTALLED=true
-                            echo "PIA installed. Use option 3 to start the daemon."
-                        else
-                            echo "warning: installer exited with code $_pia_rc and PIA does not appear"
-                            echo "         to be installed. Check the output above."
-                        fi
-                    fi
-                fi
-                ;;
-
-            2|uninstall)
-                UNINSTALLER="/opt/piavpn/bin/pia-uninstall.sh"
-                if ! $INSTALLED || [ ! -x "$UNINSTALLER" ]; then
-                    echo "error: PIA is not installed." >&2
-                else
-                    printf "Remove PIA from this system? [y/N]: "
-                    read -r CONFIRM
-                    case "${CONFIRM,,}" in
-                        y|yes)
-                            /run/wrappers/bin/sudo /run/current-system/sw/bin/bash \
-                                -c 'export PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$PATH"; export NIX_LD_LIBRARY_PATH="/run/current-system/sw/share/nix-ld/lib"; exec /run/current-system/sw/bin/bash "$1"' \
-                                - "$UNINSTALLER"
-                            sudo systemctl stop piavpn 2>/dev/null || true
-                            sudo rm -f /run/systemd/system/piavpn.service
-                            sudo systemctl daemon-reload 2>/dev/null || true
-                            sudo systemctl reset-failed piavpn 2>/dev/null || true
-                            echo "PIA uninstalled."
-                            ;;
-                        *) echo "Aborted." ;;
-                    esac
-                fi
-                ;;
-
-            3|daemon|start)
-                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                ensure_pia_runtime_unit
-                if sudo systemctl start piavpn; then
-                    if systemctl is-active --quiet piavpn; then
-                        echo "PIA daemon started."
-                    else
-                        echo "error: piavpn daemon did not become active. Check option 6 (Status)." >&2
-                    fi
-                else
-                    echo "error: failed to start piavpn. Check option 6 (Status)." >&2
-                    continue
-                fi
-                ;;
-
-            4|connect)
-                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                if ! piactl_cmd connect; then
-                    echo "error: failed to connect. Start daemon first (option 3)." >&2
-                    continue
-                fi
-                echo "Connecting..."
-                sleep 1
-                piactl_cmd get connectionstate || true
-                ;;
-
-            5|disconnect)
-                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                if ! piactl_cmd disconnect; then
-                    echo "error: disconnect command failed." >&2
-                    continue
-                fi
-                echo "Disconnected."
-                ;;
-
-            6|status)
-                echo ""
-                echo "=== piavpn.service ==="
-                systemctl status piavpn --no-pager 2>/dev/null || true
-                echo ""
-                if $INSTALLED; then
-                    echo "=== PIA connection ==="
-                    piactl_cmd get connectionstate || echo "unknown"
-                fi
-                echo ""
-                ;;
-
-            7|regions)
-                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                echo ""
-                piactl_cmd get regions || true
-                echo ""
-                echo "Set region: piactl set region <region-id>"
-                ;;
-
-            8|"kill switch: on"|ks-on)
-                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                if piactl_cmd set killswitch on; then
-                    echo "Kill switch enabled."
-                else
-                    echo "error: failed to enable kill switch." >&2
-                fi
-                ;;
-
-            9|"kill switch: off"|ks-off)
-                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                if piactl_cmd set killswitch off; then
-                    echo "Kill switch disabled."
-                else
-                    echo "error: failed to disable kill switch." >&2
-                fi
-                ;;
-
-            10|"port forwarding: on"|pf-on)
-                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                if piactl_cmd set portforward on; then
-                    echo "Port forwarding enabled."
-                else
-                    echo "error: failed to enable port forwarding." >&2
-                fi
-                ;;
-
-            11|"port forwarding: off"|pf-off)
-                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                if piactl_cmd set portforward off; then
-                    echo "Port forwarding disabled."
-                else
-                    echo "error: failed to disable port forwarding." >&2
-                fi
-                ;;
-
-            12|gui)
-                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                pia_client_cmd &
-                echo "PIA GUI launched."
-                ;;
-
-            13|logs)
-                journalctl -fu piavpn --no-pager
-                ;;
-
-            14|version)
-                $INSTALLED || { echo "error: PIA not installed — choose option 1." >&2; continue; }
-                piactl_cmd --version || true
-                ;;
-
-            q|quit|exit) break ;;
-            *) echo "Invalid choice — enter a number or 'q' to quit." ;;
-        esac
-    done
