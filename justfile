@@ -335,6 +335,33 @@ update:
     # Up uses the same script so behaviour is identical regardless of update path.
     sudo vexos-update
 
+# Update all flake inputs and rebuild unconditionally — no cache-safety check.
+#
+# Use this when:
+#   • just update is blocked (nixpkgs bump requires packages not yet in cache)
+#     and you are willing to wait for a local source compile.
+#   • You want to force-apply all upstream changes regardless of cache state.
+#
+# WARNING: may compile large packages from source (Rust, LLVM, kernels, etc.)
+# and take a long time.  Use just update for the safe default.
+update-all:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    target=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [ -z "$target" ]; then
+        echo "error: /etc/nixos/vexos-variant not found. Run 'just switch' first." >&2
+        exit 1
+    fi
+    echo ""
+    echo "Updating all flake inputs (no cache check)..."
+    sudo nix --extra-experimental-features "nix-command flakes" \
+        flake update --flake path:/etc/nixos
+    echo ""
+    echo "Rebuilding: ${target}"
+    sudo nixos-rebuild switch \
+        --flake path:/etc/nixos#"${target}" \
+        --print-build-logs
+
 # Deploy config changes only — pulls the latest vexos-nix commit from GitHub
 # WITHOUT updating nixpkgs or any other flake input.
 #
