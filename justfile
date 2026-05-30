@@ -407,9 +407,10 @@ upgrade-analysis target_version:
         exit 1
     fi
 
-    # Detect current nixpkgs branch from flake.lock
-    CURRENT=$(jq -r '.nodes | to_entries[] | select(.key == "nixpkgs" or (.key | test("nixpkgs"))) | .value.original.ref // "" | select(startswith("nixos-")) | ltrimstr("nixos-")' \
-        /etc/nixos/flake.lock 2>/dev/null | head -1 || echo "unknown")
+    # Detect current nixpkgs branch from flake.lock — match the exact key
+    # "nixpkgs" so nixpkgs-unstable is not picked up first.
+    CURRENT=$(jq -r '.nodes.nixpkgs.original.ref // "unknown" | ltrimstr("nixos-")' \
+        /etc/nixos/flake.lock 2>/dev/null || echo "unknown")
 
     NIXPKGS_URL="github:NixOS/nixpkgs/nixos-${TARGET}"
     HM_URL="github:nix-community/home-manager/release-${TARGET}"
@@ -452,16 +453,11 @@ upgrade-analysis target_version:
         echo ""
         echo "  ── Evaluation errors ──────────────────────────────────────────"
         echo ""
-        # Show lines that are actually useful — errors, undefined attrs, options
-        ERRORS=$(printf '%s\n' "$DRY_OUTPUT" \
-            | grep -E "(error:|assert failed|undefined variable|infinite recursion|is not of type|has been removed|was renamed|attribute '|option '|warning:)" \
-            || true)
-        if [ -n "$ERRORS" ]; then
-            printf '%s\n' "$ERRORS" | sed 's/^/    /'
-        else
-            # Fallback: show last 20 lines of raw output
-            printf '%s\n' "$DRY_OUTPUT" | tail -20 | sed 's/^/    /'
-        fi
+        # Print the full output — nix errors are multi-line and losing context
+        # makes them impossible to act on.  Strip the sudo password prompt line.
+        printf '%s\n' "$DRY_OUTPUT" \
+            | grep -v '^\[sudo\]' \
+            | sed 's/^/    /'
         echo ""
         echo "  ── What this means ────────────────────────────────────────────"
         echo "  These errors must be fixed in the vexos-nix config before you"
