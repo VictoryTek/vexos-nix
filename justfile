@@ -815,23 +815,78 @@ create-zfs-pool: _require-server-role
 available-services:
     #!/usr/bin/env bash
     _hdr() { printf "\n  \033[1m%s\033[0m\n" "$1"; }
-    _svc() { printf "    %s\n" "$1"; }
+    _svc() { printf "    \033[36m%-22s\033[0m  %s\n" "$1" "$2"; }
     echo ""
     echo "Available server service modules:"
-    _hdr "Books & Reading";            _svc kavita;           _svc komga
-    _hdr "Communications";             _svc matrix-conduit
-    _hdr "Files & Storage";            _svc immich;           _svc nextcloud;       _svc syncthing;       _svc minio;           _svc photoprism
-    _hdr "Gaming";                     _svc papermc
-    _hdr "Infrastructure";             _svc attic;            _svc caddy;            _svc docker;          _svc dockhand;        _svc podman;          _svc nginx;           _svc nginx-proxy-manager;  _svc portainer;  _svc traefik
-    _hdr "Media";                      _svc audiobookshelf;   _svc jellyfin;        _svc navidrome;       _svc plex;            _svc tautulli
-    _hdr "Media Requests & Automation";_svc arr;              _svc jellyseerr;      _svc seerr
-    _hdr "Monitoring & Admin";         _svc nas;             _svc cockpit;          _svc dozzle;          _svc grafana;         _svc loki;            _svc netdata;     _svc prometheus;  _svc scrutiny;  _svc uptime-kuma;  _svc portbook
-    _hdr "Networking & Security";      _svc adguard;          _svc authelia;        _svc headscale;       _svc unbound;         _svc vaultwarden
-    _hdr "Productivity";               _svc code-server;      _svc forgejo;         _svc homepage;        _svc listmonk;        _svc mealie;      _svc paperless;   _svc stirling-pdf
-    _hdr "Remote Access";              _svc rustdesk
-    _hdr "Smart Home & Notifications"; _svc home-assistant;   _svc node-red;        _svc ntfy;            _svc zigbee2mqtt
-    _hdr "AI & Privacy";               _svc kiji-proxy
-    _hdr "Experimental";               _svc proxmox
+    _hdr "Books & Reading"
+    _svc kavita              "Self-hosted manga, comics & book library"
+    _svc komga               "Comic book & manga media server"
+    _hdr "Communications"
+    _svc matrix-conduit      "Lightweight Matrix homeserver (chat protocol)"
+    _hdr "Files & Storage"
+    _svc immich              "Self-hosted photo & video backup"
+    _svc minio               "S3-compatible object storage server"
+    _svc nextcloud           "File sync, sharing & collaboration suite"
+    _svc photoprism          "AI-powered photo management & sharing"
+    _svc syncthing           "Continuous peer-to-peer file synchronisation"
+    _hdr "Gaming"
+    _svc papermc             "High-performance Minecraft Java server"
+    _hdr "Infrastructure"
+    _svc attic               "Self-hosted Nix binary cache server"
+    _svc caddy               "Automatic HTTPS web server & reverse proxy"
+    _svc docker              "Container runtime (Docker Engine)"
+    _svc dockhand            "Web UI for managing Podman containers"
+    _svc nginx               "High-performance HTTP server & reverse proxy"
+    _svc nginx-proxy-manager "Web UI for Nginx reverse proxy & SSL certs"
+    _svc podman              "Rootless OCI container runtime"
+    _svc portainer           "Web UI for managing Docker/Podman stacks"
+    _svc traefik             "Cloud-native edge router & reverse proxy"
+    _hdr "Media"
+    _svc audiobookshelf      "Self-hosted audiobook & podcast server"
+    _svc jellyfin            "Open-source media streaming server"
+    _svc navidrome           "Music streaming server (Subsonic-compatible)"
+    _svc plex                "Personal media library & streaming server"
+    _svc tautulli            "Monitoring & analytics for Plex Media Server"
+    _hdr "Media Requests & Automation"
+    _svc arr                 "*arr suite — Sonarr, Radarr, Lidarr, Prowlarr, SABnzbd"
+    _svc jellyseerr          "Media request manager for Jellyfin"
+    _svc seerr               "Media request manager for Plex (Overseerr)"
+    _hdr "Monitoring & Admin"
+    _svc cockpit             "Web-based Linux server management console"
+    _svc dozzle              "Real-time container log viewer"
+    _svc grafana             "Metrics visualisation & dashboards"
+    _svc loki                "Log aggregation system (pairs with Grafana)"
+    _svc nas                 "Cockpit + NAS plugins (Samba, NFS, ZFS)"
+    _svc netdata             "Real-time performance & health monitoring"
+    _svc portbook            "Quick-access bookmark panel for services"
+    _svc prometheus          "Metrics collection & alerting toolkit"
+    _svc scrutiny            "S.M.A.R.T. disk health monitoring dashboard"
+    _svc uptime-kuma         "Self-hosted uptime & status page monitoring"
+    _hdr "Networking & Security"
+    _svc adguard             "DNS-based ad & tracker blocker"
+    _svc authelia            "Single sign-on & two-factor auth gateway"
+    _svc headscale           "Self-hosted Tailscale-compatible VPN (WireGuard)"
+    _svc unbound             "Validating, recursive, caching DNS resolver"
+    _svc vaultwarden         "Lightweight Bitwarden-compatible password manager"
+    _hdr "Productivity"
+    _svc code-server         "VS Code running in the browser"
+    _svc forgejo             "Self-hosted Git & code collaboration (Gitea fork)"
+    _svc homepage            "Customisable server dashboard & start page"
+    _svc listmonk            "Self-hosted newsletter & mailing list manager"
+    _svc mealie              "Self-hosted recipe manager & meal planner"
+    _svc paperless           "Document scanning, OCR, tagging & archival"
+    _svc stirling-pdf        "Web-based PDF editing & conversion tools"
+    _hdr "Remote Access"
+    _svc rustdesk            "Open-source self-hosted remote desktop server"
+    _hdr "Smart Home & Notifications"
+    _svc home-assistant      "Open-source home automation platform"
+    _svc node-red            "Low-code flow-based automation editor"
+    _svc ntfy                "Simple HTTP-based push notification server"
+    _svc zigbee2mqtt         "Zigbee → MQTT bridge (no proprietary hub needed)"
+    _hdr "AI & Privacy"
+    _svc kiji-proxy          "Privacy-first OpenAI-compatible AI API proxy"
+    _hdr "Experimental"
+    _svc proxmox             "Proxmox VE integration (experimental)"
     echo ""
     echo "Use 'just enable <service>' to enable a module on a server host."
     echo ""
