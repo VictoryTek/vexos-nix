@@ -323,6 +323,29 @@ update:
     echo ""
     echo "Updating to: ${target}"
     echo ""
+
+    # ── VSCode version check ──────────────────────────────────────────────────
+    # Query the Microsoft stable-channel API and compare against the pinned
+    # version in overlays/vscode.nix.  This is notification-only; apply with:
+    #   just update-vscode <VERSION>
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    _flake_dir=$(dirname "$_jf_real")
+    _overlay="$_flake_dir/overlays/vscode.nix"
+    if [ -f "$_overlay" ] && command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+        _pinned=$(grep -oP 'version = "\K[^"]+' "$_overlay" | head -1)
+        _latest=$(curl -fsSL --max-time 5 \
+            "https://update.code.visualstudio.com/api/update/linux-x64/stable/latest" \
+            2>/dev/null | jq -r '.version // empty' 2>/dev/null || echo "")
+        if [ -n "$_pinned" ] && [ -n "$_latest" ]; then
+            if [ "$_pinned" = "$_latest" ]; then
+                echo "VSCode is up to date (${_pinned})"
+            else
+                echo "VSCode update available: ${_pinned} → ${_latest}, run just update-vscode ${_latest} to update"
+            fi
+        fi
+    fi
+    echo ""
+
     # vexos-update (installed by modules/nix.nix) uses three-class miss
     # classification before applying any update:
     #   Class A — NixOS system assembly glue (always local, never blocking).
