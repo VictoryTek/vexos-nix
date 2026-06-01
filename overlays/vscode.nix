@@ -32,5 +32,25 @@ final: prev: {
       # so without this the Nix store path basename would be uninformative.
       name = "vscode-${version}-linux-x64.tar.gz";
     };
+
+    # ── postPatch: fix ripgrep path for VSCode ≥ 1.122.0 ─────────────────────
+    #
+    # VSCode 1.122.0 replaced @vscode/ripgrep with @vscode/ripgrep-universal.
+    # The nixpkgs base postPatch hard-codes the old path:
+    #   resources/app/node_modules/@vscode/ripgrep/bin/rg
+    # which no longer exists in the 1.122.1 tarball.
+    #
+    # The new package's Linux x64 binary is at:
+    #   resources/app/node_modules/@vscode/ripgrep-universal/bin/linux-x64/rg
+    # (accessed after the base postPatch's `asar extract` step, which extracts
+    # the asar — including all unpacked entries — to node_modules/).
+    #
+    # builtins.replaceStrings replaces ALL occurrences (both the `rm` and the
+    # `ln -s` lines) and is a no-op if the old string is absent (forward-safe
+    # once nixpkgs ships a native 1.122.x fix).
+    postPatch = builtins.replaceStrings
+      [ "resources/app/node_modules/@vscode/ripgrep/bin/rg" ]
+      [ "resources/app/node_modules/@vscode/ripgrep-universal/bin/linux-x64/rg" ]
+      (old.postPatch or "");
   });
 }
