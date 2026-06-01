@@ -667,6 +667,106 @@ rollforward:
     sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
     echo "Now on generation: ${next}"
 
+# Pin VSCode to a new version by fetching the tarball hash from Microsoft's
+# update servers, updating overlays/vscode.nix in-place, and rebuilding.
+#
+# Usage:
+#   just update-vscode 1.122.1
+#
+# What it does:
+#   1. Fetches the tarball from update.code.visualstudio.com to get its hash
+#   2. Converts the Nix base32 hash to SRI format (sha256-<base64>)
+#   3. Updates `version` and `hash` in overlays/vscode.nix with sed
+#   4. Runs nixos-rebuild switch to apply immediately (reads target from
+#      /etc/nixos/vexos-variant — falls back to a manual switch prompt if absent)
+#
+# Requires: nix (with nix-command + flakes enabled), run on a Linux host.
+update-vscode version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v nix >/dev/null 2>&1; then
+        echo "error: 'nix' command not found. Run this recipe on a Nix-enabled Linux host." >&2
+        exit 127
+    fi
+
+    VERSION="{{version}}"
+
+    if [ -z "$VERSION" ]; then
+        echo "error: version argument is required." >&2
+        echo "Usage: just update-vscode 1.122.1" >&2
+        exit 1
+    fi
+
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    FLAKE_DIR=$(dirname "$_jf_real")
+    OVERLAY_FILE="$FLAKE_DIR/overlays/vscode.nix"
+
+    if [ ! -f "$OVERLAY_FILE" ]; then
+        echo "error: $OVERLAY_FILE not found." >&2
+        exit 1
+    fi
+
+    DOWNLOAD_URL="https://update.code.visualstudio.com/${VERSION}/linux-x64/stable"
+
+    echo ""
+    echo "Fetching VSCode ${VERSION} tarball hash..."
+    echo "  URL: ${DOWNLOAD_URL}"
+    echo ""
+
+    # nix-prefetch-url returns the hash in Nix base32 format.
+    RAW_HASH=$(nix-prefetch-url "$DOWNLOAD_URL" 2>/dev/null)
+
+    if [ -z "$RAW_HASH" ]; then
+        echo "error: nix-prefetch-url returned an empty hash." >&2
+        echo "  Verify the version exists: $DOWNLOAD_URL" >&2
+        exit 1
+    fi
+
+    # Convert Nix base32 → SRI format (sha256-<base64>) for use in fetchurl hash = "...".
+    SRI_HASH=$(nix hash to-sri --type sha256 "$RAW_HASH")
+
+    echo "  Nix base32: ${RAW_HASH}"
+    echo "  SRI:        ${SRI_HASH}"
+    echo ""
+
+    # Update version = "..." in overlays/vscode.nix
+    sed -i "s|version = \"[^\"]*\"|version = \"${VERSION}\"|" "$OVERLAY_FILE"
+
+    # Update hash = "sha256-..." in overlays/vscode.nix
+    # The SRI hash contains base64 chars (a-z A-Z 0-9 + / =), none of which
+    # conflict with the | sed delimiter.
+    sed -i "s|hash = \"sha256-[^\"]*\"|hash = \"${SRI_HASH}\"|" "$OVERLAY_FILE"
+
+    echo "Updated $OVERLAY_FILE:"
+    grep -E '^\s+(version|hash) = ' "$OVERLAY_FILE"
+    echo ""
+
+    # Auto-switch if this is a NixOS host with a known variant.
+    TARGET=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [ -z "$TARGET" ]; then
+        echo "Note: /etc/nixos/vexos-variant not found — skipping auto-switch."
+        echo "      Run 'just switch' manually to apply."
+        exit 0
+    fi
+
+    echo "Switching to: ${TARGET}"
+    echo ""
+    if ! sudo nixos-rebuild switch --impure --flake "path:${FLAKE_DIR}#${TARGET}"; then
+        _rc=$?
+        if [ $_rc -eq 4 ]; then
+            echo ""
+            echo "Note: nixos-rebuild exited $_rc — one or more units could not restart."
+            echo "      The configuration has been applied. Reboot to complete cleanly."
+        else
+            exit $_rc
+        fi
+    fi
+
+    echo ""
+    echo "VSCode ${VERSION} is live."
+    echo "Commit overlays/vscode.nix when you are happy with the result."
+
 # Reboot the system immediately.
 reboot:
     sudo systemctl reboot
