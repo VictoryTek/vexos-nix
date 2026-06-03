@@ -147,24 +147,128 @@ when adding or modifying modules.
 
 ## Standard Workflow
 
-Every user request MUST follow this workflow in full:
+Every user request MUST follow this workflow:
 
 ```
-USER REQUEST
-    ↓
-PHASE 1: Research & Specification
-    ↓
-PHASE 2: Implementation
-    ↓
-PHASE 3: Review & Quality Assurance
-    ↓
-Issues found? ──YES──→ PHASE 4: Refinement (max 2 cycles)
-    │                        ↓
-    NO               PHASE 5: Re-Review
-    │                        ↓
-    └──────────────→ PHASE 6: Preflight Validation (final gate)
-                             ↓
-                     PHASE 7: Commit Message & Delivery
+┌─────────────────────────────────────────────────────────────┐
+│ USER REQUEST                                                │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│ PHASE 1: RESEARCH & SPECIFICATION                                   │
+│ • Reads and analyzes relevant codebase files                        │
+│ • Researches minimum 6 credible sources                             │
+│ • Designs architecture and implementation approach                  │
+│ • Documents findings in:                                            │
+│   .github/docs/subagent_docs/[FEATURE_NAME]_spec.md                 │
+│ • Returns: summary + spec file path                                 │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 2: IMPLEMENTATION                                     │
+│ • Reads spec from:                                          │
+│   .github/docs/subagent_docs/[FEATURE_NAME]_spec.md         │
+│ • Implements all changes strictly per specification         │
+│ • Ensures build compatibility                               │
+│ • Returns: summary + list of modified file paths            │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 3: REVIEW & QUALITY ASSURANCE                         │
+│ • Reviews implemented code at specified paths               │
+│ • Validates: best practices, consistency, maintainability   │
+│ • Runs build + tests (basic validation)                     │
+│ • Documents review in:                                      │
+│   .github/docs/subagent_docs/[FEATURE_NAME]_review.md       │
+│ • Returns: findings + PASS / NEEDS_REFINEMENT               │
+└──────────────────────────┬──────────────────────────────────┘
+                           ↓
+                  ┌────────┴────────────┐
+                  │ Issues Found?       │
+                  │ (Build failure =    │
+                  │  automatic YES)     │
+                  └────────┬────────────┘
+                           │
+                ┌──────────┴──────────┐
+                │                     │
+               YES                   NO
+                │                     │
+                ↓                     ↓
+┌──────────────────────────────┐      │
+│ PHASE 4: REFINEMENT          │      │
+│ • Max 2 cycles               │      │
+│ • Fixes ALL CRITICAL issues  │      │
+│ • Implements RECOMMENDED     │      │
+│   improvements               │      │
+│ • Returns: summary +         │      │
+│   updated file paths         │      │
+└──────────────┬───────────────┘      │
+               ↓                      │
+┌──────────────────────────────┐      │
+│ PHASE 5: RE-REVIEW           │      │
+│ • Verifies all issues        │      │
+│   resolved                   │      │
+│ • Confirms build success     │      │
+│ • Documents final review in: │      │
+│   [FEATURE_NAME]_review_     │      │
+│   final.md                   │      │
+│ • Returns: APPROVED /        │      │
+│   NEEDS_FURTHER_REFINEMENT   │      │
+└──────────────┬───────────────┘      │
+               ↓                      │
+      ┌────────┴──────────┐           │
+      │ Approved?         │           │
+      └────────┬──────────┘           │
+               │                      │
+     ┌─────────┴──────────┐           │
+     │                    │           │
+    NO                   YES          │
+     │                    │           │
+     ↓                    └─────┬─────┘
+(Return to                      ↓
+ Phase 4)      ┌─────────────────────────────────────────────────────┐
+               │ PHASE 6: PREFLIGHT VALIDATION (FINAL GATE)          │
+               │                                                     │
+               │ Step 1: Detect preflight script                     │
+               │   • scripts/preflight.sh                            │
+               │   • scripts/preflight.ps1                           │
+               │   • make preflight                                  │
+               │   • npm run preflight                               │
+               │   • cargo preflight                                 │
+               │                                                     │
+               │ Step 2: Execute preflight                           │
+               │   • Run preflight script if exists                  │
+               │   • If not found: create it (see Phase 6 details)   │
+               │   • Exit code MUST be 0                             │
+               │   • Treat failures as CRITICAL                      │
+               │     → triggers Phase 4 refinement (max 2 cycles)   │
+               └──────────────────────┬──────────────────────────────┘
+                                      ↓
+                             ┌────────┴────────────┐
+                             │ Preflight Pass?     │
+                             │ (Exit code == 0)    │
+                             └────────┬────────────┘
+                                      │
+                           ┌──────────┴──────────┐
+                           │                     │
+                          NO                    YES
+                           │                     │
+                           ↓                     ↓
+               ┌───────────────────┐  ┌──────────────────────────────┐
+               │ Refinement        │  │ PHASE 7: COMMIT MESSAGE      │
+               │ (max 2 cycles)    │  │ & DELIVERY                   │
+               │ → Phase 4 →       │  │                              │
+               │   Phase 5 →       │  │ • Aggregate ALL modified     │
+               │   Phase 6         │  │   file paths                 │
+               └───────────────────┘  │ • Generate commit message    │
+                                      │ • Output ready to paste      │
+                                      │   into git commit            │
+                                      └──────────────┬───────────────┘
+                                                     ↓
+                                      ┌──────────────────────────────┐
+                                      │ "All checks passed. Code is  │
+                                      │  ready to push to GitHub."   │
+                                      └──────────────────────────────┘
 ```
 
 ---
