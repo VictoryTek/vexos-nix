@@ -1,2 +1,6 @@
 # Screenshots
 screenshots/
+
+# Nix build results
+result
+result-*
