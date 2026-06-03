@@ -15,8 +15,7 @@
   environment.systemPackages = [
 
     # ── Editor ────────────────────────────────────────────────────────────────
-    # NOTE: vscode-fhs is managed by Home Manager in home-desktop.nix
-    # (programs.vscode) so it lives in the user profile only, not system-wide.
+    pkgs.unstable.vscode-fhs                        # VS Code in FHS env (required on NixOS)
 
     # ── Python ────────────────────────────────────────────────────────────────
     pkgs.python3                                  # CPython interpreter

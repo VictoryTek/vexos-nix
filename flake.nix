@@ -47,15 +47,13 @@
 
     # Inline NixOS module: exposes pkgs.unstable.* sourced from nixpkgs-unstable.
     # Used in modules/gnome.nix to pin GNOME application tools to latest.
-    # The vscode overlay (overlays/vscode.nix) is applied via .extend so that
-    # pkgs.unstable.vscode and pkgs.unstable.vscode-fhs use the pinned version.
     unstableOverlayModule = {
       nixpkgs.overlays = [
         (final: prev: {
-          unstable = (import nixpkgs-unstable {
+          unstable = import nixpkgs-unstable {
             inherit (final) config;
             inherit (final.stdenv.hostPlatform) system;
-          }).extend (import ./overlays/vscode.nix);
+          };
         })
       ];
     };
@@ -279,10 +277,10 @@
       };
       nixpkgs.overlays = [
         (final: prev: {
-          unstable = (import nixpkgs-unstable {
+          unstable = import nixpkgs-unstable {
             inherit (final) config;
             inherit (final.stdenv.hostPlatform) system;
-          }).extend (import ./overlays/vscode.nix);
+          };
         })
         (import ./pkgs)
       ];
