@@ -329,6 +329,16 @@ if [ -f /etc/nixos/flake.nix ] && grep -qF '"XXXXXXXX"' /etc/nixos/flake.nix 2>/
   echo -e "  ${GREEN}✓ hostId set to ${HOST_ID}.${RESET}"
 fi
 
+# ---------- Flake lock refresh -----------------------------------------------
+# Always resolve vexos-nix to the latest HEAD before dry-building.
+# A stale /etc/nixos/flake.lock from a previous (failed) install attempt would
+# otherwise pin the flake to an old revision, potentially pulling in packages
+# that have since been removed from the repo.
+echo ""
+echo -e "${CYAN}Refreshing flake inputs...${RESET}"
+sudo nix --extra-experimental-features "nix-command flakes" \
+  flake update --flake /etc/nixos
+
 # ---------- Build & switch ---------------------------------------------------
 # Cache check: dry-build first to see what would need to be compiled locally.
 # Filters out NixOS system-level derivations that are always built locally and
