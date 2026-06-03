@@ -75,14 +75,8 @@
       # TypeScript server memory cap
       "typescript.tsserver.maxTsServerMemory"          = 4096;
       "typescript.preferences.includePackageJsonAutoImports" = "off";
-      # Extension host
-      "extensions.experimental.affinity" = {
-        "GitHub.copilot-chat" = 1;
-      };
       # Disable crash recovery accumulation
       "workbench.enableExperiments" = false;
-      # Run Copilot tool calls in the visible terminal panel, not hidden sessions
-      "chat.tools.terminal.outputLocation" = "terminal";
       # ── rust-analyzer memory limits ───────────────────────────────────────
       # RA_MEMORY_LIMIT (MB): instructs rust-analyzer to evict its salsa cache
       # when it exceeds 4 GB, preventing OOM on large workspaces.
