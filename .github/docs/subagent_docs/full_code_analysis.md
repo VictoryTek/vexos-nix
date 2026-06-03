@@ -686,161 +686,74 @@ users.users.${config.vexos.user.name}.openssh.authorizedKeys.keyFiles =
   lib.mkIf (builtins.pathExists ../authorized_keys) [ ../authorized_keys ];
 ```
 
-### [SECURITY] `users.users.nimda.initialPassword = "vexos"` shipped in stateless config
-**File:** [configuration-stateless.nix](configuration-stateless.nix#L28-L36)
+### ✅ FIXED — [SECURITY] `users.users.nimda.initialPassword = "vexos"` shipped in stateless config
+**File:** [configuration-stateless.nix](configuration-stateless.nix)
 **Why:** Even a "fallback" plaintext default password committed in git is a high-severity finding in any secret scan. The override file mechanism is good but the fallback must be a hash, not plaintext, and ideally a generated one-shot.
-**Fix:** Use a strong random hash, or require `stateless-setup.sh` to write the override before the first build:
-```nix
-# configuration-stateless.nix — replace plaintext fallback with hash
-users.users.nimda.hashedPassword =
-  lib.mkDefault "$y$j9T$INVALID_GENERATE_VIA_mkpasswd";  # forces operator to regenerate
-assertions = [{
-  assertion = config.users.users.nimda.hashedPassword != "$y$j9T$INVALID_GENERATE_VIA_mkpasswd";
-  message = "Run scripts/stateless-setup.sh, or set users.users.nimda.hashedPassword before building.";
-}];
-```
+**Resolution:** `configuration-stateless.nix` now uses `users.users.${config.vexos.user.name}.hashedPassword = lib.mkDefault "!"`. The `"!"` shadow hash means no password is accepted — the account is locked by default. `stateless-setup.sh` and `migrate-to-stateless.sh` both write a real password hash to the persisted override file before the first build. No plaintext password exists in the repo.
 
-### [SECURITY] `services.nextcloud.config.adminpassFile = "/etc/nixos/secrets/nextcloud-admin-pass"` — plaintext file
-**File:** [modules/server/nextcloud.nix](modules/server/nextcloud.nix#L19-L28), [modules/server/minio.nix](modules/server/minio.nix#L33-L37), [modules/server/photoprism.nix](modules/server/photoprism.nix#L21-L26), [modules/server/attic.nix](modules/server/attic.nix#L31-L33)
+### ✅ FIXED — [SECURITY] `services.nextcloud.config.adminpassFile = "/etc/nixos/secrets/nextcloud-admin-pass"` — plaintext file
+**File:** [modules/server/nextcloud.nix](modules/server/nextcloud.nix), [modules/server/minio.nix](modules/server/minio.nix), [modules/server/photoprism.nix](modules/server/photoprism.nix), [modules/server/attic.nix](modules/server/attic.nix)
 **Why:** Project does not use `agenix`, `sops-nix`, or `systemd-creds`. Secrets sit at `/etc/nixos/secrets/` with no enforced permissions. World-readability is operator-dependent.
-**Fix:** Adopt `sops-nix` (or at minimum, document and enforce mode 0600 + root:root).
-```nix
-# new modules/secrets.nix
-systemd.tmpfiles.rules = [
-  "d /etc/nixos/secrets 0700 root root -"
-];
-```
-And recommend:
-```nix
-inputs.sops-nix.url = "github:Mic92/sops-nix";
-inputs.sops-nix.inputs.nixpkgs.follows = "nixpkgs";
-```
+**Resolution:** `modules/secrets.nix` was created and imported by `configuration-server.nix` and `configuration-headless-server.nix`. It enforces `systemd.tmpfiles.rules = [ "d /etc/nixos/secrets 0700 root root -" ]` at every boot. All four affected server modules reference the module header comment pointing to `secrets.nix`. Full sops-nix adoption remains a deferred recommendation (see Section 7).
 
-### [SECURITY] `services.nextcloud.https = false`
-**File:** [modules/server/nextcloud.nix](modules/server/nextcloud.nix#L24-L28)
+### ✅ FIXED — [SECURITY] `services.nextcloud.https = false`
+**File:** [modules/server/nextcloud.nix](modules/server/nextcloud.nix)
 **Why:** `firewall.allowedTCPPorts = [ 80 ]` exposes plain HTTP. Nextcloud over plaintext on the LAN is a known-bad practice (passwords, OAuth tokens in clear).
-**Fix:** Default to https = true behind a Caddy/Nginx reverse proxy and refuse to start otherwise.
-```nix
-services.nextcloud = {
-  https = true;
-  hostName = cfg.hostName;
-  config.adminpassFile = "/run/secrets/nextcloud-admin-pass";
-};
-services.caddy.virtualHosts.${cfg.hostName}.extraConfig =
-  "reverse_proxy http://localhost:80";
-```
+**Resolution:** `modules/server/nextcloud.nix` defaults to `https = true`. When `https = false` and `allowInsecureHttp = false` (the new default), nginx binds to loopback only (`127.0.0.1` / `::1`) for safe same-host reverse proxy TLS termination. The firewall only opens port 80 in HTTPS mode (redirect path) or when `allowInsecureHttp = true` is explicitly set. Module header documents all three modes with TLS setup instructions.
 
 ### ✅ FIXED — [SECURITY] `services.code-server.host = "0.0.0.0"` with auth=none default
 See Section 5 fix — also a security finding.
 **Resolution:** See Section 5 fix above.
 
-### [SECURITY] `services.traefik.api.insecure = true` exposes the dashboard on `cfg.dashboardPort`
-**File:** [modules/server/traefik.nix](modules/server/traefik.nix#L33-L43)
+### ✅ FIXED — [SECURITY] `services.traefik.api.insecure = true` exposes the dashboard on `cfg.dashboardPort`
+**File:** [modules/server/traefik.nix](modules/server/traefik.nix)
 **Why:** Traefik dashboard with `insecure = true` is read+write API access. Documented but the firewall is opened by the same module.
-**Fix:**
-```nix
-api = {
-  dashboard = true;
-  insecure = lib.mkDefault false;
-};
-# Drop dashboardPort from allowedTCPPorts unless insecure = true.
-networking.firewall.allowedTCPPorts = [ cfg.httpPort cfg.httpsPort ]
-  ++ lib.optional config.services.traefik.staticConfigOptions.api.insecure cfg.dashboardPort;
-```
+**Resolution:** `modules/server/traefik.nix` exposes a `vexos.server.traefik.insecureDashboard` option (default `false`). The dashboard `entryPoint` and firewall port for `dashboardPort` are only added when `insecureDashboard = true`. Module header documents the security warning and recommends basic-auth middleware for permanent access.
 
-### [SECURITY] `services.adguardhome.dns.bind_hosts = [ "0.0.0.0" ]` + `firewall.allowedTCPPorts = [ 53 ]`
-**File:** [modules/server/adguard.nix](modules/server/adguard.nix#L18-L33)
+### ✅ FIXED — [SECURITY] `services.adguardhome.dns.bind_hosts = [ "0.0.0.0" ]` + `firewall.allowedTCPPorts = [ 53 ]`
+**File:** [modules/server/adguard.nix](modules/server/adguard.nix)
 **Why:** Open recursive DNS resolver on the WAN side if the host is dual-homed → can be enrolled in DNS amplification attacks. Bind to LAN/loopback by default.
-**Fix:**
-```nix
-settings.dns = {
-  bind_hosts = lib.mkDefault [ "127.0.0.1" "::1" ];
-  port = 53;
-};
-networking.firewall.interfaces."lan".allowedUDPPorts = [ 53 ];   # require operator to opt-in to LAN exposure
-```
+**Resolution:** `modules/server/adguard.nix` exposes `vexos.server.adguard.dnsBindHosts` (default `[ "127.0.0.1" "::1" ]`) and `openDnsFirewall` (default `false`). DNS ports 53 TCP/UDP are only opened when the operator explicitly enables `openDnsFirewall = true`. Module header documents how to expose on the LAN and recommends per-interface scoping.
 
-### [SECURITY] `services.syncthing.guiAddress = "0.0.0.0:8384"` without password
-**File:** [modules/server/syncthing.nix](modules/server/syncthing.nix#L13-L21)
+### ✅ FIXED — [SECURITY] `services.syncthing.guiAddress = "0.0.0.0:8384"` without password
+**File:** [modules/server/syncthing.nix](modules/server/syncthing.nix)
 **Why:** Default Syncthing GUI requires no auth on first start; operator must browse to it and set a password before binding to 0.0.0.0. Module both binds to 0.0.0.0 *and* opens the firewall.
-**Fix:**
-```nix
-services.syncthing = {
-  guiAddress = lib.mkDefault "127.0.0.1:8384";   # tunnel via SSH or reverse-proxy with auth
-};
-```
+**Resolution:** `modules/server/syncthing.nix` defaults `guiAddress` to `"127.0.0.1:8384"` and `openGuiFirewall` to `false`. Module header documents SSH port-forwarding access and warns that a GUI password must be set before enabling LAN exposure.
 
-### [SECURITY] `services.vaultwarden.config.SIGNUPS_ALLOWED = false;` is good — but no admin token, no domain
-**File:** [modules/server/vaultwarden.nix](modules/server/vaultwarden.nix#L20-L29)
+### ✅ FIXED — [SECURITY] `services.vaultwarden.config.SIGNUPS_ALLOWED = false;` is good — but no admin token, no domain
+**File:** [modules/server/vaultwarden.nix](modules/server/vaultwarden.nix)
 **Why:** Without `DOMAIN`, the WebSocket and email URLs are wrong. Without `ADMIN_TOKEN`, the admin panel is unreachable; OK if intentional, but document.
-**Fix:**
-```nix
-services.vaultwarden.config = {
-  ROCKET_PORT = cfg.port;
-  ROCKET_ADDRESS = lib.mkDefault "127.0.0.1";
-  SIGNUPS_ALLOWED = false;
-  DOMAIN = lib.mkDefault "https://vault.example.com";
-};
-services.vaultwarden.environmentFile = "/run/secrets/vaultwarden-env";  # ADMIN_TOKEN here
-```
+**Resolution:** `modules/server/vaultwarden.nix` now sets `ROCKET_ADDRESS = "127.0.0.1"` (loopback-only), exposes a `vexos.server.vaultwarden.domain` option, and adds an assertion that the domain must be changed from the placeholder value before the module will evaluate. `ADMIN_TOKEN` via `environmentFile` is documented in the module header. `openFirewall` defaults to `false`.
 
-### [SECURITY] Cockpit `openFirewall = true` + Samba `openFirewall = true` + NFS `2049 + 111`
-**File:** [modules/server/cockpit.nix](modules/server/cockpit.nix#L78-L143)
+### ✅ FIXED — [SECURITY] Cockpit `openFirewall = true` + Samba `openFirewall = true` + NFS `2049 + 111`
+**File:** [modules/server/cockpit.nix](modules/server/cockpit.nix), [modules/security-server.nix](modules/security-server.nix)
 **Why:** Combined surface with no fail2ban / sshguard / per-interface firewall. AppArmor is enabled but there are no Cockpit-specific profiles.
-**Fix:**
-```nix
-# additional hardening
-services.fail2ban = {
-  enable = true;
-  jails.cockpit = ''
-    enabled = true
-    filter  = cockpit
-    port    = 9090
-    maxretry = 3
-  '';
-};
-```
+**Resolution:** `modules/security-server.nix` (imported by both server roles) enables `services.fail2ban` with a `cockpit` jail (port 9090, maxretry 5) and a `recidive` jail (1-week escalating ban for repeat offenders across all jails). SSH brute-force is covered automatically by NixOS when both `services.fail2ban` and `services.openssh` are enabled.
 
-### [SECURITY] `wineWowPackages.stagingFull` and `proton-ge-bin` install setuid/setgid wrappers when run as system packages
+### ⚠️ N/A — [SECURITY] `wineWowPackages.stagingFull` and `proton-ge-bin` install setuid/setgid wrappers when run as system packages
 **File:** [modules/gaming.nix](modules/gaming.nix#L46-L53)
 **Why:** Acceptable for desktop role, but flag — desktop role disables stateless's `users.mutableUsers = false`, so a wine prefix can persist privilege escalation paths. AppArmor's enforce mode applies.
-**Fix:** No change required, but add `security.apparmor.policies."usr.bin.wineserver" = "complain";` baseline for diagnosis.
+**Fix:** No change required. AppArmor enforce mode on the desktop role is the mitigation. The optional `security.apparmor.policies."usr.bin.wineserver" = "complain"` is a future diagnostic aid, not a correctness fix.
 
-### [SECURITY] `nix.settings.trusted-users = [ "root" "@wheel" ]`
+### ⚠️ N/A — [SECURITY] `nix.settings.trusted-users = [ "root" "@wheel" ]`
 **File:** [modules/nix.nix](modules/nix.nix#L9-L11)
 **Why:** Combined with allowed-substituters configurable per-user, any wheel user can substitute from arbitrary caches and pull derivations. Stateless mitigates with mutableUsers=false; non-stateless does not. Acceptable in single-operator scenarios but should be called out.
-**Fix:** Document and consider a per-role override for multi-tenant servers.
+**Fix:** No code change — single-operator project. Multi-tenant server operators can add a per-role override in their host config.
 
-### [SECURITY] Audit ruleset is minimal
-**File:** [modules/security-server.nix](modules/security-server.nix#L21-L34)
+### ✅ FIXED — [SECURITY] Audit ruleset is minimal
+**File:** [modules/security-server.nix](modules/security-server.nix)
 **Why:** Good baseline. Add execve, mount, module-load watches per CIS NixOS-aligned recommendations.
-**Fix:**
-```nix
-security.audit.rules = [
-  "-w /etc/apparmor.d/ -p wa -k apparmor_policy"
-  "-a always,exit -F arch=b64 -S adjtimex,settimeofday -k time_change"
-  "-a always,exit -F arch=b64 -S execve -k exec"
-  "-a always,exit -F arch=b64 -S mount -S umount2 -k mounts"
-  "-a always,exit -F arch=b64 -S init_module -S delete_module -S finit_module -k modules"
-  "-w /etc/sudoers -p wa -k sudoers"
-  "-w /etc/ssh/sshd_config -p wa -k sshd_config"
-];
-```
+**Resolution:** `modules/security-server.nix` was extended with the full CIS NixOS-aligned ruleset: AppArmor policy watches, time-change syscalls, `execve`, mount/umount2, kernel module load/unload, sudoers and sshd_config write watches.
 
-### [SECURITY] No `Restart=on-failure` on critical services such as `services.openssh`, `services.tailscale`
-**File:** All `network.nix`, server modules
+### ✅ FIXED — [SECURITY] No `Restart=on-failure` on critical services such as `services.openssh`, `services.tailscale`
+**File:** [modules/network.nix](modules/network.nix)
 **Why:** NixOS-set systemd units default to `Restart=on-failure` for openssh and tailscale upstream — verify; if true this is a non-issue. Marked as **needs verification** because it depends on the pinned nixpkgs revision.
+**Resolution:** Verified via `nix eval .#nixosConfigurations.vexos-headless-server-amd.config.systemd.services.sshd.serviceConfig.Restart` → `"always"` (nixpkgs sets this). `tailscaled` has an explicit `systemd.services.tailscaled.serviceConfig.Restart = "on-failure"` in `modules/network.nix`. Both services restart automatically on failure.
 
-### [RELIABILITY] `flatpak-install-apps.service` writes `0` exit on failure
-**File:** [modules/flatpak.nix](modules/flatpak.nix#L139-L155)
+### ✅ FIXED — [RELIABILITY] `flatpak-install-apps.service` writes `0` exit on failure
+**File:** [modules/flatpak.nix](modules/flatpak.nix)
 **Why:** Comment explains intent (avoid breaking nixos-rebuild). However, this means a permanently broken app entry will silently retry forever with no operator-visible signal. Surface a journald warning *and* a tmpfile so monitoring can catch it.
-**Fix:**
-```bash
-if [ "$FAILED" -ne 0 ]; then
-  echo "flatpak: one or more apps failed — see journalctl -u flatpak-install-apps"
-  date -u +%FT%TZ > /var/lib/flatpak/.last-failed-install
-fi
-```
+**Resolution:** `modules/flatpak.nix` already writes `date -u +%FT%TZ > /var/lib/flatpak/.last-failed-install` and prints `"flatpak: one or more apps failed — see journalctl -u flatpak-install-apps"` to the journal when any install fails, while still exiting 0 to avoid failing `nixos-rebuild switch`.
 
 ---
 
@@ -880,8 +793,8 @@ nix.settings.trusted-public-keys = [
 ### [RECOMMENDATION] Push Cachix or `attic-watch-store` push hook to publish `pkgs/vexos.*` automatically
 **Why:** Same problem from the producer side. A simple systemd path unit on the build server can mirror new store paths to the cache.
 
-### [RECOMMENDATION] Promote `network.nix` static IP profile from commented to optional
-**File:** [modules/network.nix](modules/network.nix#L77-L96)
+### ✅ FIXED — [RECOMMENDATION] Promote `network.nix` static IP profile from commented to optional
+**File:** [modules/network.nix](modules/network.nix)
 **Why:** Server roles repeatedly need static IPs; the commented block is the right approach but every operator copies it manually.
 **Fix:**
 ```nix
@@ -922,8 +835,9 @@ services.snapper.configs.root = {
 };
 ```
 
-### [RECOMMENDATION] Add `fail2ban` (or `sshguard`) since SSH is universally exposed
+### ✅ FIXED — [RECOMMENDATION] Add `fail2ban` (or `sshguard`) since SSH is universally exposed
 **Why:** With password auth currently enabled by default and the firewall opening port 22 on every role, a network-facing host gets brute-forced. Pair with the Section 6 SSH hardening.
+**Resolution:** `modules/security-server.nix` enables `services.fail2ban` with `maxretry = 5`, `bantime = "1h"`, a `cockpit` jail, and a `recidive` escalating-ban jail. NixOS auto-enables the sshd jail when both fail2ban and openssh are active. Desktop/stateless/HTPC roles do not import `security-server.nix` as they are not expected to be internet-facing management hosts.
 **Fix:**
 ```nix
 # modules/security.nix
@@ -941,47 +855,34 @@ services.fail2ban = {
 ### [RECOMMENDATION] Adopt `nixos-anywhere` for first-boot provisioning of stateless / server roles
 **Why:** Current `scripts/install.sh` is interactive; a declarative bootstrap reduces the documented gap between disko (`template/stateless-disko.nix`) and the eventual nixos-install. Saves a significant amount of code in `scripts/stateless-setup.sh` and `scripts/migrate-to-stateless.sh`.
 
-### [RECOMMENDATION] Introduce `vexos.user.*` option module + refactor hardcoded `nimda`
+### ✅ FIXED — [RECOMMENDATION] Introduce `vexos.user.*` option module + refactor hardcoded `nimda`
 **Why:** Single largest cleanup item. Pairs with Section 4 fix.
+**Resolution:** Implemented as part of the Section 4 username refactor. `modules/users.nix` defines `options.vexos.user.name` (default `"nimda"`). All modules that previously hardcoded `"nimda"` now reference `config.vexos.user.name`.
 
 ### [RECOMMENDATION] Add Plymouth logo deployment per role rather than re-using `server` for `headless-server`
 **Why:** Headless servers boot without a display so plymouth.theme matters less, but the asset duplication trick in `branding.nix` (`assetRole`) is a workaround. Either keep and document or split.
 
-### [RECOMMENDATION] Add a tracked `wallpapers/headless-server/` placeholder to make the `assetRole` mapping explicit
+### ✅ FIXED — [RECOMMENDATION] Add a tracked `wallpapers/headless-server/` placeholder to make the `assetRole` mapping explicit
 **Why:** Matches the convention of every other role.
+**Resolution:** Created `wallpapers/headless-server/.gitkeep` so the directory appears in the repo tree alongside `desktop/`, `htpc/`, `server/`, and `stateless/`.
 
 ### [RECOMMENDATION] Consider `disko` for all roles (not just stateless)
 **Why:** Server installs would benefit from declarative ZFS pool layout in addition to the current imperative `scripts/create-zfs-pool.sh`. Reuses the existing pattern.
 
-### [RECOMMENDATION] Migrate `scripts/preflight.sh` Stage 7 secret scan to `gitleaks`
+### ✅ FIXED — [RECOMMENDATION] Migrate `scripts/preflight.sh` Stage 7 secret scan to `gitleaks`
 **Why:** Bash regex secret scans miss base64-encoded keys, JWT tokens, and structured envs. `gitleaks detect --no-banner --redact` catches more, runs in <2 s on this repo, and is itself a `nixpkgs` package.
-```bash
-# scripts/preflight.sh — Stage 7 replacement
-if command -v gitleaks &>/dev/null; then
-  gitleaks detect --source . --no-banner --redact --exit-code 1 || EXIT_CODE=1
-fi
-```
+**Resolution:** Added stage `7e` inside Check 7 of `scripts/preflight.sh`. Runs `gitleaks detect --source . --no-banner --redact --exit-code 1` when gitleaks is available; degrades to WARN (not FAIL) when the tool is absent so CI environments without gitleaks are not blocked.
 
 ### [RECOMMENDATION] Add `systemd-boot.consoleMode = "max"` + secure-boot via `lanzaboote`
 **Why:** Project already uses systemd-boot; lanzaboote gives signed kernels and SBAT-aware boot. Optional, but mature.
 
-### [RECOMMENDATION] Add `services.smartd` alongside or instead of Scrutiny
+### ✅ FIXED — [RECOMMENDATION] Add `services.smartd` alongside or instead of Scrutiny
 **Why:** Scrutiny's collector is a wrapper over smartmontools; on a host that already runs Scrutiny, `services.smartd.enable = true` provides journald-visible health without an external UI.
+**Resolution:** Added `vexos.server.scrutiny.enableSmartd` bool option (default `true`) to `modules/server/scrutiny.nix`. When enabled, sets `services.smartd.enable = lib.mkDefault true` alongside the Scrutiny collector. Hosts that manage smartd separately or run on VMs can opt out with `enableSmartd = false`.
 
-### [RECOMMENDATION] Add Home Manager `programs.git` configuration
+### ✅ FIXED — [RECOMMENDATION] Add Home Manager `programs.git` configuration
 **Why:** `git` is installed system-wide but no user-level identity/aliases are managed. Trivial Home Manager module.
-```nix
-programs.git = {
-  enable = true;
-  userName  = lib.mkDefault "nimda";
-  userEmail = lib.mkDefault "nimda@vexos";
-  extraConfig = {
-    init.defaultBranch = "main";
-    pull.rebase = true;
-    push.autoSetupRemote = true;
-  };
-};
-```
+**Resolution:** Added `programs.git` to `home/bash-common.nix` (imported by all six home files). Uses `settings.user.name = lib.mkDefault osConfig.vexos.user.name` and `settings.user.email = lib.mkDefault ""` (blank email forces operator to fill in). Includes `init.defaultBranch = "main"`, `pull.rebase = true`, `push.autoSetupRemote = true`. Uses the current HM `settings` API (deprecated `userName`/`userEmail`/`extraConfig` keys avoided).
 
 ---
 

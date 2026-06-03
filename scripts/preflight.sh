@@ -368,6 +368,20 @@ else
   else
     pass "No tracked explicit insecure Nextcloud HTTP exposure declarations"
   fi
+
+  echo ""
+  echo "  --- 7e: gitleaks deep secret scan (WARN when not installed) ---"
+  if command -v gitleaks &>/dev/null; then
+    if gitleaks detect --source . --no-banner --redact --exit-code 1 2>/dev/null; then
+      pass "gitleaks: no secrets detected"
+    else
+      fail "gitleaks: secrets detected — review output above"
+      EXIT_CODE=1
+    fi
+  else
+    warn "gitleaks not installed — skipping deep secret scan"
+    warn "Install: nix shell nixpkgs#gitleaks  or add to environment.systemPackages"
+  fi
 fi
 echo ""
 
