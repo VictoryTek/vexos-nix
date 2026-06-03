@@ -5,7 +5,7 @@
 #
 # Available services:
 #   docker, jellyfin, plex, audiobookshelf, tautulli, navidrome,
-#   seerr, jellyseerr,
+#   seerr,
 #   arr (SABnzbd + Sonarr + Radarr + Lidarr + Prowlarr),
 #   komga, kavita, papermc, nextcloud, syncthing, immich, minio, photoprism,
 #   paperless, forgejo, code-server, attic, vaultwarden, authelia,
@@ -47,7 +47,6 @@
 
   # ── Media Requests ───────────────────────────────────────────────────────
   # vexos.server.seerr.enable = false;                 # Port 5055 — media requests (Jellyfin, Plex, Emby)
-  # vexos.server.jellyseerr.enable = false;             # Port 5056 — Jellyfin requests
 
   # ── Media Automation (Arr Stack) ─────────────────────────────────────────
   # vexos.server.arr.enable = false;                    # SABnzbd:8080 Sonarr:8989 Radarr:7878 Lidarr:8686 Prowlarr:9696
