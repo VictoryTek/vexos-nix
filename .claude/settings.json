@@ -1,0 +1,24 @@
+{
+  "effortLevel": "medium",
+  "permissions": {
+    "allow": [
+      "Bash(nix flake show:*)",
+      "Bash(nix flake metadata:*)",
+      "Bash(nix build:*)",
+      "Bash(sudo nixos-rebuild dry-build:*)",
+      "Bash(sudo nixos-rebuild dry-activate:*)",
+      "Bash(sudo nixos-rebuild list-generations:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(stat:*)",
+      "Bash(readlink:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)"
+    ],
+    "deny": [
+      "Bash(nix flake check:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}
