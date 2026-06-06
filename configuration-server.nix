@@ -45,7 +45,8 @@
     "org.gimp.GIMP"
   ];
 
-  # ---------- Server role placeholder ----------
-  # This configuration is intentionally minimal. Add server-specific
-  # services, firewall rules, and hardening here when fleshing out.
+  # ---------- Default dashboard ----------
+  # VexBoard is on by default for every server deployment.
+  # Override with `vexos.server.vexboard.enable = false;` in server-services.nix.
+  vexos.server.vexboard.enable = lib.mkDefault true;
 }

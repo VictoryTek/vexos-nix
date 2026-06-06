@@ -37,6 +37,12 @@
     # Do NOT add inputs.proxmox-nixos.inputs.nixpkgs.follows = "nixpkgs" — the upstream
     # flake manages its own nixpkgs-stable pin; overriding it breaks package builds.
     proxmox-nixos.url = "github:SaumonNet/proxmox-nixos";
+
+    # vexboard: VexOS Server dashboard (Rust + WASM). Used by modules/server/vexboard.nix.
+    # Do NOT add inputs.vexboard.inputs.nixpkgs.follows = "nixpkgs" — vexboard builds
+    # against nixos-unstable with rust-overlay; forcing stable nixpkgs breaks the
+    # Rust/WASM toolchain.
+    vexboard.url = "github:VictoryTek/vexboard";
   };
 
   outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, impermanence, sops-nix, up, ... }@inputs:
@@ -98,6 +104,16 @@
     # Proxmox overlay + NixOS module shared by server and headless-server roles.
     proxmoxBase = [ proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
 
+    # VexBoard overlay + NixOS module — server and headless-server roles.
+    # The overlay exposes pkgs.vexboard (required by the upstream NixOS module's
+    # default package option). Both server and headless-server import
+    # modules/server/default.nix which includes modules/server/vexboard.nix;
+    # the NixOS module must be in scope for services.vexboard to be a valid option.
+    vexboardBase = [
+      { nixpkgs.overlays = [ inputs.vexboard.overlays.default ]; }
+      inputs.vexboard.nixosModules.vexboard
+    ];
+
     # sops-nix module shared by server and headless-server roles.
     sopsBase = [ sops-nix.nixosModules.sops ];
 
@@ -128,7 +144,8 @@
         # proxmoxBase: overlay + NixOS module imported here (not in
         # modules/server/proxmox.nix) to avoid infinite recursion — `imports`
         # cannot safely reference _module.args.
-        baseModules  = commonBase ++ [ upModule ] ++ proxmoxBase ++ sopsBase;
+        # vexboardBase: overlay + NixOS module for the default server dashboard.
+        baseModules  = commonBase ++ [ upModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
         extraModules = serverServicesModule;
       };
       headless-server = {
@@ -137,7 +154,12 @@
         # app is intentionally omitted.
         # proxmoxBase: overlay + NixOS module imported here to avoid infinite
         # recursion (same reason as server above).
-        baseModules  = commonBase ++ proxmoxBase ++ sopsBase;
+        # vexboardBase: modules/server/vexboard.nix is imported by both server and
+        # headless-server (via modules/server/default.nix). Including vexboardBase
+        # here ensures services.vexboard option exists so the wrapper evaluates
+        # cleanly even when disabled. Not enabled by default (no mkDefault in
+        # configuration-headless-server.nix) — users can opt in via server-services.nix.
+        baseModules  = commonBase ++ proxmoxBase ++ sopsBase ++ vexboardBase;
         extraModules = serverServicesModule;
       };
       vanilla = {
@@ -265,7 +287,10 @@
         [ home-manager.nixosModules.home-manager configFile ]
         ++ roles.${role}.extraModules
         ++ lib.optionals (role == "server" || role == "headless-server")
-             [ proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve sops-nix.nixosModules.sops ];
+             [ proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve sops-nix.nixosModules.sops ]
+        ++ lib.optionals (role == "server" || role == "headless-server")
+             [ { nixpkgs.overlays = [ inputs.vexboard.overlays.default ]; }
+               inputs.vexboard.nixosModules.vexboard ];
       home-manager = {
         useGlobalPkgs    = true;
         useUserPackages  = true;

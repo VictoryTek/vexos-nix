@@ -35,6 +35,8 @@
     ./forgejo.nix
     ./code-server.nix
     ./attic.nix
+    # ── Dashboards ───────────────────────────────────────────────────────────
+    ./vexboard.nix
     # ── AI & Privacy ─────────────────────────────────────────────────────────
     ./kiji-proxy.nix
     ./portbook.nix

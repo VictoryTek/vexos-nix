@@ -853,7 +853,7 @@ ssh target="":
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -981,6 +981,7 @@ available-services:
     _svc prometheus          "Metrics collection & alerting toolkit"
     _svc scrutiny            "S.M.A.R.T. disk health monitoring dashboard"
     _svc uptime-kuma         "Self-hosted uptime & status page monitoring"
+    _svc vexboard            "VexOS Server dashboard (enabled by default)"
     _hdr "Networking & Security"
     _svc adguard             "DNS-based ad & tracker blocker"
     _svc authelia            "Single sign-on & two-factor auth gateway"
@@ -1073,6 +1074,7 @@ service-info service="":
         traefik)         printf "  %-18s  Ports :8882, :8445  |  Dashboard http://<server-ip>:8079/dashboard/\n"       "$1" ;;
         uptime-kuma)     printf "  %-18s  Web UI  http://<server-ip>:3001\n"                                           "$1" ;;
         vaultwarden)     printf "  %-18s  Web UI  http://<server-ip>:8222   |  Admin .../admin\n"                      "$1" ;;
+        vexboard)        printf "  %-18s  Web UI  http://<server-ip>:7280   (default dashboard — enabled by default)\n" "$1" ;;
         authelia)        printf "  %-18s  Web UI  http://<server-ip>:9091\n"                                                   "$1" ;;
         code-server)     printf "  %-18s  Web UI  http://<server-ip>:4444\n"                                                   "$1" ;;
         dozzle)          printf "  %-18s  Web UI  http://<server-ip>:8888   (requires docker)\n"                               "$1" ;;
@@ -1186,6 +1188,7 @@ status service: _require-server-role
       traefik)        UNITS="traefik";              URLS="http://localhost:8079/dashboard/" ;;
       uptime-kuma)    UNITS="docker-uptime-kuma";   URLS="http://localhost:3001" ;;
       vaultwarden)    UNITS="vaultwarden";          URLS="http://localhost:8222" ;;
+      vexboard)       UNITS="vexboard";             URLS="http://localhost:7280" ;;
       authelia)       UNITS="docker-authelia";          URLS="http://localhost:9091" ;;
       code-server)    UNITS="code-server";              URLS="http://localhost:4444" ;;
       dozzle)         UNITS="docker-dozzle";            URLS="http://localhost:8888" ;;
@@ -1265,7 +1268,7 @@ services: _require-server-role
     _hdr "Infrastructure";             _check attic;          _check caddy;          _check docker;        _check dockhand;      _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
     _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
     _hdr "Media Requests & Automation";_check arr;            _check jellyseerr;    _check seerr
-    _hdr "Monitoring & Admin";         _check nas;            _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma;  _check portbook
+    _hdr "Monitoring & Admin";         _check nas;            _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma;  _check portbook;  _check vexboard
     _hdr "Networking & Security";      _check adguard;        _check authelia;      _check headscale;     _check unbound;       _check vaultwarden
     _hdr "Productivity";               _check code-server;    _check forgejo;       _check homepage;      _check listmonk;      _check mealie;    _check paperless;   _check stirling-pdf
     _hdr "Remote Access";              _check rustdesk
@@ -1844,6 +1847,14 @@ enable service: _require-server-role
         echo "            portbook tui               — interactive TUI with live updates"
         echo "            portbook watch --json      — streaming JSON for scripts/agents"
         echo "            portbook explain <port>    — diagnostic block for a single port"
+        ;;
+      vexboard)
+        echo "  Service:  vexboard.service"
+        echo "  Web UI:   http://<server-ip>:7280"
+        echo "  About:    VexOS Server dashboard — enabled by default on the server role."
+        echo "  Note:     To disable: add 'vexos.server.vexboard.enable = false;' in server-services.nix."
+        echo "  Secret:   Set VEXBOARD_AUTH__SECRET via vexos.server.vexboard.secretFile for production use."
+        echo "            Generate a secret:  openssl rand -base64 48"
         ;;
       prometheus)
         echo "  Service:  prometheus.service"

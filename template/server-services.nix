@@ -34,6 +34,12 @@
   #   minio-root-password
   #   attic-server-token-rs256-secret-base64
 
+  # ── Dashboard ────────────────────────────────────────────────────────────
+  # vexboard is enabled by default on the server role.
+  # Uncomment to disable:
+  # vexos.server.vexboard.enable = false;         # Port 7280 — VexOS server dashboard
+  # vexos.server.vexboard.secretFile = "/etc/nixos/secrets/vexboard-secret";
+
   # ── Container Runtime ────────────────────────────────────────────────────
   # vexos.server.docker.enable = false;
 
