@@ -346,13 +346,13 @@ update:
     fi
     echo ""
 
-    # vexos-update (installed by modules/nix.nix) uses three-class miss
-    # classification before applying any update:
-    #   Class A — NixOS system assembly glue (always local, never blocking).
-    #   Class B — Known expected local builds (e.g. Up GUI); allowed,
-    #             logged as VEXOS_CACHE_LOCAL_OK, update proceeds normally.
-    #   Class C — Unknown/heavy packages; update paused, flake.lock restored,
-    #             logged as VEXOS_CACHE_BLOCK.
+    # vexos-update (installed by modules/nix.nix) uses a known-heavy block
+    # engine before applying any update:
+    #   Non-heavy — system glue, vexos scripts, Rust crates, binary wrappers;
+    #               build locally in seconds-to-minutes; logged as VEXOS_LOCAL_BUILD,
+    #               update proceeds normally.
+    #   Heavy     — kernel modules, NVIDIA driver, OpenRazer DKMS; take hours;
+    #               update paused, flake.lock restored, logged as VEXOS_CACHE_BLOCK.
     # The script also handles flake.lock backup/restore and nixos-rebuild switch.
     # Up uses the same script so behaviour is identical regardless of update path.
     sudo vexos-update
@@ -438,9 +438,9 @@ upgrade-analysis target_version:
     NIXPKGS_URL="github:NixOS/nixpkgs/nixos-${TARGET}"
     HM_URL="github:nix-community/home-manager/release-${TARGET}"
 
-    # Same classification regexes as vexos-update
-    ALWAYS_LOCAL_REGEX='^(nixos-system-|system-units|system-path|etc-nixos|etc-|etc\.drv$|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-|home-manager-|ld-library-path|X-Restart-Triggers-|user-units|set-environment|dbus-1\.drv$|abstractions-|apparmor\.d\.drv$|vexos-update\.drv$)'
-    KNOWN_LOCAL_REGEX='^(up-[0-9]{{"|"}}cargo-vendor-dir)'
+    # Same heavy-build regex as vexos-update — packages that take hours due to
+    # kernel compilation (kernel modules, NVIDIA driver, OpenRazer DKMS module).
+    HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk|NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|openrazer-[0-9])'
 
     echo ""
     echo "================================================================"
@@ -516,37 +516,33 @@ upgrade-analysis target_version:
             || true)
 
         FETCH_COUNT=$(printf '%s\n' "$ALL_FETCH" | grep -c '[^[:space:]]' || true)
-        CLASS_A=$(printf '%s\n' "$ALL_BUILD" | grep -E "$ALWAYS_LOCAL_REGEX" || true)
-        CLASS_A_COUNT=$(printf '%s\n' "$CLASS_A" | grep -c '[^[:space:]]' || true)
-        POST_A=$(printf '%s\n' "$ALL_BUILD" | grep -Ev "$ALWAYS_LOCAL_REGEX" || true)
-        CLASS_B=$(printf '%s\n' "$POST_A" | grep -E "$KNOWN_LOCAL_REGEX" || true)
-        CLASS_B_COUNT=$(printf '%s\n' "$CLASS_B" | grep -c '[^[:space:]]' || true)
-        CLASS_C=$(printf '%s\n' "$POST_A" | grep -Ev "$KNOWN_LOCAL_REGEX" || true)
-        CLASS_C_COUNT=$(printf '%s\n' "$CLASS_C" | grep -c '[^[:space:]]' || true)
+        HEAVY_BUILDS=$(printf '%s\n' "$ALL_BUILD" | grep -E  "$HEAVY_BUILD_REGEX" || true)
+        HEAVY_COUNT=$(printf '%s\n' "$HEAVY_BUILDS" | grep -c '[^[:space:]]' || true)
+        NON_HEAVY_BUILDS=$(printf '%s\n' "$ALL_BUILD" | grep -Ev "$HEAVY_BUILD_REGEX" || true)
+        NON_HEAVY_COUNT=$(printf '%s\n' "$NON_HEAVY_BUILDS" | grep -c '[^[:space:]]' || true)
 
-        printf "  %-48s %s\n" "Packages in binary cache (ready to fetch):"       "${FETCH_COUNT}"
-        printf "  %-48s %s\n" "System assembly glue (always local, not a build):" "${CLASS_A_COUNT}"
-        printf "  %-48s %s\n" "Expected local builds (e.g. Up — Class B):"       "${CLASS_B_COUNT}"
-        printf "  %-48s %s\n" "Packages not in cache yet (must compile — Class C):" "${CLASS_C_COUNT}"
+        printf "  %-48s %s\n" "Packages in binary cache (ready to fetch):"         "${FETCH_COUNT}"
+        printf "  %-48s %s\n" "Non-heavy local builds (fast — system glue, scripts):" "${NON_HEAVY_COUNT}"
+        printf "  %-48s %s\n" "Heavy kernel/NVIDIA builds (hours — will block update):" "${HEAVY_COUNT}"
         echo ""
 
-        if [ -n "$CLASS_B" ] && [ "$CLASS_B_COUNT" -gt 0 ]; then
-            echo "  ── Expected local builds (Class B — these are normal) ─────────"
-            printf '%s\n' "$CLASS_B" | grep '[^[:space:]]' | sed 's/^/    /'
+        if [ -n "$NON_HEAVY_BUILDS" ] && [ "$NON_HEAVY_COUNT" -gt 0 ]; then
+            echo "  ── Non-heavy local builds (fast — update will proceed) ─────────"
+            printf '%s\n' "$NON_HEAVY_BUILDS" | grep '[^[:space:]]' | sed 's/^/    /'
             echo ""
         fi
 
-        if [ -n "$CLASS_C" ] && [ "$CLASS_C_COUNT" -gt 0 ]; then
-            echo "  ── Not in cache yet — would compile from source (Class C) ──────"
-            printf '%s\n' "$CLASS_C" | grep '[^[:space:]]' | sed 's/^/    /'
+        if [ -n "$HEAVY_BUILDS" ] && [ "$HEAVY_COUNT" -gt 0 ]; then
+            echo "  ── Heavy builds — kernel/NVIDIA not yet in cache (will block) ──"
+            printf '%s\n' "$HEAVY_BUILDS" | grep '[^[:space:]]' | sed 's/^/    /'
             echo ""
-            echo "  These packages are not yet in the nixos-${TARGET} binary cache."
-            echo "  If you upgrade now, they will compile locally (could take hours"
-            echo "  depending on the package).  The cache typically fills within"
-            echo "  1-7 days of a release."
+            echo "  These packages compile against the kernel and are not yet in the"
+            echo "  nixos-${TARGET} binary cache. If you upgrade now, vexos-update"
+            echo "  will block and restore flake.lock. The cache typically fills"
+            echo "  within 1-3 days of a nixpkgs commit."
             echo ""
         else
-            echo "  ✓ All packages are available in the binary cache."
+            echo "  ✓ No heavy builds detected — update will proceed without blocking."
             echo ""
         fi
     fi
@@ -567,17 +563,17 @@ upgrade-analysis target_version:
         echo "       just upgrade-analysis ${TARGET}"
         echo "  4. Once [1/3] shows PASS, proceed to just version-upgrade."
         echo ""
-    elif [ "$CLASS_C_COUNT" -gt 0 ] 2>/dev/null; then
-        echo "  ⚠ CONFIG OK — but ${CLASS_C_COUNT} package(s) not yet in cache."
+    elif [ "$HEAVY_COUNT" -gt 0 ] 2>/dev/null; then
+        echo "  ⚠ CONFIG OK — but ${HEAVY_COUNT} heavy kernel/NVIDIA package(s) not yet in cache."
         echo ""
         echo "  Option A — Wait (recommended):"
-        echo "    Re-run 'just upgrade-analysis ${TARGET}' in a few days."
-        echo "    When [2/3] shows 0 uncached packages, run:"
+        echo "    Re-run 'just upgrade-analysis ${TARGET}' in 1-3 days."
+        echo "    When [2/3] shows 0 heavy builds, run:"
         echo "      just version-upgrade"
         echo "      just update"
         echo ""
         echo "  Option B — Upgrade now and compile locally:"
-        echo "    Accept the source build time and run:"
+        echo "    Accept the hours-long kernel/NVIDIA source build and run:"
         echo "      just version-upgrade"
         echo "      just update-all"
         echo ""

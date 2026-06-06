@@ -24,7 +24,7 @@ in
   #   attic cache info vexos
   options.vexos.attic = {
     cacheUrl = lib.mkOption {
-      type    = lib.types.nullOr lib.types.str;
+      type = lib.types.nullOr lib.types.str;
       default = null;
       example = "http://attic.local:8400/vexos";
       description = ''
@@ -35,7 +35,7 @@ in
     };
 
     publicKey = lib.mkOption {
-      type    = lib.types.str;
+      type = lib.types.str;
       default = "";
       example = "vexos-attic:AbCdEf1234567890AAAAAAA==";
       description = ''
@@ -56,165 +56,158 @@ in
       }
     ];
 
-  nix.settings = {
-    experimental-features = [ "nix-command" "flakes" ];
+    nix.settings = {
+      experimental-features = [ "nix-command" "flakes" ];
 
-    # Trust wheel group users to use additional substituters and caches.
-    # Security note: trusted-users can specify arbitrary --substituters on the
-    # nix CLI, including untrusted third-party caches. This is acceptable in
-    # single-operator and homelab scenarios where every wheel user is the owner.
-    # On multi-tenant servers (shared hosting, CI builders) consider restricting
-    # to just "root" and managing caches declaratively via nix.settings.substituters:
-    #   nix.settings.trusted-users = lib.mkForce [ "root" ];
-    trusted-users = [ "root" "@wheel" ];
+      # Trust wheel group users to use additional substituters and caches.
+      # Security note: trusted-users can specify arbitrary --substituters on the
+      # nix CLI, including untrusted third-party caches. This is acceptable in
+      # single-operator and homelab scenarios where every wheel user is the owner.
+      # On multi-tenant servers (shared hosting, CI builders) consider restricting
+      # to just "root" and managing caches declaratively via nix.settings.substituters:
+      #   nix.settings.trusted-users = lib.mkForce [ "root" ];
+      trusted-users = [ "root" "@wheel" ];
 
-    # Deduplicate identical files in the store (saves significant disk space)
-    auto-optimise-store = true;
+      # Deduplicate identical files in the store (saves significant disk space)
+      auto-optimise-store = true;
 
-    # Binary caches — fetch pre-built derivations instead of compiling locally.
-    substituters = [
-      "https://cache.nixos.org"
-    ] ++ lib.optional (cfg.cacheUrl != null) cfg.cacheUrl;
-    trusted-public-keys = [
-      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-    ] ++ lib.optional (cfg.publicKey != "") cfg.publicKey;
+      # Binary caches — fetch pre-built derivations instead of compiling locally.
+      substituters = [
+        "https://cache.nixos.org"
+      ] ++ lib.optional (cfg.cacheUrl != null) cfg.cacheUrl;
+      trusted-public-keys = [
+        "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+      ] ++ lib.optional (cfg.publicKey != "") cfg.publicKey;
 
-    # Build concurrency — 1 job at a time, each using all available cores.
-    # Prevents OOM on low-RAM machines; raise max-jobs on beefy hardware.
-    max-jobs = lib.mkDefault 1;
-    cores = 0; # 0 = auto-detect (uses all cores for the single active job)
+      # Build concurrency — 1 job at a time, each using all available cores.
+      # Prevents OOM on low-RAM machines; raise max-jobs on beefy hardware.
+      max-jobs = lib.mkDefault 1;
+      cores = 0; # 0 = auto-detect (uses all cores for the single active job)
 
-    # Automatically free store space during builds:
-    #   min-free: start GC when free store space drops below this (bytes)
-    #   max-free: stop GC once free store space reaches this
-    min-free = 1073741824;   # 1 GiB
-    max-free = 5368709120;   # 5 GiB
+      # Automatically free store space during builds:
+      #   min-free: start GC when free store space drops below this (bytes)
+      #   max-free: stop GC once free store space reaches this
+      min-free = 1073741824; # 1 GiB
+      max-free = 5368709120; # 5 GiB
 
-    # Larger download buffer — prevents "download buffer is full" warnings
-    # on slow or unstable connections during large fetches.
-    download-buffer-size = 524288000; # 500 MiB
+      # Larger download buffer — prevents "download buffer is full" warnings
+      # on slow or unstable connections during large fetches.
+      download-buffer-size = 524288000; # 500 MiB
 
-    # Download only — do not keep build-time deps or .drv files after install
-    keep-outputs = false;
-    keep-derivations = false;
-  };
+      # Download only — do not keep build-time deps or .drv files after install
+      keep-outputs = false;
+      keep-derivations = false;
+    };
 
-  # Run builds at lower CPU and I/O priority so the system stays usable
-  # during a nixos-rebuild.
-  nix.daemonCPUSchedPolicy = "idle";
-  nix.daemonIOSchedClass = "idle";
+    # Run builds at lower CPU and I/O priority so the system stays usable
+    # during a nixos-rebuild.
+    nix.daemonCPUSchedPolicy = "idle";
+    nix.daemonIOSchedClass = "idle";
 
-  # Required for Steam, NVIDIA drivers, proton-ge-bin, etc.
-  nixpkgs.config.allowUnfree = true;
+    # Required for Steam, NVIDIA drivers, proton-ge-bin, etc.
+    nixpkgs.config.allowUnfree = true;
 
-  # ── vexos-update ─────────────────────────────────────────────────────────
-  # Cache-safe update script installed system-wide.  Both `just update` and
-  # the Up GUI app call this instead of raw `nix flake update && nixos-rebuild`
-  # so the hold/rollback logic is identical regardless of how the update is
-  # triggered.
-  #
-  # Exit codes:
-  #   0  — update applied successfully (all packages were in binary cache)
-  #   2  — cache miss (flake.lock restored; system unchanged; retry later)
-  #   1  — other error (bad variant, nix eval failure, etc.)
-  #
-  # Stdout protocol for Up:
-  #   Lines prefixed "VEXOS_CACHE_BLOCK:"    → hard blocker; lock restored.
-  #   Lines prefixed "VEXOS_CACHE_LOCAL_OK:" → known small local, proceeding.
-  #   Legacy: "VEXOS_CACHE_MISS:" was the prior single-channel prefix (retired).
-  #   All other lines are forwarded verbatim to the build log view.
-  environment.systemPackages = [
-    (pkgs.writeShellScriptBin "vexos-update" ''
-      set -euo pipefail
+    # ── vexos-update ─────────────────────────────────────────────────────────
+    # Cache-safe update script installed system-wide.  Both `just update` and
+    # the Up GUI app call this instead of raw `nix flake update && nixos-rebuild`
+    # so the hold/rollback logic is identical regardless of how the update is
+    # triggered.
+    #
+    # Exit codes:
+    #   0  — update applied (some fast local builds may have occurred)
+    #   2  — heavy build blocked (flake.lock restored; system unchanged; retry later)
+    #   1  — other error (bad variant, nix eval failure, etc.)
+    #
+    # Stdout protocol for Up:
+    #   Lines prefixed "VEXOS_CACHE_BLOCK:"  → hard blocker; lock restored.
+    #   Lines prefixed "VEXOS_LOCAL_BUILD:"  → informational; non-heavy local build proceeding.
+    #   Legacy: "VEXOS_CACHE_LOCAL_OK:" was the prior allowed-list prefix (retired).
+    #   Legacy: "VEXOS_CACHE_MISS:" was the original single-channel prefix (retired).
+    #   All other lines are forwarded verbatim to the build log view.
+    environment.systemPackages = [
+      (pkgs.writeShellScriptBin "vexos-update" ''
+        set -euo pipefail
 
-      VARIANT=$(cat /etc/nixos/vexos-variant 2>/dev/null || true)
-      if [ -z "$VARIANT" ]; then
-        echo "error: /etc/nixos/vexos-variant not found. Run nixos-rebuild once first." >&2
-        exit 1
-      fi
+        VARIANT=$(cat /etc/nixos/vexos-variant 2>/dev/null || true)
+        if [ -z "$VARIANT" ]; then
+          echo "error: /etc/nixos/vexos-variant not found. Run nixos-rebuild once first." >&2
+          exit 1
+        fi
 
-      # Back up current lock before touching anything.
-      cp /etc/nixos/flake.lock /etc/nixos/flake.lock.bak
+        # Back up current lock before touching anything.
+        cp /etc/nixos/flake.lock /etc/nixos/flake.lock.bak
 
-      echo "Updating flake inputs..."
-      nix --extra-experimental-features "nix-command flakes" \
-        flake update --flake path:/etc/nixos
+        echo "Updating flake inputs..."
+        nix --extra-experimental-features "nix-command flakes" \
+          flake update --flake path:/etc/nixos
 
-      echo "Checking binary cache for new packages..."
-      DRY=$(nixos-rebuild dry-build \
-        --flake path:/etc/nixos#"$VARIANT" 2>&1 || true)
+        echo "Checking for packages that require a local source build..."
+        DRY=$(nixos-rebuild dry-build \
+          --flake path:/etc/nixos#"$VARIANT" 2>&1 || true)
 
-      # Miss classification engine — three classes:
-      #
-      #   Class A (ALWAYS_LOCAL_REGEX): NixOS system assembly glue (symlink
-      #   forests, activation scripts, unit files, bootloader config, initrd,
-      #   kernel, home-manager linkage, AppArmor dirs, /etc population, env
-      #   files, etc.) — always local, never a source compile.  Drop silently.
-      #
-      #   Class B (KNOWN_SMALL_LOCAL_REGEX): Known expected local builds that
-      #   always proceed.  Allow them; emit VEXOS_CACHE_LOCAL_OK lines.
-      #
-      #   Class C (BLOCKING_DERIVATIONS): Everything else — unexpected source
-      #   builds.  Restore lock and exit 2.
-      #
-      # VEXOS_UPDATE_STRICT=1: skip class B allowlist; treat all post-A
-      # derivations as blocking (for hosts that must build only from cache).
-      #
-      # Legacy note: VEXOS_CACHE_MISS: was the prior single-channel prefix.
-      # New code uses VEXOS_CACHE_BLOCK: and VEXOS_CACHE_LOCAL_OK: instead.
+        # Known-heavy block engine — two paths:
+        #
+        #   HEAVY_BUILD_REGEX: Packages that take hours to compile because they
+        #   must be built against the running kernel (kernel modules, NVIDIA driver,
+        #   OpenRazer DKMS module). If any match → block, restore lock, exit 2.
+        #
+        #   Everything else (system glue, vexos scripts, Rust crates, GUI wrappers):
+        #   build locally in seconds-to-minutes, proceed with update.
+        #   Logged as VEXOS_LOCAL_BUILD: lines.
+        #
+        # VEXOS_UPDATE_STRICT=1: block on ALL local builds (strict environments).
+        #
+        # Legacy note: The three-class (A/B/C) engine with ALWAYS_LOCAL_REGEX and
+        # KNOWN_SMALL_LOCAL_REGEX was retired. The new model requires no allowlist
+        # maintenance — only the small, stable HEAVY_BUILD_REGEX list matters.
 
-      ALWAYS_LOCAL_REGEX='^(nixos-system-|system-units|system-path|etc-nixos|etc-|etc\.drv$|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|kernel|stage-[12]-|home-manager-|ld-library-path|X-Restart-Triggers-|user-units|set-environment|dbus-1\.drv$|abstractions-|apparmor\.d\.drv$|vexos-update\.drv$)'
+        HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk|NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|openrazer-[0-9])'
 
-      # up-N.N.N.drv — the Up system update GUI (VictoryTek/Up); always built
-      #   locally because it is never pushed to any binary cache.
-      # cargo-vendor-dir.drv — Rust offline dep-vendoring step for Up; always
-      #   accompanies an Up build and is expected.
-      KNOWN_SMALL_LOCAL_REGEX='^(up-[0-9]|cargo-vendor-dir)'
+        # Extract all "will be built" derivation names.
+        ALL_LOCAL=$(printf '%s\n' "$DRY" \
+          | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
+          || true)
 
-      # Extract all "will be built" candidates and apply class A filter.
-      ALL_CANDIDATES=$(printf '%s\n' "$DRY" \
-        | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
-        | grep -Ev "$ALWAYS_LOCAL_REGEX" \
-        || true)
+        # Partition: heavy (hours, block) vs non-heavy (fast, allow).
+        HEAVY_BUILDS=$(printf '%s\n' "$ALL_LOCAL" \
+          | grep -E  "$HEAVY_BUILD_REGEX" || true)
+        NON_HEAVY_BUILDS=$(printf '%s\n' "$ALL_LOCAL" \
+          | grep -Ev "$HEAVY_BUILD_REGEX" || true)
 
-      # Partition class B vs class C.
-      if [ -n "$ALL_CANDIDATES" ] && [ "''${VEXOS_UPDATE_STRICT:-0}" = "1" ]; then
-        # Strict mode: all post-A derivations are blocking.
-        KNOWN_SMALL_LOCAL=""
-        BLOCKING_DERIVATIONS="$ALL_CANDIDATES"
-      else
-        KNOWN_SMALL_LOCAL=$(printf '%s\n' "$ALL_CANDIDATES" \
-          | grep -E "$KNOWN_SMALL_LOCAL_REGEX" || true)
-        BLOCKING_DERIVATIONS=$(printf '%s\n' "$ALL_CANDIDATES" \
-          | grep -Ev "$KNOWN_SMALL_LOCAL_REGEX" || true)
-      fi
+        # Strict mode: treat all local builds as heavy.
+        if [ "''${VEXOS_UPDATE_STRICT:-0}" = "1" ]; then
+          HEAVY_BUILDS="$ALL_LOCAL"
+          NON_HEAVY_BUILDS=""
+        fi
 
-      if [ -n "$BLOCKING_DERIVATIONS" ]; then
-        echo ""
-        echo "VEXOS_CACHE_BLOCK: The following packages are not in any cache and"
-        echo "VEXOS_CACHE_BLOCK: would require a local source build (update paused):"
-        printf '%s\n' "$BLOCKING_DERIVATIONS" | sed 's/^/VEXOS_CACHE_BLOCK:   /'
-        echo "VEXOS_CACHE_BLOCK:"
-        echo "VEXOS_CACHE_BLOCK: flake.lock restored. No changes were applied."
-        echo "VEXOS_CACHE_BLOCK: Use 'just deploy' to apply config-only changes without bumping inputs."
-        cp /etc/nixos/flake.lock.bak /etc/nixos/flake.lock
+        if [ -n "$HEAVY_BUILDS" ]; then
+          echo ""
+          echo "VEXOS_CACHE_BLOCK: Update paused — kernel or NVIDIA packages require a"
+          echo "VEXOS_CACHE_BLOCK: local source build (typically 1-3 days until Hydra caches them):"
+          printf '%s\n' "$HEAVY_BUILDS" | grep '[^[:space:]]' | sed 's/^/VEXOS_CACHE_BLOCK:   /'
+          echo "VEXOS_CACHE_BLOCK:"
+          echo "VEXOS_CACHE_BLOCK: flake.lock restored. No changes were applied."
+          echo "VEXOS_CACHE_BLOCK: Options:"
+          echo "VEXOS_CACHE_BLOCK:   just deploy     — apply config changes without bumping nixpkgs"
+          echo "VEXOS_CACHE_BLOCK:   just update     — retry in 1-3 days once Hydra has built them"
+          echo "VEXOS_CACHE_BLOCK:   just update-all — force local compile now (may take hours)"
+          cp /etc/nixos/flake.lock.bak /etc/nixos/flake.lock
+          rm -f /etc/nixos/flake.lock.bak
+          exit 2
+        fi
+
+        if [ -n "$NON_HEAVY_BUILDS" ]; then
+          echo ""
+          echo "VEXOS_LOCAL_BUILD: Some packages will build locally (system glue or custom scripts — fast):"
+          printf '%s\n' "$NON_HEAVY_BUILDS" | grep '[^[:space:]]' | sed 's/^/VEXOS_LOCAL_BUILD:   /'
+        fi
+
         rm -f /etc/nixos/flake.lock.bak
-        exit 2
-      fi
-
-      if [ -n "$KNOWN_SMALL_LOCAL" ]; then
-        echo ""
-        echo "VEXOS_CACHE_LOCAL_OK: Small known local artifacts will build (expected, fast):"
-        printf '%s\n' "$KNOWN_SMALL_LOCAL" | sed 's/^/VEXOS_CACHE_LOCAL_OK:   /'
-        echo "VEXOS_CACHE_LOCAL_OK: Proceeding with update..."
-      fi
-
-      rm -f /etc/nixos/flake.lock.bak
-      echo "All packages available in binary cache — applying update..."
-      nixos-rebuild switch \
-        --flake path:/etc/nixos#"$VARIANT" \
-        --print-build-logs
-    '')
-  ];
+        echo "Applying update..."
+        nixos-rebuild switch \
+          --flake path:/etc/nixos#"$VARIANT" \
+          --print-build-logs
+      '')
+    ];
   }; # end config
 }
