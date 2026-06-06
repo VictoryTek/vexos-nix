@@ -59,33 +59,25 @@
   programs.vscode = {
     enable  = true;
     package = pkgs.unstable.vscode-fhs;
-    profiles.default.userSettings = {
-      # File watcher exclusions — critical on NixOS to prevent watcher runaway
-      "files.watcherExclude" = {
-        "**/node_modules/**" = true;
-        "**/.git/**"         = true;
-        "/nix/store/**"      = true;
-        "**/result/**"       = true;
-        "**/.direnv/**"      = true;
-      };
+    userSettings = {
       "files.exclude" = {
         "**/.direnv" = true;
         "**/result"  = true;
       };
-      # TypeScript server memory cap
-      "typescript.tsserver.maxTsServerMemory"          = 4096;
-      "typescript.preferences.includePackageJsonAutoImports" = "off";
-      # Disable crash recovery accumulation
-      "workbench.enableExperiments" = false;
-      # ── rust-analyzer memory limits ───────────────────────────────────────
-      # RA_MEMORY_LIMIT (MB): instructs rust-analyzer to evict its salsa cache
-      # when it exceeds 4 GB, preventing OOM on large workspaces.
-      "rust-analyzer.server.extraEnv" = { "RA_MEMORY_LIMIT" = "4096"; };
-      # Build scripts (build.rs) execute at index time and can double RAM usage.
-      # Disable unless proc-macro or build-generated code inspection is needed.
+      "files.watcherExclude" = {
+        "**/.direnv/**"      = true;
+        "**/.git/**"         = true;
+        "**/node_modules/**" = true;
+        "**/result/**"       = true;
+        "/nix/store/**"      = true;
+      };
       "rust-analyzer.cargo.buildScripts.enable" = false;
-      # Use cargo check instead of clippy for on-save diagnostics — cheaper.
       "rust-analyzer.check.command" = "check";
+      "rust-analyzer.server.extraEnv" = {
+        "RA_MEMORY_LIMIT" = "4096";
+      };
+      "workbench.enableExperiments" = false;
+      "claudeCode.preferredLocation" = "panel";
     };
   };
 
