@@ -211,10 +211,10 @@
           else { environment.etc."nixos/vexos-variant".text = "${name}\n"; };
       in
       nixpkgs.lib.nixosSystem {
-        inherit system;
         specialArgs = { inherit inputs; };
         modules =
-          [ /etc/nixos/hardware-configuration.nix ]
+          [ { nixpkgs.hostPlatform = system; } ]
+          ++ [ /etc/nixos/hardware-configuration.nix ]
           ++ r.baseModules
           ++ [ (mkHomeManagerModule r.homeFile) ]
           ++ r.extraModules
