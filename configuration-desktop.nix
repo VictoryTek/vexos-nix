@@ -10,6 +10,7 @@
     ./modules/gpu-gaming.nix        # 32-bit libs, vulkan-tools, mesa-demos
     ./modules/flatpak.nix
     ./modules/flatpak-desktop.nix   # desktop-only Flatpak apps via extraApps
+    ./modules/3d-print.nix          # Blender, OrcaSlicer
     ./modules/network.nix
     ./modules/network-desktop.nix   # samba CLI
     ./modules/packages-common.nix
