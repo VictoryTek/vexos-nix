@@ -1889,6 +1889,9 @@ enable service: _require-server-role
         echo "            Requires an MQTT broker — consider enabling Mosquitto separately."
         ;;
     esac
+    if [ "$SERVICE" != "vexboard" ]; then
+        echo "  VexBoard: http://<server-ip>:7280  — configure your server dashboard tiles"
+    fi
     echo ""
 
 # Toggle Plex Pass hardware transcoding on/off for an already-enabled Plex installation.

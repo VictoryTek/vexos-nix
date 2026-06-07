@@ -39,6 +39,10 @@
   # Set once at install time — do not change after initial deployment.
   system.stateVersion = "25.11";
 
+  # ---------- Server services ----------
+  # Vexboard is the default server dashboard; disable per-host via server-services.nix.
+  vexos.server.vexboard.enable = lib.mkDefault true;
+
   # ---------- Flatpak ----------
   # GIMP is not desired on a server role.
   vexos.flatpak.excludeApps = [

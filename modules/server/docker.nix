@@ -9,21 +9,26 @@ in
     enable = lib.mkEnableOption "Docker container runtime";
   };
 
-  config = lib.mkIf cfg.enable {
-    virtualisation.docker = {
-      enable = true;
-      package = pkgs.docker_29;
-      autoPrune = {
+  config = lib.mkMerge [
+    # Always pin to docker_29 so any service that enables docker (without specifying
+    # a package) doesn't fall through to the now-insecure nixpkgs default (docker_28).
+    { virtualisation.docker.package = lib.mkDefault pkgs.docker_29; }
+
+    (lib.mkIf cfg.enable {
+      virtualisation.docker = {
         enable = true;
-        dates = "weekly";
+        autoPrune = {
+          enable = true;
+          dates = "weekly";
+        };
       };
-    };
 
-    users.users.${config.vexos.user.name}.extraGroups = [ "docker" ];
+      users.users.${config.vexos.user.name}.extraGroups = [ "docker" ];
 
-    environment.systemPackages = with pkgs; [
-      docker-compose
-      lazydocker
-    ];
-  };
+      environment.systemPackages = with pkgs; [
+        docker-compose
+        lazydocker
+      ];
+    })
+  ];
 }
