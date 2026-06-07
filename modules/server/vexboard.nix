@@ -42,6 +42,83 @@ in
       port = cfg.port;
       openFirewall = cfg.openFirewall;
       secretFile = cfg.secretFile;
+
+      # Supply defaults for all required config sections that the upstream module's
+      # baseConfig does not cover. Values mirror config/default.toml from the vexboard
+      # source. Without these the binary fails immediately with "missing configuration
+      # field" because the systemd WorkingDirectory is / so config/default.toml is
+      # never found at the relative path the binary looks for.
+      settings = {
+        auth = {
+          # Placeholder — override by setting vexos.server.vexboard.secretFile to a
+          # file containing: VEXBOARD_AUTH__SECRET=<your-secret>
+          # Generate: openssl rand -base64 48
+          secret = "change-me-set-vexos.server.vexboard.secretFile";
+          session_ttl_hours = 168;
+        };
+        discovery = {
+          enabled = true;
+          interval_secs = 60;
+          server_services_only = true;
+          exclude_units = [
+            "systemd-*.service"
+            "user@*.service"
+            "getty@*.service"
+            "dbus.service"
+            "NetworkManager.service"
+            "NetworkManager-wait-online.service"
+            "NetworkManager-dispatcher.service"
+            "wpa_supplicant.service"
+            "ModemManager.service"
+            "firewall.service"
+            "nftables.service"
+            "iptables.service"
+            "cups.service"
+            "cups-browsed.service"
+            "avahi-daemon.service"
+            "nscd.service"
+            "bluetooth.service"
+            "rtkit-daemon.service"
+            "display-manager.service"
+            "colord.service"
+            "plymouth-*.service"
+            "kmod-static-nodes.service"
+            "polkit.service"
+            "apparmor.service"
+            "accounts-daemon.service"
+            "udisks2.service"
+            "upower.service"
+            "acpid.service"
+            "power-profiles-daemon.service"
+            "bolt.service"
+            "libvirtd.service"
+            "libvirt-guests.service"
+            "rpcbind.service"
+            "rpc-statd-notify.service"
+            "flatpak-*.service"
+            "nix-daemon.service"
+            "cpufreq.service"
+            "scx.service"
+            "samba-wsdd.service"
+            "logrotate-checkconf.service"
+          ];
+        };
+        docker = {
+          enabled = true;
+          interval_secs = 60;
+          sockets = [
+            "/var/run/docker.sock"
+            "/run/podman/podman.sock"
+          ];
+          exclude_images = [ ];
+        };
+        probe = {
+          default_interval_secs = 30;
+          timeout_secs = 5;
+          max_history = 100;
+        };
+        metrics.push_interval_ms = 2000;
+      };
     };
   };
 }
