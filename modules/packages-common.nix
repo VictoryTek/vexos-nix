@@ -6,6 +6,7 @@
   # Expose the justfile at /etc/nixos/justfile so the `just` alias in
   # bash-common.nix works on all roles regardless of working directory.
   environment.etc."nixos/justfile".source = ../justfile;
+  environment.etc."nixos/template/server-services.nix".source = ../template/server-services.nix;
 
   environment.systemPackages = with pkgs; [
     just    # Command runner (justfile)
