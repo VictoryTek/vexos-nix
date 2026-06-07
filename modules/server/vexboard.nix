@@ -1,8 +1,8 @@
 # modules/server/vexboard.nix
 # VexBoard — self-hosted server dashboard for VexOS Server.
-# Enabled by default on the server role (lib.mkDefault true in configuration-server.nix).
-# Disable in /etc/nixos/server-services.nix:
-#   vexos.server.vexboard.enable = false;
+# Opt-in: enabled automatically by `just enable <service>` when the first service is enabled.
+# Enable/disable in /etc/nixos/server-services.nix:
+#   vexos.server.vexboard.enable = true;   # or false to suppress
 #
 # Web UI:  http://<server-ip>:7280
 # Service: vexboard.service

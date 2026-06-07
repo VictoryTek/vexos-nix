@@ -35,9 +35,8 @@
   #   attic-server-token-rs256-secret-base64
 
   # ── Dashboard ────────────────────────────────────────────────────────────
-  # vexboard is enabled by default on the server role.
-  # Uncomment to disable:
-  # vexos.server.vexboard.enable = false;         # Port 7280 — VexOS server dashboard
+  # vexboard is automatically enabled by `just enable <service>` the first time any service is enabled.
+  # vexos.server.vexboard.enable = true;          # Port 7280 — VexOS server dashboard
   # vexos.server.vexboard.secretFile = "/etc/nixos/secrets/vexboard-secret";
 
   # ── Container Runtime ────────────────────────────────────────────────────

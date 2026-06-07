@@ -981,7 +981,7 @@ available-services:
     _svc prometheus          "Metrics collection & alerting toolkit"
     _svc scrutiny            "S.M.A.R.T. disk health monitoring dashboard"
     _svc uptime-kuma         "Self-hosted uptime & status page monitoring"
-    _svc vexboard            "VexOS Server dashboard (enabled by default)"
+    _svc vexboard            "VexOS Server dashboard (auto-enabled with first service)"
     _hdr "Networking & Security"
     _svc adguard             "DNS-based ad & tracker blocker"
     _svc authelia            "Single sign-on & two-factor auth gateway"
@@ -1074,7 +1074,7 @@ service-info service="":
         traefik)         printf "  %-18s  Ports :8882, :8445  |  Dashboard http://<server-ip>:8079/dashboard/\n"       "$1" ;;
         uptime-kuma)     printf "  %-18s  Web UI  http://<server-ip>:3001\n"                                           "$1" ;;
         vaultwarden)     printf "  %-18s  Web UI  http://<server-ip>:8222   |  Admin .../admin\n"                      "$1" ;;
-        vexboard)        printf "  %-18s  Web UI  http://<server-ip>:7280   (default dashboard — enabled by default)\n" "$1" ;;
+        vexboard)        printf "  %-18s  Web UI  http://<server-ip>:7280   (server dashboard — auto-enabled with first service)\n" "$1" ;;
         authelia)        printf "  %-18s  Web UI  http://<server-ip>:9091\n"                                                   "$1" ;;
         code-server)     printf "  %-18s  Web UI  http://<server-ip>:4444\n"                                                   "$1" ;;
         dozzle)          printf "  %-18s  Web UI  http://<server-ip>:8888   (requires docker)\n"                               "$1" ;;
@@ -1382,6 +1382,20 @@ enable service: _require-server-role
     fi
 
     echo "✓ Enabled: $SERVICE"
+
+    # Auto-enable VexBoard alongside the first service enabled on this host.
+    if [ "$SERVICE" != "vexboard" ]; then
+        VB_OPTION="vexos.server.vexboard.enable"
+        if ! grep -q "${VB_OPTION}[[:space:]]*=[[:space:]]*true" "$SVC_FILE" 2>/dev/null; then
+            if grep -qP "^\s*#?\s*${VB_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+                sudo sed -i -E "s|^(\s*)#?\s*(${VB_OPTION//./\\.})\s*=\s*(true|false)\s*;|\1${VB_OPTION} = true;|" "$SVC_FILE"
+            else
+                sudo sed -i "s|}|  ${VB_OPTION} = true;\n}|" "$SVC_FILE"
+            fi
+            echo "  + VexBoard also enabled (server dashboard — http://<server-ip>:7280)"
+        fi
+    fi
+
     echo "  → Run 'just rebuild' to apply."
     echo ""
     case "$SERVICE" in
@@ -1851,8 +1865,8 @@ enable service: _require-server-role
       vexboard)
         echo "  Service:  vexboard.service"
         echo "  Web UI:   http://<server-ip>:7280"
-        echo "  About:    VexOS Server dashboard — enabled by default on the server role."
-        echo "  Note:     To disable: add 'vexos.server.vexboard.enable = false;' in server-services.nix."
+        echo "  About:    VexOS Server dashboard — automatically enabled alongside the first service you enable."
+        echo "  Note:     To disable: set 'vexos.server.vexboard.enable = false;' in server-services.nix."
         echo "  Secret:   Set VEXBOARD_AUTH__SECRET via vexos.server.vexboard.secretFile for production use."
         echo "            Generate a secret:  openssl rand -base64 48"
         ;;
