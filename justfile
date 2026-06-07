@@ -853,7 +853,7 @@ ssh target="":
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin jellyseerr kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -968,8 +968,7 @@ available-services:
     _svc tautulli            "Monitoring & analytics for Plex Media Server"
     _hdr "Media Requests & Automation"
     _svc arr                 "*arr suite — Sonarr, Radarr, Lidarr, Prowlarr, SABnzbd"
-    _svc jellyseerr          "Media request manager for Jellyfin"
-    _svc seerr               "Media request manager for Plex (Overseerr)"
+    _svc seerr               "Media request manager (Jellyfin, Plex, Emby)"
     _hdr "Monitoring & Admin"
     _svc cockpit             "Web-based Linux server management console"
     _svc dozzle              "Real-time container log viewer"
@@ -1039,7 +1038,6 @@ service-info service="":
         homepage)        printf "  %-18s  Web UI  http://<server-ip>:3010   (requires docker)\n"                       "$1" ;;
         immich)          printf "  %-18s  Web UI  http://<server-ip>:2283\n"                                           "$1" ;;
         jellyfin)        printf "  %-18s  Web UI  http://<server-ip>:8096\n"                                           "$1" ;;
-        jellyseerr)      printf "  %-18s  Web UI  http://<server-ip>:5056\n"                                           "$1" ;;
         kavita)          printf "  %-18s  Web UI  http://<server-ip>:5000\n"                                           "$1" ;;
         kiji-proxy)      printf "  %-18s  Proxy   http://127.0.0.1:8080   |  Health: http://localhost:8080/health\n"    "$1" ;;
         komga)           printf "  %-18s  Web UI  http://<server-ip>:8090\n"                                           "$1" ;;
@@ -1168,7 +1166,6 @@ status service: _require-server-role
       homepage)       UNITS="docker-homepage";      URLS="http://localhost:3010" ;;
       immich)         UNITS="immich-server";        URLS="http://localhost:2283" ;;
       jellyfin)       UNITS="jellyfin";             URLS="http://localhost:8096" ;;
-      jellyseerr)     UNITS="jellyseerr";           URLS="http://localhost:5056" ;;
       kavita)         UNITS="kavita";               URLS="http://localhost:5000" ;;
       komga)          UNITS="komga";                URLS="http://localhost:8090" ;;
       kiji-proxy)     UNITS="kiji-proxy";           URLS="http://localhost:8080/health" ;;
@@ -1267,7 +1264,7 @@ services: _require-server-role
     _hdr "Gaming";                     _check papermc
     _hdr "Infrastructure";             _check attic;          _check caddy;          _check docker;        _check dockhand;      _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
     _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
-    _hdr "Media Requests & Automation";_check arr;            _check jellyseerr;    _check seerr
+    _hdr "Media Requests & Automation";_check arr;            _check seerr
     _hdr "Monitoring & Admin";         _check nas;            _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma;  _check portbook;  _check vexboard
     _hdr "Networking & Security";      _check adguard;        _check authelia;      _check headscale;     _check unbound;       _check vaultwarden
     _hdr "Productivity";               _check code-server;    _check forgejo;       _check homepage;      _check listmonk;      _check mealie;    _check paperless;   _check stirling-pdf
@@ -1386,7 +1383,7 @@ enable service: _require-server-role
     # Auto-enable VexBoard alongside the first service enabled on this host.
     if [ "$SERVICE" != "vexboard" ]; then
         VB_OPTION="vexos.server.vexboard.enable"
-        if ! grep -q "${VB_OPTION}[[:space:]]*=[[:space:]]*true" "$SVC_FILE" 2>/dev/null; then
+        if ! grep -qP "^\s*vexos\.server\.vexboard\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
             if grep -qP "^\s*#?\s*${VB_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
                 sudo sed -i -E "s|^(\s*)#?\s*(${VB_OPTION//./\\.})\s*=\s*(true|false)\s*;|\1${VB_OPTION} = true;|" "$SVC_FILE"
             else
@@ -1502,11 +1499,6 @@ enable service: _require-server-role
         echo "  Web UI:   http://<server-ip>:8096"
         echo "  About:    Free, open-source media server for streaming movies, TV, music, and photos to any device."
         echo "  Note:     First run launches a setup wizard to add media libraries and create the admin account."
-        ;;
-      jellyseerr)
-        echo "  Service:  jellyseerr.service"
-        echo "  Web UI:   http://<server-ip>:5056"
-        echo "  About:    Media request and discovery manager for Jellyfin. Routes requests to Radarr/Sonarr."
         ;;
       kavita)
         echo "  Service:  kavita.service"
