@@ -45,8 +45,4 @@
     "org.gimp.GIMP"
   ];
 
-  # ---------- Default dashboard ----------
-  # VexBoard is on by default for every server deployment.
-  # Override with `vexos.server.vexboard.enable = false;` in server-services.nix.
-  vexos.server.vexboard.enable = lib.mkDefault true;
 }
