@@ -39,6 +39,7 @@
     ./vexboard.nix
     # ── AI & Privacy ─────────────────────────────────────────────────────────
     ./kiji-proxy.nix
+    ./odysseus.nix
     ./portbook.nix
     # ── Security ─────────────────────────────────────────────────────────────
     ./vaultwarden.nix

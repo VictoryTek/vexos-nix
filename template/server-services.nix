@@ -155,6 +155,9 @@
   # vexos.server.stirling-pdf.enable = false;
 
   # ── AI & Privacy ─────────────────────────────────────────────────────────────
+  # vexos.server.odysseus.enable = false;             # Port 7000 — self-hosted AI workspace (ChatGPT/Claude alternative)
+  # vexos.server.odysseus.port = 7000;
+  # vexos.server.odysseus.authEnabled = true;         # Keep true; disable only on fully trusted isolated LANs
   # vexos.server.kiji-proxy.enable = false;           # Port 8080 — PII-masking proxy for AI APIs
   # vexos.server.kiji-proxy.port = 8080;              # Forward proxy + health API port
   # vexos.server.kiji-proxy.environmentFile = "";    # Optional: path to env file with OPENAI_API_KEY etc.

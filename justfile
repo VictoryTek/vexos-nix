@@ -853,7 +853,7 @@ ssh target="":
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy odysseus paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -1003,6 +1003,7 @@ available-services:
     _svc ntfy                "Simple HTTP-based push notification server"
     _svc zigbee2mqtt         "Zigbee → MQTT bridge (no proprietary hub needed)"
     _hdr "AI & Privacy"
+    _svc odysseus            "Self-hosted AI workspace (ChatGPT/Claude alternative)"
     _svc kiji-proxy          "Privacy-first OpenAI-compatible AI API proxy"
     _hdr "Experimental"
     _svc proxmox             "Proxmox VE integration (experimental)"
@@ -1040,6 +1041,7 @@ service-info service="":
         jellyfin)        printf "  %-18s  Web UI  http://<server-ip>:8096\n"                                           "$1" ;;
         kavita)          printf "  %-18s  Web UI  http://<server-ip>:5000\n"                                           "$1" ;;
         kiji-proxy)      printf "  %-18s  Proxy   http://127.0.0.1:8080   |  Health: http://localhost:8080/health\n"    "$1" ;;
+        odysseus)        printf "  %-18s  Web UI  http://<server-ip>:7000   (self-hosted AI workspace)\n"               "$1" ;;
         komga)           printf "  %-18s  Web UI  http://<server-ip>:8090\n"                                           "$1" ;;
         mealie)          printf "  %-18s  Web UI  http://<server-ip>:9010\n"                                           "$1" ;;
         nextcloud)       printf "  %-18s  Web UI  http://nextcloud.local     (Nginx frontend)\n"                       "$1" ;;
@@ -1173,6 +1175,7 @@ status service: _require-server-role
       nextcloud)      UNITS="phpfpm-nextcloud nginx"; URLS="http://localhost:80" ;;
       nginx)          UNITS="nginx";                URLS="http://localhost:80" ;;
       ntfy)           UNITS="ntfy";                 URLS="http://localhost:2586" ;;
+      odysseus)       UNITS="odysseus";             URLS="http://localhost:7000" ;;
       seerr)          UNITS="seerr";               URLS="http://localhost:5055" ;;
       papermc)        UNITS="minecraft-server";     URLS="" ;;
       plex)           UNITS="plex";                 URLS="http://localhost:32400/web" ;;
@@ -1636,6 +1639,49 @@ enable service: _require-server-role
         echo "  Admin:    http://<server-ip>:8222/admin  (set ADMIN_TOKEN in the environment file to enable)"
         echo "  About:    Lightweight Bitwarden-compatible password manager. Use any official Bitwarden client — point it at this server."
         echo "  Warning:  Put Vaultwarden behind a TLS reverse proxy (Caddy/Nginx/Traefik) before exposing outside your local network."
+        ;;
+      odysseus)
+        # ── Auto-patch the source hash if still a placeholder ─────────────────
+        _OD_NIX=""
+        _jf_raw_od="{{justfile_directory()}}"
+        _jf_real_od=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+        _jf_dir_od=$(dirname "$_jf_real_od")
+        for _cand in "$_jf_raw_od" "$_jf_dir_od" "$HOME/Projects/vexos-nix"; do
+          [ -n "$_OD_NIX" ] && break
+          [ -f "$_cand/modules/server/odysseus.nix" ] && _OD_NIX="$_cand/modules/server/odysseus.nix"
+        done
+        if [ -n "$_OD_NIX" ] && grep -q 'lib\.fakeHash' "$_OD_NIX"; then
+          echo ""
+          echo "  Fetching Odysseus source hash (downloading ~500 KB archive)..."
+          _OD_URL="https://github.com/pewdiepie-archdaemon/odysseus/archive/73673258199b353f9b3e04da9b37ae95077e2c8b.tar.gz"
+          _OD_B32=$(nix-prefetch-url --unpack "$_OD_URL" 2>/dev/null) || _OD_B32=""
+          _OD_SRI=""
+          [ -n "$_OD_B32" ] && _OD_SRI=$(nix hash to-sri --type sha256 "$_OD_B32" 2>/dev/null) || true
+          if [ -n "$_OD_SRI" ]; then
+            sed -i "s|lib\.fakeHash|\"${_OD_SRI}\"|" "$_OD_NIX"
+            echo "  ✓ Source hash set: ${_OD_SRI}"
+          else
+            echo "  ⚠ Could not fetch hash automatically. Run manually then rebuild:"
+            echo "      HASH=\$(nix-prefetch-url --unpack $_OD_URL)"
+            echo "      SRI=\$(nix hash to-sri --type sha256 \"\$HASH\")"
+            echo "      sed -i \"s|lib\\.fakeHash|\\\"\$SRI\\\"|\" \$_OD_NIX"
+          fi
+        elif [ -n "$_OD_NIX" ]; then
+          echo "  ✓ Source hash already set."
+        else
+          echo "  ⚠ Could not find modules/server/odysseus.nix — set the hash manually before rebuilding."
+        fi
+        echo ""
+        echo "  Service:  odysseus.service"
+        echo "  Web UI:   http://<server-ip>:7000"
+        echo "  Stack:    odysseus (port 7000) + ChromaDB (internal) + SearXNG (internal)"
+        echo "  About:    Self-hosted AI workspace — local-first ChatGPT/Claude alternative."
+        echo "            Connects to local models (Ollama, llama.cpp) or remote APIs."
+        echo "  Note:     First start builds the Docker image (~5-10 min). Monitor progress:"
+        echo "              journalctl -fu odysseus"
+        echo "  Login:    Admin credentials are printed to the service log on first start:"
+        echo "              journalctl -u odysseus | grep -i 'admin\\|password\\|credentials'"
+        echo "  Data:     /var/lib/odysseus/{data,logs,chromadb,searxng}"
         ;;
       kiji-proxy)
         # ── Auto-patch the package hash if still a placeholder ────────────────
