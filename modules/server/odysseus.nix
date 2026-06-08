@@ -3,7 +3,7 @@
 # Runs a Docker Compose stack: odysseus app + ChromaDB (vector memory) + SearXNG (search).
 # Default port: 7000
 #
-# First start builds the Odysseus Docker image from source (~5-10 min).
+# First start clones the Odysseus source then builds the Docker image (~5-10 min).
 # Monitor progress: journalctl -fu odysseus
 # Admin credentials are printed to the service log on first boot.
 #
@@ -37,18 +37,11 @@ in
 
   config = lib.mkIf cfg.enable (
     let
-      odysseusSource = pkgs.fetchFromGitHub {
-        owner = "pewdiepie-archdaemon";
-        repo  = "odysseus";
-        rev   = "73673258199b353f9b3e04da9b37ae95077e2c8b";
-        hash  = lib.fakeHash; # auto-patched by `just enable odysseus`
-      };
-
       composeFile = pkgs.writeText "odysseus-compose.yml" ''
         services:
           odysseus:
             build:
-              context: ${odysseusSource}
+              context: ${cfg.dataDir}/src
             ports:
               - "${toString cfg.port}:7000"
             volumes:
@@ -99,7 +92,13 @@ in
         after       = [ "docker.service" "network-online.target" ];
 
         preStart = ''
-          mkdir -p ${cfg.dataDir}/{data,logs,chromadb,searxng}
+          mkdir -p ${cfg.dataDir}/{data,logs,chromadb,searxng,src}
+
+          if [ ! -d ${cfg.dataDir}/src/.git ]; then
+            ${pkgs.git}/bin/git clone --depth 1 \
+              https://github.com/pewdiepie-archdaemon/odysseus.git \
+              ${cfg.dataDir}/src
+          fi
 
           if [ ! -f ${cfg.dataDir}/searxng/settings.yml ]; then
             SECRET=$(${pkgs.openssl}/bin/openssl rand -hex 32)

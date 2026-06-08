@@ -1641,44 +1641,14 @@ enable service: _require-server-role
         echo "  Warning:  Put Vaultwarden behind a TLS reverse proxy (Caddy/Nginx/Traefik) before exposing outside your local network."
         ;;
       odysseus)
-        # ── Auto-patch the source hash if still a placeholder ─────────────────
-        _OD_NIX=""
-        _jf_raw_od="{{justfile_directory()}}"
-        _jf_real_od=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-        _jf_dir_od=$(dirname "$_jf_real_od")
-        for _cand in "$_jf_raw_od" "$_jf_dir_od" "$HOME/Projects/vexos-nix"; do
-          [ -n "$_OD_NIX" ] && break
-          [ -f "$_cand/modules/server/odysseus.nix" ] && _OD_NIX="$_cand/modules/server/odysseus.nix"
-        done
-        if [ -n "$_OD_NIX" ] && grep -q 'lib\.fakeHash' "$_OD_NIX"; then
-          echo ""
-          echo "  Fetching Odysseus source hash (downloading ~500 KB archive)..."
-          _OD_URL="https://github.com/pewdiepie-archdaemon/odysseus/archive/73673258199b353f9b3e04da9b37ae95077e2c8b.tar.gz"
-          _OD_B32=$(nix-prefetch-url --unpack "$_OD_URL" 2>/dev/null) || _OD_B32=""
-          _OD_SRI=""
-          [ -n "$_OD_B32" ] && _OD_SRI=$(nix hash to-sri --type sha256 "$_OD_B32" 2>/dev/null) || true
-          if [ -n "$_OD_SRI" ]; then
-            sed -i "s|lib\.fakeHash|\"${_OD_SRI}\"|" "$_OD_NIX"
-            echo "  ✓ Source hash set: ${_OD_SRI}"
-          else
-            echo "  ⚠ Could not fetch hash automatically. Run manually then rebuild:"
-            echo "      HASH=\$(nix-prefetch-url --unpack $_OD_URL)"
-            echo "      SRI=\$(nix hash to-sri --type sha256 \"\$HASH\")"
-            echo "      sed -i \"s|lib\\.fakeHash|\\\"\$SRI\\\"|\" \$_OD_NIX"
-          fi
-        elif [ -n "$_OD_NIX" ]; then
-          echo "  ✓ Source hash already set."
-        else
-          echo "  ⚠ Could not find modules/server/odysseus.nix — set the hash manually before rebuilding."
-        fi
         echo ""
         echo "  Service:  odysseus.service"
         echo "  Web UI:   http://<server-ip>:7000"
         echo "  Stack:    odysseus (port 7000) + ChromaDB (internal) + SearXNG (internal)"
         echo "  About:    Self-hosted AI workspace — local-first ChatGPT/Claude alternative."
         echo "            Connects to local models (Ollama, llama.cpp) or remote APIs."
-        echo "  Note:     First start builds the Docker image (~5-10 min). Monitor progress:"
-        echo "              journalctl -fu odysseus"
+        echo "  Note:     First start clones the source and builds the Docker image (~5-10 min)."
+        echo "              Monitor progress:  journalctl -fu odysseus"
         echo "  Login:    Admin credentials are printed to the service log on first start:"
         echo "              journalctl -u odysseus | grep -i 'admin\\|password\\|credentials'"
         echo "  Data:     /var/lib/odysseus/{data,logs,chromadb,searxng}"
