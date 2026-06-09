@@ -2,22 +2,36 @@
   "effortLevel": "medium",
   "permissions": {
     "allow": [
-      "Bash(nix flake show:*)",
-      "Bash(nix flake metadata:*)",
-      "Bash(nix build:*)",
-      "Bash(sudo nixos-rebuild dry-build:*)",
-      "Bash(sudo nixos-rebuild dry-activate:*)",
-      "Bash(sudo nixos-rebuild list-generations:*)",
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
-      "Bash(stat:*)",
-      "Bash(readlink:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(nix flake show:*)",
+      "Bash(nix flake metadata:*)",
+      "Bash(nix eval:*)",
+      "Bash(nix build --dry-run:*)",
+      "Bash(sudo nixos-rebuild dry-build:*)",
+      "Bash(sudo nixos-rebuild dry-activate:*)",
+      "Bash(sudo nixos-rebuild list-generations:*)",
+      "Bash(bash scripts/preflight.sh:*)",
+      "Bash(nixpkgs-fmt --check:*)",
       "Bash(grep:*)",
-      "Bash(cat:*)"
+      "Bash(find:*)",
+      "Bash(stat:*)",
+      "Bash(ls:*)",
+      "Bash(jq:*)",
+      "Bash(readlink:*)"
     ],
     "deny": [
       "Bash(nix flake check:*)",
+      "Bash(sudo nixos-rebuild switch:*)",
+      "Bash(sudo nixos-rebuild boot:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git stash:*)",
       "Bash(rm -rf:*)"
     ]
   }
