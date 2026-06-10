@@ -200,8 +200,8 @@ echo -e "${GREEN}${BOLD}✓ Disk formatted and mounted at /mnt.${RESET}"
 
 # ---------- Generate hardware configuration ---------------------------------
 echo ""
-echo -e "${BOLD}Generating hardware configuration (no filesystem entries)...${RESET}"
-sudo nixos-generate-config --no-filesystems --root /mnt
+echo -e "${BOLD}Generating hardware configuration (with UUID-based filesystem entries)...${RESET}"
+sudo nixos-generate-config --root /mnt
 echo -e "${GREEN}✓ hardware-configuration.nix generated at /mnt/etc/nixos/hardware-configuration.nix${RESET}"
 
 # Set hostname in hardware config could be done in the flake; skip here.
