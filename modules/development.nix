@@ -46,6 +46,9 @@
     pkgs.mkcert # Locally-trusted dev TLS certificates
     pkgs.gcc # C/C++ compiler (for native modules, etc.)
 
+    # ── AI tooling ────────────────────────────────────────────────────────────
+    pkgs.claude-code # Anthropic Claude CLI
+
     # ── Nix tooling ───────────────────────────────────────────────────────────
     pkgs.nil # Nix LSP server
     pkgs.nixpkgs-fmt # Nix code formatter
