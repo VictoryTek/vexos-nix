@@ -198,7 +198,7 @@
 
         $D write /org/gnome/desktop/app-folders/folders/Utilities/name "'Utilities'"
         $D write /org/gnome/desktop/app-folders/folders/Utilities/apps \
-          "['com.mattjakeman.ExtensionManager.desktop', 'it.mijorus.gearlever.desktop', 'org.gnome.tweaks.desktop', 'io.github.flattool.Warehouse.desktop', 'io.missioncenter.MissionCenter.desktop', 'com.github.tchx84.Flatseal.desktop', 'org.gnome.World.PikaBackup.desktop', 'nvidia-settings.desktop']"
+          "['com.mattjakeman.ExtensionManager.desktop', 'it.mijorus.gearlever.desktop', 'org.gnome.tweaks.desktop', 'io.github.flattool.Warehouse.desktop', 'io.missioncenter.MissionCenter.desktop', 'com.github.tchx84.Flatseal.desktop', 'org.gnome.World.PikaBackup.desktop', 'nvidia-settings.desktop', 'LocalSend.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/System/name    "'System'"
         $D write /org/gnome/desktop/app-folders/folders/System/apps \
