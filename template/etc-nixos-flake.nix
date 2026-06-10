@@ -125,6 +125,15 @@
       networking.hostId = "XXXXXXXX"; # Substituted automatically by install.sh
     };
 
+    # ── Kernel install override (written by installer for cache-miss fallback) ──
+    # When the installer detects that target-kernel packages are not in cache,
+    # it writes kernel-install-override.nix to fall back to linuxPackages
+    # (channel default, always fully cached).  vexos-update removes the file
+    # automatically once the target kernel packages land in cache.
+    # To upgrade manually: delete the file and run: just update
+    kernelOverrideFile = ./kernel-install-override.nix;
+    hasKernelOverride  = builtins.pathExists kernelOverrideFile;
+
     # ── Variant builder ─────────────────────────────────────────────────────
     # Constructs a complete NixOS configuration for a given variant.
     # • hostname   → the variant name, also written to /etc/nixos/vexos-variant
@@ -153,7 +162,8 @@
           baseModule
 
           # GPU-specific drivers and settings for this variant.
-        ] ++ modules;
+        ] ++ modules
+          ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
     # Desktop role: full gaming/workstation stack.

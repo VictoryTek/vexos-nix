@@ -4,9 +4,10 @@
 { pkgs, ... }:
 {
   environment.systemPackages = with pkgs; [
-    brave   # Chromium-based browser
-    gparted # Graphical disk partition editor (system package so .desktop is resolvable by GNOME)
-    jdk21  # Java 21 (LTS)
-    mpv    # Video player (replaces Totem Flatpak on desktop/stateless/server)
+    brave      # Chromium-based browser
+    gparted    # Graphical disk partition editor (system package so .desktop is resolvable by GNOME)
+    jdk21      # Java 21 (LTS)
+    localsend  # Cross-platform AirDrop alternative (LAN file sharing)
+    mpv        # Video player (replaces Totem Flatpak on desktop/stateless/server)
   ];
 }

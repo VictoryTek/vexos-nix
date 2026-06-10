@@ -134,6 +134,36 @@ in
           exit 1
         fi
 
+        # ── Kernel install override auto-clear ───────────────────────────────
+        # The installer writes kernel-install-override.nix when target-kernel
+        # packages were not in cache at install time.  On each update, check
+        # whether the target packages are now cached; if so, remove the override
+        # so the next rebuild upgrades to the intended kernel automatically.
+        OVERRIDE_FILE="/etc/nixos/kernel-install-override.nix"
+        if [ -f "$OVERRIDE_FILE" ]; then
+          echo "Kernel install override detected — checking if target kernel is now cached..."
+          rm "$OVERRIDE_FILE"
+          DRY_CHECK=$(nixos-rebuild dry-build --flake path:/etc/nixos#"$VARIANT" 2>&1 || true)
+          HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk|NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|openrazer-[0-9])'
+          STILL_HEAVY=$(printf '%s\n' "$DRY_CHECK" \
+            | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
+            | grep -E "$HEAVY_BUILD_REGEX" || true)
+          if [ -n "$STILL_HEAVY" ]; then
+            printf '%s\n' \
+              '# Written by vexos-nix installer — fallback to channel-default kernel.' \
+              '# Removed automatically by vexos-update once target kernel packages are cached.' \
+              '# To upgrade manually: delete this file, then run: just update' \
+              '{ lib, pkgs, ... }:' \
+              '{' \
+              '  boot.kernelPackages = lib.mkForce pkgs.linuxPackages;' \
+              '}' > "$OVERRIDE_FILE"
+            echo "Target kernel packages not yet cached — keeping channel-default kernel."
+            echo "Run 'just update' again in 1-3 days to upgrade automatically."
+          else
+            echo "Target kernel packages are cached — override removed. Kernel will upgrade on this update."
+          fi
+        fi
+
         # Back up current lock before touching anything.
         cp /etc/nixos/flake.lock /etc/nixos/flake.lock.bak
 

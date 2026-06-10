@@ -360,21 +360,85 @@ SOURCE_BUILDS=$(printf '%s\n' "$DRY_OUT" \
   || true)
 
 if [ -n "$SOURCE_BUILDS" ]; then
-  echo ""
-  echo -e "${YELLOW}${BOLD}⚠ Some packages are not yet in the binary cache and would need to"
-  echo -e "  be compiled from source (this can take hours):${RESET}"
-  echo ""
-  printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/    /'
-  echo ""
-  echo -e "${YELLOW}The install has been aborted. cache.nixos.org usually builds new"
-  echo -e "packages within 24 hours. Run the install script again once they are cached."
-  echo ""
-  echo -e "To install now anyway (accepts local source builds), run:${RESET}"
-  echo "  sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
-  echo ""
-  exit 1
+  # Kernel-dependent packages (NVIDIA driver, OpenRazer DKMS) miss cache when
+  # the pinned desktop kernel is newer than Hydra's build window.  Switching to
+  # the channel-default kernel (linuxPackages) makes all packages available from
+  # cache immediately.  Check whether every cache miss is kernel-dep; if so,
+  # fall back automatically rather than aborting.
+  HEAVY_BUILD_REGEX='^(NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|openrazer-[0-9])'
+  NON_KERNEL_BUILDS=$(printf '%s\n' "$SOURCE_BUILDS" | grep -Ev "$HEAVY_BUILD_REGEX" || true)
+
+  if [ -z "$NON_KERNEL_BUILDS" ] && [ "$ROLE" = "desktop" ]; then
+    echo ""
+    echo -e "${YELLOW}${BOLD}⚠ Target kernel packages are not yet in the binary cache:${RESET}"
+    printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/    /'
+    echo ""
+    echo -e "${CYAN}Falling back to the channel-default kernel (linuxPackages) for first install."
+    echo -e "Your system will be fully functional. The target kernel will be applied"
+    echo -e "automatically the next time you run 'just update' or use the Up app,"
+    echo -e "once cache.nixos.org has built the required packages (typically 1-3 days).${RESET}"
+    echo ""
+
+    # Write the override module — lib.mkForce is required because
+    # system-desktop-kernel.nix sets boot.kernelPackages at priority 100.
+    sudo tee /etc/nixos/kernel-install-override.nix > /dev/null << 'NIXEOF'
+# Written by vexos-nix installer — fallback to channel-default kernel.
+# Removed automatically by vexos-update once target kernel packages are cached.
+# To upgrade manually: delete this file, then run: just update
+{ lib, pkgs, ... }:
+{
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages;
+}
+NIXEOF
+
+    # Re-run dry-build with the override in place to confirm all packages are
+    # now in cache before proceeding.
+    echo -e "${CYAN}Verifying fallback kernel resolves all cache misses...${RESET}"
+    DRY_OUT2=$(sudo nixos-rebuild dry-build --flake "/etc/nixos#${FLAKE_TARGET}" 2>&1 || true)
+    REMAINING=$(printf '%s\n' "$DRY_OUT2" \
+      | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
+      | grep -E -- '-[0-9]+\.[0-9]+' \
+      | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|linux-[0-9]|kernel|stage-[12]-|crate-|cargo-vendor|perl-[0-9]|lua-[0-9]|python3?-[0-9]|up-[0-9]|zvariant|zbus|gtk4-|glib-|gio-|gdk-|pango-|graphene-|cairo-|gettext-rs|gettext-sys|serde_yml|libyml|system-deps|cfg-expr|winnow|endi-|enumflags|version-compare|zbus_names|zbus_macros|zvariant_|ureq|uds_windows|env_filter|env_logger|utf8-zero|glib-build-tools|glib-macros|glib-sys|gobject-sys|gio-sys|pango-sys|gdk-pixbuf-sys|graphene-sys|cairo-sys|cairo-rs|gdk-pixbuf-|mpv-with-scripts|plex-desktop|ibus-with-plugins|retroarch-with-cores|steam|steam-unwrapped|discord|podman-docker-compat|nodejs-|vscode-|code-[0-9]|VSCode_|umu-launcher|.*-init\.|.*-bwrap\.|.*-fhsenv)' \
+      || true)
+
+    if [ -n "$REMAINING" ]; then
+      # Fallback did not resolve all misses — clean up and abort normally.
+      sudo rm -f /etc/nixos/kernel-install-override.nix
+      echo ""
+      echo -e "${YELLOW}${BOLD}⚠ Additional packages are not yet in the binary cache and would need to"
+      echo -e "  be compiled from source (this can take hours):${RESET}"
+      echo ""
+      printf '%s\n' "$REMAINING" | sed 's/^/    /'
+      echo ""
+      echo -e "${YELLOW}The install has been aborted. cache.nixos.org usually builds new"
+      echo -e "packages within 24 hours. Run the install script again once they are cached."
+      echo ""
+      echo -e "To install now anyway (accepts local source builds), run:${RESET}"
+      echo "  sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
+      echo ""
+      exit 1
+    fi
+    echo -e "${GREEN}✓ All packages available in binary cache (using channel-default kernel).${RESET}"
+
+  else
+    # Non-kernel packages require a local build — cannot help with a kernel swap.
+    echo ""
+    echo -e "${YELLOW}${BOLD}⚠ Some packages are not yet in the binary cache and would need to"
+    echo -e "  be compiled from source (this can take hours):${RESET}"
+    echo ""
+    printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/    /'
+    echo ""
+    echo -e "${YELLOW}The install has been aborted. cache.nixos.org usually builds new"
+    echo -e "packages within 24 hours. Run the install script again once they are cached."
+    echo ""
+    echo -e "To install now anyway (accepts local source builds), run:${RESET}"
+    echo "  sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
+    echo ""
+    exit 1
+  fi
+else
+  echo -e "${GREEN}✓ All packages available in binary cache.${RESET}"
 fi
-echo -e "${GREEN}✓ All packages available in binary cache.${RESET}"
 echo ""
 
 if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "/etc/nixos#${FLAKE_TARGET}"; then
@@ -396,6 +460,12 @@ if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "/etc/nixos#${FLAKE_TARGET}"; 
     esac
   else
     echo -e "${GREEN}${BOLD}✓ Build and switch successful!${RESET}"
+    if [ -f /etc/nixos/kernel-install-override.nix ]; then
+      echo ""
+      echo -e "${YELLOW}Note: installed with channel-default kernel (linuxPackages)."
+      echo -e "Run 'just update' or use the Up app after reboot to upgrade to the"
+      echo -e "target kernel automatically once packages are cached (1-3 days).${RESET}"
+    fi
     echo ""
     printf "Reboot now? [y/N] "
     read -r REBOOT_CHOICE </dev/tty
