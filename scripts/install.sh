@@ -157,7 +157,7 @@ fi
 # ---------- NVIDIA driver branch selection -----------------------------------
 # Vanilla always uses the kernel nouveau driver — no proprietary driver branches.
 NVIDIA_SUFFIX=""
-if [ "$VARIANT" = "nvidia" ] && [ "$ROLE" != "vanilla" ]; then
+if [ "$VARIANT" = "nvidia" ]; then
   echo ""
   echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
   echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"

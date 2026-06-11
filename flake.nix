@@ -224,7 +224,7 @@
       };
 
     # ── Host descriptor table — single source of truth for which systems exist ──
-    # 29 outputs total: 25 role/GPU variants + 4 vanilla role variants.
+    # 30 outputs total: 25 role/GPU variants + 5 vanilla role variants.
     # Output names use the no-underscore "legacy535" suffix; the option value
     # uses the underscored form "legacy_535".
     hostList = [
@@ -262,11 +262,12 @@
       { name = "vexos-htpc-nvidia-legacy535"; role = "htpc";               gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
       { name = "vexos-htpc-intel";            role = "htpc";               gpu = "intel"; }
       { name = "vexos-htpc-vm";               role = "htpc";               gpu = "vm"; }
-      # Vanilla (stock NixOS baseline — no NVIDIA legacy variants, no proprietary GPU drivers)
-      { name = "vexos-vanilla-amd";    role = "vanilla"; gpu = "amd"; }
-      { name = "vexos-vanilla-nvidia"; role = "vanilla"; gpu = "nvidia"; }
-      { name = "vexos-vanilla-intel";  role = "vanilla"; gpu = "intel"; }
-      { name = "vexos-vanilla-vm";     role = "vanilla"; gpu = "vm"; }
+      # Vanilla (stock NixOS baseline)
+      { name = "vexos-vanilla-amd";              role = "vanilla"; gpu = "amd"; }
+      { name = "vexos-vanilla-nvidia";           role = "vanilla"; gpu = "nvidia"; }
+      { name = "vexos-vanilla-nvidia-legacy535"; role = "vanilla"; gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
+      { name = "vexos-vanilla-intel";            role = "vanilla"; gpu = "intel"; }
+      { name = "vexos-vanilla-vm";               role = "vanilla"; gpu = "vm"; }
     ];
 
     # Build a nixosModules.*Base export from the same per-role wiring table.

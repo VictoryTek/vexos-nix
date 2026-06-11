@@ -48,6 +48,7 @@
 #      Vanilla role (stock NixOS baseline — no desktop, no gaming, no branding):
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vanilla-amd
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vanilla-nvidia
+#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vanilla-nvidia-legacy535  (Maxwell/Pascal/Volta — LTS alt.)
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vanilla-intel
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-vanilla-vm
 #
@@ -292,40 +293,46 @@
   {
     nixosConfigurations = {
       # ── Desktop role — full gaming/workstation stack ─────────────────────
-      vexos-desktop-amd    = mkVariant "vexos-desktop-amd"    vexos-nix.nixosModules.gpuAmd;
-      vexos-desktop-nvidia = mkVariant "vexos-desktop-nvidia" vexos-nix.nixosModules.gpuNvidia;
-      vexos-desktop-intel  = mkVariant "vexos-desktop-intel"  vexos-nix.nixosModules.gpuIntel;
-      vexos-desktop-vm     = mkVariant "vexos-desktop-vm"     vexos-nix.nixosModules.gpuVm;
+      vexos-desktop-amd                  = mkVariant "vexos-desktop-amd"                  vexos-nix.nixosModules.gpuAmd;
+      vexos-desktop-nvidia               = mkVariant "vexos-desktop-nvidia"               vexos-nix.nixosModules.gpuNvidia;
+      vexos-desktop-nvidia-legacy535     = mkVariant "vexos-desktop-nvidia-legacy535"     [ vexos-nix.nixosModules.gpuNvidia { vexos.gpu.nvidiaDriverVariant = "legacy_535"; } ];
+      vexos-desktop-intel                = mkVariant "vexos-desktop-intel"                vexos-nix.nixosModules.gpuIntel;
+      vexos-desktop-vm                   = mkVariant "vexos-desktop-vm"                   vexos-nix.nixosModules.gpuVm;
 
       # ── Stateless role — minimal, no gaming/dev/virt/ASUS modules ──────────
-      vexos-stateless-amd    = mkStatelessVariant "vexos-stateless-amd"    vexos-nix.nixosModules.gpuAmd;
-      vexos-stateless-nvidia = mkStatelessVariant "vexos-stateless-nvidia" vexos-nix.nixosModules.gpuNvidia;
-      vexos-stateless-intel  = mkStatelessVariant "vexos-stateless-intel"  vexos-nix.nixosModules.gpuIntel;
-      vexos-stateless-vm     = mkStatelessVariant "vexos-stateless-vm"    vexos-nix.nixosModules.statelessGpuVm;
+      vexos-stateless-amd                = mkStatelessVariant "vexos-stateless-amd"                vexos-nix.nixosModules.gpuAmd;
+      vexos-stateless-nvidia             = mkStatelessVariant "vexos-stateless-nvidia"             vexos-nix.nixosModules.gpuNvidia;
+      vexos-stateless-nvidia-legacy535   = mkStatelessVariant "vexos-stateless-nvidia-legacy535"   [ vexos-nix.nixosModules.gpuNvidia { vexos.gpu.nvidiaDriverVariant = "legacy_535"; } ];
+      vexos-stateless-intel              = mkStatelessVariant "vexos-stateless-intel"              vexos-nix.nixosModules.gpuIntel;
+      vexos-stateless-vm                 = mkStatelessVariant "vexos-stateless-vm"                vexos-nix.nixosModules.statelessGpuVm;
 
       # ── HTPC role — media-centre stack ──────────────────────────────────
-      vexos-htpc-amd    = mkHtpcVariant "vexos-htpc-amd"    vexos-nix.nixosModules.gpuAmd;
-      vexos-htpc-nvidia = mkHtpcVariant "vexos-htpc-nvidia" vexos-nix.nixosModules.gpuNvidia;
-      vexos-htpc-intel  = mkHtpcVariant "vexos-htpc-intel"  vexos-nix.nixosModules.gpuIntel;
-      vexos-htpc-vm     = mkHtpcVariant "vexos-htpc-vm"     vexos-nix.nixosModules.gpuVm;
+      vexos-htpc-amd                     = mkHtpcVariant "vexos-htpc-amd"                     vexos-nix.nixosModules.gpuAmd;
+      vexos-htpc-nvidia                  = mkHtpcVariant "vexos-htpc-nvidia"                  vexos-nix.nixosModules.gpuNvidia;
+      vexos-htpc-nvidia-legacy535        = mkHtpcVariant "vexos-htpc-nvidia-legacy535"        [ vexos-nix.nixosModules.gpuNvidia { vexos.gpu.nvidiaDriverVariant = "legacy_535"; } ];
+      vexos-htpc-intel                   = mkHtpcVariant "vexos-htpc-intel"                   vexos-nix.nixosModules.gpuIntel;
+      vexos-htpc-vm                      = mkHtpcVariant "vexos-htpc-vm"                      vexos-nix.nixosModules.gpuVm;
 
       # ── Server role — GUI server stack ────────────────────────────────────
-      vexos-server-amd    = mkServerVariant "vexos-server-amd"    vexos-nix.nixosModules.gpuAmd;
-      vexos-server-nvidia = mkServerVariant "vexos-server-nvidia" vexos-nix.nixosModules.gpuNvidia;
-      vexos-server-intel  = mkServerVariant "vexos-server-intel"  vexos-nix.nixosModules.gpuIntel;
-      vexos-server-vm     = mkServerVariant "vexos-server-vm"     vexos-nix.nixosModules.gpuVm;
+      vexos-server-amd                   = mkServerVariant "vexos-server-amd"                   vexos-nix.nixosModules.gpuAmd;
+      vexos-server-nvidia                = mkServerVariant "vexos-server-nvidia"                vexos-nix.nixosModules.gpuNvidia;
+      vexos-server-nvidia-legacy535      = mkServerVariant "vexos-server-nvidia-legacy535"      [ vexos-nix.nixosModules.gpuNvidia { vexos.gpu.nvidiaDriverVariant = "legacy_535"; } ];
+      vexos-server-intel                 = mkServerVariant "vexos-server-intel"                 vexos-nix.nixosModules.gpuIntel;
+      vexos-server-vm                    = mkServerVariant "vexos-server-vm"                    vexos-nix.nixosModules.gpuVm;
 
       # ── Headless Server role — CLI only service stack ─────────────────────
       # Uses headless GPU modules (no early KMS / display init, no LACT GUI tool).
-      vexos-headless-server-amd    = mkHeadlessServerVariant "vexos-headless-server-amd"    vexos-nix.nixosModules.gpuAmdHeadless;
-      vexos-headless-server-nvidia = mkHeadlessServerVariant "vexos-headless-server-nvidia" vexos-nix.nixosModules.gpuNvidiaHeadless;
-      vexos-headless-server-intel  = mkHeadlessServerVariant "vexos-headless-server-intel"  vexos-nix.nixosModules.gpuIntelHeadless;
-      vexos-headless-server-vm     = mkHeadlessServerVariant "vexos-headless-server-vm"     vexos-nix.nixosModules.gpuVm;
+      vexos-headless-server-amd                  = mkHeadlessServerVariant "vexos-headless-server-amd"                  vexos-nix.nixosModules.gpuAmdHeadless;
+      vexos-headless-server-nvidia               = mkHeadlessServerVariant "vexos-headless-server-nvidia"               vexos-nix.nixosModules.gpuNvidiaHeadless;
+      vexos-headless-server-nvidia-legacy535     = mkHeadlessServerVariant "vexos-headless-server-nvidia-legacy535"     [ vexos-nix.nixosModules.gpuNvidiaHeadless { vexos.gpu.nvidiaDriverVariant = "legacy_535"; } ];
+      vexos-headless-server-intel                = mkHeadlessServerVariant "vexos-headless-server-intel"                vexos-nix.nixosModules.gpuIntelHeadless;
+      vexos-headless-server-vm                   = mkHeadlessServerVariant "vexos-headless-server-vm"                   vexos-nix.nixosModules.gpuVm;
 
       # ── Vanilla role — stock NixOS baseline ──────────────────────────────
-      vexos-vanilla-amd    = mkVanillaVariant "vexos-vanilla-amd"    vexos-nix.nixosModules.gpuAmd;
-      vexos-vanilla-nvidia = mkVanillaVariant "vexos-vanilla-nvidia" vexos-nix.nixosModules.gpuNvidia;
-      vexos-vanilla-intel  = mkVanillaVariant "vexos-vanilla-intel"  vexos-nix.nixosModules.gpuIntel;
+      vexos-vanilla-amd                  = mkVanillaVariant "vexos-vanilla-amd"                  vexos-nix.nixosModules.gpuAmd;
+      vexos-vanilla-nvidia               = mkVanillaVariant "vexos-vanilla-nvidia"               vexos-nix.nixosModules.gpuNvidia;
+      vexos-vanilla-nvidia-legacy535     = mkVanillaVariant "vexos-vanilla-nvidia-legacy535"     [ vexos-nix.nixosModules.gpuNvidia { vexos.gpu.nvidiaDriverVariant = "legacy_535"; } ];
+      vexos-vanilla-intel                = mkVanillaVariant "vexos-vanilla-intel"                vexos-nix.nixosModules.gpuIntel;
       # gpuVanillaVm instead of gpuVm: vanilla does not import modules/system.nix,
       # so vexos.btrfs.enable and vexos.swap.enable (declared there) are not
       # available in this evaluation context.

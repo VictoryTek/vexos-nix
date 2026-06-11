@@ -69,9 +69,10 @@ Check boxes are ticked as items are completed in this session.
 
 ### Bugs — Functional Correctness
 
-- [ ] **H-11** `[B]` Template missing NVIDIA legacy outputs — installer builds config names that don't exist in the template
+- [x] **H-11** `[B]` Template missing NVIDIA legacy outputs — installer builds config names that don't exist in the template
   - **Source:** BUGS H4 · `template/etc-nixos-flake.nix`, `scripts/install.sh:160-184`
   - Add `vexos-<role>-nvidia-legacy535` and `vexos-<role>-nvidia-legacy470` outputs (or a `mkVariant` helper) to the template for all five roles
+  - **Resolution:** Added all 6 `nvidia-legacy535` outputs to `template/etc-nixos-flake.nix` (desktop, stateless, htpc, server, headless-server, vanilla). Added `vexos-vanilla-nvidia-legacy535` to `flake.nix` hostList (count 29→30) and CI vanilla group. Removed vanilla exclusion from NVIDIA driver branch selection in `scripts/install.sh`. (`template/etc-nixos-flake.nix`, `flake.nix`, `.github/workflows/ci.yml`, `scripts/install.sh`)
 
 - [ ] **H-12** `[B/A]` `vexos.user.name` option is non-functional — account is hardcoded as `nimda`, overriding the option breaks home-manager
   - **Source:** BUGS H1, ARCH 1.3 · `modules/users.nix:10-27`

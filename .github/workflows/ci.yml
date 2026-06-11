@@ -62,7 +62,7 @@ jobs:
           fi
 
   # ── Parallel config evaluation (6 groups × ~5 min each) ────────────────────
-  # Each group runs on its own runner in parallel instead of all 29 configs
+  # Each group runs on its own runner in parallel instead of all 30 configs
   # running sequentially on one runner for 20+ minutes.
   # nix eval ... .drvPath forces full evaluation (including all NixOS assertions)
   # without building any packages — equivalent to nix flake check --no-build.
@@ -114,6 +114,7 @@ jobs:
             configs: >-
               vexos-vanilla-amd
               vexos-vanilla-nvidia
+              vexos-vanilla-nvidia-legacy535
               vexos-vanilla-intel
               vexos-vanilla-vm
     steps:
