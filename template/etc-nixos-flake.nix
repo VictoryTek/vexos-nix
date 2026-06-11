@@ -14,7 +14,6 @@
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-amd
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy535    (Maxwell/Pascal/Volta — LTS alt.)
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-nvidia-legacy470    (Kepler — GTX 600/700)
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-intel
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-desktop-vm
 #
@@ -22,7 +21,6 @@
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-amd
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-nvidia
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-nvidia-legacy535  (Maxwell/Pascal/Volta — LTS alt.)
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-nvidia-legacy470  (Kepler — GTX 600/700)
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-intel
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-vm
 #
@@ -30,7 +28,6 @@
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-server-amd
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-server-nvidia
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-server-nvidia-legacy535     (Maxwell/Pascal/Volta — LTS alt.)
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-server-nvidia-legacy470     (Kepler — GTX 600/700)
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-server-intel
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-server-vm
 #
@@ -38,7 +35,6 @@
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-headless-server-amd
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-headless-server-nvidia
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-headless-server-nvidia-legacy535  (Maxwell/Pascal/Volta — LTS alt.)
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-headless-server-nvidia-legacy470  (Kepler — GTX 600/700)
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-headless-server-intel
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-headless-server-vm
 #
@@ -46,7 +42,6 @@
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-amd
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-nvidia
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-nvidia-legacy535       (Maxwell/Pascal/Volta — LTS alt.)
-#        sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-nvidia-legacy470       (Kepler — GTX 600/700)
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-intel
 #        sudo nixos-rebuild switch --flake /etc/nixos#vexos-htpc-vm
 #

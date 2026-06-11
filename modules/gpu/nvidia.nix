@@ -7,7 +7,7 @@
 #                  through Ada/Hopper/Blackwell. Correct choice for GTX 750+, RTX 20/30/40/50xx and newer.
 #   "legacy_535" — 535.x LTS branch; proprietary modules; open = false.
 #                  Optional LTS alternative for Maxwell/Pascal/Volta. NOT architecturally required.
-#   "legacy_470" — Kepler (GeForce 600 / 700 series)
+#   (legacy_470 / Kepler is no longer offered — dropped upstream by NVIDIA and Bazzite)
 #   (legacy_390 / Fermi is broken in current nixpkgs and has been removed)
 { config, pkgs, lib, ... }:
 
@@ -16,18 +16,17 @@ let
 
   # Map variant string to the correct driver package.
   driverPackage =
-    if      variant == "latest"     then config.boot.kernelPackages.nvidiaPackages.stable
-    else if variant == "legacy_535" then config.boot.kernelPackages.nvidiaPackages.legacy_535
-    else                                 config.boot.kernelPackages.nvidiaPackages.legacy_470;
+    if variant == "latest" then config.boot.kernelPackages.nvidiaPackages.stable
+    else                        config.boot.kernelPackages.nvidiaPackages.legacy_535;
 
   # Open kernel modules require Turing (RTX 20xx / GTX 16xx) or newer.
-  # All legacy variants must use proprietary closed modules.
+  # legacy_535 must use proprietary closed modules.
   useOpen = variant == "latest";
 
 in
 {
   options.vexos.gpu.nvidiaDriverVariant = lib.mkOption {
-    type = lib.types.enum [ "latest" "legacy_535" "legacy_470" ];
+    type = lib.types.enum [ "latest" "legacy_535" ];
     default = "latest";
     description = ''
       NVIDIA driver branch to use. Choose based on your GPU generation:
@@ -38,9 +37,7 @@ in
                        Optional stable alternative for Maxwell (GTX 750+), Pascal (GTX 1050–1080 Ti),
                        and Volta (Titan V) who prefer a proven LTS driver over current production.
                        These GPUs work equally well with "latest"; this variant is NOT required.
-        "legacy_470" — 470.x branch; proprietary modules required.
-                       Use for Kepler GPUs: GeForce 600 and 700 series.
-                       (legacy_390 / Fermi is broken in current nixpkgs and is not supported)
+                       (Note: legacy_580 support is planned once nixpkgs issue #503740 is resolved)
     '';
   };
 
@@ -52,7 +49,7 @@ in
 
     hardware.nvidia = {
       # Open kernel modules: supported only on Turing (RTX 20xx / GTX 16xx) and newer.
-      # All legacy variants must use proprietary closed modules (open = false).
+      # legacy_535 must use proprietary closed modules (open = false).
       open = useOpen;
 
       # KMS: required for Wayland and reliable suspend/resume on all variants.
@@ -68,7 +65,7 @@ in
 
     # nvidia-vaapi-driver provides VA-API via NVDEC.
     # NVDEC support is present only on Turing (RTX 20xx) and newer.
-    # Excluded for all legacy variants to avoid broken hardware acceleration.
+    # Excluded for legacy_535 to avoid broken hardware acceleration.
     hardware.graphics.extraPackages = lib.mkIf useOpen (
       with pkgs; [ nvidia-vaapi-driver ]
     );

@@ -224,15 +224,14 @@
       };
 
     # ── Host descriptor table — single source of truth for which systems exist ──
-    # 34 outputs total: 30 historical + 4 vanilla role
-    # variants (flagged below). Output names use the no-underscore "legacy535" /
-    # "legacy470" suffix; the option value uses the underscored form "legacy_535".
+    # 29 outputs total: 25 role/GPU variants + 4 vanilla role variants.
+    # Output names use the no-underscore "legacy535" suffix; the option value
+    # uses the underscored form "legacy_535".
     hostList = [
       # Desktop
       { name = "vexos-desktop-amd";              role = "desktop";         gpu = "amd"; }
       { name = "vexos-desktop-nvidia";           role = "desktop";         gpu = "nvidia"; }
       { name = "vexos-desktop-nvidia-legacy535"; role = "desktop";         gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
-      { name = "vexos-desktop-nvidia-legacy470"; role = "desktop";         gpu = "nvidia"; nvidiaVariant = "legacy_470"; }
       { name = "vexos-desktop-intel";            role = "desktop";         gpu = "intel"; }
       { name = "vexos-desktop-vm";               role = "desktop";         gpu = "vm"; }
 
@@ -240,23 +239,20 @@
       { name = "vexos-stateless-amd";              role = "stateless";     gpu = "amd"; }
       { name = "vexos-stateless-nvidia";           role = "stateless";     gpu = "nvidia"; }
       { name = "vexos-stateless-nvidia-legacy535"; role = "stateless";     gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
-      { name = "vexos-stateless-nvidia-legacy470"; role = "stateless";     gpu = "nvidia"; nvidiaVariant = "legacy_470"; }
       { name = "vexos-stateless-intel";            role = "stateless";     gpu = "intel"; }
       { name = "vexos-stateless-vm";               role = "stateless";     gpu = "vm"; }
 
       # GUI Server
       { name = "vexos-server-amd";              role = "server";           gpu = "amd"; }
       { name = "vexos-server-nvidia";           role = "server";           gpu = "nvidia"; }
-      { name = "vexos-server-nvidia-legacy535"; role = "server";           gpu = "nvidia"; nvidiaVariant = "legacy_535"; }  # NEW
-      { name = "vexos-server-nvidia-legacy470"; role = "server";           gpu = "nvidia"; nvidiaVariant = "legacy_470"; }  # NEW
+      { name = "vexos-server-nvidia-legacy535"; role = "server";           gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
       { name = "vexos-server-intel";            role = "server";           gpu = "intel"; }
       { name = "vexos-server-vm";               role = "server";           gpu = "vm"; }
 
       # Headless Server
       { name = "vexos-headless-server-amd";              role = "headless-server"; gpu = "amd"; }
       { name = "vexos-headless-server-nvidia";           role = "headless-server"; gpu = "nvidia"; }
-      { name = "vexos-headless-server-nvidia-legacy535"; role = "headless-server"; gpu = "nvidia"; nvidiaVariant = "legacy_535"; }  # NEW
-      { name = "vexos-headless-server-nvidia-legacy470"; role = "headless-server"; gpu = "nvidia"; nvidiaVariant = "legacy_470"; }  # NEW
+      { name = "vexos-headless-server-nvidia-legacy535"; role = "headless-server"; gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
       { name = "vexos-headless-server-intel";            role = "headless-server"; gpu = "intel"; }
       { name = "vexos-headless-server-vm";               role = "headless-server"; gpu = "vm"; }
 
@@ -264,7 +260,6 @@
       { name = "vexos-htpc-amd";              role = "htpc";               gpu = "amd"; }
       { name = "vexos-htpc-nvidia";           role = "htpc";               gpu = "nvidia"; }
       { name = "vexos-htpc-nvidia-legacy535"; role = "htpc";               gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
-      { name = "vexos-htpc-nvidia-legacy470"; role = "htpc";               gpu = "nvidia"; nvidiaVariant = "legacy_470"; }
       { name = "vexos-htpc-intel";            role = "htpc";               gpu = "intel"; }
       { name = "vexos-htpc-vm";               role = "htpc";               gpu = "vm"; }
       # Vanilla (stock NixOS baseline — no NVIDIA legacy variants, no proprietary GPU drivers)
