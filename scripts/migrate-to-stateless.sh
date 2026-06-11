@@ -308,6 +308,7 @@ done
 # (persisted to @persist/etc/nixos/) preserves the password across reboots,
 # matching the behaviour of all other vexos roles.
 HASHED_PW=""
+CUSTOM_PASSWORD_SET=false
 
 echo ""
 echo -e "${BOLD}Preserving existing nimda login password...${RESET}"
@@ -315,6 +316,7 @@ EXISTING_HASH=$(getent shadow nimda 2>/dev/null | cut -d: -f2 || true)
 # A valid yescrypt/SHA-512 hash starts with $ — "!" or "*" means locked/unset.
 if [[ "${EXISTING_HASH}" == '$'* ]]; then
   HASHED_PW="${EXISTING_HASH}"
+  CUSTOM_PASSWORD_SET=true
   echo -e "${GREEN}  ✓ Password hash found — your existing password will work after reboot.${RESET}"
 else
   echo -e "${YELLOW}  No password hash for nimda found in /etc/shadow (locked or no password set).${RESET}"
@@ -420,7 +422,7 @@ echo -e "  Username: ${CYAN}nimda${RESET}"
 if $CUSTOM_PASSWORD_SET; then
   echo -e "  Password: ${CYAN}(same as before migration)${RESET}"
 else
-  echo -e "  Password: ${CYAN}vexos (default — no existing hash found)${RESET}"
+  echo -e "  Password: ${CYAN}(the new password you just set)${RESET}"
 fi
 echo ""
 echo -e "${YELLOW}Note: Passwords changed at runtime do NOT persist across reboots.${RESET}"

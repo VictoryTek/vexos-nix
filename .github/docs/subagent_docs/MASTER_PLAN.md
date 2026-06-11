@@ -40,9 +40,10 @@ Check boxes are ticked as items are completed in this session.
   - Ship `environment.etc."fail2ban/filter.d/cockpit.local"` with a journal-based filter, or drop the jail
   - **Resolution:** Dropped the Cockpit jail. Research confirmed Cockpit's PAM logs omit the remote IP (upstream bug #722, open since 2014), making IP-based banning impossible regardless of filter. Fail2ban now starts cleanly; SSH and recidive jails function correctly. Comment documents the reason. (`modules/security-server.nix`)
 
-- [ ] **H-06** `[B]` `migrate-to-stateless.sh` always crashes at the end — `$CUSTOM_PASSWORD_SET` is never set
+- [x] **H-06** `[B]` `migrate-to-stateless.sh` always crashes at the end — `$CUSTOM_PASSWORD_SET` is never set
   - **Source:** BUGS H7 · `scripts/migrate-to-stateless.sh:420`
   - Set `CUSTOM_PASSWORD_SET=true/false` based on which password branch (lines 316–345) executed; fix the misleading "vexos default" message
+  - **Resolution:** Initialised `CUSTOM_PASSWORD_SET=false` before the password detection block; set to `true` when existing hash is found. Fixed the `else` summary message from "vexos (default)" to "the new password you just set". (`scripts/migrate-to-stateless.sh`)
 
 - [ ] **H-07** `[B]` install.sh NVIDIA-branch prompt accepts any non-empty input and silently selects "latest"
   - **Source:** BUGS H6 · `scripts/install.sh:171-183`
