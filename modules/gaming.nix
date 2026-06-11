@@ -99,7 +99,7 @@
     SUBSYSTEM=="input", MODE="0660", GROUP="input"
   '';
 
-  # Grant nimda access to GameMode CPU governor, input devices, and USB peripherals.
+  # Grant the primary user access to GameMode CPU governor, input devices, and USB peripherals.
   users.users.${config.vexos.user.name}.extraGroups = [ "gamemode" "input" "plugdev" ];
 
   # ── AppArmor Wine baseline ─────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 # home-htpc.nix
-# Home Manager configuration for user "nimda" — HTPC role.
+# Home Manager configuration for the primary user — HTPC role.
 # Manages HTPC-specific wallpapers, GNOME dconf wallpaper settings, and media-centre defaults.
 { config, pkgs, lib, inputs, osConfig, ... }:
 {

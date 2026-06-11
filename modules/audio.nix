@@ -43,6 +43,6 @@
     };
   };
 
-  # Grant nimda raw ALSA access (optional alongside PipeWire).
+  # Grant the primary user raw ALSA access (optional alongside PipeWire).
   users.users.${config.vexos.user.name}.extraGroups = [ "audio" ];
 }

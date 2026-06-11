@@ -25,7 +25,7 @@ in
       SupplementaryGroups = [ "render" "video" ];
     };
 
-    # Allow nimda to manage media directories alongside the jellyfin user.
+    # Allow the primary user to manage media directories alongside the jellyfin user.
     users.users.${config.vexos.user.name}.extraGroups = [ "jellyfin" ];
   };
 }

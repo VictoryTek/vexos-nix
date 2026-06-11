@@ -1,5 +1,5 @@
 # home-vanilla.nix
-# Home Manager configuration for user "nimda" — Vanilla role.
+# Home Manager configuration for the primary user — Vanilla role.
 # Absolute minimum: bash shell and git for managing the flake repo.
 { config, pkgs, lib, inputs, osConfig, ... }:
 {

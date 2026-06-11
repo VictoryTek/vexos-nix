@@ -220,11 +220,11 @@ in
       # and all application data are discarded on every reboot.
       #
       # To selectively persist user data, add entries such as:
-      #   users.nimda.directories = [
+      #   users.${config.vexos.user.name}.directories = [
       #     { directory = ".gnupg"; mode = "0700"; }
       #     { directory = ".ssh";   mode = "0700"; }
       #   ];
-      #   users.nimda.files = [ ".config/monitors.xml" ];
+      #   users.${config.vexos.user.name}.files = [ ".config/monitors.xml" ];
     };
 
     # ── Variant file persistence (write directly to persistent subvolume) ─────

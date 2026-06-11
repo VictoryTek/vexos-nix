@@ -74,9 +74,10 @@ Check boxes are ticked as items are completed in this session.
   - Add `vexos-<role>-nvidia-legacy535` and `vexos-<role>-nvidia-legacy470` outputs (or a `mkVariant` helper) to the template for all five roles
   - **Resolution:** Added all 6 `nvidia-legacy535` outputs to `template/etc-nixos-flake.nix` (desktop, stateless, htpc, server, headless-server, vanilla). Added `vexos-vanilla-nvidia-legacy535` to `flake.nix` hostList (count 29→30) and CI vanilla group. Removed vanilla exclusion from NVIDIA driver branch selection in `scripts/install.sh`. (`template/etc-nixos-flake.nix`, `flake.nix`, `.github/workflows/ci.yml`, `scripts/install.sh`)
 
-- [ ] **H-12** `[B/A]` `vexos.user.name` option is non-functional — account is hardcoded as `nimda`, overriding the option breaks home-manager
+- [x] **H-12** `[B/A]` `vexos.user.name` option is non-functional — account is hardcoded as `nimda`, overriding the option breaks home-manager
   - **Source:** BUGS H1, ARCH 1.3 · `modules/users.nix:10-27`
   - Change `users.users.nimda = { ... }` → `users.users.${cfg.name} = { ... }`; audit all ~15 consumer sites (gaming, development, audio, virtualization, gnome, network, flake.nix, etc.)
+  - **Resolution:** Fixed the one-line bug — `users.users.nimda` → `users.users.${cfg.name}`. All 15+ consumer modules already used `${config.vexos.user.name}` correctly; no other code changes needed. Cleaned up stale "nimda" references in 10 comment-only locations. Default "nimda" preserved. The original intent (auto-detect existing NixOS username at install time) is feasible on the migration path only; flagged as a future item. (`modules/users.nix`, `modules/audio.nix`, `modules/gaming.nix`, `modules/server/jellyfin.nix`, `modules/impermanence.nix`, `home-headless-server.nix`, `home-htpc.nix`, `home-server.nix`, `home-stateless.nix`, `home-vanilla.nix`)
 
 - [ ] **H-13** `[A]` Personal ASUS hardware config baked into shared desktop host variants
   - **Source:** ARCH 2.1, BUGS L11 · `hosts/desktop-{amd,nvidia,intel}.nix:11-12`
@@ -109,6 +110,10 @@ Check boxes are ticked as items are completed in this session.
 - [ ] **H-19** `[A]` Builder-machine `/etc/nixos` state leaks into flake outputs via `builtins.pathExists` at eval time
   - **Source:** ARCH 1.1 · `flake.nix:89-99`
   - Move `serverServicesModule` and `statelessUserOverrideModule` path-existence checks to the host-side `nixosModules.*Base` consumption path (see `template/etc-nixos-flake.nix`) so evaluation is deterministic regardless of where `nix` runs
+
+- [ ] **H-12b** `[F]` Auto-detect and adopt existing NixOS username at install time
+  - **Source:** H-12 design intent — original goal was to adopt the username set during NixOS install
+  - On the **migration path** (`migrate-to-stateless.sh`, running on a live system), detect UID 1000 user via `getent passwd 1000 | cut -d: -f1` and write `vexos.user.name = "<detected>";` to the local config. On a **fresh ISO install** there is no prior user to detect, so the default "nimda" remains. Scope: migration script + optional installer prompt.
 
 ---
 

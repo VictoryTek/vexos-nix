@@ -1,5 +1,5 @@
 # home-headless-server.nix
-# Home Manager configuration for user "nimda" — Headless Server role.
+# Home Manager configuration for the primary user — Headless Server role.
 # Shell environment and sysadmin utilities only.
 # No GNOME, no Wayland, no GUI apps — accessed exclusively via SSH.
 { config, pkgs, lib, inputs, osConfig, ... }:

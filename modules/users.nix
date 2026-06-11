@@ -22,7 +22,7 @@ in
     # default is a plain string.  Override in host files if needed.
     vexos.user.name = lib.mkDefault "nimda";
 
-    users.users.nimda = {
+    users.users.${cfg.name} = {
       isNormalUser = true;
       description  = cfg.name;
       uid          = 1000;

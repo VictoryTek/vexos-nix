@@ -1,5 +1,5 @@
 # home-stateless.nix
-# Home Manager configuration for user "nimda" — Stateless role.
+# Home Manager configuration for the primary user — Stateless role.
 # Same as desktop minus gaming app folders and dev-only packages (no development.nix on stateless).
 { config, pkgs, lib, inputs, osConfig, ... }:
 {
