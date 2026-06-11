@@ -62,9 +62,10 @@ Check boxes are ticked as items are completed in this session.
   - Add `lib.mkIf (cfg.secretFile == null) (throw "...")` assertion; default `openFirewall = false`
   - **Resolution:** Added NixOS `assertions` block that hard-fails evaluation if `secretFile` is null, with a message that provides the exact `openssl rand` command to generate a secret. Changed `openFirewall` default from `true` to `false` — LAN exposure is now explicit opt-in. Service discovery is unaffected (local systemd/Docker polling). (`modules/server/vexboard.nix`)
 
-- [ ] **H-10** `[B]` Plaintext secrets under `/etc/nixos/secrets` are copied into the world-readable Nix store on every rebuild
+- [x] **H-10** `[B]` Plaintext secrets under `/etc/nixos/secrets` are copied into the world-readable Nix store on every rebuild
   - **Source:** BUGS H2 · `justfile:1988-1995`, `modules/nix.nix:128-240`
   - Switch rebuild URIs from `path:/etc/nixos` to `git+file:/etc/nixos` (the installer already git-inits `/etc/nixos` so untracked files are excluded); or move secrets root outside the flake directory
+  - **Resolution:** Changed all 15 occurrences of `path:/etc/nixos` → `git+file:///etc/nixos` across `modules/nix.nix` (4), `justfile` (7), `scripts/install.sh` (4). Added `.gitignore` to `template/` and wrote it in all three init paths, excluding `secrets/`, `hardware-configuration.nix`, `*.bak`, `vexos-variant`, `kernel-install-override.nix`, `stateless-user-override.nix`. Fixed `stateless-setup.sh` to persist the `.git` directory to `/persistent/etc/nixos`. Added a one-time auto-init guard in `vexos-update` that initializes the git repo on first run for existing installs.
 
 ### Bugs — Functional Correctness
 

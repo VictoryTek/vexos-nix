@@ -371,11 +371,11 @@ update-all:
     echo ""
     echo "Updating all flake inputs (no cache check)..."
     sudo nix --extra-experimental-features "nix-command flakes" \
-        flake update --flake path:/etc/nixos
+        flake update --flake git+file:///etc/nixos
     echo ""
     echo "Rebuilding: ${target}"
     sudo nixos-rebuild switch \
-        --flake path:/etc/nixos#"${target}" \
+        --flake git+file:///etc/nixos#"${target}" \
         --print-build-logs
 
 # Deploy config changes only — pulls the latest vexos-nix commit from GitHub
@@ -398,10 +398,10 @@ deploy:
     fi
     echo ""
     echo "Pulling latest vexos-nix config (nixpkgs unchanged)..."
-    sudo nix flake update vexos-nix --flake path:/etc/nixos
+    sudo nix flake update vexos-nix --flake git+file:///etc/nixos
     echo ""
     echo "Switching to: ${target}"
-    sudo nixos-rebuild switch --flake path:/etc/nixos#"${target}"
+    sudo nixos-rebuild switch --flake git+file:///etc/nixos#"${target}"
 
 # Analyse what would happen if you upgrade NixOS to a newer version.
 # Tests your current config against the target nixpkgs WITHOUT modifying
@@ -458,7 +458,7 @@ upgrade-analysis target_version:
     echo "────────────────────────────────────────────────────────────────"
     echo ""
 
-    FLAKE_TARGET="path:/etc/nixos"
+    FLAKE_TARGET="git+file:///etc/nixos"
     FLAKE_TARGET="${FLAKE_TARGET}#${VARIANT}"
 
     DRY_OUTPUT=$(sudo nixos-rebuild dry-build \
@@ -904,7 +904,7 @@ create-zfs-pool: _require-server-role
     done
     # Last resort: find the vexos-nix source in the nix store via /etc/nixos flake input.
     if [ -z "$SCRIPT" ] && [ -f /etc/nixos/flake.nix ]; then
-        _vexos_store=$(nix eval --raw --expr '(builtins.getFlake "path:/etc/nixos").inputs.vexos-nix.outPath' 2>/dev/null || true)
+        _vexos_store=$(nix eval --raw --expr '(builtins.getFlake "git+file:///etc/nixos").inputs.vexos-nix.outPath' 2>/dev/null || true)
         if [ -n "$_vexos_store" ] && [ -f "$_vexos_store/scripts/create-zfs-pool.sh" ]; then
             SCRIPT="$_vexos_store/scripts/create-zfs-pool.sh"
         fi
@@ -1982,4 +1982,4 @@ rebuild:
     echo ""
     echo "Rebuilding ${target}..."
     echo ""
-    sudo nixos-rebuild switch --flake "path:/etc/nixos#${target}"
+    sudo nixos-rebuild switch --flake "git+file:///etc/nixos#${target}"

@@ -1,0 +1,14 @@
+# /etc/nixos — tracked by git to prevent secrets from entering the Nix store.
+# Files listed here are excluded from git and will never be copied into /nix/store/.
+
+# Plaintext credentials — must never enter the Nix store
+secrets/
+
+# Host-generated — produced by nixos-generate-config, unique per machine
+hardware-configuration.nix
+
+# Transient runtime files
+*.bak
+vexos-variant
+kernel-install-override.nix
+stateless-user-override.nix

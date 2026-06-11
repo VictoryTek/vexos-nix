@@ -227,8 +227,18 @@ echo -e "${GREEN}  ✓ /mnt/etc/nixos/stateless-user-override.nix written.${RESE
 # with a narHash.  Writing the lock file then changes the directory content,
 # which causes a Nix assertion failure (narHash mismatch).  Initialising a git
 # repo and staging all files makes Nix use git+file: instead, which is stable.
+# The .git directory is also persisted so that post-boot `vexos-update` can use
+# git+file:///etc/nixos URIs — keeping secrets/ out of the world-readable Nix store.
 echo ""
 echo -e "${BOLD}Initialising git repo in /mnt/etc/nixos to stabilise flake identity...${RESET}"
+sudo tee /mnt/etc/nixos/.gitignore > /dev/null << 'GITIGNORE'
+secrets/
+hardware-configuration.nix
+*.bak
+vexos-variant
+kernel-install-override.nix
+stateless-user-override.nix
+GITIGNORE
 sudo git -C /mnt/etc/nixos init -q
 sudo git -C /mnt/etc/nixos add .
 
@@ -253,8 +263,11 @@ sudo mkdir -p /mnt/persistent/etc/nixos
 sudo cp /mnt/etc/nixos/hardware-configuration.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/flake.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/flake.lock /mnt/persistent/etc/nixos/ 2>/dev/null || true
+sudo cp /mnt/etc/nixos/.gitignore /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/stateless-user-override.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 printf '%s' "vexos-stateless-${VARIANT}" | sudo tee /mnt/persistent/etc/nixos/vexos-variant > /dev/null
+# Persist the git repo so post-boot git+file:///etc/nixos URIs work and secrets stay out of the Nix store.
+sudo cp -r /mnt/etc/nixos/.git /mnt/persistent/etc/nixos/
 echo -e "${GREEN}✓ NixOS config files persisted.${RESET}"
 
 echo ""

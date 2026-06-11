@@ -326,6 +326,28 @@ if [ -f /etc/nixos/flake.nix ] && grep -qF '"XXXXXXXX"' /etc/nixos/flake.nix 2>/
   echo -e "  ${GREEN}✓ hostId set to ${HOST_ID}.${RESET}"
 fi
 
+# ---------- Git-track /etc/nixos (excludes secrets from Nix store) -----------
+# git+file:// only copies tracked files; untracked secrets/ never enter the store.
+if ! sudo git -C /etc/nixos rev-parse --git-dir &>/dev/null 2>&1; then
+  echo ""
+  echo -e "${CYAN}Initializing /etc/nixos as a git repository...${RESET}"
+  sudo tee /etc/nixos/.gitignore > /dev/null << 'GITIGNORE'
+secrets/
+hardware-configuration.nix
+*.bak
+vexos-variant
+kernel-install-override.nix
+stateless-user-override.nix
+GITIGNORE
+  sudo git -C /etc/nixos init -q
+  sudo git -C /etc/nixos add .
+  sudo git -C /etc/nixos \
+    -c user.email="vexos@localhost" \
+    -c user.name="VexOS" \
+    commit -q -m "chore: track /etc/nixos configuration"
+  echo -e "${GREEN}✓ /etc/nixos is now git-tracked — secrets/ excluded from Nix store.${RESET}"
+fi
+
 # ---------- Flake lock refresh -----------------------------------------------
 # Always resolve vexos-nix to the latest HEAD before dry-building.
 # A stale /etc/nixos/flake.lock from a previous (failed) install attempt would
@@ -334,7 +356,7 @@ fi
 echo ""
 echo -e "${CYAN}Refreshing flake inputs...${RESET}"
 sudo nix --extra-experimental-features "nix-command flakes" \
-  flake update --flake /etc/nixos
+  flake update --flake git+file:///etc/nixos
 
 # ---------- Build & switch ---------------------------------------------------
 # Cache check: dry-build first to see what would need to be compiled locally.
@@ -344,7 +366,7 @@ sudo nix --extra-experimental-features "nix-command flakes" \
 # cache the install aborts cleanly so you can retry once cache.nixos.org catches up.
 echo ""
 echo -e "${CYAN}Checking binary cache for all required packages...${RESET}"
-DRY_OUT=$(sudo nixos-rebuild dry-build --flake "/etc/nixos#${FLAKE_TARGET}" 2>&1 || true)
+DRY_OUT=$(sudo nixos-rebuild dry-build --flake "git+file:///etc/nixos#${FLAKE_TARGET}" 2>&1 || true)
 # Extract the "will be built" section and keep only versioned package derivations
 # (e.g. gnome-shell-49.4.drv, steam-1.0.0.85.drv). Config-assembly derivations
 # (PAM files, AppArmor rules, systemd units, Home Manager links, etc.) are always
@@ -391,7 +413,7 @@ NIXEOF
     # Re-run dry-build with the override in place to confirm all packages are
     # now in cache before proceeding.
     echo -e "${CYAN}Verifying fallback kernel resolves all cache misses...${RESET}"
-    DRY_OUT2=$(sudo nixos-rebuild dry-build --flake "/etc/nixos#${FLAKE_TARGET}" 2>&1 || true)
+    DRY_OUT2=$(sudo nixos-rebuild dry-build --flake "git+file:///etc/nixos#${FLAKE_TARGET}" 2>&1 || true)
     REMAINING=$(printf '%s\n' "$DRY_OUT2" \
       | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
       | grep -E -- '-[0-9]+\.[0-9]+' \
@@ -438,7 +460,7 @@ else
 fi
 echo ""
 
-if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "/etc/nixos#${FLAKE_TARGET}"; then
+if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE_TARGET}"; then
   echo ""
   if [ "$REBUILD_ACTION" = "boot" ]; then
     echo -e "${GREEN}${BOLD}✓ Build complete. New generation registered as default.${RESET}"

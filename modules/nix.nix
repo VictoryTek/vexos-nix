@@ -134,6 +134,29 @@ in
           exit 1
         fi
 
+        # ── Ensure /etc/nixos is a git repo (one-time migration for existing installs) ──
+        # git+file:// URIs only copy tracked files; untracked secrets/ never enter the
+        # world-readable Nix store.  New installs get this from the installer; existing
+        # installs are migrated here on the first run of vexos-update after upgrading.
+        if ! git -C /etc/nixos rev-parse --git-dir &>/dev/null 2>&1; then
+          echo "Initializing /etc/nixos as a git repository (one-time setup)..."
+          cat > /etc/nixos/.gitignore << 'GITIGNORE'
+secrets/
+hardware-configuration.nix
+*.bak
+vexos-variant
+kernel-install-override.nix
+stateless-user-override.nix
+GITIGNORE
+          git -C /etc/nixos init -q
+          git -C /etc/nixos add .
+          git -C /etc/nixos \
+            -c user.email="vexos@localhost" \
+            -c user.name="VexOS" \
+            commit -q -m "chore: track /etc/nixos configuration"
+          echo "Done — secrets/ is now excluded from the Nix store on all future rebuilds."
+        fi
+
         # ── Kernel install override auto-clear ───────────────────────────────
         # The installer writes kernel-install-override.nix when target-kernel
         # packages were not in cache at install time.  On each update, check
@@ -143,7 +166,7 @@ in
         if [ -f "$OVERRIDE_FILE" ]; then
           echo "Kernel install override detected — checking if target kernel is now cached..."
           rm "$OVERRIDE_FILE"
-          DRY_CHECK=$(nixos-rebuild dry-build --flake path:/etc/nixos#"$VARIANT" 2>&1 || true)
+          DRY_CHECK=$(nixos-rebuild dry-build --flake git+file:///etc/nixos#"$VARIANT" 2>&1 || true)
           HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk|NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|openrazer-[0-9])'
           STILL_HEAVY=$(printf '%s\n' "$DRY_CHECK" \
             | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
@@ -169,11 +192,11 @@ in
 
         echo "Updating flake inputs..."
         nix --extra-experimental-features "nix-command flakes" \
-          flake update --flake path:/etc/nixos
+          flake update --flake git+file:///etc/nixos
 
         echo "Checking for packages that require a local source build..."
         DRY=$(nixos-rebuild dry-build \
-          --flake path:/etc/nixos#"$VARIANT" 2>&1 || true)
+          --flake git+file:///etc/nixos#"$VARIANT" 2>&1 || true)
 
         # Known-heavy block engine — two paths:
         #
@@ -235,7 +258,7 @@ in
         rm -f /etc/nixos/flake.lock.bak
         echo "Applying update..."
         nixos-rebuild switch \
-          --flake path:/etc/nixos#"$VARIANT" \
+          --flake git+file:///etc/nixos#"$VARIANT" \
           --print-build-logs
       '')
     ];
