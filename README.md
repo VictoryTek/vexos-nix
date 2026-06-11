@@ -202,11 +202,15 @@ sudo rm -f /etc/nixos/flake.nix /etc/nixos/flake.lock && sudo nixos-generate-con
 
 ## Updating nixpkgs-unstable (GNOME stack)
 
-The GNOME shell, mutter, GDM, and related packages are sourced from `nixpkgs-unstable` to track the latest GNOME releases. The daily CI auto-update job intentionally **skips** `nixpkgs-unstable` because GNOME stack updates occasionally introduce regressions that break Wayland session startup on VM guests (black screen on boot).
+The GNOME shell, mutter, GDM, and related packages are sourced from `nixpkgs-unstable` to track the latest GNOME releases. The daily CI auto-update job updates **all** flake inputs, including `nixpkgs-unstable`. Because GNOME stack updates occasionally introduce regressions that break Wayland session startup on VM guests (black screen on boot), it is worth verifying a VM build boots correctly after any unstable bump lands.
 
-Before bumping `nixpkgs-unstable`, always verify a VM build boots correctly.
+If a regression is introduced by a daily bump, roll it back with:
 
-**To update nixpkgs-unstable manually:**
+```bash
+git revert HEAD  # or manually restore the previous flake.lock revision
+```
+
+**To bump nixpkgs-unstable outside the daily schedule:**
 
 ```bash
 # 1. Bump nixpkgs-unstable in the flake.lock
@@ -223,9 +227,6 @@ git revert HEAD  # or manually restore the previous flake.lock revision
 
 # 4. If the VM boots correctly, the bump is safe to leave in place.
 ```
-
-> **Note:** nixpkgs (stable, 25.11) is still updated automatically by CI.
-> Only the unstable channel is gated on manual VM verification.
 
 
 ## NixOS stable channel upgrades (e.g. 25.11 → 26.05)
