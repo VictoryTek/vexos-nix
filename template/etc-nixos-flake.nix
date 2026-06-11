@@ -110,7 +110,8 @@
     # ── Per-machine hardware overrides ──────────────────────────────────────
     # Set by the installer for hardware-specific features.
     # To enable ASUS ROG/TUF support manually, change this to:
-    #   hardwareModule = { ... }: { vexos.hardware.asus.enable = true; };
+    #   ASUS device (any):  { vexos.hardware.asus.enable = true; }
+    #   ASUS laptop:        { vexos.hardware.asus.enable = true; vexos.hardware.asus.batteryChargeLimit = 80; }
     hardwareModule = { ... }: { };
 
     # ── ZFS host identity (required for server and headless-server roles) ────

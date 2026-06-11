@@ -182,17 +182,28 @@ fi
 
 # ---------- ASUS ROG/TUF hardware ------------------------------------------
 ASUS_ENABLE=false
-if [ "$VARIANT" != "vm" ] && [ "$ROLE" != "stateless" ]; then
+ASUS_LAPTOP=false
+if [ "$VARIANT" != "vm" ]; then
   echo ""
-  echo -e "${BOLD}Is this an ASUS ROG/TUF laptop?${RESET}"
+  echo -e "${BOLD}Is this an ASUS ROG/TUF device?${RESET}"
   echo "  Enables: asusd (RGB, fan curves, charge limit), supergfxctl, power-profiles-daemon"
   echo ""
-  printf "ASUS ROG/TUF hardware? [y/N] "
+  printf "ASUS ROG/TUF device? [y/N] "
   read -r INPUT </dev/tty
   case "${INPUT,,}" in
     y|yes) ASUS_ENABLE=true ;;
     *)     ASUS_ENABLE=false ;;
   esac
+
+  if [ "$ASUS_ENABLE" = "true" ]; then
+    echo ""
+    printf "Is this device a laptop? [y/N] "
+    read -r INPUT </dev/tty
+    case "${INPUT,,}" in
+      y|yes) ASUS_LAPTOP=true ;;
+      *)     ASUS_LAPTOP=false ;;
+    esac
+  fi
 fi
 
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}${NVIDIA_SUFFIX}"
@@ -304,14 +315,22 @@ if [ "$ASUS_ENABLE" = "true" ]; then
   if grep -qF 'hardwareModule = { ... }: { };' /etc/nixos/flake.nix 2>/dev/null; then
     echo ""
     echo "  Patching /etc/nixos/flake.nix to enable ASUS ROG/TUF support..."
-    sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; };/' /etc/nixos/flake.nix
-    echo -e "  ${GREEN}✓ ASUS hardware support enabled.${RESET}"
+    if [ "$ASUS_LAPTOP" = "true" ]; then
+      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; vexos.hardware.asus.batteryChargeLimit = 80; };/' /etc/nixos/flake.nix
+      echo -e "  ${GREEN}✓ ASUS hardware support enabled (laptop — battery charge limit set to 80%).${RESET}"
+    else
+      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; };/' /etc/nixos/flake.nix
+      echo -e "  ${GREEN}✓ ASUS hardware support enabled.${RESET}"
+    fi
     echo ""
   else
     echo ""
     echo -e "  ${YELLOW}⚠ hardwareModule not found in /etc/nixos/flake.nix — skipping ASUS patch.${RESET}"
     echo "    To enable ASUS support manually, add to your /etc/nixos/flake.nix:"
     echo "      vexos.hardware.asus.enable = true;"
+    if [ "$ASUS_LAPTOP" = "true" ]; then
+      echo "      vexos.hardware.asus.batteryChargeLimit = 80;"
+    fi
     echo ""
   fi
 fi

@@ -79,9 +79,10 @@ Check boxes are ticked as items are completed in this session.
   - Change `users.users.nimda = { ... }` → `users.users.${cfg.name} = { ... }`; audit all ~15 consumer sites (gaming, development, audio, virtualization, gnome, network, flake.nix, etc.)
   - **Resolution:** Fixed the one-line bug — `users.users.nimda` → `users.users.${cfg.name}`. All 15+ consumer modules already used `${config.vexos.user.name}` correctly; no other code changes needed. Cleaned up stale "nimda" references in 10 comment-only locations. Default "nimda" preserved. The original intent (auto-detect existing NixOS username at install time) is feasible on the migration path only; flagged as a future item. (`modules/users.nix`, `modules/audio.nix`, `modules/gaming.nix`, `modules/server/jellyfin.nix`, `modules/impermanence.nix`, `home-headless-server.nix`, `home-htpc.nix`, `home-server.nix`, `home-stateless.nix`, `home-vanilla.nix`)
 
-- [ ] **H-13** `[A]` Personal ASUS hardware config baked into shared desktop host variants
+- [x] **H-13** `[A]` Personal ASUS hardware config baked into shared desktop host variants
   - **Source:** ARCH 2.1, BUGS L11 · `hosts/desktop-{amd,nvidia,intel}.nix:11-12`
   - Move `vexos.hardware.asus.enable = true` and `batteryChargeLimit = 80` to a per-machine overlay path; default the option to `false` in the shared variant files
+  - **Resolution:** Removed the two hardcoded ASUS lines from all three desktop host files. Updated `scripts/install.sh` ASUS prompt: renamed "laptop?" → "device?", removed the incorrect stateless role exclusion, added a follow-up "Is this device a laptop?" question that sets `batteryChargeLimit = 80` only for laptops. Updated `template/etc-nixos-flake.nix` comment to show both device and laptop forms. (`hosts/desktop-amd.nix`, `hosts/desktop-nvidia.nix`, `hosts/desktop-intel.nix`, `scripts/install.sh`, `template/etc-nixos-flake.nix`)
 
 ### Features — High Value
 

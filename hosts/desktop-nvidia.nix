@@ -8,7 +8,5 @@
     ../modules/gpu/nvidia.nix
   ];
 
-  vexos.hardware.asus.enable = true;
-  vexos.hardware.asus.batteryChargeLimit = 80;
   system.nixos.distroName = "VexOS Desktop NVIDIA";
 }
