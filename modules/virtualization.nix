@@ -22,6 +22,17 @@
   #   enableExtensionPack = true;
   # };
 
+  # ── libvirtd socket binding ───────────────────────────────────────────────
+  # NixOS drops the upstream PartOf= directive from the libvirtd.service unit,
+  # breaking socket-activated restarts during nixos-rebuild switch: new socket
+  # units start while the old service is still running, causing a second
+  # instance to conflict on the socket and exit with code 1. Restore upstream
+  # behaviour so libvirtd stops cleanly whenever its socket units are cycled.
+  # KillMode=process (set by NixOS) ensures running QEMU VMs are not affected.
+  systemd.services.libvirtd.unitConfig = {
+    PartOf = "libvirtd.socket libvirtd-ro.socket libvirtd-admin.socket";
+  };
+
   # ── User groups ───────────────────────────────────────────────────────────
   # libvirtd  — manage GNOME Boxes VMs without sudo
   users.users.${config.vexos.user.name}.extraGroups = [ "libvirtd" ];
