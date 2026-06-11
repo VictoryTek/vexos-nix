@@ -12,6 +12,7 @@
     ./modules/users.nix
     ./modules/nix.nix
     ./modules/asus-opt.nix
+    ./modules/boot-discovery.nix
   ];
 
   # ---------- Bootloader ----------

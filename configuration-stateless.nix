@@ -23,6 +23,7 @@
     ./modules/locale.nix
     ./modules/users.nix
     ./modules/asus-opt.nix
+    ./modules/boot-discovery.nix
   ];
 
   # ---------- Branding ----------

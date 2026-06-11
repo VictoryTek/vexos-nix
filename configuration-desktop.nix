@@ -30,6 +30,7 @@
     ./modules/users.nix
     ./modules/razer.nix
     ./modules/asus-opt.nix
+    ./modules/boot-discovery.nix
   ];
 
   # ---------- Branding ----------
