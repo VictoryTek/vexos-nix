@@ -114,10 +114,9 @@
             autoconnect-priority = "10";
           };
           ipv4 = {
-            method    = "manual";
-            addresses = config.vexos.network.staticWired.address;
-            gateway   = config.vexos.network.staticWired.gateway;
-            dns       = lib.concatStringsSep ";" config.vexos.network.staticWired.dns;
+            method   = "manual";
+            address1 = "${config.vexos.network.staticWired.address},${config.vexos.network.staticWired.gateway}";
+            dns      = lib.concatStringsSep ";" config.vexos.network.staticWired.dns;
           };
           ipv6 = {
             method        = "auto";
