@@ -167,17 +167,16 @@ if [ "$VARIANT" = "nvidia" ] && [ "$ROLE" != "vanilla" ]; then
   echo -e "${YELLOW}Wrong choice? Run this installer again and switch.${RESET}"
   echo ""
 
-  while [ -z "$NVIDIA_SUFFIX" ]; do
+  while true; do
     printf "Enter choice [1-2]: "
     read -r INPUT </dev/tty
     case "${INPUT}" in
-      1) NVIDIA_SUFFIX=""             ;;
-      2) NVIDIA_SUFFIX="-legacy535"   ;;
+      1) NVIDIA_SUFFIX="";           break ;;
+      2) NVIDIA_SUFFIX="-legacy535"; break ;;
       *)
         echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
         ;;
     esac
-    [[ -n "${INPUT}" ]] && break
   done
 fi
 

@@ -45,9 +45,10 @@ Check boxes are ticked as items are completed in this session.
   - Set `CUSTOM_PASSWORD_SET=true/false` based on which password branch (lines 316–345) executed; fix the misleading "vexos default" message
   - **Resolution:** Initialised `CUSTOM_PASSWORD_SET=false` before the password detection block; set to `true` when existing hash is found. Fixed the `else` summary message from "vexos (default)" to "the new password you just set". (`scripts/migrate-to-stateless.sh`)
 
-- [ ] **H-07** `[B]` install.sh NVIDIA-branch prompt accepts any non-empty input and silently selects "latest"
+- [x] **H-07** `[B]` install.sh NVIDIA-branch prompt accepts any non-empty input and silently selects "latest"
   - **Source:** BUGS H6 · `scripts/install.sh:171-183`
   - Remove the stray `[[ -n "$INPUT" ]] && break` line; rewrite loop with a proper answered-flag (matching the pattern in `justfile:302-318`)
+  - **Resolution:** Rewrote install.sh prompt to `while true` with explicit `break` per valid case; removed stray break. Also removed legacy470 from both NVIDIA sub-selection blocks in justfile (H-02 straggler). (`scripts/install.sh`, `justfile`)
 
 ### Bugs — Security / Data Integrity
 
