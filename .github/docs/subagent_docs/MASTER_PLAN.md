@@ -52,9 +52,10 @@ Check boxes are ticked as items are completed in this session.
 
 ### Bugs — Security / Data Integrity
 
-- [ ] **H-08** `[B]` Odysseus clones a moving HEAD and docker-builds it as root at service start — arbitrary code exec risk
+- [x] **H-08** `[B]` Odysseus clones a moving HEAD and docker-builds it as root at service start — arbitrary code exec risk
   - **Source:** BUGS M14, ARCH 1.4 · `modules/server/odysseus.nix:96-121`
   - Pin a specific commit SHA in the clone (or rewrite with `pkgs.fetchFromGitHub` + `dockerTools`); replace `chromadb/chroma:latest` with a pinned tag
+  - **Resolution:** Module removed entirely. The app requires building ~50 Python deps from source with no published image — not suitable for a declarative NixOS module. Can be run ad-hoc via `docker compose` using the upstream README. (`modules/server/odysseus.nix` deleted, `modules/server/default.nix`, `template/server-services.nix`)
 
 - [ ] **H-09** `[B]` VexBoard ships a literal "change-me" auth secret with firewall open by default
   - **Source:** BUGS M13 · `modules/server/vexboard.nix:50-58`
