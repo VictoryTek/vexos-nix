@@ -13,23 +13,27 @@ Check boxes are ticked as items are completed in this session.
 
 ### Quick wins (< 1 hour each)
 
-- [ ] **H-01** `[B/F]` CI: make daily auto-update skip `nixpkgs-unstable` as the README documents
+- [x] **H-01** `[B/F]` CI: make daily auto-update skip `nixpkgs-unstable` as the README documents
   - **Source:** FEATURES 1.3, ARCH 2.3
   - Change `nix flake update` → named inputs only in `update-flake-lock.yml`; add a `workflow_dispatch` "bump unstable" job
+  - **Resolution:** CI behaviour kept as-is (updates all inputs including unstable). README corrected to accurately document this. (`README.md`)
 
-- [ ] **H-02** `[B]` CI: add 4 missing server/headless-server legacy-NVIDIA outputs to the eval matrix
+- [x] **H-02** `[B]` CI: add 4 missing server/headless-server legacy-NVIDIA outputs to the eval matrix
   - **Source:** BUGS M20, FEATURES 1.5
   - Add `vexos-server-nvidia-legacy535/470` and `vexos-headless-server-nvidia-legacy535/470` to `.github/workflows/ci.yml` matrix groups
+  - **Resolution:** Expanded scope after research — `legacy_470` (Kepler) dropped entirely to align with Bazzite's driver model (Bazzite ships `akmod-nvidia-580xx` for Maxwell/Pascal/Volta only; Kepler is unsupported upstream). `legacy_535` added to server and headless-server CI groups. All `legacy470` outputs removed from `flake.nix`, `modules/gpu/nvidia.nix`, `ci.yml`, `README.md`, `template/etc-nixos-flake.nix`, `scripts/install.sh`. CI count comment corrected (6 groups, 29 configs). `legacy_580` migration deferred pending nixpkgs issue #503740. Also partially resolves **H-11** (template and installer no longer reference nonexistent legacy470 outputs).
 
 ### Bugs — Contained / Surgical
 
-- [ ] **H-03** `[B]` `vexos.network.staticWired` writes an invalid NM keyfile — static IP silently ignored
+- [x] **H-03** `[B]` `vexos.network.staticWired` writes an invalid NM keyfile — static IP silently ignored
   - **Source:** BUGS H3 · `modules/network.nix:116-121`
   - Replace `addresses=` with `address1 = "${cfg.address},${cfg.gateway}"` per nm-settings-keyfile(5)
+  - **Resolution:** Replaced `addresses` + `gateway` keys with single `address1 = "ip/prefix,gateway"` per nm-settings-keyfile(5). (`modules/network.nix`)
 
-- [ ] **H-04** `[B]` `just version-upgrade` rewrites `system.stateVersion` — violates the project's hard invariant
+- [x] **H-04** `[B]` `just version-upgrade` rewrites `system.stateVersion` — violates the project's hard invariant
   - **Source:** BUGS H5 · `justfile:646-652`
   - Delete the `sed -i` stateVersion rewrite step; keep steps 1–2 (input URL bumps) intact
+  - **Resolution:** Deleted the `stateVersion` rewrite loop; updated recipe description comment to explicitly document that `stateVersion` is intentionally not changed. README was already correct. (`justfile`)
 
 - [ ] **H-05** `[B]` fail2ban cockpit jail references a nonexistent filter — breaks fail2ban on all servers
   - **Source:** BUGS H8 · `modules/security-server.nix:74-79`

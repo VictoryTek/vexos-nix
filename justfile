@@ -593,8 +593,10 @@ upgrade-analysis target_version:
     echo ""
 
 # Upgrade the NixOS release version (e.g. 25.11 → 26.05).
-# Updates flake inputs (nixpkgs, home-manager) and system.stateVersion in all
-# configuration files.  Run `just rebuild` or `just switch` afterwards to apply.
+# Updates flake inputs (nixpkgs, home-manager) in flake.nix.
+# Run `just rebuild` or `just switch` afterwards to apply.
+# NOTE: system.stateVersion is intentionally NOT changed — it must remain at the
+# version the system was first installed on. See README for details.
 version-upgrade:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -642,14 +644,6 @@ version-upgrade:
     # 2. Update home-manager URL in flake.nix
     sed -i "s|github:nix-community/home-manager/release-${CURRENT}|github:nix-community/home-manager/release-${NEW_VERSION}|g" "$FLAKE_DIR/flake.nix"
     echo "✓ Updated home-manager input → release-${NEW_VERSION}"
-
-    # 3. Update system.stateVersion in all configuration-*.nix files
-    for cfg in "$FLAKE_DIR"/configuration-*.nix; do
-        if grep -q "system\.stateVersion" "$cfg"; then
-            sed -i "s|system\.stateVersion = \"${CURRENT}\"|system.stateVersion = \"${NEW_VERSION}\"|g" "$cfg"
-            echo "✓ Updated system.stateVersion in $(basename "$cfg")"
-        fi
-    done
 
     echo ""
     echo "Done. Next steps:"
