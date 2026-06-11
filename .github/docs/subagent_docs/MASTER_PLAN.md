@@ -57,9 +57,10 @@ Check boxes are ticked as items are completed in this session.
   - Pin a specific commit SHA in the clone (or rewrite with `pkgs.fetchFromGitHub` + `dockerTools`); replace `chromadb/chroma:latest` with a pinned tag
   - **Resolution:** Module removed entirely. The app requires building ~50 Python deps from source with no published image — not suitable for a declarative NixOS module. Can be run ad-hoc via `docker compose` using the upstream README. (`modules/server/odysseus.nix` deleted, `modules/server/default.nix`, `template/server-services.nix`)
 
-- [ ] **H-09** `[B]` VexBoard ships a literal "change-me" auth secret with firewall open by default
+- [x] **H-09** `[B]` VexBoard ships a literal "change-me" auth secret with firewall open by default
   - **Source:** BUGS M13 · `modules/server/vexboard.nix:50-58`
   - Add `lib.mkIf (cfg.secretFile == null) (throw "...")` assertion; default `openFirewall = false`
+  - **Resolution:** Added NixOS `assertions` block that hard-fails evaluation if `secretFile` is null, with a message that provides the exact `openssl rand` command to generate a secret. Changed `openFirewall` default from `true` to `false` — LAN exposure is now explicit opt-in. Service discovery is unaffected (local systemd/Docker polling). (`modules/server/vexboard.nix`)
 
 - [ ] **H-10** `[B]` Plaintext secrets under `/etc/nixos/secrets` are copied into the world-readable Nix store on every rebuild
   - **Source:** BUGS H2 · `justfile:1988-1995`, `modules/nix.nix:128-240`

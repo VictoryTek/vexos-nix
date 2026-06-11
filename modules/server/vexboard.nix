@@ -22,8 +22,8 @@ in
 
     openFirewall = lib.mkOption {
       type = lib.types.bool;
-      default = true;
-      description = "Open the firewall for VexBoard's port.";
+      default = false;
+      description = "Open the firewall for VexBoard's port. Set true to expose the dashboard on the LAN.";
     };
 
     secretFile = lib.mkOption {
@@ -37,6 +37,17 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = cfg.secretFile != null;
+        message = ''
+          vexos.server.vexboard.secretFile must be set before enabling VexBoard.
+          Generate a secret:  openssl rand -base64 48 > /etc/nixos/secrets/vexboard-secret
+          Then add to your config:  vexos.server.vexboard.secretFile = "/etc/nixos/secrets/vexboard-secret";
+        '';
+      }
+    ];
+
     services.vexboard = {
       enable = true;
       port = cfg.port;
