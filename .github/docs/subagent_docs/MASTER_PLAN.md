@@ -35,9 +35,10 @@ Check boxes are ticked as items are completed in this session.
   - Delete the `sed -i` stateVersion rewrite step; keep steps 1–2 (input URL bumps) intact
   - **Resolution:** Deleted the `stateVersion` rewrite loop; updated recipe description comment to explicitly document that `stateVersion` is intentionally not changed. README was already correct. (`justfile`)
 
-- [ ] **H-05** `[B]` fail2ban cockpit jail references a nonexistent filter — breaks fail2ban on all servers
+- [x] **H-05** `[B]` fail2ban cockpit jail references a nonexistent filter — breaks fail2ban on all servers
   - **Source:** BUGS H8 · `modules/security-server.nix:74-79`
   - Ship `environment.etc."fail2ban/filter.d/cockpit.local"` with a journal-based filter, or drop the jail
+  - **Resolution:** Dropped the Cockpit jail. Research confirmed Cockpit's PAM logs omit the remote IP (upstream bug #722, open since 2014), making IP-based banning impossible regardless of filter. Fail2ban now starts cleanly; SSH and recidive jails function correctly. Comment documents the reason. (`modules/security-server.nix`)
 
 - [ ] **H-06** `[B]` `migrate-to-stateless.sh` always crashes at the end — `$CUSTOM_PASSWORD_SET` is never set
   - **Source:** BUGS H7 · `scripts/migrate-to-stateless.sh:420`

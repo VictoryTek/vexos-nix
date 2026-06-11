@@ -47,8 +47,7 @@
     ];
   };
 
-  # Fail2ban: brute-force mitigation for LAN-exposed management services.
-  # SSH and Cockpit are the primary targets on server roles. Samba and NFS
+  # Fail2ban: brute-force mitigation for SSH on server roles. Samba and NFS
   # do not have fail2ban filters in nixpkgs but benefit from SSH protection
   # since they share the same system accounts.
   #
@@ -56,8 +55,10 @@
   # and services.openssh are enabled. The top-level maxretry / bantime
   # settings below apply to all jails as defaults.
   #
-  # To add per-service overrides in your host config:
-  #   services.fail2ban.jails.cockpit = lib.mkForce "enabled = false";
+  # Cockpit jail is intentionally absent: Cockpit's PAM logs do not include
+  # the remote client IP (upstream bug cockpit-project/cockpit#722, open since
+  # 2014), making IP-based banning impossible. A jail with no IP is inert and
+  # causes fail2ban to fail on startup if the filter file is missing.
   services.fail2ban = {
     enable = true;
     maxretry = 5;
@@ -70,12 +71,6 @@
       maxretry  = 3
       findtime  = 86400
       bantime   = 604800
-    '';
-    jails.cockpit = ''
-      enabled  = true
-      filter   = cockpit
-      port     = 9090
-      maxretry = 5
     '';
   };
 }
