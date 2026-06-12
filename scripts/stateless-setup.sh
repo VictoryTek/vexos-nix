@@ -296,6 +296,18 @@ GITIGNORE
 sudo git -C /mnt/etc/nixos init -q
 sudo git -C /mnt/etc/nixos add .
 
+# ---------- Refresh flake inputs ----------------------------------------------
+# Always resolve vexos-nix to the latest HEAD before installing.
+# Without this, nixos-install creates a fresh flake.lock using whatever commit
+# GitHub's CDN happens to serve for the main branch — which may be a stale
+# cached revision if the branch was recently updated.  A stale commit can carry
+# bugs that have already been fixed in the current HEAD (e.g. the broken
+# lib.mkForce placement in modules/stateless-disk.nix that existed at c238ce6).
+echo ""
+echo -e "${CYAN}Refreshing flake inputs...${RESET}"
+sudo nix --extra-experimental-features "nix-command flakes" \
+  flake update --flake git+file:///mnt/etc/nixos
+
 # ---------- Run nixos-install ------------------------------------------------
 FLAKE_TARGET="vexos-stateless-${VARIANT}"
 echo ""
