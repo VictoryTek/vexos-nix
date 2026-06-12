@@ -363,13 +363,14 @@ fi
 if ! sudo "$GIT" -C /etc/nixos rev-parse --git-dir &>/dev/null 2>&1; then
   echo ""
   echo -e "${CYAN}Initializing /etc/nixos as a git repository...${RESET}"
+  # NOTE: hardware-configuration.nix and the override .nix files MUST be
+  # git-tracked — the template flake imports them from the flake source, and
+  # git+file:// copies only tracked files into the store. Only secrets/ (read
+  # outside the flake source) stays untracked.
   sudo tee /etc/nixos/.gitignore > /dev/null << 'GITIGNORE'
 secrets/
-hardware-configuration.nix
 *.bak
 vexos-variant
-kernel-install-override.nix
-stateless-user-override.nix
 GITIGNORE
   sudo "$GIT" -C /etc/nixos init -q
   sudo "$GIT" -C /etc/nixos add .
@@ -379,6 +380,16 @@ GITIGNORE
     commit -q -m "chore: track /etc/nixos configuration"
   echo -e "${GREEN}✓ /etc/nixos is now git-tracked — secrets/ excluded from Nix store.${RESET}"
 fi
+
+# Repair repos created by older installer versions whose .gitignore wrongly
+# excluded flake-imported files: git+file:// omits untracked files, so the
+# template flake's ./hardware-configuration.nix import fails (and the
+# pathExists-gated overrides are silently dropped) unless they are tracked.
+for f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix; do
+  if [ -f "/etc/nixos/$f" ]; then
+    sudo "$GIT" -C /etc/nixos add -f "$f"
+  fi
+done
 
 # ---------- Flake lock refresh -----------------------------------------------
 # Always resolve vexos-nix to the latest HEAD before dry-building.
@@ -441,6 +452,9 @@ if [ -n "$SOURCE_BUILDS" ]; then
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages;
 }
 NIXEOF
+    # Track the override so the git+file:// store copy includes it — the
+    # template flake's pathExists gate only sees tracked files.
+    sudo "$GIT" -C /etc/nixos add -f kernel-install-override.nix
 
     # Re-run dry-build with the override in place to confirm all packages are
     # now in cache before proceeding.
@@ -455,6 +469,7 @@ NIXEOF
     if [ -n "$REMAINING" ]; then
       # Fallback did not resolve all misses — clean up and abort normally.
       sudo rm -f /etc/nixos/kernel-install-override.nix
+      sudo "$GIT" -C /etc/nixos rm -q --cached kernel-install-override.nix 2>/dev/null || true
       echo ""
       echo -e "${YELLOW}${BOLD}⚠ Additional packages are not yet in the binary cache and would need to"
       echo -e "  be compiled from source (this can take hours):${RESET}"

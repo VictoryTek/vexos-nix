@@ -237,13 +237,14 @@ echo -e "${GREEN}  ✓ /mnt/etc/nixos/stateless-user-override.nix written.${RESE
 # git+file:///etc/nixos URIs — keeping secrets/ out of the world-readable Nix store.
 echo ""
 echo -e "${BOLD}Initialising git repo in /mnt/etc/nixos to stabilise flake identity...${RESET}"
+# NOTE: hardware-configuration.nix and the override .nix files MUST be
+# git-tracked — the template flake imports them from the flake source, and
+# git+file:// copies only tracked files into the store. Only secrets/ (read
+# outside the flake source) stays untracked.
 sudo tee /mnt/etc/nixos/.gitignore > /dev/null << 'GITIGNORE'
 secrets/
-hardware-configuration.nix
 *.bak
 vexos-variant
-kernel-install-override.nix
-stateless-user-override.nix
 GITIGNORE
 sudo git -C /mnt/etc/nixos init -q
 sudo git -C /mnt/etc/nixos add .
