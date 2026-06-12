@@ -142,11 +142,8 @@ in
           echo "Initializing /etc/nixos as a git repository (one-time setup)..."
           cat > /etc/nixos/.gitignore << 'GITIGNORE'
 secrets/
-hardware-configuration.nix
 *.bak
 vexos-variant
-kernel-install-override.nix
-stateless-user-override.nix
 GITIGNORE
           git -C /etc/nixos init -q
           git -C /etc/nixos add .
@@ -156,6 +153,17 @@ GITIGNORE
             commit -q -m "chore: track /etc/nixos configuration"
           echo "Done — secrets/ is now excluded from the Nix store on all future rebuilds."
         fi
+
+        # ── Repair repos initialised with old gitignore ──────────────────────
+        # Earlier versions of this migration excluded hardware-configuration.nix,
+        # kernel-install-override.nix, and stateless-user-override.nix from git,
+        # which caused git+file:// builds to fail (file absent from store).
+        # Force-add them if present so they are tracked regardless of gitignore.
+        for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix; do
+          if [ -f "/etc/nixos/$_f" ]; then
+            git -C /etc/nixos add -f "$_f" 2>/dev/null || true
+          fi
+        done
 
         # ── Kernel install override auto-clear ───────────────────────────────
         # The installer writes kernel-install-override.nix when target-kernel
