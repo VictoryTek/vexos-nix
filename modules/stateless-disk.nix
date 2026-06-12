@@ -72,46 +72,52 @@ in
       bootPart    = if isNvmeStyle then "${cfg.device}p1" else "${cfg.device}1";
       rootPart    = if isNvmeStyle then "${cfg.device}p2" else "${cfg.device}2";
     in
-    {
-      # Force unconditional early loading of btrfs — availableKernelModules relies
-      # on udev hotplug ordering which is unreliable in early initrd.
-      boot.initrd.kernelModules = lib.mkDefault [ "btrfs" ];
+    lib.mkMerge [
+      {
+        # Force unconditional early loading of btrfs — availableKernelModules relies
+        # on udev hotplug ordering which is unreliable in early initrd.
+        boot.initrd.kernelModules = lib.mkDefault [ "btrfs" ];
 
-      # ── Boot partition (EFI / FAT32) ──────────────────────────────────────
-      # lib.mkDefault: hardware-configuration.nix overrides with UUID path.
-      fileSystems."/boot" = lib.mkDefault {
-        device  = bootPart;
-        fsType  = "vfat";
-        options = [ "fmask=0077" "dmask=0077" ];
-      };
+        # ── Boot partition (EFI / FAT32) ──────────────────────────────────────
+        # lib.mkDefault: hardware-configuration.nix overrides with UUID path.
+        fileSystems."/boot" = lib.mkDefault {
+          device  = bootPart;
+          fsType  = "vfat";
+          options = [ "fmask=0077" "dmask=0077" ];
+        };
 
-      # ── Nix store (persistent) ────────────────────────────────────────────
-      # Mounted from the @nix Btrfs subvolume on the root partition.
-      # lib.mkDefault: hardware-configuration.nix UUID entries take priority.
-      fileSystems."/nix" = lib.mkDefault {
-        device        = rootPart;
-        fsType        = "btrfs";
-        options       = [ "subvol=@nix" "compress=zstd" "noatime" ];
-        neededForBoot = true;
-      };
+        # ── Nix store (persistent) ────────────────────────────────────────────
+        # Mounted from the @nix Btrfs subvolume on the root partition.
+        # lib.mkDefault: hardware-configuration.nix UUID entries take priority.
+        fileSystems."/nix" = lib.mkDefault {
+          device        = rootPart;
+          fsType        = "btrfs";
+          options       = [ "subvol=@nix" "compress=zstd" "noatime" ];
+          neededForBoot = true;
+        };
 
-      # ── Persistent state ──────────────────────────────────────────────────
-      # Mounted from the @persist Btrfs subvolume on the root partition.
-      # lib.mkDefault: hardware-configuration.nix UUID entries take priority.
-      fileSystems."/persistent" = lib.mkDefault {
-        device        = rootPart;
-        fsType        = "btrfs";
-        options       = [ "subvol=@persist" "compress=zstd" "noatime" ];
-        neededForBoot = true;
-      };
+        # ── Persistent state ──────────────────────────────────────────────────
+        # Mounted from the @persist Btrfs subvolume on the root partition.
+        # lib.mkDefault: hardware-configuration.nix UUID entries take priority.
+        fileSystems."/persistent" = lib.mkDefault {
+          device        = rootPart;
+          fsType        = "btrfs";
+          options       = [ "subvol=@persist" "compress=zstd" "noatime" ];
+          neededForBoot = true;
+        };
+      }
 
-      # neededForBoot forced at highest priority as a separate definition.
+      # neededForBoot forced at highest priority in a separate mkMerge element.
       # When hardware-configuration.nix defines the full fileSystems entry at
       # priority 100, it overrides the lib.mkDefault block above (priority 1000),
       # including neededForBoot.  These definitions apply at priority 0 regardless
       # of what hardware-configuration.nix contains.  Required by impermanence.nix.
-      fileSystems."/nix".neededForBoot       = lib.mkForce true;
-      fileSystems."/persistent".neededForBoot = lib.mkForce true;
-    }
+      # NOTE: must be a separate attrset — Nix rejects two definitions of the same
+      # attribute path within a single attrset literal.
+      {
+        fileSystems."/nix".neededForBoot       = lib.mkForce true;
+        fileSystems."/persistent".neededForBoot = lib.mkForce true;
+      }
+    ]
   );
 }
