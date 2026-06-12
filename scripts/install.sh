@@ -354,8 +354,10 @@ if command -v git >/dev/null 2>&1; then
 else
   echo ""
   echo -e "${CYAN}git not found on this system — fetching from nixpkgs binary cache...${RESET}"
-  GIT="$(nix --extra-experimental-features 'nix-command flakes' \
-    build nixpkgs#git --no-link --print-out-paths)/bin/git"
+  _GIT_STORE="$(nix --extra-experimental-features 'nix-command flakes' \
+    build nixpkgs#git --no-link --print-out-paths)"
+  GIT="$_GIT_STORE/bin/git"
+  export PATH="$_GIT_STORE/bin:$PATH"
 fi
 
 # ---------- Git-track /etc/nixos (excludes secrets from Nix store) -----------
