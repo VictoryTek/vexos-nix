@@ -11,13 +11,17 @@
 #   Fresh install from ISO:
 #     1. Run scripts/stateless-setup.sh from the NixOS live ISO
 #     2. disko CLI formats the disk (creates ESP + Btrfs @nix/@persist subvols)
-#     3. nixos-install is called; this module provides fileSystems fallbacks
-#        when hardware-configuration.nix is generated with --no-filesystems
+#     3. stateless-setup.sh generates hardware-configuration.nix with
+#        --no-filesystems and then appends stateless filesystem entries with
+#        neededForBoot = true (same as the migration path below)
+#     4. nixos-install evaluates the config; hardware-configuration.nix entries
+#        override this module's lib.mkDefault declarations (higher priority wins)
 #
-#   Rebuild from existing system (preferred):
+#   Rebuild from existing system:
 #     1. Run scripts/migrate-to-stateless.sh on the running NixOS system
 #     2. The migration script creates Btrfs subvols and regenerates
 #        hardware-configuration.nix with exact UUID-based filesystem entries
+#        and neededForBoot = true
 #     3. Those hardware-configuration.nix entries override this module's
 #        mkDefault declarations (higher priority wins — no conflicts)
 #     4. Run: sudo nixos-rebuild switch --flake /etc/nixos#vexos-stateless-<variant>
@@ -83,23 +87,31 @@ in
 
       # ── Nix store (persistent) ────────────────────────────────────────────
       # Mounted from the @nix Btrfs subvolume on the root partition.
-      # neededForBoot = true: must be available before activation scripts run.
+      # lib.mkDefault: hardware-configuration.nix UUID entries take priority.
       fileSystems."/nix" = lib.mkDefault {
         device        = rootPart;
         fsType        = "btrfs";
         options       = [ "subvol=@nix" "compress=zstd" "noatime" ];
-        neededForBoot = lib.mkForce true;
+        neededForBoot = true;
       };
 
       # ── Persistent state ──────────────────────────────────────────────────
       # Mounted from the @persist Btrfs subvolume on the root partition.
-      # neededForBoot = true: required by impermanence bind mounts.
+      # lib.mkDefault: hardware-configuration.nix UUID entries take priority.
       fileSystems."/persistent" = lib.mkDefault {
         device        = rootPart;
         fsType        = "btrfs";
         options       = [ "subvol=@persist" "compress=zstd" "noatime" ];
         neededForBoot = true;
       };
+
+      # neededForBoot forced at highest priority as a separate definition.
+      # When hardware-configuration.nix defines the full fileSystems entry at
+      # priority 100, it overrides the lib.mkDefault block above (priority 1000),
+      # including neededForBoot.  These definitions apply at priority 0 regardless
+      # of what hardware-configuration.nix contains.  Required by impermanence.nix.
+      fileSystems."/nix".neededForBoot       = lib.mkForce true;
+      fileSystems."/persistent".neededForBoot = lib.mkForce true;
     }
   );
 }

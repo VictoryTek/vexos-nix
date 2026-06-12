@@ -206,8 +206,55 @@ echo -e "${GREEN}${BOLD}✓ Disk formatted and mounted at /mnt.${RESET}"
 
 # ---------- Generate hardware configuration ---------------------------------
 echo ""
-echo -e "${BOLD}Generating hardware configuration (with UUID-based filesystem entries)...${RESET}"
-sudo nixos-generate-config --root /mnt
+echo -e "${BOLD}Generating hardware configuration...${RESET}"
+sudo nixos-generate-config --no-filesystems --root /mnt
+
+# Capture partition UUIDs from disko's by-partlabel paths (always available
+# after disko runs sgdisk + udevadm settle).
+BOOT_UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/disk-main-ESP)
+ROOT_UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/disk-main-data)
+
+# Append stateless filesystem declarations with neededForBoot = true.
+# nixos-generate-config --no-filesystems omits fileSystems entries entirely.
+# We inject them here with UUID-based device paths and neededForBoot = true —
+# the same pattern used by scripts/migrate-to-stateless.sh for existing installs.
+# neededForBoot = true is required by modules/impermanence.nix; without it the
+# impermanence assertions abort the build.
+TMPFILE=$(mktemp)
+perl -0777 -pe 's/\n\}\s*$/\n/' /mnt/etc/nixos/hardware-configuration.nix > "${TMPFILE}" 2>/dev/null || \
+  head -n -1 /mnt/etc/nixos/hardware-configuration.nix > "${TMPFILE}"
+
+cat >> "${TMPFILE}" << NIXEOF
+
+  # ── Stateless filesystem layout ─────────────────────────────────────────
+  # Written by scripts/stateless-setup.sh.
+  # neededForBoot = true is required by modules/impermanence.nix.
+
+  fileSystems."/boot" = {
+    device  = "/dev/disk/by-uuid/${BOOT_UUID}";
+    fsType  = "vfat";
+    options = [ "fmask=0077" "dmask=0077" ];
+  };
+
+  fileSystems."/nix" = {
+    device        = "/dev/disk/by-uuid/${ROOT_UUID}";
+    fsType        = "btrfs";
+    options       = [ "subvol=@nix" "compress=zstd" "noatime" ];
+    neededForBoot = true;
+  };
+
+  fileSystems."/persistent" = {
+    device        = "/dev/disk/by-uuid/${ROOT_UUID}";
+    fsType        = "btrfs";
+    options       = [ "subvol=@persist" "compress=zstd" "noatime" ];
+    neededForBoot = true;
+  };
+
+}
+NIXEOF
+
+sudo cp "${TMPFILE}" /mnt/etc/nixos/hardware-configuration.nix
+rm -f "${TMPFILE}"
 echo -e "${GREEN}✓ hardware-configuration.nix generated at /mnt/etc/nixos/hardware-configuration.nix${RESET}"
 
 # Set hostname in hardware config could be done in the flake; skip here.
