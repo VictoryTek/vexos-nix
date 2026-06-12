@@ -345,9 +345,22 @@ if [ -f /etc/nixos/flake.nix ] && grep -qF '"XXXXXXXX"' /etc/nixos/flake.nix 2>/
   echo -e "  ${GREEN}✓ hostId set to ${HOST_ID}.${RESET}"
 fi
 
+# ---------- Ensure git is available -------------------------------------------
+# Stock NixOS installs do not include git in the system profile; the live ISO
+# does. Fetch it from the binary cache when missing and use the absolute store
+# path so sudo finds it regardless of secure_path/env_reset.
+if command -v git >/dev/null 2>&1; then
+  GIT="git"
+else
+  echo ""
+  echo -e "${CYAN}git not found on this system — fetching from nixpkgs binary cache...${RESET}"
+  GIT="$(nix --extra-experimental-features 'nix-command flakes' \
+    build nixpkgs#git --no-link --print-out-paths)/bin/git"
+fi
+
 # ---------- Git-track /etc/nixos (excludes secrets from Nix store) -----------
 # git+file:// only copies tracked files; untracked secrets/ never enter the store.
-if ! sudo git -C /etc/nixos rev-parse --git-dir &>/dev/null 2>&1; then
+if ! sudo "$GIT" -C /etc/nixos rev-parse --git-dir &>/dev/null 2>&1; then
   echo ""
   echo -e "${CYAN}Initializing /etc/nixos as a git repository...${RESET}"
   sudo tee /etc/nixos/.gitignore > /dev/null << 'GITIGNORE'
@@ -358,9 +371,9 @@ vexos-variant
 kernel-install-override.nix
 stateless-user-override.nix
 GITIGNORE
-  sudo git -C /etc/nixos init -q
-  sudo git -C /etc/nixos add .
-  sudo git -C /etc/nixos \
+  sudo "$GIT" -C /etc/nixos init -q
+  sudo "$GIT" -C /etc/nixos add .
+  sudo "$GIT" -C /etc/nixos \
     -c user.email="vexos@localhost" \
     -c user.name="VexOS" \
     commit -q -m "chore: track /etc/nixos configuration"
