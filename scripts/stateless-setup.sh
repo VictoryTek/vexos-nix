@@ -119,9 +119,15 @@ done
 # so the user can actually log in after the first boot.
 HASHED_PW=""
 
-if ! command -v openssl &>/dev/null; then
-  echo -e "${RED}openssl is required to hash the password but was not found. Aborting.${RESET}"
-  exit 1
+# The live ISO does not ship openssl in PATH; fetch it from the binary cache
+# when missing and use the absolute store path (same pattern as the git
+# bootstrap in install.sh).
+if command -v openssl &>/dev/null; then
+  OPENSSL="openssl"
+else
+  echo -e "${CYAN}openssl not found on this system — fetching from nixpkgs binary cache...${RESET}"
+  OPENSSL="$(nix --extra-experimental-features 'nix-command flakes' \
+    build nixpkgs#openssl.bin --no-link --print-out-paths)/bin/openssl"
 fi
 
 echo ""
@@ -141,7 +147,7 @@ while true; do
   read -rs PW2 </dev/tty
   echo ""
   if [ "$PW" = "$PW2" ]; then
-    HASHED_PW=$(printf '%s' "$PW" | openssl passwd -6 -stdin)
+    HASHED_PW=$(printf '%s' "$PW" | "$OPENSSL" passwd -6 -stdin)
     echo -e "${GREEN}  ✓ Password accepted.${RESET}"
     break
   else
