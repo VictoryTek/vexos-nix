@@ -193,13 +193,20 @@
     #   3. home-manager wiring                     (per-role homeFile)
     #   4. role.extraModules                       (impermanence / serverServicesModule)
     #   5. ./hosts/<role>-<gpu>.nix                (host file)
-    #   6. legacyExtra                             ({ vexos.gpu.nvidiaDriverVariant = …; })
+    #   6. legacyExtra                             (gpu/nvidia.nix + { vexos.gpu.nvidiaDriverVariant = …; })
     mkHost = { name, role, gpu, nvidiaVariant ? null }:
       let
         r           = roles.${role};
         hostFile    = ./hosts + "/${role}-${gpu}.nix";
-        legacyExtra = lib.optional (nvidiaVariant != null)
-                        { vexos.gpu.nvidiaDriverVariant = nvidiaVariant; };
+        # legacyExtra imports gpu/nvidia.nix itself because hosts/vanilla-nvidia.nix
+        # (nouveau baseline) does not — the legacy variant needs the module that
+        # declares vexos.gpu.nvidiaDriverVariant and enables the proprietary driver.
+        # For the other roles the host file already imports the same path; the
+        # module system deduplicates path imports, so this is a no-op there.
+        legacyExtra = lib.optional (nvidiaVariant != null) {
+          imports = [ ./modules/gpu/nvidia.nix ];
+          vexos.gpu.nvidiaDriverVariant = nvidiaVariant;
+        };
 
         # Variant stamp: identifies the active build variant in /etc/nixos/vexos-variant.
         # Non-stateless: use standard environment.etc (file managed by NixOS etc activation).
