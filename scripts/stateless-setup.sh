@@ -235,15 +235,16 @@ echo ""
 echo -e "${BOLD}Generating hardware configuration...${RESET}"
 sudo nixos-generate-config --no-filesystems --root /mnt
 
-# Wait for udev to process all disko partition/format events before querying UUIDs.
-# Without this, blkid may read a stale cache entry for the freshly-formatted ESP
-# and return an empty UUID — producing an invalid device path in
-# hardware-configuration.nix ("/dev/disk/by-uuid/") and causing a 90-second boot
-# timeout followed by Stage 2 emergency mode on every subsequent boot.
+# Wait for udev to process disko's partition events before querying UUIDs.
+# Ensures the partlabel symlinks (/dev/disk/by-partlabel/disk-main-*) exist.
 udevadm settle --timeout=30
 
-BOOT_UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/disk-main-ESP 2>/dev/null || true)
-ROOT_UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/disk-main-data 2>/dev/null || true)
+# Use -p (direct probe) to bypass the blkid cache.
+# Disko calls udevadm settle BEFORE mkfs.vfat, so udev never sees the format
+# event and the blkid cache has no UUID entry for the freshly-written ESP.
+# Without -p, blkid reads the stale cache and returns an empty string.
+BOOT_UUID=$(blkid -p -s UUID -o value /dev/disk/by-partlabel/disk-main-ESP 2>/dev/null || true)
+ROOT_UUID=$(blkid -p -s UUID -o value /dev/disk/by-partlabel/disk-main-data 2>/dev/null || true)
 
 if [ -z "$BOOT_UUID" ]; then
   echo -e "${RED}ERROR: Could not read UUID for EFI partition (disk-main-ESP).${RESET}"
