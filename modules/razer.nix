@@ -7,21 +7,21 @@
 # Desktop-only: import only from configuration-desktop.nix.
 #
 # Patch note: openrazer 3.10.3 (nixpkgs 25.11) doesn't compile against Linux 6.18.32+
-# because hid_report_raw_event() gained a bufsize parameter (upstream commit 2c85c61,
-# backported into 6.18.32 and 7.0.9). The fix (openrazer commit ff30624, released in
-# 3.12.3) is in nixpkgs master/26.05 but not 25.11. Apply it here via overlay until
-# nixpkgs 25.11 is bumped or the backport lands. Remove this overlay once the nixpkgs
-# input is upgraded to a version that includes the fix.
+# (and 7.0.9+) because hid_report_raw_event() gained a bufsize parameter (upstream
+# commit 2c85c61, backported into 6.18.32 and 7.0.9). The fix (openrazer commit ff30624,
+# released in 3.12.3) is in nixpkgs master/26.05 but not 25.11. Apply it here via overlay
+# until nixpkgs 25.11 is bumped or the backport lands. Remove this overlay once the
+# nixpkgs input is upgraded to a version that includes the fix.
 # Tracking: https://github.com/NixOS/nixpkgs/issues/523973
 { config, pkgs, lib, ... }:
 {
   nixpkgs.overlays = [
     (final: prev: {
-      # linuxPackages_6_18 is the top-level alias used by boot.kernelPackages.
-      # Use .extend (the standard API for kernel package sets) so that
-      # config.boot.kernelPackages.openrazer resolves to the patched derivation,
-      # which is what hardware.openrazer picks up via boot.extraModulePackages.
-      linuxPackages_6_18 = prev.linuxPackages_6_18.extend (lpFinal: lpPrev: {
+      # linuxPackages_latest is the top-level alias used by boot.kernelPackages on the
+      # desktop role (system-latest-kernel.nix). Use .extend (the standard API for kernel
+      # package sets) so that config.boot.kernelPackages.openrazer resolves to the patched
+      # derivation, which is what hardware.openrazer picks up via boot.extraModulePackages.
+      linuxPackages_latest = prev.linuxPackages_latest.extend (lpFinal: lpPrev: {
         openrazer = lpPrev.openrazer.overrideAttrs (old: {
           # Fix: hid_report_raw_event() gained a bufsize parameter in Linux 6.18.32+
           # (kernel commit 2c85c61, backported into 6.18.32). openrazer 3.10.3 calls

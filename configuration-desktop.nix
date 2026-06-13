@@ -20,7 +20,7 @@
     ./modules/branding.nix
     ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix
-    ./modules/system-desktop-kernel.nix  # Linux 6.18 (hold until NVIDIA 595.x in nixpkgs)
+    ./modules/system-latest-kernel.nix  # Linux 7.x (linuxPackages_latest)
     ./modules/system-gaming.nix     # gaming kernel params, THP, SCX
     ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on desktop
     ./modules/security.nix          # AppArmor MAC baseline (all roles)

@@ -361,8 +361,8 @@ else
 fi
 
 # Remove any kernel-install-override.nix left by previous installer versions.
-# The current installer uses nixpkgs rollback instead of LTS kernel override;
-# any leftover file forces the wrong kernel and must not enter the git index.
+# The current installer does not write a kernel override; any leftover file forces
+# the wrong kernel (LTS) and must not enter the git index.
 sudo rm -f /etc/nixos/kernel-install-override.nix
 
 # ---------- Git-track /etc/nixos (excludes secrets from Nix store) -----------
@@ -410,64 +410,8 @@ echo -e "${CYAN}Refreshing flake inputs...${RESET}"
 sudo nix --extra-experimental-features "nix-command flakes" \
   flake update --flake git+file:///etc/nixos
 
-# 'nixpkgs.follows = "vexos-nix/nixpkgs"' in the template is advisory.
-# nix flake update may still resolve follows to the latest nixos-25.11 branch
-# HEAD rather than the specific commit pinned in vexos-nix's flake.lock, leaving
-# the user with a newer (potentially uncached) nixpkgs.  Fetch vexos-nix's
-# committed flake.lock and force nixpkgs to its exact revision so the dry-build
-# uses only packages that are already in the binary cache.
-_VEXOS_NIXPKGS_REV=$(curl -fsSL --max-time 10 \
-  "https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/flake.lock" \
-  2>/dev/null | jq -r '.nodes.nixpkgs.locked.rev' 2>/dev/null || true)
-if [ -n "$_VEXOS_NIXPKGS_REV" ]; then
-  sudo nix --extra-experimental-features 'nix-command flakes' \
-    flake lock /etc/nixos \
-    --override-input nixpkgs "github:NixOS/nixpkgs/${_VEXOS_NIXPKGS_REV}" 2>/dev/null || true
-fi
-
-# Stage the (now-pinned) lock file so all subsequent git+file:// evaluations see it.
+# Stage the refreshed lock file so all subsequent git+file:// evaluations see it.
 sudo "$GIT" -C /etc/nixos add flake.lock
-
-# ---------- Cache-query helper -----------------------------------------------
-# Walks recent nixpkgs history (via GitHub API) to find the most recent nixpkgs
-# revision where a given Nix attribute's outPath is present in cache.nixos.org.
-# $1 = Nix attribute to evaluate (e.g., linuxPackages_latest.nvidiaPackages.stable)
-# $2 = optional GitHub path filter to scope the commit query
-# Returns the full nixpkgs rev string, or nothing if none found within 5 commits.
-find_cached_nixpkgs_for_attr() {
-  local nix_attr="${1}"
-  local path_filter="${2:-}"
-
-  local current_rev
-  current_rev=$(jq -r '.nodes.nixpkgs.locked.rev' /etc/nixos/flake.lock 2>/dev/null) || return 0
-  [ -z "$current_rev" ] && return 0
-
-  local api_url="https://api.github.com/repos/NixOS/nixpkgs/commits?per_page=5&sha=${current_rev}"
-  [ -n "$path_filter" ] && api_url="${api_url}&path=${path_filter}"
-
-  local commits_json
-  commits_json=$(curl -fsSL --max-time 15 "$api_url" 2>/dev/null) || return 0
-
-  local revs
-  revs=$(printf '%s' "$commits_json" | jq -r '.[].sha' 2>/dev/null) || return 0
-  [ -z "$revs" ] && return 0
-
-  for rev in $revs; do
-    local out_path
-    # builtins.fetchTarball without sha256 is valid under --impure.
-    out_path=$(sudo nix --extra-experimental-features 'nix-command flakes' \
-      eval --raw --impure --expr \
-      "(import (builtins.fetchTarball \"https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz\") { system = \"x86_64-linux\"; config.allowUnfree = true; config.nvidia.acceptLicense = true; }).${nix_attr}.outPath" \
-      2>/dev/null) || continue
-    [ -z "$out_path" ] && continue
-    if nix --extra-experimental-features 'nix-command flakes' \
-       path-info --store https://cache.nixos.org "$out_path" &>/dev/null 2>&1; then
-      echo "$rev"
-      return 0
-    fi
-  done
-  # Nothing found — return 0; caller checks for empty output.
-}
 
 # ---------- Build & switch ---------------------------------------------------
 # Cache check: dry-build first to see what would need to be compiled locally.
@@ -490,123 +434,25 @@ SOURCE_BUILDS=$(printf '%s\n' "$DRY_OUT" \
   || true)
 
 if [ -n "$SOURCE_BUILDS" ]; then
-  # Kernel-dependent packages (NVIDIA driver, OpenRazer DKMS) miss cache when
-  # nixpkgs recently bumped the kernel or a driver and Hydra hasn't built them yet.
-  # When all cache misses are kernel-dependent, search nixpkgs history for the most
-  # recent revision where the relevant packages ARE cached, then temporarily roll back
-  # nixpkgs to that rev.  At that rev, linuxPackages_latest resolves to the most
-  # recent cached kernel — not the LTS fallback.
-  HEAVY_BUILD_REGEX='^(NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|openrazer-[0-9])'
-  NON_KERNEL_BUILDS=$(printf '%s\n' "$SOURCE_BUILDS" | grep -Ev "$HEAVY_BUILD_REGEX" || true)
+  # Some derivations are never on cache.nixos.org and must always build locally —
+  # no nixpkgs revision can change this:
+  #   • Proprietary NVIDIA userspace (nvidia-x11 / NVIDIA-*.run / nvidia-settings /
+  #     nvidia-persistenced): unfree and non-redistributable, so Hydra never caches it.
+  #     The open kernel module (nvidia-open) IS cached and is fetched, not built.
+  #   • Patched OpenRazer: a local overlay patch (modules/razer.nix), so its hash never
+  #     matches an upstream cached build.
+  # These are a one-time local build (~10-15 min with NVIDIA; seconds for OpenRazer alone)
+  # per driver/kernel bump. Treat them as expected. Anything else that misses cache is a
+  # genuine, transient cache lag — abort so the user can retry rather than compile for hours.
+  UNAVOIDABLE_REGEX='^(NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|nvidia-persistenced-|openrazer-[0-9])'
+  BLOCKING=$(printf '%s\n' "$SOURCE_BUILDS" | grep -Ev "$UNAVOIDABLE_REGEX" || true)
 
-  if [ -z "$NON_KERNEL_BUILDS" ]; then
-    echo ""
-    echo -e "${YELLOW}${BOLD}⚠ Target kernel packages are not yet in the binary cache:${RESET}"
-    printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/    /'
-    echo ""
-    echo -e "${CYAN}Searching nixpkgs history for the most recent cached versions...${RESET}"
-
-    # Select which nixpkgs attribute to check.  For NVIDIA, checking nvidiaPackages
-    # implicitly validates the kernel too — if the driver is cached, it was built
-    # against a cached kernel.  For all others, check the kernel directly.
-    if [ "$VARIANT" = "nvidia" ] && [ "$NVIDIA_SUFFIX" = "" ]; then
-      CHECK_ATTR="linuxPackages_latest.nvidiaPackages.stable"
-      CHECK_PATH="pkgs/os-specific/linux/nvidia-x11/default.nix"
-    elif [ "$VARIANT" = "nvidia" ] && [ "$NVIDIA_SUFFIX" = "-legacy535" ]; then
-      CHECK_ATTR="linuxPackages_latest.nvidiaPackages.legacy_535"
-      CHECK_PATH="pkgs/os-specific/linux/nvidia-x11/default.nix"
-    else
-      CHECK_ATTR="linuxPackages_latest.kernel"
-      CHECK_PATH="pkgs/os-specific/linux/kernel/"
-    fi
-
-    FOUND_REV=$(find_cached_nixpkgs_for_attr "$CHECK_ATTR" "$CHECK_PATH")
-
-    if [ -n "$FOUND_REV" ]; then
-      short_rev="${FOUND_REV:0:8}"
-      echo ""
-      echo -e "${CYAN}✓ Found cached packages at nixpkgs ${short_rev}."
-      echo -e "Temporarily using this nixpkgs pin for first install."
-      echo -e "The latest versions will be applied automatically when you run 'just update'"
-      echo -e "or use the Up app, once cache.nixos.org has built them (typically 1-3 days).${RESET}"
-      echo ""
-
-      FLAKE_LOCK_BACKUP=$(cat /etc/nixos/flake.lock)
-
-      # Roll back nixpkgs in flake.lock to the found rev.
-      # At that rev linuxPackages_latest resolves to a cached kernel version —
-      # no kernel-install-override.nix needed.
-      sudo nix --extra-experimental-features 'nix-command flakes' \
-        flake lock /etc/nixos \
-        --override-input nixpkgs "github:NixOS/nixpkgs/${FOUND_REV}" 2>/dev/null
-      sudo "$GIT" -C /etc/nixos add flake.lock
-
-      echo -e "${CYAN}Verifying cached nixpkgs resolves all cache misses...${RESET}"
-      DRY_OUT2=$(sudo nixos-rebuild dry-build --flake "git+file:///etc/nixos#${FLAKE_TARGET}" 2>&1 || true)
-      REMAINING=$(printf '%s\n' "$DRY_OUT2" \
-        | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
-        | grep -E -- '-[0-9]+\.[0-9]+' \
-        | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|linux-[0-9]|kernel|stage-[12]-|crate-|cargo-vendor|perl-[0-9]|lua-[0-9]|python3?-[0-9]|up-[0-9]|zvariant|zbus|gtk4-|glib-|gio-|gdk-|pango-|graphene-|cairo-|gettext-rs|gettext-sys|serde_yml|libyml|system-deps|cfg-expr|winnow|endi-|enumflags|version-compare|zbus_names|zbus_macros|zvariant_|ureq|uds_windows|env_filter|env_logger|utf8-zero|glib-build-tools|glib-macros|glib-sys|gobject-sys|gio-sys|pango-sys|gdk-pixbuf-sys|graphene-sys|cairo-sys|cairo-rs|gdk-pixbuf-|mpv-with-scripts|plex-desktop|ibus-with-plugins|retroarch-with-cores|steam|steam-unwrapped|discord|podman-docker-compat|nodejs-|vscode-|claude-code-|code-[0-9]|VSCode_|umu-launcher|.*-init\.|.*-bwrap\.|.*-fhsenv)' \
-        || true)
-
-      if [ -n "$REMAINING" ]; then
-        printf '%s' "$FLAKE_LOCK_BACKUP" | sudo tee /etc/nixos/flake.lock > /dev/null
-        sudo "$GIT" -C /etc/nixos add flake.lock
-        echo ""
-        echo -e "${YELLOW}${BOLD}⚠ Additional packages are not yet in the binary cache and would need to"
-        echo -e "  be compiled from source (this can take hours):${RESET}"
-        echo ""
-        printf '%s\n' "$REMAINING" | sed 's/^/    /'
-        echo ""
-        echo -e "${YELLOW}The install has been aborted. cache.nixos.org usually builds new"
-        echo -e "packages within 24 hours. Run the install script again once they are cached."
-        echo ""
-        echo -e "To install now anyway (accepts local source builds), run:${RESET}"
-        echo "  sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
-        echo ""
-        exit 1
-      fi
-      echo -e "${GREEN}✓ All packages available in binary cache (nixpkgs pin ${short_rev}).${RESET}"
-
-    else
-      # No cached version found in recent nixpkgs history — last resort: build from source.
-      echo ""
-      echo -e "${YELLOW}${BOLD}⚠ No cached packages found in recent nixpkgs history.${RESET}"
-      echo ""
-      echo -e "${YELLOW}This happens when nixpkgs recently bumped multiple packages and"
-      echo -e "cache.nixos.org has not yet built any recent versions (typically 1-3 days).${RESET}"
-      echo ""
-      echo -e "${BOLD}Options:${RESET}"
-      echo "  1) Build from source — kernel modules compile locally (~30-60 min)"
-      echo "  2) Abort             — wait for cache.nixos.org and re-run the installer"
-      echo ""
-      printf "Build from source now? [y/N] "
-      read -r BUILD_CHOICE </dev/tty
-      case "${BUILD_CHOICE,,}" in
-        y|yes)
-          echo ""
-          echo -e "${CYAN}Proceeding with local source builds (target kernel and packages)."
-          echo -e "This will take approximately 30-60 minutes. Do not interrupt the build.${RESET}"
-          echo ""
-          ;;
-        *)
-          echo ""
-          echo -e "${YELLOW}Install aborted. Run the installer again once cache.nixos.org has built"
-          echo -e "the packages, or run:${RESET}"
-          echo "  sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
-          echo ""
-          exit 1
-          ;;
-      esac
-    fi
-
-  else
-    # Non-kernel packages require a local build — cannot help with a kernel swap.
+  if [ -n "$BLOCKING" ]; then
     echo ""
     echo -e "${YELLOW}${BOLD}⚠ Some packages are not yet in the binary cache and would need to"
     echo -e "  be compiled from source (this can take hours):${RESET}"
     echo ""
-    printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/    /'
+    printf '%s\n' "$BLOCKING" | sed 's/^/    /'
     echo ""
     echo -e "${YELLOW}The install has been aborted. cache.nixos.org usually builds new"
     echo -e "packages within 24 hours. Run the install script again once they are cached."
@@ -616,6 +462,17 @@ if [ -n "$SOURCE_BUILDS" ]; then
     echo ""
     exit 1
   fi
+
+  # Only the unavoidable unfree NVIDIA userspace / patched OpenRazer remain — proceed.
+  echo ""
+  echo -e "${CYAN}The following will build locally now — they are never in the binary cache:"
+  echo -e "NVIDIA's proprietary userspace driver is unfree/non-redistributable, and the"
+  echo -e "patched OpenRazer module is a local patch. The open NVIDIA kernel module is"
+  echo -e "fetched from cache, so this is a one-time build of ~10-15 min (seconds without"
+  echo -e "NVIDIA). 'just update' / the Up app apply newer driver versions afterwards.${RESET}"
+  echo ""
+  printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/    /'
+  echo ""
 else
   echo -e "${GREEN}✓ All packages available in binary cache.${RESET}"
 fi
