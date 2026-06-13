@@ -426,7 +426,9 @@ query_cached_nvidia_variant() {
       return 0
     fi
   done
-  return 1
+  # No cached variant found — print nothing, return 0.
+  # Caller checks for empty output; return 1 would silently abort under set -e.
+  return 0
 }
 
 # ---------- Build & switch ---------------------------------------------------
