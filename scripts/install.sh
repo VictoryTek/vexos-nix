@@ -360,6 +360,11 @@ else
   export PATH="$_GIT_STORE/bin:$PATH"
 fi
 
+# Remove any kernel-install-override.nix left by previous installer versions.
+# The current installer uses nixpkgs rollback instead of LTS kernel override;
+# any leftover file forces the wrong kernel and must not enter the git index.
+sudo rm -f /etc/nixos/kernel-install-override.nix
+
 # ---------- Git-track /etc/nixos (excludes secrets from Nix store) -----------
 # git+file:// only copies tracked files; untracked secrets/ never enter the store.
 if ! sudo "$GIT" -C /etc/nixos rev-parse --git-dir &>/dev/null 2>&1; then
@@ -389,7 +394,7 @@ fi
 #   b) Re-runs of the installer where flake.nix was re-downloaded and patched
 #      (hostId, ASUS, GRUB) but not yet re-staged — git+file:// would otherwise
 #      evaluate the stale committed version, ignoring the fresh patches.
-for f in flake.nix hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix; do
+for f in flake.nix hardware-configuration.nix stateless-user-override.nix; do
   if [ -f "/etc/nixos/$f" ]; then
     sudo "$GIT" -C /etc/nixos add -f "$f"
   fi
@@ -404,7 +409,23 @@ echo ""
 echo -e "${CYAN}Refreshing flake inputs...${RESET}"
 sudo nix --extra-experimental-features "nix-command flakes" \
   flake update --flake git+file:///etc/nixos
-# Stage the updated lock file so all subsequent git+file:// evaluations see it.
+
+# 'nixpkgs.follows = "vexos-nix/nixpkgs"' in the template is advisory.
+# nix flake update may still resolve follows to the latest nixos-25.11 branch
+# HEAD rather than the specific commit pinned in vexos-nix's flake.lock, leaving
+# the user with a newer (potentially uncached) nixpkgs.  Fetch vexos-nix's
+# committed flake.lock and force nixpkgs to its exact revision so the dry-build
+# uses only packages that are already in the binary cache.
+_VEXOS_NIXPKGS_REV=$(curl -fsSL --max-time 10 \
+  "https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/flake.lock" \
+  2>/dev/null | jq -r '.nodes.nixpkgs.locked.rev' 2>/dev/null || true)
+if [ -n "$_VEXOS_NIXPKGS_REV" ]; then
+  sudo nix --extra-experimental-features 'nix-command flakes' \
+    flake lock /etc/nixos \
+    --override-input nixpkgs "github:NixOS/nixpkgs/${_VEXOS_NIXPKGS_REV}" 2>/dev/null || true
+fi
+
+# Stage the (now-pinned) lock file so all subsequent git+file:// evaluations see it.
 sudo "$GIT" -C /etc/nixos add flake.lock
 
 # ---------- Cache-query helper -----------------------------------------------
