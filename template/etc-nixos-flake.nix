@@ -192,7 +192,8 @@
           vexos-nix.nixosModules.statelessBase
         ]
         ++ modules
-        ++ lib.optional hasUserOverride userOverrideFile;
+        ++ lib.optional hasUserOverride userOverrideFile
+        ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
     # HTPC role: media-centre stack.
@@ -211,7 +212,8 @@
           hardwareModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.htpcBase
-        ] ++ modules;
+        ] ++ modules
+          ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
     # Vanilla role: stock NixOS baseline — no desktop, no gaming, no branding.
@@ -228,7 +230,8 @@
           hardwareModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.vanillaBase
-        ] ++ modules;
+        ] ++ modules
+          ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
     # Headless server role: CLI only, no desktop environment.
@@ -251,7 +254,8 @@
           vexos-nix.nixosModules.headlessServerBase
         ]
         ++ modules
-        ++ lib.optional hasServices servicesFile;
+        ++ lib.optional hasServices servicesFile
+        ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
     # Server role: GUI server stack.
@@ -287,7 +291,8 @@
           vexos-nix.nixosModules.serverBase
         ]
         ++ modules
-        ++ lib.optional hasServices servicesFile;
+        ++ lib.optional hasServices servicesFile
+        ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
   in

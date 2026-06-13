@@ -403,6 +403,32 @@ echo -e "${CYAN}Refreshing flake inputs...${RESET}"
 sudo nix --extra-experimental-features "nix-command flakes" \
   flake update --flake git+file:///etc/nixos
 
+# ---------- Cache-query helper -----------------------------------------------
+# Queries cache.nixos.org for the newest NVIDIA driver variant that is available
+# for the given kernel packages attribute (default: linuxPackages).
+# Iterates stable → legacy_535 and returns the first cached vexos variant name
+# ("latest" or "legacy_535"), or returns 1 if neither is cached.
+query_cached_nvidia_variant() {
+  local kpkg="${1:-linuxPackages}"
+  for nv_attr in stable legacy_535; do
+    local out_path
+    out_path=$(sudo nix --extra-experimental-features 'nix-command flakes' \
+      eval --raw --impure \
+      "(builtins.getFlake \"git+file:///etc/nixos\").inputs.nixpkgs.legacyPackages.x86_64-linux.${kpkg}.nvidiaPackages.${nv_attr}.outPath" \
+      2>/dev/null) || continue
+    [ -z "$out_path" ] && continue
+    if nix --extra-experimental-features 'nix-command flakes' \
+       path-info --store https://cache.nixos.org "$out_path" &>/dev/null 2>&1; then
+      case "$nv_attr" in
+        stable)     echo "latest"     ;;
+        legacy_535) echo "legacy_535" ;;
+      esac
+      return 0
+    fi
+  done
+  return 1
+}
+
 # ---------- Build & switch ---------------------------------------------------
 # Cache check: dry-build first to see what would need to be compiled locally.
 # Filters out NixOS system-level derivations that are always built locally and
@@ -432,7 +458,7 @@ if [ -n "$SOURCE_BUILDS" ]; then
   HEAVY_BUILD_REGEX='^(NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|openrazer-[0-9])'
   NON_KERNEL_BUILDS=$(printf '%s\n' "$SOURCE_BUILDS" | grep -Ev "$HEAVY_BUILD_REGEX" || true)
 
-  if [ -z "$NON_KERNEL_BUILDS" ] && [ "$ROLE" = "desktop" ]; then
+  if [ -z "$NON_KERNEL_BUILDS" ]; then
     echo ""
     echo -e "${YELLOW}${BOLD}⚠ Target kernel packages are not yet in the binary cache:${RESET}"
     printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/    /'
@@ -469,24 +495,102 @@ NIXEOF
       || true)
 
     if [ -n "$REMAINING" ]; then
-      # Fallback did not resolve all misses — clean up and abort normally.
-      sudo rm -f /etc/nixos/kernel-install-override.nix
-      sudo "$GIT" -C /etc/nixos rm -q --cached kernel-install-override.nix 2>/dev/null || true
-      echo ""
-      echo -e "${YELLOW}${BOLD}⚠ Additional packages are not yet in the binary cache and would need to"
-      echo -e "  be compiled from source (this can take hours):${RESET}"
-      echo ""
-      printf '%s\n' "$REMAINING" | sed 's/^/    /'
-      echo ""
-      echo -e "${YELLOW}The install has been aborted. cache.nixos.org usually builds new"
-      echo -e "packages within 24 hours. Run the install script again once they are cached."
-      echo ""
-      echo -e "To install now anyway (accepts local source builds), run:${RESET}"
-      echo "  sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
-      echo ""
-      exit 1
+      # Check if all remaining misses are NVIDIA driver packages.
+      REMAINING_NON_NVIDIA=$(printf '%s\n' "$REMAINING" | grep -Ev "$HEAVY_BUILD_REGEX" || true)
+
+      if [ -z "$REMAINING_NON_NVIDIA" ] && [ "$VARIANT" = "nvidia" ] && [ "$NVIDIA_SUFFIX" = "" ]; then
+        # NVIDIA driver not cached for any kernel — query cache for best available version.
+        echo ""
+        echo -e "${YELLOW}${BOLD}⚠ NVIDIA driver packages are not yet in the binary cache for any kernel.${RESET}"
+        echo ""
+        echo -e "${CYAN}Querying cache.nixos.org for the newest available NVIDIA driver...${RESET}"
+        CACHED_NV_VARIANT=$(query_cached_nvidia_variant "linuxPackages")
+
+        if [ -z "$CACHED_NV_VARIANT" ]; then
+          sudo rm -f /etc/nixos/kernel-install-override.nix
+          sudo "$GIT" -C /etc/nixos rm -q --cached kernel-install-override.nix 2>/dev/null || true
+          echo ""
+          echo -e "${YELLOW}${BOLD}⚠ No NVIDIA driver version (stable or legacy_535) is currently in the"
+          echo -e "  binary cache. This is unusual — cache.nixos.org usually builds all"
+          echo -e "  driver variants within 24 hours.${RESET}"
+          echo ""
+          echo -e "${YELLOW}The install has been aborted. Run the install script again once they are cached."
+          echo ""
+          echo -e "To install now anyway (accepts local source builds), run:${RESET}"
+          echo "  sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
+          echo ""
+          exit 1
+        fi
+
+        echo -e "${CYAN}Found: NVIDIA driver variant '${CACHED_NV_VARIANT}' is available in cache."
+        echo -e "Falling back to channel-default kernel + NVIDIA '${CACHED_NV_VARIANT}' for first install."
+        echo -e "Your system will be fully functional. The target versions will be applied"
+        echo -e "automatically the next time you run 'just update' or use the Up app,"
+        echo -e "once cache.nixos.org has built the required packages (typically 1-3 days).${RESET}"
+        echo ""
+
+        # Upgrade the override to also pin the NVIDIA driver to the queried variant.
+        sudo tee /etc/nixos/kernel-install-override.nix > /dev/null << NIXEOF
+# Written by vexos-nix installer — target kernel and NVIDIA driver not yet in cache.
+# Temporarily falls back to channel-default kernel and NVIDIA '${CACHED_NV_VARIANT}' driver.
+# Removed automatically by vexos-update once target packages are cached.
+# To upgrade manually: delete this file, then run: just update
+{ lib, pkgs, ... }:
+{
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages;
+  vexos.gpu.nvidiaDriverVariant = "${CACHED_NV_VARIANT}";
+}
+NIXEOF
+        sudo "$GIT" -C /etc/nixos add -f kernel-install-override.nix
+
+        echo -e "${CYAN}Verifying fallback kernel + NVIDIA '${CACHED_NV_VARIANT}' resolves all cache misses...${RESET}"
+        DRY_OUT3=$(sudo nixos-rebuild dry-build --flake "git+file:///etc/nixos#${FLAKE_TARGET}" 2>&1 || true)
+        REMAINING2=$(printf '%s\n' "$DRY_OUT3" \
+          | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
+          | grep -E -- '-[0-9]+\.[0-9]+' \
+          | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|linux-[0-9]|kernel|stage-[12]-|crate-|cargo-vendor|perl-[0-9]|lua-[0-9]|python3?-[0-9]|up-[0-9]|zvariant|zbus|gtk4-|glib-|gio-|gdk-|pango-|graphene-|cairo-|gettext-rs|gettext-sys|serde_yml|libyml|system-deps|cfg-expr|winnow|endi-|enumflags|version-compare|zbus_names|zbus_macros|zvariant_|ureq|uds_windows|env_filter|env_logger|utf8-zero|glib-build-tools|glib-macros|glib-sys|gobject-sys|gio-sys|pango-sys|gdk-pixbuf-sys|graphene-sys|cairo-sys|cairo-rs|gdk-pixbuf-|mpv-with-scripts|plex-desktop|ibus-with-plugins|retroarch-with-cores|steam|steam-unwrapped|discord|podman-docker-compat|nodejs-|vscode-|claude-code-|code-[0-9]|VSCode_|umu-launcher|.*-init\.|.*-bwrap\.|.*-fhsenv)' \
+          || true)
+
+        if [ -n "$REMAINING2" ]; then
+          sudo rm -f /etc/nixos/kernel-install-override.nix
+          sudo "$GIT" -C /etc/nixos rm -q --cached kernel-install-override.nix 2>/dev/null || true
+          echo ""
+          echo -e "${YELLOW}${BOLD}⚠ Additional packages are not yet in the binary cache and would need to"
+          echo -e "  be compiled from source (this can take hours):${RESET}"
+          echo ""
+          printf '%s\n' "$REMAINING2" | sed 's/^/    /'
+          echo ""
+          echo -e "${YELLOW}The install has been aborted. cache.nixos.org usually builds new"
+          echo -e "packages within 24 hours. Run the install script again once they are cached."
+          echo ""
+          echo -e "To install now anyway (accepts local source builds), run:${RESET}"
+          echo "  sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
+          echo ""
+          exit 1
+        fi
+        echo -e "${GREEN}✓ All packages available in binary cache (using fallback kernel + NVIDIA '${CACHED_NV_VARIANT}').${RESET}"
+
+      else
+        # Non-NVIDIA packages still missing — clean up and abort.
+        sudo rm -f /etc/nixos/kernel-install-override.nix
+        sudo "$GIT" -C /etc/nixos rm -q --cached kernel-install-override.nix 2>/dev/null || true
+        echo ""
+        echo -e "${YELLOW}${BOLD}⚠ Additional packages are not yet in the binary cache and would need to"
+        echo -e "  be compiled from source (this can take hours):${RESET}"
+        echo ""
+        printf '%s\n' "$REMAINING" | sed 's/^/    /'
+        echo ""
+        echo -e "${YELLOW}The install has been aborted. cache.nixos.org usually builds new"
+        echo -e "packages within 24 hours. Run the install script again once they are cached."
+        echo ""
+        echo -e "To install now anyway (accepts local source builds), run:${RESET}"
+        echo "  sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
+        echo ""
+        exit 1
+      fi
+    else
+      echo -e "${GREEN}✓ All packages available in binary cache (using channel-default kernel).${RESET}"
     fi
-    echo -e "${GREEN}✓ All packages available in binary cache (using channel-default kernel).${RESET}"
 
   else
     # Non-kernel packages require a local build — cannot help with a kernel swap.
@@ -530,9 +634,14 @@ if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE
     echo -e "${GREEN}${BOLD}✓ Build and switch successful!${RESET}"
     if [ -f /etc/nixos/kernel-install-override.nix ]; then
       echo ""
-      echo -e "${YELLOW}Note: installed with channel-default kernel (linuxPackages)."
+      NV_NOTE=$(grep -oP "nvidiaDriverVariant = \"\K[^\"]*" /etc/nixos/kernel-install-override.nix 2>/dev/null || true)
+      if [ -n "$NV_NOTE" ]; then
+        echo -e "${YELLOW}Note: installed with channel-default kernel and NVIDIA driver variant '${NV_NOTE}'."
+      else
+        echo -e "${YELLOW}Note: installed with channel-default kernel (linuxPackages)."
+      fi
       echo -e "Run 'just update' or use the Up app after reboot to upgrade to the"
-      echo -e "target kernel automatically once packages are cached (1-3 days).${RESET}"
+      echo -e "target versions automatically once packages are cached (1-3 days).${RESET}"
     fi
     echo ""
     printf "Reboot now? [y/N] "
