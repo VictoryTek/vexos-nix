@@ -239,21 +239,23 @@ sudo nixos-generate-config --no-filesystems --root /mnt
 # Ensures the partlabel symlinks (/dev/disk/by-partlabel/disk-main-*) exist.
 udevadm settle --timeout=30
 
-# Use -p (direct probe) to bypass the blkid cache.
-# Disko calls udevadm settle BEFORE mkfs.vfat, so udev never sees the format
-# event and the blkid cache has no UUID entry for the freshly-written ESP.
-# Without -p, blkid reads the stale cache and returns an empty string.
-BOOT_UUID=$(blkid -p -s UUID -o value /dev/disk/by-partlabel/disk-main-ESP 2>/dev/null || true)
-ROOT_UUID=$(blkid -p -s UUID -o value /dev/disk/by-partlabel/disk-main-data 2>/dev/null || true)
+# Use sudo blkid -p to get UUIDs:
+# - sudo:  the nixos live ISO user is not in the disk group, so direct block device
+#          reads require root (EACCES otherwise, silently swallowed by 2>/dev/null).
+# - -p:    disko calls udevadm settle BEFORE mkfs.vfat; vfat writes no kernel uevent,
+#          so the blkid cache has no entry for the freshly-formatted ESP. -p bypasses
+#          the stale cache and reads the UUID directly from the BPB on disk.
+BOOT_UUID=$(sudo blkid -p -s UUID -o value /dev/disk/by-partlabel/disk-main-ESP 2>/dev/null || true)
+ROOT_UUID=$(sudo blkid -p -s UUID -o value /dev/disk/by-partlabel/disk-main-data 2>/dev/null || true)
 
 if [ -z "$BOOT_UUID" ]; then
   echo -e "${RED}ERROR: Could not read UUID for EFI partition (disk-main-ESP).${RESET}"
-  echo "  Verify the partition exists: blkid /dev/disk/by-partlabel/disk-main-ESP"
+  echo "  Verify the partition exists: sudo blkid /dev/disk/by-partlabel/disk-main-ESP"
   exit 1
 fi
 if [ -z "$ROOT_UUID" ]; then
   echo -e "${RED}ERROR: Could not read UUID for root partition (disk-main-data).${RESET}"
-  echo "  Verify the partition exists: blkid /dev/disk/by-partlabel/disk-main-data"
+  echo "  Verify the partition exists: sudo blkid /dev/disk/by-partlabel/disk-main-data"
   exit 1
 fi
 
