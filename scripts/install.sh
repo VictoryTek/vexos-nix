@@ -383,11 +383,13 @@ GITIGNORE
   echo -e "${GREEN}✓ /etc/nixos is now git-tracked — secrets/ excluded from Nix store.${RESET}"
 fi
 
-# Repair repos created by older installer versions whose .gitignore wrongly
-# excluded flake-imported files: git+file:// omits untracked files, so the
-# template flake's ./hardware-configuration.nix import fails (and the
-# pathExists-gated overrides are silently dropped) unless they are tracked.
-for f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix; do
+# Ensure all flake-imported files are git-tracked and staged before any
+# git+file:// evaluation.  This handles both:
+#   a) Older repos created before flake.nix/flake.lock were tracked (legacy repair)
+#   b) Re-runs of the installer where flake.nix was re-downloaded and patched
+#      (hostId, ASUS, GRUB) but not yet re-staged — git+file:// would otherwise
+#      evaluate the stale committed version, ignoring the fresh patches.
+for f in flake.nix hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix; do
   if [ -f "/etc/nixos/$f" ]; then
     sudo "$GIT" -C /etc/nixos add -f "$f"
   fi
@@ -402,6 +404,8 @@ echo ""
 echo -e "${CYAN}Refreshing flake inputs...${RESET}"
 sudo nix --extra-experimental-features "nix-command flakes" \
   flake update --flake git+file:///etc/nixos
+# Stage the updated lock file so all subsequent git+file:// evaluations see it.
+sudo "$GIT" -C /etc/nixos add flake.lock
 
 # ---------- Cache-query helper -----------------------------------------------
 # Walks recent nixpkgs history (via GitHub API) to find the most recent nixpkgs
