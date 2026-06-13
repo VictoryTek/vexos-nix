@@ -209,10 +209,26 @@ echo ""
 echo -e "${BOLD}Generating hardware configuration...${RESET}"
 sudo nixos-generate-config --no-filesystems --root /mnt
 
-# Capture partition UUIDs from disko's by-partlabel paths (always available
-# after disko runs sgdisk + udevadm settle).
-BOOT_UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/disk-main-ESP)
-ROOT_UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/disk-main-data)
+# Wait for udev to process all disko partition/format events before querying UUIDs.
+# Without this, blkid may read a stale cache entry for the freshly-formatted ESP
+# and return an empty UUID — producing an invalid device path in
+# hardware-configuration.nix ("/dev/disk/by-uuid/") and causing a 90-second boot
+# timeout followed by Stage 2 emergency mode on every subsequent boot.
+udevadm settle --timeout=30
+
+BOOT_UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/disk-main-ESP 2>/dev/null || true)
+ROOT_UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/disk-main-data 2>/dev/null || true)
+
+if [ -z "$BOOT_UUID" ]; then
+  echo -e "${RED}ERROR: Could not read UUID for EFI partition (disk-main-ESP).${RESET}"
+  echo "  Verify the partition exists: blkid /dev/disk/by-partlabel/disk-main-ESP"
+  exit 1
+fi
+if [ -z "$ROOT_UUID" ]; then
+  echo -e "${RED}ERROR: Could not read UUID for root partition (disk-main-data).${RESET}"
+  echo "  Verify the partition exists: blkid /dev/disk/by-partlabel/disk-main-data"
+  exit 1
+fi
 
 # Append stateless filesystem declarations with neededForBoot = true.
 # nixos-generate-config --no-filesystems omits fileSystems entries entirely.
