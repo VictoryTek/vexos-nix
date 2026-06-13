@@ -175,10 +175,10 @@ GITIGNORE
           echo "Kernel install override detected — checking if target kernel is now cached..."
           rm "$OVERRIDE_FILE"
           DRY_CHECK=$(nixos-rebuild dry-build --flake git+file:///etc/nixos#"$VARIANT" 2>&1 || true)
-          HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk|NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|openrazer-[0-9])'
+          KERNEL_BLOCK_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk)'
           STILL_HEAVY=$(printf '%s\n' "$DRY_CHECK" \
             | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
-            | grep -E "$HEAVY_BUILD_REGEX" || true)
+            | grep -E "$KERNEL_BLOCK_REGEX" || true)
           if [ -n "$STILL_HEAVY" ]; then
             printf '%s\n' \
               '# Written by vexos-nix installer — fallback to channel-default kernel.' \
@@ -206,44 +206,48 @@ GITIGNORE
         DRY=$(nixos-rebuild dry-build \
           --flake git+file:///etc/nixos#"$VARIANT" 2>&1 || true)
 
-        # Known-heavy block engine — two paths:
+        # Three-way local-build classifier:
         #
-        #   HEAVY_BUILD_REGEX: Packages that take hours to compile because they
-        #   must be built against the running kernel (kernel modules, NVIDIA driver,
-        #   OpenRazer DKMS module). If any match → block, restore lock, exit 2.
+        #   HEAVY_BUILD_REGEX: kernel modules — cacheable but hours to compile.
+        #   If any match → block, restore lock, exit 2. Retry in 1-3 days.
         #
-        #   Everything else (system glue, vexos scripts, Rust crates, GUI wrappers):
-        #   build locally in seconds-to-minutes, proceed with update.
-        #   Logged as VEXOS_LOCAL_BUILD: lines.
+        #   UNAVOIDABLE_REGEX: unfree NVIDIA userspace (nvidia-x11 / .run /
+        #   settings / persistenced) and locally-patched openrazer — Hydra NEVER
+        #   caches these (unfree/non-redistributable or patched derivation hash).
+        #   Blocking on them permanently breaks `just update` for all NVIDIA hosts.
+        #   Proceed; log as VEXOS_LOCAL_BUILD: with an explanation.
+        #
+        #   Everything else (system glue, vexos scripts, Rust crates, etc.):
+        #   fast local build; proceed; log as VEXOS_LOCAL_BUILD:.
         #
         # VEXOS_UPDATE_STRICT=1: block on ALL local builds (strict environments).
-        #
-        # Legacy note: The three-class (A/B/C) engine with ALWAYS_LOCAL_REGEX and
-        # KNOWN_SMALL_LOCAL_REGEX was retired. The new model requires no allowlist
-        # maintenance — only the small, stable HEAVY_BUILD_REGEX list matters.
 
-        HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk|NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|openrazer-[0-9])'
+        HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk)'
+        UNAVOIDABLE_REGEX='^(NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|nvidia-persistenced-|openrazer-[0-9])'
 
         # Extract all "will be built" derivation names.
         ALL_LOCAL=$(printf '%s\n' "$DRY" \
           | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
           || true)
 
-        # Partition: heavy (hours, block) vs non-heavy (fast, allow).
+        # Partition into three groups.
         HEAVY_BUILDS=$(printf '%s\n' "$ALL_LOCAL" \
           | grep -E  "$HEAVY_BUILD_REGEX" || true)
+        UNAVOIDABLE_BUILDS=$(printf '%s\n' "$ALL_LOCAL" \
+          | grep -E  "$UNAVOIDABLE_REGEX" || true)
         NON_HEAVY_BUILDS=$(printf '%s\n' "$ALL_LOCAL" \
-          | grep -Ev "$HEAVY_BUILD_REGEX" || true)
+          | grep -Ev "$HEAVY_BUILD_REGEX|$UNAVOIDABLE_REGEX" || true)
 
         # Strict mode: treat all local builds as heavy.
         if [ "''${VEXOS_UPDATE_STRICT:-0}" = "1" ]; then
           HEAVY_BUILDS="$ALL_LOCAL"
+          UNAVOIDABLE_BUILDS=""
           NON_HEAVY_BUILDS=""
         fi
 
         if [ -n "$HEAVY_BUILDS" ]; then
           echo ""
-          echo "VEXOS_CACHE_BLOCK: Update paused — kernel or NVIDIA packages require a"
+          echo "VEXOS_CACHE_BLOCK: Update paused — kernel packages require a"
           echo "VEXOS_CACHE_BLOCK: local source build (typically 1-3 days until Hydra caches them):"
           printf '%s\n' "$HEAVY_BUILDS" | grep '[^[:space:]]' | sed 's/^/VEXOS_CACHE_BLOCK:   /'
           echo "VEXOS_CACHE_BLOCK:"
@@ -255,6 +259,14 @@ GITIGNORE
           cp /etc/nixos/flake.lock.bak /etc/nixos/flake.lock
           rm -f /etc/nixos/flake.lock.bak
           exit 2
+        fi
+
+        if [ -n "$UNAVOIDABLE_BUILDS" ]; then
+          echo ""
+          echo "VEXOS_LOCAL_BUILD: NVIDIA userspace driver and/or patched OpenRazer will build locally."
+          echo "VEXOS_LOCAL_BUILD: These are never in the binary cache (unfree/patched). This is expected."
+          echo "VEXOS_LOCAL_BUILD: Estimated build time: ~10-15 min for NVIDIA userspace; seconds for OpenRazer."
+          printf '%s\n' "$UNAVOIDABLE_BUILDS" | grep '[^[:space:]]' | sed 's/^/VEXOS_LOCAL_BUILD:   /'
         fi
 
         if [ -n "$NON_HEAVY_BUILDS" ]; then
