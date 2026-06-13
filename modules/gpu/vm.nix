@@ -20,8 +20,11 @@
   virtualisation.virtualbox.guest.enable = true;
   virtualisation.virtualbox.guest.dragAndDrop = true;
 
-  # Load virtio-gpu and QXL display drivers early
-  boot.initrd.kernelModules = [ "virtio_gpu" ];
+  # Load virtio-gpu, QXL display drivers, and VirtIO block device driver early.
+  # virtio_blk must be forced into the initrd: the NixOS live ISO has it built-in
+  # (not modular), so nixos-generate-config omits it from availableKernelModules.
+  # Without it, /dev/vda never appears in the initrd and neededForBoot mounts fail.
+  boot.initrd.kernelModules = [ "virtio_gpu" "virtio_blk" ];
   boot.kernelModules        = [ "qxl" ];
 
   # In a VM the hypervisor manages power — override to performance governor

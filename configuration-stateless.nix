@@ -31,13 +31,22 @@
   boot.plymouth.enable = true;   # graphical boot splash
 
   # ---------- Users ----------
-  # Account is locked by default ("!" shadow hash = no password accepted).
+  # Primary account is locked by default ("!" shadow hash = no password accepted).
   # stateless-setup.sh and migrate-to-stateless.sh both write a real password
   # hash to /etc/nixos/stateless-user-override.nix (persisted to @persistent)
   # before the first build.  The variant builder conditionally imports that
   # file; without it, the system builds but no user login is possible, which
   # forces the operator to run a setup script before first use.
   users.users.${config.vexos.user.name}.hashedPassword = lib.mkDefault "!";
+
+  # Root gets an empty password (no password required) so that the systemd
+  # initrd's sulogin can open an emergency shell when boot fails.
+  # With users.mutableUsers = false (set by impermanence.nix), root's shadow
+  # entry is generated from config; without this line root is locked ("!!")
+  # and sulogin refuses to open the console — making failures undebuggable.
+  # An empty hash is safe here: the stateless root is a personal ephemeral
+  # machine; all user-facing state resets on every reboot by design.
+  users.users.root.hashedPassword = "";
 
   # ---------- Impermanence ----------
   # Enable tmpfs-rooted ephemeral filesystem for the stateless role.
