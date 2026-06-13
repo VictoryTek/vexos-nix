@@ -113,6 +113,32 @@ while [ -z "$VARIANT" ]; do
   esac
 done
 
+# ---------- ASUS ROG/TUF hardware ------------------------------------------
+ASUS_ENABLE=false
+ASUS_LAPTOP=false
+if [ "$VARIANT" != "vm" ]; then
+  echo ""
+  echo -e "${BOLD}Is this an ASUS ROG/TUF device?${RESET}"
+  echo "  Enables: asusd (RGB, fan curves, charge limit), supergfxctl, power-profiles-daemon"
+  echo ""
+  printf "ASUS ROG/TUF device? [y/N] "
+  read -r INPUT </dev/tty
+  case "${INPUT,,}" in
+    y|yes) ASUS_ENABLE=true ;;
+    *)     ASUS_ENABLE=false ;;
+  esac
+
+  if [ "$ASUS_ENABLE" = "true" ]; then
+    echo ""
+    printf "Is this device a laptop? [y/N] "
+    read -r INPUT </dev/tty
+    case "${INPUT,,}" in
+      y|yes) ASUS_LAPTOP=true ;;
+      *)     ASUS_LAPTOP=false ;;
+    esac
+  fi
+fi
+
 # ---------- Prompt: nimda user password (required) --------------------------
 # A locked-account hash ("!") is the compiled-in default in configuration-stateless.nix.
 # This script MUST always write stateless-user-override.nix with a real hash
@@ -280,6 +306,29 @@ echo ""
 echo -e "${BOLD}Downloading vexos-nix template flake to /mnt/etc/nixos/...${RESET}"
 sudo curl -fsSL "${TEMPLATE_URL}" -o /mnt/etc/nixos/flake.nix
 echo -e "${GREEN}✓ /mnt/etc/nixos/flake.nix downloaded.${RESET}"
+
+# ---------- ASUS hardware patch ---------------------------------------------
+if [ "$ASUS_ENABLE" = "true" ]; then
+  if grep -qF 'hardwareModule = { ... }: { };' /mnt/etc/nixos/flake.nix 2>/dev/null; then
+    echo ""
+    echo -e "${BOLD}Patching flake.nix to enable ASUS ROG/TUF support...${RESET}"
+    if [ "$ASUS_LAPTOP" = "true" ]; then
+      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; vexos.hardware.asus.batteryChargeLimit = 80; };/' /mnt/etc/nixos/flake.nix
+      echo -e "  ${GREEN}✓ ASUS hardware support enabled (laptop — battery charge limit set to 80%).${RESET}"
+    else
+      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; };/' /mnt/etc/nixos/flake.nix
+      echo -e "  ${GREEN}✓ ASUS hardware support enabled.${RESET}"
+    fi
+  else
+    echo ""
+    echo -e "  ${YELLOW}⚠ hardwareModule not found in flake.nix — skipping ASUS patch.${RESET}"
+    echo "    To enable ASUS support manually, add to /etc/nixos/flake.nix:"
+    echo "      vexos.hardware.asus.enable = true;"
+    if [ "$ASUS_LAPTOP" = "true" ]; then
+      echo "      vexos.hardware.asus.batteryChargeLimit = 80;"
+    fi
+  fi
+fi
 
 # ---------- Write stateless-user-override.nix (always required) -------------
 echo ""
