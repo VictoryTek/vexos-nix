@@ -113,6 +113,28 @@ while [ -z "$VARIANT" ]; do
   esac
 done
 
+# ---------- NVIDIA driver branch -------------------------------------------
+NVIDIA_SUFFIX=""
+if [ "$VARIANT" = "nvidia" ]; then
+  echo ""
+  echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
+  echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
+  echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+  echo ""
+  echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"
+  echo -e "${YELLOW}Wrong choice? Run this script again and switch.${RESET}"
+  echo ""
+  while true; do
+    printf "Enter choice [1-2]: "
+    read -r INPUT </dev/tty
+    case "${INPUT}" in
+      1) NVIDIA_SUFFIX="";           break ;;
+      2) NVIDIA_SUFFIX="-legacy535"; break ;;
+      *) echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}" ;;
+    esac
+  done
+fi
+
 # ---------- ASUS ROG/TUF hardware ------------------------------------------
 ASUS_ENABLE=false
 ASUS_LAPTOP=false
@@ -193,10 +215,10 @@ LUKS_BOOL="false"
 echo ""
 echo -e "${BOLD}Installation summary:${RESET}"
 echo "  Disk:       ${DISK}"
-echo "  GPU variant: ${VARIANT}"
+echo "  GPU variant: ${VARIANT}${NVIDIA_SUFFIX}"
 echo "  Hostname:   ${HOSTNAME}"
 echo "  LUKS:       disabled (no encryption)"
-echo "  Flake target: vexos-stateless-${VARIANT}"
+echo "  Flake target: vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}"
 echo ""
 printf "Proceed with installation? This will ERASE ${DISK}. [y/N] "
 read -r PROCEED </dev/tty
@@ -377,7 +399,7 @@ sudo nix --extra-experimental-features "nix-command flakes" \
   flake update --flake git+file:///mnt/etc/nixos
 
 # ---------- Run nixos-install ------------------------------------------------
-FLAKE_TARGET="vexos-stateless-${VARIANT}"
+FLAKE_TARGET="vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}"
 echo ""
 echo -e "${BOLD}Running nixos-install targeting ${CYAN}${FLAKE_TARGET}${RESET}${BOLD}...${RESET}"
 echo -e "${YELLOW}This may take a while — it will download and build the NixOS closure.${RESET}"
@@ -399,7 +421,7 @@ sudo cp /mnt/etc/nixos/flake.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/flake.lock /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/.gitignore /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/stateless-user-override.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
-printf '%s' "vexos-stateless-${VARIANT}" | sudo tee /mnt/persistent/etc/nixos/vexos-variant > /dev/null
+printf '%s' "vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}" | sudo tee /mnt/persistent/etc/nixos/vexos-variant > /dev/null
 # Persist the git repo so post-boot git+file:///etc/nixos URIs work and secrets stay out of the Nix store.
 sudo cp -r /mnt/etc/nixos/.git /mnt/persistent/etc/nixos/
 echo -e "${GREEN}✓ NixOS config files persisted.${RESET}"

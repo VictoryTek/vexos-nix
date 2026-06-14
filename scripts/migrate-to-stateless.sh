@@ -300,6 +300,28 @@ while [ -z "$VARIANT" ]; do
   esac
 done
 
+# ---------- NVIDIA driver branch -------------------------------------------
+NVIDIA_SUFFIX=""
+if [ "$VARIANT" = "nvidia" ]; then
+  echo ""
+  echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
+  echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
+  echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+  echo ""
+  echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"
+  echo -e "${YELLOW}Wrong choice? Run this script again and switch.${RESET}"
+  echo ""
+  while true; do
+    printf "Enter choice [1-2]: "
+    read -r INPUT </dev/tty
+    case "${INPUT}" in
+      1) NVIDIA_SUFFIX="";           break ;;
+      2) NVIDIA_SUFFIX="-legacy535"; break ;;
+      *) echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}" ;;
+    esac
+  done
+fi
+
 # ---------- Preserve existing nimda password ---------------------------------
 # Read the current shadow hash so the pre-migration password carries forward
 # into the stateless build.  The stateless role uses users.mutableUsers = false,
@@ -372,7 +394,7 @@ echo ""
 echo -e "${BOLD}Running nixos-rebuild boot (activates on next reboot)...${RESET}"
 echo -e "${YELLOW}This may take a while on first run.${RESET}"
 echo ""
-nixos-rebuild boot --flake "/etc/nixos#vexos-stateless-${VARIANT}"
+nixos-rebuild boot --flake "/etc/nixos#vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}"
 
 # ---------- Sync /nix → @nix (after rebuild, captures new closure) -----------
 # This MUST happen after nixos-rebuild so the stateless-vm system closure
@@ -402,7 +424,7 @@ cp /etc/nixos/hardware-configuration.nix "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>
   echo -e "  ${YELLOW}⚠ hardware-configuration.nix not found${RESET}"
 cp /etc/nixos/stateless-user-override.nix "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null && \
   echo -e "  ${GREEN}✓ stateless-user-override.nix persisted${RESET}" || true
-printf '%s' "vexos-stateless-${VARIANT}" > "${BTRFS_MOUNT}/@persist/etc/nixos/vexos-variant"
+printf '%s' "vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}" > "${BTRFS_MOUNT}/@persist/etc/nixos/vexos-variant"
 echo -e "  ${GREEN}✓ vexos-variant persisted${RESET}"
 echo -e "${GREEN}  ✓ Config files persisted to @persist.${RESET}"
 umount "${BTRFS_MOUNT}"
