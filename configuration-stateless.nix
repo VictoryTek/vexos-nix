@@ -55,20 +55,19 @@
   # Run scripts/stateless-setup.sh to format the disk before first deploy.
   vexos.impermanence.enable = true;
 
-  # Persist ~/Documents across reboots so the user can save files between sessions.
-  # impermanence bind-mounts /persistent/home/<user>/Documents → ~/Documents on boot,
-  # creating the target directory (user-owned) on first use.
-  # System-level entry (absolute path) is used rather than users.<name>.directories
-  # because the latter requires /home to have neededForBoot, which it does not have
-  # as a separate fileSystems entry (it lives on the tmpfs /).
-  environment.persistence."/persistent".directories = [
-    {
-      directory = "/home/${config.vexos.user.name}/Documents";
-      user      = config.vexos.user.name;
-      group     = "users";
-      mode      = "0755";
-    }
-  ];
+  # Create the persistent Documents backing directory on /persistent on first boot.
+  # home-stateless.nix then symlinks ~/Documents → this path so files survive reboots.
+  # Runs after the `users` script so the user already exists when chown runs.
+  system.activationScripts.statelessDocuments = {
+    deps = [ "users" ];
+    text = ''
+      DIR="/persistent/home/${config.vexos.user.name}/Documents"
+      if [ ! -d "$DIR" ]; then
+        ${pkgs.coreutils}/bin/mkdir -p "$DIR"
+        ${pkgs.coreutils}/bin/chown ${config.vexos.user.name}:users "$DIR"
+      fi
+    '';
+  };
 
   # ---------- System packages ----------
   # tor-browser: installed system-wide (not via Home Manager) so torbrowser.desktop

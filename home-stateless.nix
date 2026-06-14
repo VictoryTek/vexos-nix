@@ -159,6 +159,15 @@
     QT_QPA_PLATFORM    = "wayland;xcb";
   };
 
+  # ── Persistent Documents ───────────────────────────────────────────────────
+  # Symlink ~/Documents → /persistent/home/<user>/Documents so files saved here
+  # survive reboots.  Everything else in home is wiped on each boot.
+  # The backing directory is created by system.activationScripts.statelessDocuments
+  # in configuration-stateless.nix (runs before home-manager activation).
+  home.file."Documents".source =
+    config.lib.file.mkOutOfStoreSymlink
+      "/persistent/home/${osConfig.vexos.user.name}/Documents";
+
   # ── Wallpapers ─────────────────────────────────────────────────────────────
   home.file."Pictures/Wallpapers/vex-bb-light.jxl".source = ./wallpapers/stateless/vex-bb-light.jxl;
   home.file."Pictures/Wallpapers/vex-bb-dark.jxl".source  = ./wallpapers/stateless/vex-bb-dark.jxl;
