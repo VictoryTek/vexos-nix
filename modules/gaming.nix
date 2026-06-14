@@ -51,7 +51,7 @@
     pkgs.vkbasalt        # Vulkan post-processing layer (CAS, FXAA, etc.)
 
     # Wine (Staging + Wow64 multilib)
-    pkgs.wineWowPackages.stagingFull
+    pkgs.wineWow64Packages.stagingFull
 
     # Disk / prefix maintenance
     pkgs.duperemove      # deduplicates Wine prefix content
@@ -103,7 +103,7 @@
   users.users.${config.vexos.user.name}.extraGroups = [ "gamemode" "input" "plugdev" ];
 
   # ── AppArmor Wine baseline ─────────────────────────────────────────────────
-  # wineWowPackages.stagingFull installs setuid wrappers (wineserver, wine-preloader)
+  # wineWow64Packages.stagingFull installs setuid wrappers (wineserver, wine-preloader)
   # that could be misused by a compromised Wine prefix. Place wineserver in
   # AppArmor complain mode so that deviations from normal operation appear in
   # audit logs without blocking legitimate games.

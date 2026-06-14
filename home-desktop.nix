@@ -54,12 +54,12 @@
   xdg.configFile."starship.toml".source = ./files/starship.toml;
 
   # ── VS Code (package + settings managed declaratively) ───────────────────
-  # Installs vscode-fhs into the user profile and deploys userSettings to
-  # ~/.config/Code/User/settings.json on every home-manager activation.
+  # Installs vscode-fhs into the user profile and deploys settings to
+  # ~/.config/Code/User/profiles/default/settings.json on every activation.
   programs.vscode = {
     enable  = true;
     package = pkgs.unstable.vscode-fhs;
-    userSettings = {
+    profiles.default.userSettings = {
       "files.exclude" = {
         "**/.direnv" = true;
         "**/result"  = true;

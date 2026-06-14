@@ -95,7 +95,7 @@ in
     else if config.vexos.branding.role == "htpc" then "VexOS HTPC"
     else "VexOS Desktop"
   );
-  system.nixos.label      = "25.11";
+  system.nixos.label      = "26.05";
 
   # distroId: overrides ID= in /etc/os-release.  When set to anything other
   # than "nixos", NixOS automatically adds ID_LIKE=nixos — correct for a
@@ -127,8 +127,8 @@ in
   # ── Boot menu entry cleanup ───────────────────────────────────────────────
   # Post-process systemd-boot .conf entries after each rebuild to shorten the
   # verbose auto-generated title.  Skipped automatically on GRUB/BIOS systems.
-  # Auto-generated: "VexOS Desktop VM (Generation N VexOS Desktop VM Xantusia 25.11 (Linux 6.6.132))"
-  # Trimmed to:     "VexOS Desktop VM (Generation N Xantusia 25.11)"
+  # Auto-generated: "VexOS Desktop VM (Generation N VexOS Desktop VM Yarara 26.05 (Linux 6.18.x))"
+  # Trimmed to:     "VexOS Desktop VM (Generation N Yarara 26.05)"
   boot.loader.systemd-boot.extraInstallCommands = lib.mkIf config.boot.loader.systemd-boot.enable ''
     set -eu
     shopt -s nullglob

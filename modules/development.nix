@@ -25,7 +25,7 @@
     pkgs.ruff # Python linter & formatter
 
     # ── TypeScript / Node ─────────────────────────────────────────────────────
-    pkgs.nodePackages.typescript # TypeScript compiler (tsc)
+    pkgs.typescript # TypeScript compiler (tsc)
     pkgs.pnpm # Fast, disk-efficient Node package manager
     pkgs.bun # All-in-one JS/TS runtime & bundler
 

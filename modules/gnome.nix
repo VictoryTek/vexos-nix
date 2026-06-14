@@ -118,10 +118,7 @@
   };
 
   # ── GDM display manager ───────────────────────────────────────────────────
-  services.displayManager.gdm = {
-    enable  = true;
-    wayland = true; # Wayland session (default in GNOME 47+ / NixOS 25.11)
-  };
+  services.displayManager.gdm.enable = true;
 
   # ── Auto-login ────────────────────────────────────────────────────────────
   services.displayManager.autoLogin = {
