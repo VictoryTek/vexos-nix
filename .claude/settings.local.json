@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(strings /nix/store/cdbllnyf54jm6h2jkm89q0vxn7shxla7-asusctl-6.1.17/bin/asusctl | grep -E \"led-mode|led_mode|colour|static|aura\" | grep -iv \"error\\\\|failed\\\\|warn\\\\|panic\" | head -30)",
+      "Read(//nix/store/cdbllnyf54jm6h2jkm89q0vxn7shxla7-asusctl-6.1.17/bin/**)"
+    ]
+  }
+}

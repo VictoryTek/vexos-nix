@@ -65,6 +65,20 @@
       asusctl  # CLI: asusctl; GUI: rog-control-center (both included in this package)
     ];
 
+    # Apply static white Aura LED on every boot via asusctl CLI.
+    # asusd 6.x removed the per-user service; setting the mode via CLI on startup
+    # lets asusd persist the config to /etc/asusd/aura_<prod_id>.ron itself.
+    systemd.services.asus-aura-init = {
+      description = "Set ASUS keyboard Aura to static white";
+      after    = [ "asusd.service" ];
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        Type            = "oneshot";
+        RemainAfterExit = true;
+        ExecStart       = "${pkgs.asusctl}/bin/asusctl aura static -c ffffff";
+      };
+    };
+
     # Battery charge limit — applied on every boot via sysfs.
     # Writes to the kernel power_supply interface directly; the same path
     # that asusd uses internally.  Only active when batteryChargeLimit < 100.
