@@ -234,5 +234,9 @@
   hardware.bluetooth.enable = true;
   services.blueman.enable = true;
 
+  # ── NetworkManager VPN plugins ────────────────────────────────────────────
+  # Enables .ovpn import via GNOME Settings → VPN and nmcli connection import.
+  networking.networkmanager.plugins = [ pkgs.networkmanager-openvpn ];
+
   }; # end config
 }
