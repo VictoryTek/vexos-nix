@@ -11,7 +11,8 @@
   environment.systemPackages = with pkgs; [
     just    # Command runner (justfile)
     btop    # Terminal process viewer
-    inxi    # System information tool
+    inxi      # System information tool
+    pciutils  # lspci — PCI device inspection
     git     # Version control
     curl    # HTTP / transfer CLI
     wget    # File downloader
