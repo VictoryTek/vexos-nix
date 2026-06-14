@@ -32,9 +32,8 @@ let
         >/dev/null 2>&1 || true
     }
 
-    for esp_link in /dev/disk/by-parttype/''${ESP_PARTTYPE}*; do
-      [[ -e "$esp_link" ]] || continue
-      esp_dev="$(readlink -f "$esp_link")"
+    for esp_dev in $(blkid -c /dev/null -t PART_ENTRY_TYPE="$ESP_PARTTYPE" -o device 2>/dev/null); do
+      [[ -b "$esp_dev" ]] || continue
 
       # Skip the primary ESP
       [[ "$esp_dev" == "$primary_esp" ]] && continue
