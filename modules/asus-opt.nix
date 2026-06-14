@@ -45,10 +45,7 @@
     # asusd: ASUS ROG daemon — fan curves, battery charge limit, power/thermal profiles,
     # keyboard backlight (Aura), GPU MUX switching, Anime Matrix LED.
     # Enabling this also enables services.supergfxd via lib.mkDefault (see nixpkgs source).
-    services.asusd = {
-      enable = true;
-      enableUserService = true;  # asusd-user: per-user Aura LED profile control
-    };
+    services.asusd.enable = true;
 
     # supergfxd: GPU switching daemon (integrated / hybrid / VFIO / dedicated modes).
     # Explicitly set to ensure it's always enabled regardless of asusd's mkDefault.
