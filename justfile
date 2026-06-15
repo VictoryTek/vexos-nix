@@ -1314,7 +1314,7 @@ enable service: _require-server-role
 
     # If a commented-out or false line exists, replace it
     if grep -qP "^\s*#?\s*${OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
-        sudo sed -i -E "s|^(\s*)#?\s*(${OPTION//./\\.})\s*=\s*(true|false)\s*;|\1${OPTION} = true;|" "$SVC_FILE"
+        sudo sed -i -E "s/^(\s*)#?\s*(${OPTION//./\\.})\s*=\s*(true|false)\s*;/\1${OPTION} = true;/" "$SVC_FILE"
     else
         # Insert before the closing brace
         sudo sed -i "s|}|  ${OPTION} = true;\n}|" "$SVC_FILE"
@@ -1327,7 +1327,7 @@ enable service: _require-server-role
         read -r -p "  Do you have a Plex Pass subscription? (enables hardware transcoding) [y/N] " _pp
         if [[ "$_pp" =~ ^[Yy]$ ]]; then
             if grep -qP "^\s*#?\s*${PP_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
-                sudo sed -i -E "s|^(\s*)#?\s*(${PP_OPTION//./\\.})\s*=\s*(true|false)\s*;|\1${PP_OPTION} = true;|" "$SVC_FILE"
+                sudo sed -i -E "s/^(\s*)#?\s*(${PP_OPTION//./\\.})\s*=\s*(true|false)\s*;/\1${PP_OPTION} = true;/" "$SVC_FILE"
             else
                 sudo sed -i "s|${OPTION} = true;|${OPTION} = true;\n  ${PP_OPTION} = true;|" "$SVC_FILE"
             fi
@@ -1378,7 +1378,7 @@ enable service: _require-server-role
         VB_OPTION="vexos.server.vexboard.enable"
         if ! grep -qP "^\s*vexos\.server\.vexboard\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
             if grep -qP "^\s*#?\s*${VB_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
-                sudo sed -i -E "s|^(\s*)#?\s*(${VB_OPTION//./\\.})\s*=\s*(true|false)\s*;|\1${VB_OPTION} = true;|" "$SVC_FILE"
+                sudo sed -i -E "s/^(\s*)#?\s*(${VB_OPTION//./\\.})\s*=\s*(true|false)\s*;/\1${VB_OPTION} = true;/" "$SVC_FILE"
             else
                 sudo sed -i "s|}|  ${VB_OPTION} = true;\n}|" "$SVC_FILE"
             fi
@@ -1919,7 +1919,7 @@ enable-plex-pass: _require-server-role
         exit 1
     fi
     if grep -qP "^\s*#?\s*${PP_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
-        sudo sed -i -E "s|^(\s*)#?\s*(${PP_OPTION//./\\.})\s*=\s*(true|false)\s*;|\1${PP_OPTION} = true;|" "$SVC_FILE"
+        sudo sed -i -E "s/^(\s*)#?\s*(${PP_OPTION//./\\.})\s*=\s*(true|false)\s*;/\1${PP_OPTION} = true;/" "$SVC_FILE"
     else
         sudo sed -i "s|vexos.server.plex.enable = true;|vexos.server.plex.enable = true;\n  ${PP_OPTION} = true;|" "$SVC_FILE"
     fi
