@@ -1407,9 +1407,11 @@ enable service: _require-server-role
             else
                 sudo sed -i "s|}|  ${VB_OPTION} = true;\n}|" "$SVC_FILE"
             fi
-            _ensure_vexboard_secret "$SVC_FILE"
             echo "  + VexBoard also enabled (server dashboard — http://<server-ip>:7280)"
         fi
+        # Always ensure secretFile is set — runs even if VexBoard was already enabled
+        # on a pre-existing VM where a prior session left enable=true but no secretFile.
+        _ensure_vexboard_secret "$SVC_FILE"
     fi
 
     echo "  → Run 'just rebuild' to apply."
