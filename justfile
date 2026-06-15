@@ -1382,7 +1382,7 @@ enable service: _require-server-role
             if [ ! -f "$secret_path" ]; then
                 sudo mkdir -p /etc/nixos/secrets
                 sudo chmod 700 /etc/nixos/secrets
-                head -c 48 /dev/urandom | base64 | sudo tee "$secret_path" > /dev/null
+                printf 'VEXBOARD_AUTH__SECRET=%s\n' "$(openssl rand -base64 48)" | sudo tee "$secret_path" > /dev/null
                 sudo chmod 600 "$secret_path"
             fi
             if grep -qP "^\s*#\s*vexos\.server\.vexboard\.secretFile" "$svc_file" 2>/dev/null; then

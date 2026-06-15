@@ -30,8 +30,12 @@ in
       type = lib.types.nullOr lib.types.path;
       default = null;
       description = ''
-        Path to a file containing VEXBOARD_AUTH__SECRET. Generate with:
-          openssl rand -base64 48
+        Path to an env file containing VEXBOARD_AUTH__SECRET=<secret>.
+        The file is loaded as a systemd EnvironmentFile; each line must be KEY=VALUE.
+        Generate and write with:
+          echo "VEXBOARD_AUTH__SECRET=$(openssl rand -base64 48)" \
+            > /etc/nixos/secrets/vexboard-secret
+          chmod 0600 /etc/nixos/secrets/vexboard-secret
       '';
     };
   };
@@ -42,7 +46,10 @@ in
         assertion = cfg.secretFile != null;
         message = ''
           vexos.server.vexboard.secretFile must be set before enabling VexBoard.
-          Generate a secret:  openssl rand -base64 48 > /etc/nixos/secrets/vexboard-secret
+          Generate a secret file (KEY=VALUE format required by systemd EnvironmentFile):
+            echo "VEXBOARD_AUTH__SECRET=$(openssl rand -base64 48)" \
+              > /etc/nixos/secrets/vexboard-secret
+            chmod 0600 /etc/nixos/secrets/vexboard-secret
           Then add to your config:  vexos.server.vexboard.secretFile = "/etc/nixos/secrets/vexboard-secret";
         '';
       }
