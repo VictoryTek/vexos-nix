@@ -120,6 +120,16 @@
   # ── GDM display manager ───────────────────────────────────────────────────
   services.displayManager.gdm.enable = true;
 
+  # ── GNOME Remote Desktop (RDP) ────────────────────────────────────────────
+  # Wayland-native remote desktop via PipeWire screen-cast portal.
+  # The NixOS GNOME module sets this to mkDefault true; we declare it
+  # explicitly to make the intent clear and guard against upstream changes.
+  # Port 3389 is opened on all display roles (desktop, server, htpc, stateless).
+  # headless-server does not import this module and is unaffected.
+  # After deployment: GNOME Settings → System → Remote Desktop to set credentials.
+  services.gnome.gnome-remote-desktop.enable = true;
+  networking.firewall.allowedTCPPorts = [ 3389 ];
+
   # ── Auto-login ────────────────────────────────────────────────────────────
   services.displayManager.autoLogin = {
     enable = true;

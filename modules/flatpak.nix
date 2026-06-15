@@ -11,7 +11,6 @@ let
     "io.github.flattool.Warehouse"
     "app.zen_browser.zen"
     "com.mattjakeman.ExtensionManager"
-    "com.rustdesk.RustDesk"
     "io.github.kolunmi.Bazaar"
     "org.pulseaudio.pavucontrol"
     "org.gnome.World.PikaBackup"
