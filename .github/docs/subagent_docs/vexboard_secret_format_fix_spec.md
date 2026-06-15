@@ -58,7 +58,7 @@ head -c 48 /dev/urandom | base64 | sudo tee "$secret_path" > /dev/null
 ```
 To:
 ```bash
-printf 'VEXBOARD_AUTH__SECRET=%s\n' "$(openssl rand -base64 48)" | sudo tee "$secret_path" > /dev/null
+printf 'VEXBOARD_AUTH__SECRET=%s\n' "$(head -c 48 /dev/urandom | base64)" | sudo tee "$secret_path" > /dev/null
 ```
 
 This produces a file whose single line is:
@@ -68,6 +68,12 @@ VEXBOARD_AUTH__SECRET=<random-base64-value>
 
 systemd loads this as an `EnvironmentFile`, sets `VEXBOARD_AUTH__SECRET`, and the pre-start
 check passes.
+
+**Constraint:** `openssl` is not installed on the `vexos-server-vm` role (and potentially
+other minimal server variants). The secret must be generated using only GNU coreutils
+(`head`, `base64`) which are always present on NixOS regardless of role. For 48 bytes of
+input, `base64` produces 64 characters — below the 76-character default wrap threshold, so
+no `--wrap=0` flag is needed.
 
 ### Fix 2 — modules/server/vexboard.nix: correct description and assertion message
 
