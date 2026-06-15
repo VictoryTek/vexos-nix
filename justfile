@@ -1314,7 +1314,7 @@ enable service: _require-server-role
 
     # If a commented-out or false line exists, replace it
     if grep -qP "^\s*#?\s*${OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
-        sudo sed -i -E "s|^(\s*)#?\s*(${OPTION//./\\.})\s*=\s*(true\|false)\s*;|\1${OPTION} = true;|" "$SVC_FILE"
+        sudo sed -i -E "s|^(\s*)#?\s*(${OPTION//./\\.})\s*=\s*(true|false)\s*;|\1${OPTION} = true;|" "$SVC_FILE"
     else
         # Insert before the closing brace
         sudo sed -i "s|}|  ${OPTION} = true;\n}|" "$SVC_FILE"
