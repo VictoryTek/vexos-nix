@@ -371,11 +371,11 @@ update-all:
     echo ""
     echo "Updating all flake inputs (no cache check)..."
     sudo nix --extra-experimental-features "nix-command flakes" \
-        flake update --flake git+file:///etc/nixos
+        flake update --flake path:/etc/nixos
     echo ""
     echo "Rebuilding: ${target}"
-    sudo nixos-rebuild switch \
-        --flake git+file:///etc/nixos#"${target}" \
+    sudo nixos-rebuild switch --impure \
+        --flake path:/etc/nixos#"${target}" \
         --print-build-logs
 
 # Deploy config changes only — pulls the latest vexos-nix commit from GitHub
@@ -398,10 +398,10 @@ deploy:
     fi
     echo ""
     echo "Pulling latest vexos-nix config (nixpkgs unchanged)..."
-    sudo nix flake update vexos-nix --flake git+file:///etc/nixos
+    sudo nix flake update vexos-nix --flake path:/etc/nixos
     echo ""
     echo "Switching to: ${target}"
-    sudo nixos-rebuild switch --flake git+file:///etc/nixos#"${target}"
+    sudo nixos-rebuild switch --impure --flake path:/etc/nixos#"${target}"
 
 # Analyse what would happen if you upgrade NixOS to a newer version.
 # Tests your current config against the target nixpkgs WITHOUT modifying
@@ -1982,4 +1982,4 @@ rebuild:
     echo ""
     echo "Rebuilding ${target}..."
     echo ""
-    sudo nixos-rebuild switch --flake "git+file:///etc/nixos#${target}"
+    sudo nixos-rebuild switch --impure --flake "path:/etc/nixos#${target}"
