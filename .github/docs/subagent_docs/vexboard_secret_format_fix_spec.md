@@ -1,17 +1,34 @@
-# Spec: vexboard secret file format bug — VEXBOARD_AUTH__SECRET not set at startup
+# Spec: vexboard.service always fails to start — VEXBOARD_AUTH__SECRET never loaded
 
 ## Current State Analysis
 
-The upstream vexboard NixOS module (`inputs.vexboard.nixosModules.vexboard`, evaluated path
-`/nix/store/v5qg5d6xshy7gs826ak7cmmslzc3ynbd-module.nix`) loads `secretFile` as a systemd
-`EnvironmentFile` (line 161 of the upstream module):
+The upstream vexboard NixOS module (`inputs.vexboard.nixosModules.vexboard`, store path
+`/nix/store/v5qg5d6xshy7gs826ak7cmmslzc3ynbd-module.nix`) contains a typo on line 161:
 
 ```nix
 EnvironmentFiles = lib.optional (cfg.secretFile != null) cfg.secretFile;
 ```
 
-systemd's `EnvironmentFile` format requires each line to be `KEY=VALUE`. The service's
-`preStart` script then checks the env var `VEXBOARD_AUTH__SECRET`:
+The key is `EnvironmentFiles` (plural). NixOS's `attrsToSection` function in
+`nixos/lib/systemd-lib.nix` (line 339) uses the attribute name verbatim:
+
+```nix
+attrsToSection = as: concatStrings (concatLists (
+  mapAttrsToList (name: value:
+    map (x: ''${name}=${toOption x}'') (if isList value then value else [ value ])
+  ) as
+));
+```
+
+So the generated `.service` unit contains:
+
+```
+EnvironmentFiles=/etc/nixos/secrets/vexboard-secret
+```
+
+systemd only recognizes `EnvironmentFile=` (singular). It silently ignores unrecognized
+directives. The file is never loaded. `VEXBOARD_AUTH__SECRET` is never set. The upstream
+`preStart` script (run as `ExecStartPre=`) always sees an empty value and exits 1:
 
 ```bash
 secret="${VEXBOARD_AUTH__SECRET:-}"
@@ -21,93 +38,59 @@ if [ -z "$secret" ] || [ "$secret" = "change-me-in-production" ]; then
 fi
 ```
 
-The `just enable <service>` command auto-enables VexBoard and calls `_ensure_vexboard_secret`
-(justfile lines 1377–1393) to generate the secret file:
+This is the root cause of every `vexboard.service` startup failure across all fresh server VMs.
 
-```bash
-head -c 48 /dev/urandom | base64 | sudo tee "$secret_path" > /dev/null
-```
+### Secondary issue (already fixed in justfile — commit c4ecaaa)
 
-This writes only the **raw base64 value** — no `KEY=VALUE` structure. When systemd loads this
-as an `EnvironmentFile`, it sees a line like `aBcD3F...==` with no `=` before valid content,
-or splits at base64 padding `=` characters into nonsense variable names. Either way,
-`VEXBOARD_AUTH__SECRET` is never exported, its expansion is empty (`""`), and the pre-start
-guard triggers.
+`_ensure_vexboard_secret` (justfile) now correctly writes `VEXBOARD_AUTH__SECRET=<value>`
+format (coreutils-only). That fix is complete and verified.
 
-The NixOS assertion (`cfg.secretFile != null`) in `modules/server/vexboard.nix` passes
-because the path is set. The rebuild activates (seerr starts), but vexboard.service fails
-at pre-start.
+### Why previous iterations didn't fix it
 
-Secondary issue: `modules/server/vexboard.nix` option description and assertion message
-describe incorrect file format — they reference `openssl rand -base64 48 > /path/to/file`
-(raw value) rather than `VEXBOARD_AUTH__SECRET=<value>`.
+All prior fixes targeted the secret FILE FORMAT or the generation command. The file was
+correct after those fixes. The systemd directive name `EnvironmentFiles` vs `EnvironmentFile`
+was not examined until now.
 
 ## Problem Definition
 
-`_ensure_vexboard_secret` in the justfile creates a secret file containing only a raw base64
-string, but systemd `EnvironmentFile` semantics and the upstream module's pre-start guard
-require the file to contain `VEXBOARD_AUTH__SECRET=<value>`.
+The upstream vexboard NixOS module has a typo: `EnvironmentFiles` (plural) in `serviceConfig`.
+NixOS passes this key name verbatim to the systemd unit. systemd ignores `EnvironmentFiles=`
+as an unknown directive. The secret is never loaded.
 
 ## Proposed Solution
 
-### Fix 1 — justfile: correct file format written by `_ensure_vexboard_secret`
+In `modules/server/vexboard.nix`, inside `config = lib.mkIf cfg.enable { ... }`, add an
+override that injects the CORRECT `EnvironmentFile=` (singular) directive:
 
-Change line 1385 from:
-```bash
-head -c 48 /dev/urandom | base64 | sudo tee "$secret_path" > /dev/null
-```
-To:
-```bash
-printf 'VEXBOARD_AUTH__SECRET=%s\n' "$(head -c 48 /dev/urandom | base64)" | sudo tee "$secret_path" > /dev/null
+```nix
+systemd.services.vexboard.serviceConfig.EnvironmentFile =
+  lib.optional (cfg.secretFile != null) (toString cfg.secretFile);
 ```
 
-This produces a file whose single line is:
-```
-VEXBOARD_AUTH__SECRET=<random-base64-value>
-```
+`lib.optional` returns `[]` if `cfg.secretFile` is null, or `["/path/to/file"]` if set.
+`attrsToSection` iterates the list and emits one `EnvironmentFile=<path>` line per item.
+`toString` coerces the path/string value to a plain string (no store import).
 
-systemd loads this as an `EnvironmentFile`, sets `VEXBOARD_AUTH__SECRET`, and the pre-start
-check passes.
-
-**Constraint:** `openssl` is not installed on the `vexos-server-vm` role (and potentially
-other minimal server variants). The secret must be generated using only GNU coreutils
-(`head`, `base64`) which are always present on NixOS regardless of role. For 48 bytes of
-input, `base64` produces 64 characters — below the 76-character default wrap threshold, so
-no `--wrap=0` flag is needed.
-
-### Fix 2 — modules/server/vexboard.nix: correct description and assertion message
-
-Update the `secretFile` option description and assertion error message to match the correct
-file format (`VEXBOARD_AUTH__SECRET=<value>`), consistent with the upstream module docs.
+The upstream's `EnvironmentFiles=<path>` line remains in the unit but is harmless — systemd
+ignores it. The new `EnvironmentFile=<path>` line is recognized and the env var is loaded
+before ExecStartPre runs.
 
 ## Files to Modify
 
-1. `justfile` — `_ensure_vexboard_secret`, line ~1385
-2. `modules/server/vexboard.nix` — `secretFile` option description and assertion message
+1. `modules/server/vexboard.nix` — add `systemd.services.vexboard.serviceConfig.EnvironmentFile`
 
 ## No New Dependencies
 
 No new flake inputs, packages, or external libraries. Context7 is not required.
 
-## Out-of-Band Server Action Required
-
-The user's server already has `/etc/nixos/secrets/vexboard-secret` with wrong content.
-After applying this fix, the user must re-generate the secret file on the server:
-
-```bash
-sudo sh -c 'printf "VEXBOARD_AUTH__SECRET=%s\n" "$(openssl rand -base64 48)" \
-  > /etc/nixos/secrets/vexboard-secret && chmod 600 /etc/nixos/secrets/vexboard-secret'
-```
-
-Then run `just rebuild` to restart vexboard with the corrected EnvironmentFile.
-
 ## Risks and Mitigations
 
-- Risk: existing server has old-format file — mitigated by informing user of the out-of-band
-  command above; it is a one-line fix on the server.
-- Risk: `openssl` not available in live shell context during `just enable` — openssl is
-  standard on NixOS; the prior codebase uses `openssl rand -base64 48` in vexboard.nix docs,
-  so it is already expected to be present.
-- Risk: base64 output contains newlines on some systems (macOS fold at 76 chars) — on Linux
-  `/usr/bin/base64` and openssl both emit a single line for 48 input bytes; verified
-  acceptable for NixOS target hosts.
+- Risk: upstream module is fixed later — our `EnvironmentFile` override will become
+  redundant but not harmful (duplicate `EnvironmentFile=` directives are valid in systemd;
+  it applies both in order). At that point the line can be removed.
+- Risk: `lib.types.path` check rejects string path at eval time — verified: this nixpkgs
+  `pathWith { absolute = true; }` only checks `isStringLike && isAbsolute`, no
+  `builtins.pathExists` call, so eval succeeds on any host.
+- Risk: sudo cache expiry during `just enable` — this is a separate orthogonal issue that
+  the justfile change (writing the file with coreutils) already addresses as the fix; the
+  file is written before sudo cache might expire.

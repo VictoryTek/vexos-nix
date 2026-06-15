@@ -1,46 +1,50 @@
-# Review: vexboard secret file format fix
+# Review: vexboard EnvironmentFile typo fix
 
 ## Files Reviewed
-- `justfile` — `_ensure_vexboard_secret`, line 1385
-- `modules/server/vexboard.nix` — `secretFile` option description and assertion message
+- `modules/server/vexboard.nix` — added `systemd.services.vexboard.serviceConfig.EnvironmentFile`
+
+## Root Cause Verified
+- Upstream module line 161: `EnvironmentFiles = lib.optional ...` (plural)
+- `nixos/lib/systemd-lib.nix` `attrsToSection` uses attribute name verbatim → `EnvironmentFiles=<path>` in unit
+- systemd ignores `EnvironmentFiles=` as unrecognized; `VEXBOARD_AUTH__SECRET` is never set
+- Fix: adds `serviceConfig.EnvironmentFile` (singular) in our wrapper module; correct directive recognized by systemd
 
 ## Specification Compliance
-- [x] `_ensure_vexboard_secret` now writes `VEXBOARD_AUTH__SECRET=<value>` format
-- [x] `printf 'VEXBOARD_AUTH__SECRET=%s\n'` correctly constructs KEY=VALUE line
-- [x] `modules/server/vexboard.nix` description updated to reflect env file format
-- [x] Assertion message updated to show correct generation command
-- [x] No other files touched — change is surgical
+- [x] Only `modules/server/vexboard.nix` modified — surgical
+- [x] `toString cfg.secretFile` ensures path/string coercion without store import
+- [x] `lib.optional (cfg.secretFile != null)` mirrors upstream logic, null-safe
+- [x] Comment explains upstream bug and the workaround rationale
 
 ## Best Practices
-- [x] `printf` with `%s` prevents injection from base64 output
-- [x] openssl used for secret generation (consistent with upstream docs and existing project style)
-- [x] systemd EnvironmentFile format requirement documented in option description
+- [x] No `lib.mkForce` needed — `EnvironmentFile` is a new attribute key, no conflict with existing `EnvironmentFiles`
+- [x] `lib.optional` returns `[]` when secretFile is null, which `attrsToSection` handles correctly (emits no directive)
+- [x] Follows Module Architecture Pattern Option B — no new `lib.mkIf` in shared modules
 
 ## Consistency
-- [x] No `lib.mkIf` guards added
-- [x] Module Architecture Pattern (Option B) unchanged
+- [x] No new `lib.mkIf` guards added to shared modules
 - [x] No new flake inputs
+- [x] `system.stateVersion` unchanged in all `configuration-*.nix` (all remain "25.11")
+- [x] `hardware-configuration.nix` not tracked (`git ls-files` returns empty)
 
 ## Security
 - [x] No hardcoded secrets
-- [x] Secret written to root-owned file (mode 600) before being referenced
-- [x] `printf` avoids shell word-splitting of the base64 value
+- [x] Secret file path referenced but not copied to Nix store (plain string, not path literal)
+- [x] No plaintext credential assignments
 
 ## Build Validation
 
 | Check | Result |
 |-------|--------|
 | `nix flake show --impure` | PASS — all outputs listed |
-| `nix eval vexos-desktop-amd` | PASS — drv path returned |
-| `nix eval vexos-server-amd` | PASS — drv path returned |
-| `nix eval vexos-server-vm` | PASS — drv path returned |
-| `nix eval vexos-headless-server-amd` | PASS — drv path returned |
-| `hardware-configuration.nix` not tracked | PASS — empty git ls-files output |
-| `system.stateVersion` unchanged | PASS — all configs remain at "25.11" |
+| `nix eval vexos-desktop-amd` | PASS — drv returned |
+| `nix eval vexos-desktop-nvidia` | PASS — drv returned |
+| `nix eval vexos-desktop-vm` | PASS — drv returned |
+| `nix eval vexos-server-amd` | PASS — drv returned |
+| `nix eval vexos-headless-server-amd` | PASS — drv returned |
+| `hardware-configuration.nix` not tracked | PASS |
+| `system.stateVersion` unchanged | PASS — all "25.11" |
 
-Note: `sudo nixos-rebuild dry-build` is unavailable in the sandboxed tool environment
-(container has `no_new_privs` set). `nix eval --impure` was used as the CI-equivalent
-alternative (same evaluation depth, no build). This is the same approach used by CI.
+Note: `sudo nixos-rebuild dry-build` unavailable in sandbox (`no_new_privs`). `nix eval --impure` used as the CI-equivalent (full evaluation depth, no build).
 
 ## Score Table
 
