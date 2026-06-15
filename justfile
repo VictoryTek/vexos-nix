@@ -1373,6 +1373,31 @@ enable service: _require-server-role
 
     echo "✓ Enabled: $SERVICE"
 
+    # Ensure VexBoard has a secretFile — required by the build assertion.
+    # Runs when VexBoard is explicitly enabled or auto-enabled alongside a service.
+    _ensure_vexboard_secret() {
+        local svc_file="$1"
+        local secret_path="/etc/nixos/secrets/vexboard-secret"
+        if ! grep -qP "^\s*vexos\.server\.vexboard\.secretFile\s*=" "$svc_file" 2>/dev/null; then
+            if [ ! -f "$secret_path" ]; then
+                sudo mkdir -p /etc/nixos/secrets
+                sudo chmod 700 /etc/nixos/secrets
+                openssl rand -base64 48 | sudo tee "$secret_path" > /dev/null
+                sudo chmod 600 "$secret_path"
+            fi
+            if grep -qP "^\s*#\s*vexos\.server\.vexboard\.secretFile" "$svc_file" 2>/dev/null; then
+                sudo sed -i -E 's|^(\s*)#\s*(vexos\.server\.vexboard\.secretFile\s*=\s*"[^"]*")\s*;|\1\2;|' "$svc_file"
+            else
+                sudo sed -i "s|}|  vexos.server.vexboard.secretFile = \"${secret_path}\";\n}|" "$svc_file"
+            fi
+        fi
+    }
+
+    # Explicit `just enable vexboard` — ensure secret is generated.
+    if [ "$SERVICE" = "vexboard" ]; then
+        _ensure_vexboard_secret "$SVC_FILE"
+    fi
+
     # Auto-enable VexBoard alongside the first service enabled on this host.
     if [ "$SERVICE" != "vexboard" ]; then
         VB_OPTION="vexos.server.vexboard.enable"
@@ -1382,6 +1407,7 @@ enable service: _require-server-role
             else
                 sudo sed -i "s|}|  ${VB_OPTION} = true;\n}|" "$SVC_FILE"
             fi
+            _ensure_vexboard_secret "$SVC_FILE"
             echo "  + VexBoard also enabled (server dashboard — http://<server-ip>:7280)"
         fi
     fi
