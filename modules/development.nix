@@ -18,6 +18,7 @@
     # ── Editor ────────────────────────────────────────────────────────────────
     # NOTE: vscode-fhs is managed by Home Manager in home-desktop.nix
     # (programs.vscode) so it lives in the user profile only, not system-wide.
+    pkgs.vscodium-fhs # VSCodium (telemetry-free VS Code fork) in FHS sandbox
 
     # ── Python ────────────────────────────────────────────────────────────────
     pkgs.python3 # CPython interpreter
