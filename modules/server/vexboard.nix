@@ -22,8 +22,8 @@ in
 
     openFirewall = lib.mkOption {
       type = lib.types.bool;
-      default = false;
-      description = "Open the firewall for VexBoard's port. Set true to expose the dashboard on the LAN.";
+      default = true;
+      description = "Open the firewall for VexBoard's port. Defaults to true — VexBoard is the server dashboard and is intended to be reachable on the LAN.";
     };
 
     secretFile = lib.mkOption {
