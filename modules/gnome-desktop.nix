@@ -119,6 +119,19 @@
     }
   ];
 
+  # ── Mic mute on login ─────────────────────────────────────────────────────
+  # Ensures the microphone starts muted at every graphical session start.
+  # The user unmutes with <Super>backslash (nothing-to-say extension).
+  systemd.user.services.mute-mic-on-login = {
+    description = "Mute microphone at graphical session start";
+    wantedBy    = [ "graphical-session.target" ];
+    after       = [ "graphical-session.target" ];
+    serviceConfig = {
+      Type      = "oneshot";
+      ExecStart = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 1";
+    };
+  };
+
   # ── GNOME default app Flatpaks (desktop role) ─────────────────────────────
   # Defined by modules/gnome-flatpak-install.nix (imported via gnome.nix).
   # Note: stamp hash changes from the pre-migration value (extraRemoves adds

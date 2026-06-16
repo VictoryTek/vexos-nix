@@ -86,6 +86,12 @@
             logo-always-visible = true;
           };
 
+          # ── Nothing To Say (mic mute toggle / PTT) ─────────────────────
+          "org/gnome/shell/extensions/nothing-to-say" = {
+            keybinding-toggle-mute = [ "<Super>backslash" ];
+            icon-visibility        = "always";
+          };
+
           # ── Screensaver / session ───────────────────────────────────────
           "org/gnome/desktop/screensaver" = {
             lock-enabled = false;
