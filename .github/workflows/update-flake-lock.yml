@@ -2,7 +2,7 @@ name: Update flake inputs
 
 on:
   schedule:
-    - cron: '0 4 * * 2-7'  # Tue–Sun: stable nixpkgs only (Hydra always keeps up with 26.05)
+    - cron: '0 4 * * 0,2-6'  # Tue–Sun: stable nixpkgs only (Hydra always keeps up with 26.05)
     - cron: '0 4 * * 1'    # Monday: all inputs including nixpkgs-unstable
   workflow_dispatch:         # Manual trigger: updates all inputs
 
