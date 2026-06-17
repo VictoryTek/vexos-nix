@@ -218,6 +218,9 @@
     pkgs.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
     pkgs.gnomeExtensions.background-logo            # Desktop background logo
     pkgs.gnomeExtensions.tiling-assistant           # Half- and quarter-tiling support
+
+    # RDP/VNC client — connect to other machines
+    pkgs.remmina
   ];
 
   # ── Fonts ─────────────────────────────────────────────────────────────────

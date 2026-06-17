@@ -41,6 +41,16 @@
     pulse.enable      = true;
   };
 
+  # ---------- Remote Desktop ----------
+  # Receive: GNOME Remote Desktop exposes RDP on port 3389.
+  # The NixOS GNOME module sets this via mkDefault true; we declare it
+  # explicitly and open the port. After deploy: GNOME Settings → System →
+  # Remote Desktop to set credentials.
+  services.gnome.gnome-remote-desktop.enable = true;
+  networking.firewall.allowedTCPPorts = [ 3389 ];
+  # Send: Remmina as RDP/VNC client.
+  environment.systemPackages = [ pkgs.remmina ];
+
   # ---------- GNOME theme defaults (locked) ----------
   # Force GNOME to use the stock Adwaita cursor and icon theme.
   # Without this, stale dconf values from a previous role (e.g. Bibata cursor
