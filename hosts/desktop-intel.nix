@@ -6,6 +6,7 @@
   imports = [
     ../configuration-desktop.nix
     ../modules/gpu/intel.nix
+    ../modules/razer.nix
   ];
 
   system.nixos.distroName = "VexOS Desktop Intel";

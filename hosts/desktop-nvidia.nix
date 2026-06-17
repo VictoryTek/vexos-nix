@@ -6,6 +6,7 @@
   imports = [
     ../configuration-desktop.nix
     ../modules/gpu/nvidia.nix
+    ../modules/razer.nix
   ];
 
   system.nixos.distroName = "VexOS Desktop NVIDIA";

@@ -6,6 +6,7 @@
   imports = [
     ../configuration-desktop.nix
     ../modules/gpu/amd.nix
+    ../modules/razer.nix
   ];
 
   system.nixos.distroName = "VexOS Desktop AMD";
