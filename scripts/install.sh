@@ -454,6 +454,32 @@ if [ -n "$SOURCE_BUILDS" ]; then
     echo ""
     printf '%s\n' "$BLOCKING" | sed 's/^/    /'
     echo ""
+    # Check how old the nixpkgs-unstable pin is — if recent, this is a Hydra lag.
+    RETRY_HINT=""
+    if command -v python3 >/dev/null 2>&1 && [ -f /etc/nixos/flake.lock ]; then
+      RETRY_HINT=$(python3 - <<'PYEOF'
+import json, time
+try:
+    with open("/etc/nixos/flake.lock") as f:
+        nodes = json.load(f).get("nodes", {})
+    for name, node in nodes.items():
+        if "unstable" in name and "locked" in node:
+            ts = node["locked"].get("lastModified")
+            if ts:
+                age_h = (time.time() - ts) / 3600
+                if age_h < 48:
+                    retry_h = max(1, int(24 - age_h + 0.5))
+                    print(f"nixpkgs-unstable was pinned {age_h:.0f}h ago — this is likely a Hydra cache lag.\nRetry in approximately {retry_h}h once Hydra catches up.")
+            break
+except Exception:
+    pass
+PYEOF
+      )
+    fi
+    if [ -n "$RETRY_HINT" ]; then
+      echo -e "${CYAN}${RETRY_HINT}${RESET}"
+      echo ""
+    fi
     echo -e "${YELLOW}The install has been aborted. cache.nixos.org usually builds new"
     echo -e "packages within 24 hours. Run the install script again once they are cached."
     echo ""
