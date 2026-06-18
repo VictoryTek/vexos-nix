@@ -512,6 +512,7 @@ if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE
     echo ""
     printf "Reboot now? [Y/n] "
     read -r REBOOT_CHOICE </dev/tty
+    REBOOT_CHOICE="${REBOOT_CHOICE%$'\r'}"
     case "${REBOOT_CHOICE,,}" in
       n|no)
         echo -e "${YELLOW}Reboot skipped. Run 'systemctl reboot' when ready.${RESET}"
@@ -537,6 +538,7 @@ if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE
     echo ""
     printf "Reboot now? [y/N] "
     read -r REBOOT_CHOICE </dev/tty
+    REBOOT_CHOICE="${REBOOT_CHOICE%$'\r'}"
     case "${REBOOT_CHOICE,,}" in
       y|yes)
         echo "Rebooting..."
