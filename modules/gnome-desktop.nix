@@ -43,6 +43,18 @@
           intellihide   = true;
         };
 
+        # ── Mic mute global keybinding ──────────────────────────────────
+        # Uses gnome-settings-daemon media-keys (no extension dependency).
+        # Super+backslash toggles the default PipeWire source mute state.
+        "org/gnome/settings-daemon/plugins/media-keys" = {
+          custom-keybindings = [ "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/mute-mic/" ];
+        };
+        "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/mute-mic" = {
+          name    = "Toggle microphone mute";
+          binding = "<Super>backslash";
+          command = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle";
+        };
+
         "org/gnome/desktop/app-folders" = {
           folder-children = [ "Games" "Game Utilities" "Office" "Utilities" "System" ];
         };
