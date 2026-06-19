@@ -415,90 +415,48 @@ sudo "$GIT" -C /etc/nixos add flake.lock
 
 # ---------- Build & switch ---------------------------------------------------
 # Cache check: dry-build first to see what would need to be compiled locally.
-# Filters out NixOS system-level derivations that are always built locally and
-# take under a second (activation scripts, unit files, bootloader, initrd, etc.)
-# If any real packages (C++, Rust, Electron, ...) are missing from the binary
-# cache the install aborts cleanly so you can retry once cache.nixos.org catches up.
+# Run a dry-build to surface anything that will be compiled locally rather than
+# fetched from cache. This is informational only — the install proceeds regardless.
+# Two derivation classes always build locally and are expected:
+#   • Proprietary NVIDIA userspace (nvidia-x11 / NVIDIA-*.run / nvidia-settings /
+#     nvidia-persistenced): unfree and non-redistributable, so Hydra never caches it.
+#     The open kernel module (nvidia-open) IS cached and is fetched, not built.
+#   • Patched OpenRazer: a local overlay patch (modules/razer.nix), so its hash never
+#     matches an upstream cached build.
+# Everything else is a transient Hydra lag and will typically be fast (binary
+# downloads for Electron apps, short Rust/Python crate builds, etc.).
 echo ""
-echo -e "${CYAN}Checking binary cache for all required packages...${RESET}"
+echo -e "${CYAN}Checking what will be fetched vs built locally...${RESET}"
 DRY_OUT=$(sudo nixos-rebuild dry-build --flake "git+file:///etc/nixos#${FLAKE_TARGET}" 2>&1 || true)
-# Extract the "will be built" section and keep only versioned package derivations
-# (e.g. gnome-shell-49.4.drv, steam-1.0.0.85.drv). Config-assembly derivations
-# (PAM files, AppArmor rules, systemd units, Home Manager links, etc.) are always
-# rebuilt locally — they contain machine-specific data and are never in the binary
-# cache — but they complete in milliseconds and should not block the install.
 SOURCE_BUILDS=$(printf '%s\n' "$DRY_OUT" \
   | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
   | grep -E -- '-[0-9]+\.[0-9]+' \
-  | grep -Ev '^(nixos-system-|system-units|etc-nixos|unit-|activation-script|specialisation-|install-bootloader|loader-|grub-|extlinux-|initrd|linux-[0-9]|kernel|stage-[12]-|crate-|cargo-vendor|perl-[0-9]|lua-[0-9]|python3?-[0-9]|up-[0-9]|zvariant|zbus|gtk4-|glib-|gio-|gdk-|pango-|graphene-|cairo-|gettext-rs|gettext-sys|serde_yml|libyml|system-deps|cfg-expr|winnow|endi-|enumflags|version-compare|zbus_names|zbus_macros|zvariant_|ureq|uds_windows|env_filter|env_logger|utf8-zero|glib-build-tools|glib-macros|glib-sys|gobject-sys|gio-sys|pango-sys|gdk-pixbuf-sys|graphene-sys|cairo-sys|cairo-rs|gdk-pixbuf-|mpv-with-scripts|plex-desktop|ibus-with-plugins|retroarch-with-cores|steam|steam-unwrapped|discord|podman-docker-compat|nodejs-|vscode-|claude-code-|code-[0-9]|VSCode_|umu-launcher|.*-init\.|.*-bwrap\.|.*-fhsenv)' \
   || true)
 
 if [ -n "$SOURCE_BUILDS" ]; then
-  # Some derivations are never on cache.nixos.org and must always build locally —
-  # no nixpkgs revision can change this:
-  #   • Proprietary NVIDIA userspace (nvidia-x11 / NVIDIA-*.run / nvidia-settings /
-  #     nvidia-persistenced): unfree and non-redistributable, so Hydra never caches it.
-  #     The open kernel module (nvidia-open) IS cached and is fetched, not built.
-  #   • Patched OpenRazer: a local overlay patch (modules/razer.nix), so its hash never
-  #     matches an upstream cached build.
-  # These are a one-time local build (~10-15 min with NVIDIA; seconds for OpenRazer alone)
-  # per driver/kernel bump. Treat them as expected. Anything else that misses cache is a
-  # genuine, transient cache lag — abort so the user can retry rather than compile for hours.
   UNAVOIDABLE_REGEX='^(NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|nvidia-persistenced-|openrazer-[0-9])'
-  BLOCKING=$(printf '%s\n' "$SOURCE_BUILDS" | grep -Ev "$UNAVOIDABLE_REGEX" || true)
+  UNAVOIDABLE=$(printf '%s\n' "$SOURCE_BUILDS" | grep -E "$UNAVOIDABLE_REGEX" || true)
+  OTHER=$(printf '%s\n' "$SOURCE_BUILDS" | grep -Ev "$UNAVOIDABLE_REGEX" || true)
 
-  if [ -n "$BLOCKING" ]; then
+  if [ -n "$UNAVOIDABLE" ]; then
     echo ""
-    echo -e "${YELLOW}${BOLD}⚠ Some packages are not yet in the binary cache and would need to"
-    echo -e "  be compiled from source (this can take hours):${RESET}"
+    echo -e "${CYAN}The following will build locally (expected — never in binary cache):"
+    echo -e "NVIDIA's proprietary userspace is unfree/non-redistributable; the patched"
+    echo -e "OpenRazer module is a local patch. The open NVIDIA kernel module IS fetched"
+    echo -e "from cache. One-time build of ~10-15 min (seconds without NVIDIA).${RESET}"
     echo ""
-    printf '%s\n' "$BLOCKING" | sed 's/^/    /'
+    printf '%s\n' "$UNAVOIDABLE" | sed 's/^/    /'
     echo ""
-    # Check how old the nixpkgs-unstable pin is — if recent, this is a Hydra lag.
-    RETRY_HINT=""
-    if command -v python3 >/dev/null 2>&1 && [ -f /etc/nixos/flake.lock ]; then
-      RETRY_HINT=$(python3 - <<'PYEOF'
-import json, time
-try:
-    with open("/etc/nixos/flake.lock") as f:
-        nodes = json.load(f).get("nodes", {})
-    for name, node in nodes.items():
-        if "unstable" in name and "locked" in node:
-            ts = node["locked"].get("lastModified")
-            if ts:
-                age_h = (time.time() - ts) / 3600
-                if age_h < 48:
-                    retry_h = max(1, int(24 - age_h + 0.5))
-                    print(f"nixpkgs-unstable was pinned {age_h:.0f}h ago — this is likely a Hydra cache lag.\nRetry in approximately {retry_h}h once Hydra catches up.")
-            break
-except Exception:
-    pass
-PYEOF
-      )
-    fi
-    if [ -n "$RETRY_HINT" ]; then
-      echo -e "${CYAN}${RETRY_HINT}${RESET}"
-      echo ""
-    fi
-    echo -e "${YELLOW}The install has been aborted. cache.nixos.org usually builds new"
-    echo -e "packages within 24 hours. Run the install script again once they are cached."
-    echo ""
-    echo -e "To install now anyway (accepts local source builds), run:${RESET}"
-    echo "  sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
-    echo ""
-    exit 1
   fi
 
-  # Only the unavoidable unfree NVIDIA userspace / patched OpenRazer remain — proceed.
-  echo ""
-  echo -e "${CYAN}The following will build locally now — they are never in the binary cache:"
-  echo -e "NVIDIA's proprietary userspace driver is unfree/non-redistributable, and the"
-  echo -e "patched OpenRazer module is a local patch. The open NVIDIA kernel module is"
-  echo -e "fetched from cache, so this is a one-time build of ~10-15 min (seconds without"
-  echo -e "NVIDIA). 'just update' / the Up app apply newer driver versions afterwards.${RESET}"
-  echo ""
-  printf '%s\n' "$SOURCE_BUILDS" | sed 's/^/    /'
-  echo ""
+  if [ -n "$OTHER" ]; then
+    echo ""
+    echo -e "${YELLOW}The following are not yet in the binary cache and will build locally."
+    echo -e "Most are binary repacks or short crate builds and will complete quickly.${RESET}"
+    echo ""
+    printf '%s\n' "$OTHER" | sed 's/^/    /'
+    echo ""
+  fi
 else
   echo -e "${GREEN}✓ All packages available in binary cache.${RESET}"
 fi
