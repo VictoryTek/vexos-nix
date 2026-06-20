@@ -809,7 +809,7 @@ reset-defaults:
 # Set up the Remote Desktop (RDP) password for this machine.
 # Writes the password to /etc/nixos/secrets/rdp-password (root:root 0600).
 # Not stored in the Nix store. After running this recipe, rebuild with
-# 'just switch' to activate — RDP credentials will then be configured
+# 'just rebuild' to activate — RDP credentials will then be configured
 # automatically on every GNOME session start.
 # Only needed on desktop, server, and htpc roles.
 setup-rdp:
@@ -846,7 +846,7 @@ setup-rdp:
 
     echo "✓ Password written to $SECRET_FILE"
     echo ""
-    echo "Run 'just switch' to apply. After rebuild, RDP credentials are"
+    echo "Run 'just rebuild' to apply. After rebuild, RDP credentials are"
     echo "configured automatically on every login — no further action needed."
     echo ""
 
