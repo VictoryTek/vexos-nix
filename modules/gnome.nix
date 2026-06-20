@@ -86,11 +86,8 @@
             logo-always-visible = true;
           };
 
-          # ── Nothing To Say (mic indicator) ─────────────────────────────
-          # Keybinding is handled by the media-keys custom keybinding below
-          # (gnome-desktop.nix) so the extension does not compete for the key.
           "org/gnome/shell/extensions/nothing-to-say" = {
-            keybinding-toggle-mute = lib.gvariant.mkEmptyArray lib.gvariant.type.string;
+            keybinding-toggle-mute = [ "<Super>backslash" ];
             icon-visibility        = "always";
           };
 
