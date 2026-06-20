@@ -105,8 +105,7 @@ in
       # Apps that must never be present on any role. These are uninstalled
       # unconditionally, regardless of excludeApps.
       for app in \
-        com.github.wwmm.easyeffects \
-        com.simplenote.Simplenote
+        com.github.wwmm.easyeffects
       do
         if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
           echo "flatpak: uninstalling banned app $app"
