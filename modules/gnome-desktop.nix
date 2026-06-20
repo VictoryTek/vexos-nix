@@ -33,7 +33,7 @@
             "com.mitchellh.ghostty.desktop"
             "io.github.up.desktop"
             "org.gnome.Boxes.desktop"
-            "code.desktop"
+            "codium.desktop"
           ];
         };
 
