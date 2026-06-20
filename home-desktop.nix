@@ -190,7 +190,7 @@
 
         $D write /org/gnome/desktop/app-folders/folders/Office/name   "'Office'"
         $D write /org/gnome/desktop/app-folders/folders/Office/apps \
-          "['org.onlyoffice.desktopeditors.desktop', 'org.gnome.TextEditor.desktop', 'org.gnome.Papers.desktop']"
+          "['org.onlyoffice.desktopeditors.desktop', 'org.gnome.TextEditor.desktop', 'org.gnome.Papers.desktop', 'net.cozic.joplin_desktop.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/"3D"/name "'3D'"
         $D write /org/gnome/desktop/app-folders/folders/"3D"/apps \
