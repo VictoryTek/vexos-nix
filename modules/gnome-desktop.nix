@@ -75,6 +75,7 @@
             "org.onlyoffice.desktopeditors.desktop"
             "org.gnome.TextEditor.desktop"
             "org.gnome.Papers.desktop"
+            "net.cozic.joplin_desktop.desktop"
           ];
         };
 
