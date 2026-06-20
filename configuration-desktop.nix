@@ -4,6 +4,7 @@
   imports = [
     ./modules/gnome.nix
     ./modules/gnome-desktop.nix
+    ./modules/remote-desktop.nix    # auto-configures grdctl RDP credentials from /etc/nixos/secrets/rdp-password
     ./modules/gaming.nix
     ./modules/audio.nix
     ./modules/gpu.nix
