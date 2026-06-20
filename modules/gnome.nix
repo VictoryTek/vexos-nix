@@ -87,7 +87,7 @@
           };
 
           "org/gnome/shell/extensions/nothing-to-say" = {
-            keybinding-toggle-mute = [ "<Super>backslash" ];
+            keybinding-toggle-mute = lib.gvariant.mkEmptyArray lib.gvariant.type.string;
             icon-visibility        = "always";
           };
 

@@ -43,7 +43,34 @@
           intellihide   = true;
         };
 
-"org/gnome/desktop/app-folders" = {
+        # ── Mic mute global keybinding ──────────────────────────────────
+        # gsd-media-keys runs a flock-debounced wrapper so key-autorepeat
+        # events hit a locked fd and exit; only one wpctl call fires per
+        # physical keypress.  notify-send provides visual feedback.
+        "org/gnome/settings-daemon/plugins/media-keys" = {
+          custom-keybindings = [ "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/mute-mic/" ];
+        };
+        "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/mute-mic" = {
+          name    = "Toggle microphone mute";
+          binding = "<Super>backslash";
+          command = toString (pkgs.writeShellScript "toggle-mic" ''
+            (
+              flock -n 9 || exit 0
+              ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+              if ${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SOURCE@ \
+                  | grep -q MUTED; then
+                ${pkgs.libnotify}/bin/notify-send -t 1500 \
+                  -i microphone-sensitivity-muted "Mic Muted"
+              else
+                ${pkgs.libnotify}/bin/notify-send -t 1500 \
+                  -i microphone-sensitivity-high "Mic Active"
+              fi
+              sleep 0.3
+            ) 9>"''${XDG_RUNTIME_DIR}/mic-toggle.lock"
+          '');
+        };
+
+        "org/gnome/desktop/app-folders" = {
           folder-children = [ "Games" "Game Utilities" "Office" "Utilities" "System" ];
         };
 
