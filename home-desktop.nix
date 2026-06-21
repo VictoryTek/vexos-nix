@@ -227,17 +227,19 @@
       Type            = "oneshot";
       RemainAfterExit = true;
       ExecStart       = toString (pkgs.writeShellScript "vexos-init-extensions-desktop" ''
-        STAMP="$HOME/.local/share/vexos/.dconf-extensions-initialized-v2"
+        STAMP="$HOME/.local/share/vexos/.dconf-extensions-initialized-v3"
         [ -f "$STAMP" ] && exit 0
 
         D="${pkgs.dconf}/bin/dconf"
 
-        # Clear disabled-extensions first so nothing-to-say (and any other
-        # extension that was manually disabled) can be re-enabled below.
         $D write /org/gnome/shell/disabled-extensions "[]"
 
         $D write /org/gnome/shell/enabled-extensions \
           "['appindicatorsupport@rgcjonas.gmail.com', 'dash-to-dock@micxgx.gmail.com', 'AlphabeticalAppGrid@stuarthayhurst', 'gnome-ui-tune@itstime.tech', 'nothing-to-say@extensions.gnome.wouter.bolsterl.ee', 'steal-my-focus-window@steal-my-focus-window', 'tailscale-status@maxgallup.github.com', 'caffeine@patapon.info', 'blur-my-shell@aunetx', 'background-logo@fedorahosted.org', 'tiling-assistant@leleat-on-github', 'gamemodeshellextension@trsnaqe.com']"
+
+        # Clear the user-dconf nothing-to-say keybinding so it does not
+        # conflict with the gsd-media-keys binding that calls wpctl directly.
+        $D write /org/gnome/shell/extensions/nothing-to-say/keybinding-toggle-mute "[]"
 
         mkdir -p "$HOME/.local/share/vexos"
         touch "$STAMP"
