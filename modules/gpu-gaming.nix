@@ -19,4 +19,9 @@
     vulkan-tools  # vulkaninfo — verify Vulkan driver and capabilities
     mesa-demos    # glxinfo, glxgears — OpenGL/Vulkan renderer diagnostics
   ];
+
+  # Increase Mesa's on-disk shader cache from the default 1 GB to 4 GB.
+  # Larger cache means fewer recompilations on repeat play sessions (AMD and Intel).
+  # Ignored by the NVIDIA proprietary driver (uses its own shader cache).
+  environment.variables.MESA_SHADER_CACHE_MAX_SIZE = "4G";
 }

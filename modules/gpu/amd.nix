@@ -18,6 +18,18 @@
   # LACT — GPU overclocking, fan curves, and power profiles (matches Bazzite)
   services.lact.enable = true;
 
+  # GameMode AMD GPU boost: switch amdgpu power_dpm_force_performance_level to
+  # "high" while a game is active. Requires gaming.nix to enable programs.gamemode.
+  programs.gamemode.settings.gpu = {
+    apply_gpu_optimisations = "accept-responsibility";
+    gpu_device = 0;
+    amd_performance_level = "high";
+  };
+
+  # RADV Graphics Pipeline Libraries: enables async Vulkan pipeline compilation,
+  # reducing first-play stutter. Safe no-op if Mesa has already promoted gpl to default.
+  environment.variables.RADV_PERFTEST = "gpl";
+
   # ROCm device node symlink: many compute apps hard-code /opt/rocm
   systemd.tmpfiles.rules =
     let

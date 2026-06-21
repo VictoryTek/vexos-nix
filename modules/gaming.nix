@@ -29,14 +29,15 @@
     enable = true;
     settings = {
       general = {
-        renice = 10;
-        inhibit_screensaver = 0; # avoids error log when no screensaver is installed
+        renice = 10;             # negated by gamemode → nice = -10 (higher priority)
+        inhibit_screensaver = 1; # prevent GNOME screen-lock mid-game
       };
-      gpu = {
-        apply_gpu_optimisations = "accept-responsibility";
-        gpu_device = 0;
-        amd_performance_level = "high";
+      cpu = {
+        # Auto-pin game threads to preferred cores on Ryzen 3D V-Cache and
+        # Intel P+E-core (12th gen+) CPUs; no-op on unsupported hardware.
+        pin_cores = "yes";
       };
+      # gpu section is GPU-vendor-specific — see modules/gpu/amd.nix (AMD)
     };
   };
 
@@ -101,6 +102,21 @@
 
   # Grant the primary user access to GameMode CPU governor, input devices, and USB peripherals.
   users.users.${config.vexos.user.name}.extraGroups = [ "gamemode" "input" "plugdev" ];
+
+  # ── bubblewrap setuid override ────────────────────────────────────────────
+  # bubblewrap 0.11.x removed setuid priv mode. programs.steam.enable still
+  # sets security.wrappers.bwrap with setuid = true, which causes bwrap to
+  # abort on launch ("setuid use of bubblewrap is not supported in this build").
+  # Override the wrapper to remove the setuid bit; bwrap uses unprivileged
+  # user namespaces (CLONE_NEWUSER) instead, which the kernel supports.
+  security.wrappers.bwrap = lib.mkForce {
+    source      = "${pkgs.bubblewrap}/bin/bwrap";
+    setuid      = false;
+    setgid      = false;
+    owner       = "root";
+    group       = "root";
+    permissions = "u+rx,g+x,o+x";
+  };
 
   # ── AppArmor Wine baseline ─────────────────────────────────────────────────
   # wineWow64Packages.stagingFull installs setuid wrappers (wineserver, wine-preloader)
