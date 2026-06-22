@@ -59,11 +59,11 @@
               ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
               if ${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SOURCE@ \
                   | grep -q MUTED; then
-                ${pkgs.libcanberra-gtk3}/bin/canberra-gtk-play \
-                  --id="audio-volume-muted" --description="Mic muted"
+                ${pkgs.pipewire}/bin/pw-play \
+                  ${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/device-removed.oga
               else
-                ${pkgs.libcanberra-gtk3}/bin/canberra-gtk-play \
-                  --id="audio-volume-high" --description="Mic active"
+                ${pkgs.pipewire}/bin/pw-play \
+                  ${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/device-added.oga
               fi
               sleep 0.3
             ) 9>"''${XDG_RUNTIME_DIR}/mic-toggle.lock"
