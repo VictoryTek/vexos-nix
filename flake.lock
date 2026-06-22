@@ -192,22 +192,6 @@
         "type": "github"
       }
     },
-    "nixpkgs_3": {
-      "locked": {
-        "lastModified": 1779560665,
-        "narHash": "sha256-tpyBcxPpcQb8ukyNF7DoCwfSY3VPsxHoYwj00Cayv5o=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixos-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
     "proxmox-nixos": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -369,15 +353,17 @@
     "vexboard": {
       "inputs": {
         "flake-utils": "flake-utils_2",
-        "nixpkgs": "nixpkgs_3",
+        "nixpkgs": [
+          "nixpkgs-unstable"
+        ],
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1782087135,
-        "narHash": "sha256-7UxcnOYDv5tNVBjTOVoWgzO9G5de6r6XTo617RoK9ZM=",
+        "lastModified": 1782141367,
+        "narHash": "sha256-Cjbyb1Cd3Y0PD16/MWgVnBrWXjNPTRw1Jn5LmMn60hk=",
         "owner": "VictoryTek",
         "repo": "vexboard",
-        "rev": "1a8a49a1aa7a2786ba3de8141786b1b093722e78",
+        "rev": "da5c2f377e39078e4f97285bff7448a0987451a9",
         "type": "github"
       },
       "original": {

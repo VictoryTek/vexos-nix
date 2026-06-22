@@ -39,10 +39,14 @@
     proxmox-nixos.url = "github:SaumonNet/proxmox-nixos";
 
     # vexboard: VexOS Server dashboard (Rust + WASM). Used by modules/server/vexboard.nix.
-    # Do NOT add inputs.vexboard.inputs.nixpkgs.follows = "nixpkgs" — vexboard builds
-    # against nixos-unstable with rust-overlay; forcing stable nixpkgs breaks the
-    # Rust/WASM toolchain.
-    vexboard.url = "github:VictoryTek/vexboard";
+    # Follows nixpkgs-unstable so it updates in sync with the outer flake's unstable pin
+    # (same pattern as `up` following `nixpkgs`). Do NOT change follows to "nixpkgs"
+    # (stable) — vexboard builds against nixos-unstable with rust-overlay and the stable
+    # toolchain breaks the Rust/WASM build.
+    vexboard = {
+      url = "github:VictoryTek/vexboard";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
   };
 
   outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, impermanence, sops-nix, up, ... }@inputs:
