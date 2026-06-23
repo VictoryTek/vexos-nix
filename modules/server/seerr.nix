@@ -32,7 +32,8 @@ in
   config = lib.mkIf cfg.enable {
     systemd.services.seerr = {
       description = "Seerr, a media request manager for Jellyfin, Plex, and Emby";
-      after = [ "network.target" ];
+      wants = [ "network-online.target" ];
+      after = [ "network.target" "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
       environment = {
         PORT = toString cfg.port;
@@ -41,9 +42,11 @@ in
       serviceConfig = {
         Type = "exec";
         StateDirectory = "seerr";
+        WorkingDirectory = "/var/lib/seerr";
         DynamicUser = true;
         ExecStart = lib.getExe pkgs.unstable.seerr;
         Restart = "on-failure";
+        RestartSec = "5";
         ProtectHome = true;
         ProtectSystem = "strict";
         PrivateTmp = true;
