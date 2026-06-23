@@ -12,5 +12,7 @@ final: prev: {
     # ── AI & Privacy ────────────────────────────────────────────────────────
     kiji-proxy           = final.callPackage ./kiji-proxy { };
     portbook             = final.callPackage ./portbook { };
+    # ── 3D Printing ─────────────────────────────────────────────────────────
+    creality-print       = final.callPackage ./creality-print { };
   };
 }
