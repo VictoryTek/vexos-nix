@@ -71,16 +71,7 @@
         };
 
         "org/gnome/desktop/app-folders" = {
-          folder-children = [ "Games" "Game Utilities" "Office" "3D" "Utilities" "System" ];
-        };
-
-        "org/gnome/desktop/app-folders/folders/3D" = {
-          name = "3D";
-          apps = [
-            "org.blender.Blender.desktop"
-            "com.orcaslicer.OrcaSlicer.desktop"
-            "CrealityPrint.desktop"
-          ];
+          folder-children = [ "Games" "Game Utilities" "Office" "Utilities" "System" ];
         };
 
         "org/gnome/desktop/app-folders/folders/Games" = {
