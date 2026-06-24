@@ -158,12 +158,25 @@ GITIGNORE
         # Earlier versions of this migration excluded hardware-configuration.nix,
         # kernel-install-override.nix, and stateless-user-override.nix from git,
         # which caused git+file:// builds to fail (file absent from store).
-        # Force-add them if present so they are tracked regardless of gitignore.
-        for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix; do
+        # server-services.nix is created by `just enable` after the initial git
+        # init, so it is typically untracked.  git+file:// silently excludes
+        # untracked files, which drops ALL enabled services after every update.
+        # Force-add all host-local config files so they are tracked regardless of
+        # when they were created.
+        for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix server-services.nix; do
           if [ -f "/etc/nixos/$_f" ]; then
             git -C /etc/nixos add -f "$_f" 2>/dev/null || true
           fi
         done
+        # Commit any newly staged files so git+file:// sees their current content.
+        # (git+file:// reads committed state; staged-but-uncommitted changes are
+        # invisible to it, which would silently use the old HEAD version.)
+        if ! git -C /etc/nixos diff --cached --quiet 2>/dev/null; then
+          git -C /etc/nixos \
+            -c user.email="vexos@localhost" \
+            -c user.name="VexOS" \
+            commit -q -m "chore: track /etc/nixos config files" 2>/dev/null || true
+        fi
 
         # ── Kernel install override auto-clear ───────────────────────────────
         # The installer writes kernel-install-override.nix when target-kernel
