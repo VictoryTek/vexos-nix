@@ -24,6 +24,7 @@
     ./modules/users.nix
     ./modules/asus-opt.nix
     ./modules/boot-discovery.nix
+    ./modules/network-killswitch-stateless.nix  # VPN kill switch + IPv6 disable
   ];
 
   # ---------- Branding ----------
@@ -54,6 +55,12 @@
   # Filesystem impermanence: / is mounted as tmpfs by this module.
   # Run scripts/stateless-setup.sh to format the disk before first deploy.
   vexos.impermanence.enable = true;
+
+  # Persist NetworkManager VPN connection profiles across reboots so the user
+  # only needs to import .ovpn files and enter credentials once.
+  # Credentials live in /persistent/etc/NetworkManager/system-connections/ —
+  # user-controlled, never in git.
+  vexos.impermanence.extraPersistDirs = [ "/etc/NetworkManager/system-connections" ];
 
   # Create the persistent Documents backing directory on /persistent on first boot.
   # home-stateless.nix then symlinks ~/Documents → this path so files survive reboots.

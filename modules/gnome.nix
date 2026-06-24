@@ -251,7 +251,10 @@
 
   # ── NetworkManager VPN plugins ────────────────────────────────────────────
   # Enables .ovpn import via GNOME Settings → VPN and nmcli connection import.
-  networking.networkmanager.plugins = [ pkgs.networkmanager-openvpn ];
+  # Must use .packages (not .plugins) on NixOS 25.11: .plugins no longer
+  # registers the D-Bus service org.freedesktop.NetworkManager.openvpn,
+  # causing "VPN service not installed" errors when activating connections.
+  networking.networkmanager.packages = [ pkgs.networkmanager-openvpn ];
 
   }; # end config
 }
