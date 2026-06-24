@@ -25,4 +25,8 @@
 
   # vexos.hardware.asus.enable = false; # VM — no physical ASUS hardware
   system.nixos.distroName = "VexOS Desktop VM";
+
+  # Steam requires GPU hardware that VMs don't have; disabling avoids building
+  # the steam FOD (Valve's CDN serves inconsistent tarballs for the same version).
+  programs.steam.enable = lib.mkForce false;
 }
