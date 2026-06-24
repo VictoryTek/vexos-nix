@@ -2030,6 +2030,34 @@ disable service: _require-server-role
     echo "✗ Disabled: $SERVICE"
     echo "  → Run 'just rebuild' to apply."
 
+# Enable the VPN kill switch — blocks all clearnet egress when no VPN tunnel is active.
+# Desktop and HTPC roles only. On the stateless role the kill switch is always active.
+enable-kill-switch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [[ "$variant" == *stateless* ]]; then
+        echo "Kill switch is always active on the stateless role — no toggle needed."
+        exit 0
+    fi
+    systemctl start vpn-kill-switch.service
+    echo "✓ VPN kill switch enabled — all clearnet egress blocked outside the VPN tunnel."
+    echo "  Disable with: just disable-kill-switch"
+
+# Disable the VPN kill switch — restores normal clearnet egress.
+# Desktop and HTPC roles only. On the stateless role the kill switch cannot be disabled.
+disable-kill-switch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [[ "$variant" == *stateless* ]]; then
+        echo "error: the kill switch cannot be disabled on the stateless role — always active by design." >&2
+        exit 1
+    fi
+    systemctl stop vpn-kill-switch.service
+    echo "✓ VPN kill switch disabled — clearnet egress restored."
+    echo "  Re-enable with: just enable-kill-switch"
+
 # Rebuild the system using the current variant.
 rebuild:
     #!/usr/bin/env bash

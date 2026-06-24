@@ -26,6 +26,7 @@
     ./modules/appimage.nix
     ./modules/asus-opt.nix
     ./modules/boot-discovery.nix
+    ./modules/network-killswitch-service.nix  # toggleable VPN kill switch (just enable-kill-switch)
   ];
 
   # ---------- State version ----------
