@@ -322,6 +322,7 @@
         backupFileExtension = "backup";
       };
       nixpkgs.overlays = [
+        openblasNoCheckOverlay
         (final: prev: {
           unstable = import nixpkgs-unstable {
             inherit (final) config;
