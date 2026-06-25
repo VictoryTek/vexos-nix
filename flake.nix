@@ -63,6 +63,7 @@
           unstable = import nixpkgs-unstable {
             inherit (final) config;
             inherit (final.stdenv.hostPlatform) system;
+            overlays = [ openblasNoCheckOverlay ];
           };
         })
       ];
@@ -104,13 +105,15 @@
 
     # Workaround: openblas test #30 (xzcblat3) deadlocks in the Nix sandbox on
     # certain hardware/kernel combinations. doCheck = false skips the test suite
-    # without changing the compiled library.
+    # without changing the compiled library. Applied to both stable and unstable
+    # nixpkgs instances because pkgs.unstable is a separate import that does not
+    # inherit nixpkgs.overlays.
+    openblasNoCheckOverlay = _: prev: {
+      openblas = prev.openblas.overrideAttrs (_: { doCheck = false; });
+    };
+
     openblasNoCheckModule = {
-      nixpkgs.overlays = [
-        (final: prev: {
-          openblas = prev.openblas.overrideAttrs (_: { doCheck = false; });
-        })
-      ];
+      nixpkgs.overlays = [ openblasNoCheckOverlay ];
     };
 
     # Overlay modules shared by every non-vanilla role (unstable channel + custom pkgs).
@@ -323,6 +326,7 @@
           unstable = import nixpkgs-unstable {
             inherit (final) config;
             inherit (final.stdenv.hostPlatform) system;
+            overlays = [ openblasNoCheckOverlay ];
           };
         })
         (import ./pkgs)
