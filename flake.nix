@@ -102,8 +102,19 @@
       let path = /etc/nixos/stateless-user-override.nix;
       in if builtins.pathExists path then [ path ] else [];
 
+    # Workaround: openblas test #30 (xzcblat3) deadlocks in the Nix sandbox on
+    # certain hardware/kernel combinations. doCheck = false skips the test suite
+    # without changing the compiled library.
+    openblasNoCheckModule = {
+      nixpkgs.overlays = [
+        (final: prev: {
+          openblas = prev.openblas.overrideAttrs (_: { doCheck = false; });
+        })
+      ];
+    };
+
     # Overlay modules shared by every non-vanilla role (unstable channel + custom pkgs).
-    commonBase = [ unstableOverlayModule customPkgsOverlayModule ];
+    commonBase = [ unstableOverlayModule customPkgsOverlayModule openblasNoCheckModule ];
 
     # Proxmox overlay + NixOS module shared by server and headless-server roles.
     proxmoxBase = [ proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
