@@ -109,7 +109,7 @@
     # nixpkgs instances because pkgs.unstable is a separate import that does not
     # inherit nixpkgs.overlays.
     openblasNoCheckOverlay = _: prev: {
-      openblas = prev.openblas.overrideAttrs (_: { doCheck = false; });
+      openblas = prev.openblas.overrideAttrs (_: { checkPhase = ":"; });
     };
 
     openblasNoCheckModule = {
