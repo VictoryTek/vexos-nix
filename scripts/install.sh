@@ -253,15 +253,13 @@ if [ ! -d /sys/firmware/efi ]; then
   echo "  Patching /etc/nixos/flake.nix to use GRUB on ${GRUB_DEVICE}..."
   # Replace the bootloaderModule block using awk (always available on NixOS ISO).
   # Tracks brace depth to reliably skip the old block regardless of comments/content.
+  # Use vexos.bootloader / vexos.grub.device options so modules/system.nix owns
+  # the actual boot.loader.* assignments — avoids equal-priority option conflicts.
   awk -v device="$GRUB_DEVICE" '
     /^    bootloaderModule = \{ \.\.\. \}: \{/ {
       print "    bootloaderModule = { ... }: {"
-      print "      boot.loader.systemd-boot.enable = false;"
-      print "      boot.loader.grub = {"
-      print "        enable     = true;"
-      print "        efiSupport = false;"
-      print "        device     = \"" device "\";"
-      print "      };"
+      print "      vexos.bootloader  = \"grub\";"
+      print "      vexos.grub.device = \"" device "\";"
       print "    };"
       in_block = 1
       depth = 1
