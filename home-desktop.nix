@@ -18,8 +18,7 @@
   # ── User packages ──────────────────────────────────────────────────────────
   home.packages = with pkgs; [
     # Development tools
-    # NOTE: VS Code is installed as unstable.vscode-fhs in modules/development.nix
-    # (FHS env required for VS Code to launch correctly on NixOS).
+    # NOTE: VS Code (programs.vscode, below) is currently disabled.
     rustup
     unstable.nodejs  # latest LTS (nodejs_25 removed — EOL 2026-06-01)
 
@@ -56,30 +55,31 @@
   # ── VS Code (package + settings managed declaratively) ───────────────────
   # Installs vscode-fhs into the user profile and deploys settings to
   # ~/.config/Code/User/profiles/default/settings.json on every activation.
-  programs.vscode = {
-    enable  = true;
-    package = pkgs.unstable.vscode-fhs;
-    profiles.default.userSettings = {
-      "files.exclude" = {
-        "**/.direnv" = true;
-        "**/result"  = true;
-      };
-      "files.watcherExclude" = {
-        "**/.direnv/**"      = true;
-        "**/.git/**"         = true;
-        "**/node_modules/**" = true;
-        "**/result/**"       = true;
-        "/nix/store/**"      = true;
-      };
-      "rust-analyzer.cargo.buildScripts.enable" = false;
-      "rust-analyzer.check.command" = "check";
-      "rust-analyzer.server.extraEnv" = {
-        "RA_MEMORY_LIMIT" = "4096";
-      };
-      "workbench.enableExperiments" = false;
-      "claudeCode.preferredLocation" = "panel";
-    };
-  };
+  # Temporarily disabled — re-enable by uncommenting this block.
+  # programs.vscode = {
+  #   enable  = true;
+  #   package = pkgs.unstable.vscode-fhs;
+  #   profiles.default.userSettings = {
+  #     "files.exclude" = {
+  #       "**/.direnv" = true;
+  #       "**/result"  = true;
+  #     };
+  #     "files.watcherExclude" = {
+  #       "**/.direnv/**"      = true;
+  #       "**/.git/**"         = true;
+  #       "**/node_modules/**" = true;
+  #       "**/result/**"       = true;
+  #       "/nix/store/**"      = true;
+  #     };
+  #     "rust-analyzer.cargo.buildScripts.enable" = false;
+  #     "rust-analyzer.check.command" = "check";
+  #     "rust-analyzer.server.extraEnv" = {
+  #       "RA_MEMORY_LIMIT" = "4096";
+  #     };
+  #     "workbench.enableExperiments" = false;
+  #     "claudeCode.preferredLocation" = "panel";
+  #   };
+  # };
 
   # ── Direnv (per-directory environments) ────────────────────────────────────
   programs.direnv = {

@@ -1,6 +1,6 @@
 # modules/server/seerr.nix
 # Seerr — open-source media request and discovery manager for Jellyfin, Plex, and Emby.
-# Successor to Jellyseerr/Overseerr. Package sourced from nixpkgs-unstable.
+# Successor to Jellyseerr/Overseerr. Package sourced from stable nixpkgs.
 # Note: Seerr and Jellyseerr both listen on ports 5055/5056 respectively — enable only one.
 { config, lib, pkgs, ... }:
 let
@@ -44,7 +44,7 @@ in
         StateDirectory = "seerr";
         WorkingDirectory = "/var/lib/seerr";
         DynamicUser = true;
-        ExecStart = lib.getExe pkgs.unstable.seerr;
+        ExecStart = lib.getExe pkgs.seerr;
         Restart = "on-failure";
         RestartSec = "5";
         ProtectHome = true;

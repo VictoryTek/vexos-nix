@@ -136,7 +136,7 @@ verify current APIs and documentation using Context7.
 Project Name: **vexos-nix**
 Project Type: **Personal NixOS system configuration (Nix Flake)**
 Primary Language(s): **Nix**
-Framework(s): **NixOS 25.11, nixpkgs (stable + unstable overlay), Nix Flakes, home-manager, impermanence, sops-nix**
+Framework(s): **NixOS 26.05, nixpkgs (stable + unstable overlay), Nix Flakes, home-manager, impermanence, sops-nix**
 
 Build Command(s):
 - `sudo nixos-rebuild switch --flake .#vexos-<role>-<gpu>` (**user-initiated only** — see FORBIDDEN COMMANDS)

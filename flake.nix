@@ -4,8 +4,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
-    # nixpkgs-unstable: used to supply latest GNOME application packages in
-    # modules/gnome.nix via the pkgs.unstable overlay.
+    # nixpkgs-unstable: supplies a small set of fast-moving packages via the
+    # pkgs.unstable overlay (see unstableOverlayModule below). Current consumers:
+    # home-desktop.nix (nodejs; vscode-fhs is present but disabled) and
+    # modules/server/papermc.nix.
     # Do NOT add inputs.nixpkgs-unstable.follows = "nixpkgs" — that would
     # pin unstable to the stable revision, defeating its purpose.
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -56,7 +58,8 @@
     system = "x86_64-linux";
 
     # Inline NixOS module: exposes pkgs.unstable.* sourced from nixpkgs-unstable.
-    # Used in modules/gnome.nix to pin GNOME application tools to latest.
+    # Used to pin a small set of fast-moving packages to latest (nodejs, papermc;
+    # vscode-fhs when enabled).
     unstableOverlayModule = {
       nixpkgs.overlays = [
         (final: prev: {
