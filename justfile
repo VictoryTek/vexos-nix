@@ -850,6 +850,89 @@ setup-rdp:
     echo "configured automatically on every login — no further action needed."
     echo ""
 
+# Set the system hostname — applies immediately and persists across rebuilds.
+# Usage:
+#   just set-hostname mypc       — direct
+#   just set-hostname            — interactive prompt
+set-hostname name="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    NAME="{{name}}"
+
+    if [ -z "$NAME" ]; then
+        printf "New hostname: "
+        read -r NAME
+    fi
+
+    if [ -z "$NAME" ]; then
+        echo "error: hostname cannot be empty." >&2
+        exit 1
+    fi
+
+    # RFC 1123: labels are alphanumeric + hyphens, no leading/trailing hyphens, max 63 chars per label.
+    if ! echo "$NAME" | grep -qP '^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'; then
+        echo "error: '$NAME' is not a valid hostname." >&2
+        echo "       Labels must be alphanumeric and may contain hyphens, but not at the start or end." >&2
+        echo "       Examples: mypc, vexos-desktop, home-server" >&2
+        exit 1
+    fi
+
+    CURRENT=$(hostname 2>/dev/null || echo "unknown")
+
+    if [ "$NAME" = "$CURRENT" ]; then
+        echo "Hostname is already '${NAME}'. Nothing to do."
+        exit 0
+    fi
+
+    echo ""
+    echo "Changing hostname: ${CURRENT} → ${NAME}"
+    echo ""
+
+    # Apply to the running system immediately.
+    sudo hostnamectl set-hostname "$NAME"
+    echo "✓ Applied to running system (hostnamectl)"
+
+    # Persist through NixOS rebuilds by updating /etc/nixos/flake.nix.
+    # networking.hostName = lib.mkDefault "vexos" (in modules/network.nix) is
+    # overridden by any plain assignment in hardwareModule or hostModule.
+    FLAKE="/etc/nixos/flake.nix"
+    PERSISTED=false
+
+    if [ -f "$FLAKE" ]; then
+        if grep -qP 'networking\.hostName\s*=' "$FLAKE"; then
+            # Update existing networking.hostName value in-place.
+            sudo sed -i -E "s|networking\.hostName\s*=\s*\"[^\"]*\"|networking.hostName = \"${NAME}\"|g" "$FLAKE"
+            echo "✓ Updated networking.hostName in ${FLAKE}"
+            PERSISTED=true
+        elif grep -qF 'hardwareModule = { ... }: { };' "$FLAKE" 2>/dev/null; then
+            # Empty hardwareModule — inject the hostname assignment.
+            sudo sed -i "s|hardwareModule = { \.\.\. }: { };|hardwareModule = { ... }: { networking.hostName = \"${NAME}\"; };|" "$FLAKE"
+            echo "✓ Set networking.hostName in hardwareModule in ${FLAKE}"
+            PERSISTED=true
+        fi
+    fi
+
+    if [ "$PERSISTED" = "false" ]; then
+        echo ""
+        echo "  Could not auto-update ${FLAKE}."
+        echo "  To persist the hostname across rebuilds, add this line to your"
+        echo "  hardwareModule (or hostModule for server roles) in ${FLAKE}:"
+        echo ""
+        echo "    networking.hostName = \"${NAME}\";"
+        echo ""
+    else
+        echo "  Hostname will persist across rebuilds."
+    fi
+
+    echo ""
+    printf "Rebuild now to apply fully via NixOS? [y/N]: "
+    read -r REBUILD_ANSWER || true
+    case "${REBUILD_ANSWER,,}" in
+        y|yes) just rebuild ;;
+        *) echo "Skipped — run 'just rebuild' when ready." ;;
+    esac
+
 # Copy your SSH key to a remote machine so future connections need no password.
 # Usage:
 #   just ssh                     — interactive prompts
