@@ -31,8 +31,6 @@
   security.audit = {
     enable = true;
     rules = [
-      # AppArmor status changes (profile loads, mode switches)
-      "-w /etc/apparmor.d/ -p wa -k apparmor_policy"
       # Time changes — useful for forensic timeline reconstruction
       "-a always,exit -F arch=b64 -S adjtimex,settimeofday -k time_change"
       # All exec calls — noisy but critical for audit trails on servers
