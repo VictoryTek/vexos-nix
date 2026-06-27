@@ -889,9 +889,12 @@ set-hostname name="":
     echo "Changing hostname: ${CURRENT} → ${NAME}"
     echo ""
 
-    # Apply to the running system immediately.
-    sudo hostnamectl set-hostname "$NAME"
-    echo "✓ Applied to running system (hostnamectl)"
+    # Apply to the running kernel immediately.
+    # --transient avoids writing /etc/hostname, which is read-only on NixOS
+    # (it's a symlink into the Nix store). The static hostname is corrected
+    # on the next rebuild via the flake.nix edit below.
+    sudo hostnamectl set-hostname --transient "$NAME"
+    echo "✓ Applied to running system (transient — persists after rebuild)"
 
     # Persist through NixOS rebuilds by updating /etc/nixos/flake.nix.
     # networking.hostName = lib.mkDefault "vexos" (in modules/network.nix) is
