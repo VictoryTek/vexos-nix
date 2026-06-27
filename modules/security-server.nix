@@ -10,8 +10,6 @@
 #     the audit subsystem; without auditd they only land in dmesg/journald
 #     with no structured retention. On servers we want persistent, parsable
 #     records of policy violations.
-#   - audit ruleset: CIS-aligned baseline covering time changes, execve,
-#     mount/umount, kernel module load/unload, sudoers and sshd_config writes.
 #   - fail2ban: brute-force mitigation for SSH and Cockpit. Enabled by default
 #     on server roles because Cockpit and optional Samba/NFS file sharing are
 #     usually LAN-exposed via explicit firewall rules in modules/server/cockpit.nix.
@@ -22,28 +20,17 @@
   # Kernel audit daemon: required for proper AppArmor denial logging on
   # long-running hosts. Pulls in the auditd systemd unit and rotates
   # /var/log/audit/audit.log via its own logrotate.
+  #
+  # security.audit.enable is explicitly set to false to prevent audit-rules-nixos.service
+  # from starting. That service requires audit=1 in the kernel cmdline (added by
+  # security.audit.enable = true), but the param only takes effect after a reboot —
+  # the service runs immediately on nixos-rebuild switch and fails against the
+  # current kernel where the audit netlink socket is inactive.
+  # security.auditd.enable sets security.audit.enable = lib.mkDefault true, so we
+  # must explicitly override it here.
+  # auditd alone is sufficient for AppArmor denial logging.
   security.auditd.enable = true;
-
-  # Audit framework configuration: enable rule loading and install a
-  # CIS NixOS-aligned baseline that captures AppArmor STATUS/DENIED records
-  # along with privilege escalation, time changes, exec, mount, and kernel
-  # module events.
-  security.audit = {
-    enable = true;
-    rules = [
-      # Time changes — useful for forensic timeline reconstruction
-      "-a always,exit -F arch=b64 -S adjtimex,settimeofday -k time_change"
-      # All exec calls — noisy but critical for audit trails on servers
-      "-a always,exit -F arch=b64 -S execve -k exec"
-      # Mount and unmount events
-      "-a always,exit -F arch=b64 -S mount -S umount2 -k mounts"
-      # Kernel module load/unload
-      "-a always,exit -F arch=b64 -S init_module -S delete_module -S finit_module -k modules"
-      # Privileged file writes
-      "-w /etc/sudoers -p wa -k sudoers"
-      "-w /etc/ssh/sshd_config -p wa -k sshd_config"
-    ];
-  };
+  security.audit.enable = false;
 
   # Fail2ban: brute-force mitigation for SSH on server roles. Samba and NFS
   # do not have fail2ban filters in nixpkgs but benefit from SSH protection
