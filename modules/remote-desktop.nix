@@ -37,8 +37,12 @@ in
           exit 0
         fi
         password=$(cat ${lib.escapeShellArg cfg.passwordFile})
+        # User daemon: session sharing (desktop/htpc with active GNOME session)
         grdctl rdp enable
         grdctl rdp set-credentials ${lib.escapeShellArg username} "$password"
+        # System daemon: headless login sessions (server / no physical display)
+        grdctl --system rdp enable
+        grdctl --system rdp set-credentials ${lib.escapeShellArg username} "$password"
       '';
       serviceConfig = {
         Type            = "oneshot";
