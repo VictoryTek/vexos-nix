@@ -66,7 +66,6 @@
           unstable = import nixpkgs-unstable {
             inherit (final) config;
             inherit (final.stdenv.hostPlatform) system;
-            overlays = [ openblasNoCheckOverlay ];
           };
         })
       ];
@@ -106,21 +105,8 @@
       let path = /etc/nixos/stateless-user-override.nix;
       in if builtins.pathExists path then [ path ] else [];
 
-    # Workaround: openblas test #30 (xzcblat3) deadlocks in the Nix sandbox on
-    # certain hardware/kernel combinations. doCheck = false skips the test suite
-    # without changing the compiled library. Applied to both stable and unstable
-    # nixpkgs instances because pkgs.unstable is a separate import that does not
-    # inherit nixpkgs.overlays.
-    openblasNoCheckOverlay = _: prev: {
-      openblas = prev.openblas.overrideAttrs (_: { checkPhase = ":"; });
-    };
-
-    openblasNoCheckModule = {
-      nixpkgs.overlays = [ openblasNoCheckOverlay ];
-    };
-
     # Overlay modules shared by every non-vanilla role (unstable channel + custom pkgs).
-    commonBase = [ unstableOverlayModule customPkgsOverlayModule openblasNoCheckModule ];
+    commonBase = [ unstableOverlayModule customPkgsOverlayModule ];
 
     # Proxmox overlay + NixOS module shared by server and headless-server roles.
     proxmoxBase = [ proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve ];
@@ -325,12 +311,10 @@
         backupFileExtension = "backup";
       };
       nixpkgs.overlays = [
-        openblasNoCheckOverlay
         (final: prev: {
           unstable = import nixpkgs-unstable {
             inherit (final) config;
             inherit (final.stdenv.hostPlatform) system;
-            overlays = [ openblasNoCheckOverlay ];
           };
         })
         (import ./pkgs)
