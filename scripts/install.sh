@@ -208,12 +208,13 @@ fi
 
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}${NVIDIA_SUFFIX}"
 
-# Headless server cannot be activated live: doing so stops display-manager.service
-# during switch-to-configuration, killing the live ISO's GNOME session (and this
-# script). Use `nixos-rebuild boot` to install the new generation as default
-# without runtime activation; user reboots into the new system.
+# Server roles (both headless-server and server) cannot be activated live: doing so
+# restarts display-manager.service during switch-to-configuration, which kills the
+# live ISO's GNOME session (and this script). Use `nixos-rebuild boot` to install
+# the new generation as default without runtime activation; user reboots into the
+# new system.
 REBUILD_ACTION="switch"
-if [ "$ROLE" = "headless-server" ]; then
+if [ "$ROLE" = "headless-server" ] || [ "$ROLE" = "server" ]; then
   REBUILD_ACTION="boot"
 fi
 
@@ -221,7 +222,7 @@ fi
 echo ""
 echo -e "${BOLD}Building ${CYAN}${FLAKE_TARGET}${RESET}${BOLD} (action: ${REBUILD_ACTION})...${RESET}"
 if [ "$REBUILD_ACTION" = "boot" ]; then
-  echo -e "${YELLOW}[headless-server] Using 'nixos-rebuild boot' to preserve the live GNOME session. The new system will not activate until you reboot.${RESET}"
+  echo -e "${YELLOW}[${ROLE}] Using 'nixos-rebuild boot' to preserve the live GNOME session. The new system will not activate until you reboot.${RESET}"
 fi
 echo ""
 
@@ -464,7 +465,7 @@ if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE
   echo ""
   if [ "$REBUILD_ACTION" = "boot" ]; then
     echo -e "${GREEN}${BOLD}✓ Build complete. New generation registered as default.${RESET}"
-    echo -e "${YELLOW}[headless-server] Build complete. Reboot now to start the headless server. The live ISO will remain active until you do.${RESET}"
+    echo -e "${YELLOW}[${ROLE}] Build complete. Reboot now to activate the new system. The live ISO will remain active until you do.${RESET}"
     echo ""
     printf "Reboot now? [Y/n] "
     read -r REBOOT_CHOICE </dev/tty
