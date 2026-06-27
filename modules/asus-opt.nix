@@ -68,14 +68,25 @@
     # Apply static white Aura LED on every boot via asusctl CLI.
     # asusd 6.x removed the per-user service; setting the mode via CLI on startup
     # lets asusd persist the config to /etc/asusd/aura_<prod_id>.ron itself.
+    #
+    # Race-condition fix: asusd registers its D-Bus name before its Aura/HID subsystem
+    # finishes the USB device handshake. busctl-wait + retry loop bridges that gap.
     systemd.services.asus-aura-init = {
       description = "Set ASUS keyboard Aura to static white";
+      requires = [ "asusd.service" ];
       after    = [ "asusd.service" ];
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
         Type            = "oneshot";
         RemainAfterExit = true;
-        ExecStart       = "${pkgs.asusctl}/bin/asusctl aura effect static -c ffffff";
+        ExecStart = pkgs.writeShellScript "asus-aura-init" ''
+          ${pkgs.systemd}/bin/busctl wait --system --timeout=30 org.asuslinux.Daemon 2>/dev/null || true
+          for i in 1 2 3 4 5; do
+            ${pkgs.asusctl}/bin/asusctl aura effect static -c ffffff && exit 0
+            sleep 2
+          done
+          exit 1
+        '';
       };
     };
 
