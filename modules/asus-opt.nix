@@ -1,10 +1,12 @@
 # modules/asus-opt.nix
-# Hardware-agnostic wrapper for asus.nix. Import in all configuration-*.nix files.
+# Opt-in ASUS ROG/TUF **laptop** hardware support. Import in all configuration-*.nix files.
 #
-# Opt-in ASUS ROG/TUF hardware support available to all roles.
+# These services require ASUS WMI/ACPI platform interfaces that exist only on
+# ASUS ROG/TUF laptops — do NOT enable on ASUS desktop motherboards.
+# For desktop Aura RGB use programs.openrgb.enable = true instead.
 #
 # Set `vexos.hardware.asus.enable = true` in the relevant hosts/*.nix file
-# for any machine built on ASUS ROG / TUF hardware.
+# for any machine built on ASUS ROG / TUF laptop hardware.
 #
 # This module is imported by every configuration-*.nix so the option is
 # always declared regardless of role.  Only host files for physical ASUS

@@ -141,7 +141,8 @@ ASUS_LAPTOP=false
 if [ "$VARIANT" != "vm" ]; then
   echo ""
   echo -e "${BOLD}Is this an ASUS ROG/TUF device?${RESET}"
-  echo "  Enables: asusd (RGB, fan curves, charge limit), supergfxctl, power-profiles-daemon"
+  echo "  Laptop: enables asusd (fan curves, charge limit), supergfxctl, power-profiles-daemon"
+  echo "  Desktop: enables OpenRGB for ASUS Aura motherboard RGB control"
   echo ""
   printf "ASUS ROG/TUF device? [y/N] "
   read -r INPUT </dev/tty
@@ -336,21 +337,24 @@ echo -e "${GREEN}✓ /mnt/etc/nixos/flake.nix downloaded.${RESET}"
 if [ "$ASUS_ENABLE" = "true" ]; then
   if grep -qF 'hardwareModule = { ... }: { };' /mnt/etc/nixos/flake.nix 2>/dev/null; then
     echo ""
-    echo -e "${BOLD}Patching flake.nix to enable ASUS ROG/TUF support...${RESET}"
     if [ "$ASUS_LAPTOP" = "true" ]; then
+      echo -e "${BOLD}Patching flake.nix to enable ASUS ROG/TUF laptop support...${RESET}"
       sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; vexos.hardware.asus.batteryChargeLimit = 80; };/' /mnt/etc/nixos/flake.nix
-      echo -e "  ${GREEN}✓ ASUS hardware support enabled (laptop — battery charge limit set to 80%).${RESET}"
+      echo -e "  ${GREEN}✓ ASUS laptop support enabled (battery charge limit set to 80%).${RESET}"
     else
-      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; };/' /mnt/etc/nixos/flake.nix
-      echo -e "  ${GREEN}✓ ASUS hardware support enabled.${RESET}"
+      echo -e "${BOLD}Patching flake.nix to enable OpenRGB for ASUS desktop...${RESET}"
+      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { programs.openrgb.enable = true; };/' /mnt/etc/nixos/flake.nix
+      echo -e "  ${GREEN}✓ OpenRGB enabled for ASUS desktop Aura RGB control.${RESET}"
     fi
   else
     echo ""
     echo -e "  ${YELLOW}⚠ hardwareModule not found in flake.nix — skipping ASUS patch.${RESET}"
     echo "    To enable ASUS support manually, add to /etc/nixos/flake.nix:"
-    echo "      vexos.hardware.asus.enable = true;"
     if [ "$ASUS_LAPTOP" = "true" ]; then
+      echo "      vexos.hardware.asus.enable = true;"
       echo "      vexos.hardware.asus.batteryChargeLimit = 80;"
+    else
+      echo "      programs.openrgb.enable = true;"
     fi
   fi
 fi
