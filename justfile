@@ -29,6 +29,8 @@ default:
         echo ""
     fi
 
+# ── System Build & Deploy ────────────────────────────────────────────────────
+
 # Print the active role and GPU variant (e.g. vexos-desktop-amd).
 variant:
     @cat /etc/nixos/vexos-variant 2>/dev/null || echo "unknown (run a build first)"
@@ -243,6 +245,16 @@ build role variant flake="":
     _flake_dir=$(just _resolve-flake-dir "${TARGET}" "${FLAKE_OVERRIDE}")
     sudo nixos-rebuild build --flake "path:${_flake_dir}#${TARGET}"
 
+# Rebuild the system using the current variant.
+rebuild:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    target=$(cat /etc/nixos/vexos-variant 2>/dev/null) || { echo "error: /etc/nixos/vexos-variant not found — run a build first"; exit 1; }
+    echo ""
+    echo "Rebuilding ${target}..."
+    echo ""
+    sudo nixos-rebuild switch --impure --flake "path:/etc/nixos#${target}"
+
 # Update all flake inputs, then rebuild and switch using the current variant.
 update:
     #!/usr/bin/env bash
@@ -402,6 +414,8 @@ deploy:
     echo ""
     echo "Switching to: ${target}"
     sudo nixos-rebuild switch --impure --flake path:/etc/nixos#"${target}"
+
+# ── System Upgrades & Rollbacks ──────────────────────────────────────────────
 
 # Analyse what would happen if you upgrade NixOS to a newer version.
 # Tests your current config against the target nixpkgs WITHOUT modifying
@@ -676,6 +690,8 @@ rollforward:
     sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
     echo "Now on generation: ${next}"
 
+# ── Package Updates ──────────────────────────────────────────────────────────
+
 # Pin VSCode to a new version by fetching the tarball hash from Microsoft's
 # update servers, updating overlays/vscode.nix in-place, and rebuilding.
 #
@@ -775,6 +791,8 @@ update-vscode version:
     echo ""
     echo "VSCode ${VERSION} is live."
     echo "Commit overlays/vscode.nix when you are happy with the result."
+
+# ── System Administration ────────────────────────────────────────────────────
 
 # Reboot the system immediately.
 reboot:
@@ -968,6 +986,62 @@ ssh target="":
     echo ""
     echo "Done. Connect with: ssh ${TARGET}"
     echo ""
+
+# ── VPN ───────────────────────────────────────────────────────────────────────
+
+# First-time Tailscale setup — grants operator rights to the current user, then connects.
+# Run once after enabling services.tailscale.enable = true in your NixOS config and rebuilding.
+# On first run, Tailscale will print a URL to authenticate — open it in a browser.
+setup-tailscale:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v tailscale >/dev/null 2>&1; then
+        echo "error: tailscale not found." >&2
+        echo "       Add 'services.tailscale.enable = true;' to your NixOS config and rebuild." >&2
+        exit 1
+    fi
+
+    if ! systemctl is-active --quiet tailscaled 2>/dev/null; then
+        echo "error: tailscaled is not running." >&2
+        echo "       Add 'services.tailscale.enable = true;' to your NixOS config and rebuild." >&2
+        exit 1
+    fi
+
+    echo "Setting operator to ${USER} (allows tailscale CLI without sudo)..."
+    sudo tailscale set --operator="$USER"
+    echo "✓ Operator set."
+    echo ""
+    echo "Connecting to Tailscale..."
+    tailscale up
+
+# Enable the VPN kill switch — blocks all clearnet egress when no VPN tunnel is active.
+# Desktop and HTPC roles only. On the stateless role the kill switch is always active.
+enable-kill-switch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [[ "$variant" == *stateless* ]]; then
+        echo "Kill switch is always active on the stateless role — no toggle needed."
+        exit 0
+    fi
+    systemctl start vpn-kill-switch.service
+    echo "✓ VPN kill switch enabled — all clearnet egress blocked outside the VPN tunnel."
+    echo "  Disable with: just disable-kill-switch"
+
+# Disable the VPN kill switch — restores normal clearnet egress.
+# Desktop and HTPC roles only. On the stateless role the kill switch cannot be disabled.
+disable-kill-switch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [[ "$variant" == *stateless* ]]; then
+        echo "error: the kill switch cannot be disabled on the stateless role — always active by design." >&2
+        exit 1
+    fi
+    systemctl stop vpn-kill-switch.service
+    echo "✓ VPN kill switch disabled — clearnet egress restored."
+    echo "  Re-enable with: just enable-kill-switch"
 
 # ── Server Services Management ───────────────────────────────────────────────
 # Run `just services` to see available modules and their status.
@@ -2115,41 +2189,3 @@ disable service: _require-server-role
 
     echo "✗ Disabled: $SERVICE"
     echo "  → Run 'just rebuild' to apply."
-
-# Enable the VPN kill switch — blocks all clearnet egress when no VPN tunnel is active.
-# Desktop and HTPC roles only. On the stateless role the kill switch is always active.
-enable-kill-switch:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
-    if [[ "$variant" == *stateless* ]]; then
-        echo "Kill switch is always active on the stateless role — no toggle needed."
-        exit 0
-    fi
-    systemctl start vpn-kill-switch.service
-    echo "✓ VPN kill switch enabled — all clearnet egress blocked outside the VPN tunnel."
-    echo "  Disable with: just disable-kill-switch"
-
-# Disable the VPN kill switch — restores normal clearnet egress.
-# Desktop and HTPC roles only. On the stateless role the kill switch cannot be disabled.
-disable-kill-switch:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
-    if [[ "$variant" == *stateless* ]]; then
-        echo "error: the kill switch cannot be disabled on the stateless role — always active by design." >&2
-        exit 1
-    fi
-    systemctl stop vpn-kill-switch.service
-    echo "✓ VPN kill switch disabled — clearnet egress restored."
-    echo "  Re-enable with: just enable-kill-switch"
-
-# Rebuild the system using the current variant.
-rebuild:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    target=$(cat /etc/nixos/vexos-variant 2>/dev/null) || { echo "error: /etc/nixos/vexos-variant not found — run a build first"; exit 1; }
-    echo ""
-    echo "Rebuilding ${target}..."
-    echo ""
-    sudo nixos-rebuild switch --impure --flake "path:/etc/nixos#${target}"
