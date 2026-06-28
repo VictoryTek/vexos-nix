@@ -29,7 +29,11 @@ in
     systemd.user.services.vexos-rdp-setup = {
       description = "Configure GNOME Remote Desktop credentials";
       wantedBy    = [ "graphical-session.target" ];
-      after       = [ "graphical-session.target" ];
+      # wants ensures the user gnome-remote-desktop daemon is running before
+      # grdctl tries to configure it via D-Bus. Without this, the daemon may
+      # not yet be active when the script runs, making the credential calls no-ops.
+      wants       = [ "gnome-remote-desktop.service" ];
+      after       = [ "graphical-session.target" "gnome-remote-desktop.service" ];
       partOf      = [ "graphical-session.target" ];
       path        = [ pkgs.gnome-remote-desktop ];
       script      = ''
@@ -37,12 +41,8 @@ in
           exit 0
         fi
         password=$(cat ${lib.escapeShellArg cfg.passwordFile})
-        # User daemon: session sharing (desktop/htpc with active GNOME session)
         grdctl rdp enable
         grdctl rdp set-credentials ${lib.escapeShellArg username} "$password"
-        # System daemon: headless login sessions (server / no physical display)
-        grdctl --system rdp enable
-        grdctl --system rdp set-credentials ${lib.escapeShellArg username} "$password"
       '';
       serviceConfig = {
         Type            = "oneshot";
