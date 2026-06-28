@@ -36,7 +36,8 @@ in
       description = "Configure GNOME Remote Desktop system daemon credentials";
       wantedBy    = [ "graphical.target" ];
       after       = [ "graphical.target" "dbus.service" ];
-      path        = [ pkgs.gnome-remote-desktop ];
+      # polkit provides pkexec, which grdctl --system calls internally even as root
+      path        = [ pkgs.gnome-remote-desktop pkgs.polkit ];
       script      = ''
         if [ ! -f ${lib.escapeShellArg cfg.passwordFile} ]; then
           exit 0
