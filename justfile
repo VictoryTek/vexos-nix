@@ -968,13 +968,7 @@ enable-feature feature: _require-desktop-role
     fi
 
     echo "✓ $FEATURE enabled in $FEAT_FILE"
-    echo ""
-    printf "Rebuild now to apply? [y/N]: "
-    read -r REBUILD_ANSWER || true
-    case "${REBUILD_ANSWER,,}" in
-        y|yes) just rebuild ;;
-        *) echo "Skipped — run 'just rebuild' when ready." ;;
-    esac
+    echo "  Run 'just rebuild' to apply."
 
 # Disable an optional feature module.  Usage: just disable-feature gaming
 [group('Optional Feature Toggles')]
@@ -1006,13 +1000,7 @@ disable-feature feature: _require-desktop-role
     if grep -qP "^\s*${OPTION//./\\.}\s*=\s*true" "$FEAT_FILE" 2>/dev/null; then
         sudo sed -i -E "s/^(\s*)(${OPTION//./\\.})\s*=\s*true\s*;/\1# \2 = false;/" "$FEAT_FILE"
         echo "✓ $FEATURE disabled in $FEAT_FILE"
-        echo ""
-        printf "Rebuild now to apply? [y/N]: "
-        read -r REBUILD_ANSWER || true
-        case "${REBUILD_ANSWER,,}" in
-            y|yes) just rebuild ;;
-            *) echo "Skipped — run 'just rebuild' when ready." ;;
-        esac
+        echo "  Run 'just rebuild' to apply."
     else
         echo "$FEATURE is already disabled."
     fi
