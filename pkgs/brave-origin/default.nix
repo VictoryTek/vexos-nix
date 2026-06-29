@@ -37,6 +37,7 @@
 , nss
 , pango
 , pipewire
+, qt5
 , qt6
 , snappy
 , systemdLibs
@@ -97,6 +98,7 @@ stdenv.mkDerivation rec {
     nss
     pango
     pipewire
+    qt5.qtbase
     qt6.qtbase
     snappy
     systemdLibs
