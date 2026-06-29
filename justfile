@@ -337,28 +337,6 @@ update:
     echo "Updating to: ${target}"
     echo ""
 
-    # ── VSCode version check ──────────────────────────────────────────────────
-    # Query the Microsoft stable-channel API and compare against the pinned
-    # version in overlays/vscode.nix.  This is notification-only; apply with:
-    #   just update-vscode <VERSION>
-    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-    _flake_dir=$(dirname "$_jf_real")
-    _overlay="$_flake_dir/overlays/vscode.nix"
-    if [ -f "$_overlay" ] && command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-        _pinned=$(grep -oP 'version = "\K[^"]+' "$_overlay" | head -1)
-        _latest=$(curl -fsSL --max-time 5 \
-            "https://update.code.visualstudio.com/api/update/linux-x64/stable/latest" \
-            2>/dev/null | jq -r '.version // empty' 2>/dev/null || echo "")
-        if [ -n "$_pinned" ] && [ -n "$_latest" ]; then
-            if [ "$_pinned" = "$_latest" ]; then
-                echo "VSCode is up to date (${_pinned})"
-            else
-                echo "VSCode update available: ${_pinned} → ${_latest}, run just update-vscode ${_latest} to update"
-            fi
-        fi
-    fi
-    echo ""
-
     # vexos-update (installed by modules/nix.nix) uses a known-heavy block
     # engine before applying any update:
     #   Non-heavy — system glue, vexos scripts, Rust crates, binary wrappers;
@@ -431,7 +409,7 @@ deploy:
 # Reports:
 #   • Whether your config evaluates cleanly (option renames/removals)
 #   • Which packages are not yet in the new nixpkgs binary cache
-#   • A recommendation on whether it is safe to run just version-upgrade
+#   • A recommendation on whether it is safe to push the version upgrade
 #
 # Usage:
 #   just upgrade-analysis 26.05    — analyse upgrade to 26.05
@@ -579,27 +557,24 @@ upgrade-analysis target_version:
         echo "  2. Fix the affected modules/options in vexos-nix."
         echo "  3. Push the fix, then re-run:"
         echo "       just upgrade-analysis ${TARGET}"
-        echo "  4. Once [1/3] shows PASS, proceed to just version-upgrade."
+        echo "  4. Once [1/3] shows PASS, update flake.nix in the repo and push — the upgrade applies on next 'just update'."
         echo ""
     elif [ "$HEAVY_COUNT" -gt 0 ] 2>/dev/null; then
         echo "  ⚠ CONFIG OK — but ${HEAVY_COUNT} heavy kernel/NVIDIA package(s) not yet in cache."
         echo ""
         echo "  Option A — Wait (recommended):"
         echo "    Re-run 'just upgrade-analysis ${TARGET}' in 1-3 days."
-        echo "    When [2/3] shows 0 heavy builds, run:"
-        echo "      just version-upgrade"
+        echo "    When [2/3] shows 0 heavy builds, push the flake.nix upgrade and run:"
         echo "      just update"
         echo ""
         echo "  Option B — Upgrade now and compile locally:"
-        echo "    Accept the hours-long kernel/NVIDIA source build and run:"
-        echo "      just version-upgrade"
+        echo "    Push the flake.nix upgrade, then accept the hours-long source build:"
         echo "      just update-all"
         echo ""
     else
         echo "  ✓ READY — config is clean and all packages are in cache."
         echo ""
-        echo "  Run:"
-        echo "    just version-upgrade"
+        echo "  Push the flake.nix upgrade to the repo, then run:"
         echo "    just update"
         echo ""
     fi
@@ -610,65 +585,6 @@ upgrade-analysis target_version:
     echo "================================================================"
     echo ""
 
-# Upgrade the NixOS release version (e.g. 25.11 → 26.05).
-# Updates flake inputs (nixpkgs, home-manager) in flake.nix.
-# Run `just rebuild` or `just switch` afterwards to apply.
-# NOTE: system.stateVersion is intentionally NOT changed — it must remain at the
-# version the system was first installed on. See README for details.
-[group('System Upgrades & Rollbacks')]
-version-upgrade:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-    FLAKE_DIR=$(dirname "$_jf_real")
-
-    # Detect current version from flake.nix
-    CURRENT=$(grep -oP 'nixpkgs\.url\s*=\s*"github:NixOS/nixpkgs/nixos-\K[^"]+' "$FLAKE_DIR/flake.nix")
-    if [ -z "$CURRENT" ]; then
-        echo "error: could not detect current nixpkgs version from flake.nix" >&2
-        exit 1
-    fi
-
-    echo ""
-    echo "Current NixOS version: ${CURRENT}"
-    echo ""
-    printf "Enter the version to upgrade to (e.g. 26.05): "
-    read -r NEW_VERSION
-
-    if [ -z "$NEW_VERSION" ]; then
-        echo "error: no version entered." >&2
-        exit 1
-    fi
-
-    # Validate format (YY.MM)
-    if ! echo "$NEW_VERSION" | grep -qP '^\d{2}\.\d{2}$'; then
-        echo "error: invalid version format '${NEW_VERSION}' — expected YY.MM (e.g. 26.05)" >&2
-        exit 1
-    fi
-
-    if [ "$NEW_VERSION" = "$CURRENT" ]; then
-        echo "Already on version ${CURRENT}. Nothing to do."
-        exit 0
-    fi
-
-    echo ""
-    echo "Upgrading: ${CURRENT} → ${NEW_VERSION}"
-    echo ""
-
-    # 1. Update nixpkgs URL in flake.nix
-    sed -i "s|github:NixOS/nixpkgs/nixos-${CURRENT}|github:NixOS/nixpkgs/nixos-${NEW_VERSION}|g" "$FLAKE_DIR/flake.nix"
-    echo "✓ Updated nixpkgs input → nixos-${NEW_VERSION}"
-
-    # 2. Update home-manager URL in flake.nix
-    sed -i "s|github:nix-community/home-manager/release-${CURRENT}|github:nix-community/home-manager/release-${NEW_VERSION}|g" "$FLAKE_DIR/flake.nix"
-    echo "✓ Updated home-manager input → release-${NEW_VERSION}"
-
-    echo ""
-    echo "Done. Next steps:"
-    echo "  1. Run 'nix flake update' to refresh the lock file"
-    echo "  2. Run 'just rebuild' or 'just switch' to apply the upgrade"
-    echo ""
 
 # Roll back to the previous NixOS generation and set it as the boot default.
 [group('System Upgrades & Rollbacks')]
@@ -700,109 +616,6 @@ rollforward:
     sudo nix-env --profile /nix/var/nix/profiles/system --switch-generation "$next"
     sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
     echo "Now on generation: ${next}"
-
-# ── Package Updates ──────────────────────────────────────────────────────────
-
-# Pin VSCode to a new version by fetching the tarball hash from Microsoft's
-# update servers, updating overlays/vscode.nix in-place, and rebuilding.
-#
-# Usage:
-#   just update-vscode 1.122.1
-#
-# What it does:
-#   1. Fetches the tarball from update.code.visualstudio.com to get its hash
-#   2. Converts the Nix base32 hash to SRI format (sha256-<base64>)
-#   3. Updates `version` and `hash` in overlays/vscode.nix with sed
-#   4. Runs nixos-rebuild switch to apply immediately (reads target from
-#      /etc/nixos/vexos-variant — falls back to a manual switch prompt if absent)
-#
-# Requires: nix (with nix-command + flakes enabled), run on a Linux host.
-[group('Package Updates')]
-update-vscode version:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    if ! command -v nix >/dev/null 2>&1; then
-        echo "error: 'nix' command not found. Run this recipe on a Nix-enabled Linux host." >&2
-        exit 127
-    fi
-
-    VERSION="{{version}}"
-
-    if [ -z "$VERSION" ]; then
-        echo "error: version argument is required." >&2
-        echo "Usage: just update-vscode 1.122.1" >&2
-        exit 1
-    fi
-
-    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-    FLAKE_DIR=$(dirname "$_jf_real")
-    OVERLAY_FILE="$FLAKE_DIR/overlays/vscode.nix"
-
-    if [ ! -f "$OVERLAY_FILE" ]; then
-        echo "error: $OVERLAY_FILE not found." >&2
-        exit 1
-    fi
-
-    DOWNLOAD_URL="https://update.code.visualstudio.com/${VERSION}/linux-x64/stable"
-
-    echo ""
-    echo "Fetching VSCode ${VERSION} tarball hash..."
-    echo "  URL: ${DOWNLOAD_URL}"
-    echo ""
-
-    # nix-prefetch-url returns the hash in Nix base32 format.
-    RAW_HASH=$(nix-prefetch-url "$DOWNLOAD_URL" 2>/dev/null)
-
-    if [ -z "$RAW_HASH" ]; then
-        echo "error: nix-prefetch-url returned an empty hash." >&2
-        echo "  Verify the version exists: $DOWNLOAD_URL" >&2
-        exit 1
-    fi
-
-    # Convert Nix base32 → SRI format (sha256-<base64>) for use in fetchurl hash = "...".
-    SRI_HASH=$(nix hash to-sri --type sha256 "$RAW_HASH")
-
-    echo "  Nix base32: ${RAW_HASH}"
-    echo "  SRI:        ${SRI_HASH}"
-    echo ""
-
-    # Update version = "..." in overlays/vscode.nix
-    sed -i "s|version = \"[^\"]*\"|version = \"${VERSION}\"|" "$OVERLAY_FILE"
-
-    # Update hash = "sha256-..." in overlays/vscode.nix
-    # The SRI hash contains base64 chars (a-z A-Z 0-9 + / =), none of which
-    # conflict with the | sed delimiter.
-    sed -i "s|hash = \"sha256-[^\"]*\"|hash = \"${SRI_HASH}\"|" "$OVERLAY_FILE"
-
-    echo "Updated $OVERLAY_FILE:"
-    grep -E '^\s+(version|hash) = ' "$OVERLAY_FILE"
-    echo ""
-
-    # Auto-switch if this is a NixOS host with a known variant.
-    TARGET=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
-    if [ -z "$TARGET" ]; then
-        echo "Note: /etc/nixos/vexos-variant not found — skipping auto-switch."
-        echo "      Run 'just switch' manually to apply."
-        exit 0
-    fi
-
-    echo "Switching to: ${TARGET}"
-    echo ""
-    if ! sudo nixos-rebuild switch --impure --flake "path:${FLAKE_DIR}#${TARGET}"; then
-        _rc=$?
-        if [ $_rc -eq 4 ]; then
-            echo ""
-            echo "Note: nixos-rebuild exited $_rc — one or more units could not restart."
-            echo "      The configuration has been applied. Reboot to complete cleanly."
-        else
-            exit $_rc
-        fi
-    fi
-
-    echo ""
-    echo "VSCode ${VERSION} is live."
-    echo "Commit overlays/vscode.nix when you are happy with the result."
 
 # ── System Administration ────────────────────────────────────────────────────
 
