@@ -18,7 +18,17 @@ in
 
   options.vexos.features.gaming.enable = lib.mkEnableOption "gaming stack (Steam, Proton, GameMode, Wine, controllers, GPU gaming libs, gaming kernel params)";
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkMerge [
+    # Declare ownership unconditionally so these apps are removed when gaming is
+    # disabled (flatpak.nix uninstalls managed apps absent from appsToInstall).
+    { vexos.flatpak.managedApps = [
+        "net.lutris.Lutris"
+        "com.vysp3r.ProtonPlus"
+        "org.prismlauncher.PrismLauncher"
+      ];
+    }
+
+    (lib.mkIf cfg.enable {
     # ── Steam ─────────────────────────────────────────────────────────────────
     # programs.steam.enable also enables hardware.steam-hardware.enable automatically.
     programs.steam = {
@@ -85,7 +95,13 @@ in
       # version) builds with a non-flagged pnpm. pnpm is build-time only.
       pkgs.unstable.vesktop # feature-rich Discord client (Vencord-based)
       pkgs.discord         # official Discord client
+
+      # GNOME Shell extension for GameMode status indicator (tray icon)
+      pkgs.gnomeExtensions.gamemode-shell-extension
     ];
+
+    # Activate GameMode GNOME Shell extension when gaming is enabled.
+    vexos.gnome.extraExtensions = [ "gamemodeshellextension@trsnaqe.com" ];
 
     # ── Gaming Flatpak apps ───────────────────────────────────────────────────
     vexos.flatpak.extraApps = [
@@ -160,5 +176,6 @@ in
         owner @{HOME}/** rwlk,
       }
     '';
-  };
+    }) # end lib.mkIf cfg.enable
+  ]; # end lib.mkMerge
 }

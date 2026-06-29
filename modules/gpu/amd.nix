@@ -19,8 +19,8 @@
   services.lact.enable = true;
 
   # GameMode AMD GPU boost: switch amdgpu power_dpm_force_performance_level to
-  # "high" while a game is active. Requires gaming.nix to enable programs.gamemode.
-  programs.gamemode.settings.gpu = {
+  # "high" while a game is active. Only applies when gaming feature is enabled.
+  programs.gamemode.settings.gpu = lib.mkIf config.vexos.features.gaming.enable {
     apply_gpu_optimisations = "accept-responsibility";
     gpu_device = 0;
     amd_performance_level = "high";

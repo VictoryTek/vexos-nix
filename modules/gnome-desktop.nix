@@ -7,11 +7,6 @@
 {
   imports = [ ./gnome.nix ];
 
-  # ── Desktop-only GNOME Shell extension package ────────────────────────────
-  environment.systemPackages = with pkgs; [
-    gnomeExtensions.gamemode-shell-extension   # GameMode status indicator
-  ];
-
   # ── Role-specific dconf overlay ───────────────────────────────────────────
   # Adds accent-color, enabled-extensions, and favorite-apps to the
   # system dconf user database.  Lists concatenate with the universal
@@ -25,7 +20,7 @@
 
         "org/gnome/shell" = {
           enabled-extensions =
-            config.vexos.gnome.commonExtensions ++ [ "gamemodeshellextension@trsnaqe.com" ];
+            config.vexos.gnome.commonExtensions ++ config.vexos.gnome.extraExtensions;
           favorite-apps = [
             "brave-browser.desktop"
             "app.zen_browser.zen.desktop"

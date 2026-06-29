@@ -462,7 +462,7 @@ echo ""
 if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE_TARGET}"; then
   echo ""
   echo -e "${GREEN}${BOLD}✓ Build complete. New generation registered as default.${RESET}"
-  echo -e "${YELLOW}Reboot now to activate the new system. The live ISO will remain active until you do.${RESET}"
+  echo -e "${YELLOW}Reboot now to activate the new system. Your current session will remain active until you do.${RESET}"
   if [ -f /etc/nixos/kernel-install-override.nix ]; then
     echo ""
     NV_NOTE=$(grep -oP "nvidiaDriverVariant = \"\K[^\"]*" /etc/nixos/kernel-install-override.nix 2>/dev/null || true)

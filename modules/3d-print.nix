@@ -11,10 +11,18 @@ in
 {
   options.vexos.features.print3d.enable = lib.mkEnableOption "3D printing tools (Blender, OrcaSlicer via Flatpak)";
 
-  config = lib.mkIf cfg.enable {
-    vexos.flatpak.extraApps = [
-      "org.blender.Blender"       # 3D modelling, sculpting, rendering, animation
-      "com.orcaslicer.OrcaSlicer" # FDM slicer with multi-material and plate support
-    ];
-  };
+  config = lib.mkMerge [
+    { vexos.flatpak.managedApps = [
+        "org.blender.Blender"
+        "com.orcaslicer.OrcaSlicer"
+      ];
+    }
+
+    (lib.mkIf cfg.enable {
+      vexos.flatpak.extraApps = [
+        "org.blender.Blender"       # 3D modelling, sculpting, rendering, animation
+        "com.orcaslicer.OrcaSlicer" # FDM slicer with multi-material and plate support
+      ];
+    })
+  ];
 }

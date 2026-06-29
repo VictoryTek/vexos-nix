@@ -31,6 +31,13 @@
     description = "GNOME Shell extensions enabled on every vexos role that imports gnome.nix.";
   };
 
+  options.vexos.gnome.extraExtensions = lib.mkOption {
+    type        = lib.types.listOf lib.types.str;
+    default     = [];
+    internal    = true;
+    description = "Additional GNOME Shell extension UUIDs appended to commonExtensions. Set by feature modules (e.g. gaming) so their extensions are only active when the feature is enabled.";
+  };
+
   config = {
 
   # ── GNOME desktop ─────────────────────────────────────────────────────────

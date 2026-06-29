@@ -20,12 +20,12 @@ let
     defaultApps)
   ++ config.vexos.flatpak.extraApps;
 
-  # Short hash of the desired app list + excluded apps, baked in at Nix
-  # evaluation time.  Including excludeApps in the hash ensures the stamp
-  # changes whenever an app is added to the exclude list — even if that app
-  # was never in defaultApps — so the service re-runs and uninstalls it.
+  # Short hash of the desired app list + excluded apps + managed apps, baked in
+  # at Nix evaluation time.  Changes whenever any of these lists change so the
+  # service re-runs and reconciles (installs new, removes stale managed apps).
   appsListHash = builtins.substring 0 16
-    (builtins.hashString "sha256" (lib.concatStringsSep "," (appsToInstall ++ config.vexos.flatpak.excludeApps)));
+    (builtins.hashString "sha256" (lib.concatStringsSep ","
+      (appsToInstall ++ config.vexos.flatpak.excludeApps ++ config.vexos.flatpak.managedApps)));
 in
 {
   options.vexos.flatpak.enable = lib.mkOption {
@@ -44,6 +44,12 @@ in
     type        = lib.types.listOf lib.types.str;
     default     = [];
     description = "Role-specific Flatpak app IDs to install in addition to the defaults.";
+  };
+
+  options.vexos.flatpak.managedApps = lib.mkOption {
+    type        = lib.types.listOf lib.types.str;
+    default     = [];
+    description = "Flatpak app IDs owned by optional feature modules. Any managed app not present in the current install list is uninstalled when the stamp hash changes (i.e. when a feature is disabled).";
   };
 
   config = lib.mkIf config.vexos.flatpak.enable {
@@ -120,6 +126,21 @@ in
         if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
           echo "flatpak: uninstalling excluded app $app"
           flatpak uninstall --noninteractive --assumeyes "$app" || true
+        fi
+      done
+
+      # ── Remove managed apps no longer in the desired install list ─────────
+      # Managed apps are owned by optional feature modules. When a feature is
+      # disabled its IDs drop out of appsToInstall; this step removes them.
+      INSTALL_LIST="${lib.concatStringsSep " " appsToInstall}"
+      for app in \
+        ${lib.concatMapStringsSep " \\\n        " (a: a) config.vexos.flatpak.managedApps}
+      do
+        if ! echo "$INSTALL_LIST" | grep -qw "$app"; then
+          if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
+            echo "flatpak: uninstalling managed app $app (feature disabled)"
+            flatpak uninstall --noninteractive --assumeyes "$app" || true
+          fi
         fi
       done
 
