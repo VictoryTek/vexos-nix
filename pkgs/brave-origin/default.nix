@@ -37,8 +37,6 @@
 , nss
 , pango
 , pipewire
-, qt5
-, qt6
 , snappy
 , systemdLibs
 , wayland
@@ -98,8 +96,6 @@ stdenv.mkDerivation rec {
     nss
     pango
     pipewire
-    qt5.qtbase
-    qt6.qtbase
     snappy
     systemdLibs
     wayland
@@ -123,6 +119,14 @@ stdenv.mkDerivation rec {
   dontBuild      = true;
   dontConfigure  = true;
   dontWrapQtApps = true;
+
+  # The bundled Qt shims (libqt5_shim.so, libqt6_shim.so) are dlopened
+  # optionally at runtime for native file dialogs. Chromium falls back
+  # gracefully if they fail to load, so unresolved Qt symbols are fine here.
+  autoPatchelfIgnoreMissingDeps = [
+    "libQt5Core.so.5" "libQt5Gui.so.5" "libQt5Widgets.so.5"
+    "libQt6Core.so.6" "libQt6Gui.so.6" "libQt6Widgets.so.6"
+  ];
 
   installPhase = ''
     runHook preInstall
