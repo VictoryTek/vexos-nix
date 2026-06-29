@@ -18,6 +18,7 @@
       "text/html"              = [ "brave-origin.desktop" ];
       "application/xhtml+xml"  = [ "brave-origin.desktop" ];
       "x-scheme-handler/ftp"   = [ "brave-origin.desktop" ];
+      "x-scheme-handler/mailto" = [ "brave-origin.desktop" ];
     };
   };
   xdg.configFile."mimeapps.list".force = true;

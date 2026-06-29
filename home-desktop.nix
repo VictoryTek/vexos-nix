@@ -161,6 +161,38 @@
   # changes in GNOME Settings survive rebuilds because the user-db has higher
   # priority.
 
+  # ── One-time dock migration: brave-browser → brave-origin ────────────────
+  # The user dconf database overrides system-level dconf defaults. If a prior
+  # rebuild wrote brave-browser.desktop into the user dconf via dconf.settings,
+  # the system default of brave-origin.desktop is invisible until the user key
+  # is updated. This service runs once (stamp file) to perform that replacement.
+  systemd.user.services.vexos-migrate-dock-brave-origin = {
+    Unit = {
+      Description = "VexOS: migrate dock from brave-browser to brave-origin (once)";
+      After       = [ "graphical-session.target" ];
+      PartOf      = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type            = "oneshot";
+      RemainAfterExit = true;
+      ExecStart       = toString (pkgs.writeShellScript "vexos-migrate-dock-brave-origin" ''
+        STAMP="$HOME/.local/share/vexos/.dock-brave-origin-migration-v1"
+        [ -f "$STAMP" ] && exit 0
+
+        CURRENT=$(${pkgs.dconf}/bin/dconf read /org/gnome/shell/favorite-apps)
+        if echo "$CURRENT" | grep -q "brave-browser\.desktop"; then
+          UPDATED=$(echo "$CURRENT" | ${pkgs.gnused}/bin/sed \
+            "s/brave-browser\.desktop/brave-origin.desktop/g")
+          ${pkgs.dconf}/bin/dconf write /org/gnome/shell/favorite-apps "$UPDATED"
+        fi
+
+        mkdir -p "$HOME/.local/share/vexos"
+        touch "$STAMP"
+      '');
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
   # ── First-run app-folder layout ───────────────────────────────────────────
   # See comment in home-htpc.nix for rationale.
   systemd.user.services.vexos-init-app-folders = {
