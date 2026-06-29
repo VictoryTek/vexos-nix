@@ -36,7 +36,7 @@ in
 
       # ── TypeScript / Node ─────────────────────────────────────────────────────
       pkgs.typescript # TypeScript compiler (tsc)
-      pkgs.unstable.pnpm # Fast, disk-efficient Node package manager
+      pkgs.pnpm # Fast, disk-efficient Node package manager
       pkgs.bun # All-in-one JS/TS runtime & bundler
 
       # ── Containers ────────────────────────────────────────────────────────────
