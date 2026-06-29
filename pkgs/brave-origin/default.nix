@@ -118,8 +118,9 @@ stdenv.mkDerivation rec {
     krb5.lib
   ];
 
-  dontBuild     = true;
-  dontConfigure = true;
+  dontBuild      = true;
+  dontConfigure  = true;
+  dontWrapQtApps = true;
 
   installPhase = ''
     runHook preInstall
