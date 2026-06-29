@@ -1,7 +1,6 @@
 # modules/gaming.nix
 # Gaming stack: Steam, Proton, MangoHud, Gamescope, GameMode,
-# Wine/Proton tooling, Distrobox.
-# Lutris, ProtonPlus, and Bottles are installed via Flatpak (see modules/flatpak.nix).
+# Wine/Proton tooling, Distrobox, Lutris, ProtonPlus, PrismLauncher.
 #
 # Enable on a per-host basis via /etc/nixos/features.nix:
 #   vexos.features.gaming.enable = true;
@@ -83,9 +82,13 @@ in
       # Communication
       pkgs.vesktop         # feature-rich Discord client (Vencord-based)
       pkgs.discord         # official Discord client
+    ];
 
-      # NOTE: lutris, ProtonPlus, and Bottles are installed via Flatpak
-      # (net.lutris.Lutris, com.vysp3r.ProtonPlus, and com.usebottles.bottles in modules/flatpak.nix).
+    # ── Gaming Flatpak apps ───────────────────────────────────────────────────
+    vexos.flatpak.extraApps = [
+      "net.lutris.Lutris"                # Game manager / Wine frontend
+      "com.vysp3r.ProtonPlus"            # Proton/Wine version manager
+      "org.prismlauncher.PrismLauncher"  # Minecraft launcher
     ];
 
     # ── Controllers ───────────────────────────────────────────────────────────
