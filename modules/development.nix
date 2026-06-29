@@ -9,7 +9,7 @@ let
   cfg = config.vexos.features.development;
 in
 {
-  options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Go, Claude Code, Nix LSP)";
+  options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Rust, Go, Claude Code, Nix LSP, rust-analyzer)";
 
   config = lib.mkIf cfg.enable {
     # ── Docker ────────────────────────────────────────────────────────────────
@@ -63,6 +63,13 @@ in
       pkgs.nil # Nix LSP server
       pkgs.nixpkgs-fmt # Nix code formatter
       pkgs.nix-output-monitor # Enhanced nix build output (nom)
+
+      # ── Rust ──────────────────────────────────────────────────────────────────
+      pkgs.rustc        # Rust compiler
+      pkgs.cargo        # Rust package manager and build tool
+      pkgs.rustfmt      # Rust code formatter (cargo fmt)
+      pkgs.clippy       # Rust linter (cargo clippy)
+      pkgs.rust-analyzer # Rust LSP — IDE support in VSCodium
 
       # ── Go ────────────────────────────────────────────────────────────────────
       pkgs.go # Go programming language

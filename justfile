@@ -968,6 +968,41 @@ enable-feature feature: _require-desktop-role
     fi
 
     echo "✓ $FEATURE enabled in $FEAT_FILE"
+    echo ""
+    case "$FEATURE" in
+        gaming)
+            echo "  What this adds:"
+            echo "    Packages   Steam, Proton-GE, GameMode, Gamescope, MangoHud, Wine (Wow64 Staging),"
+            echo "               protontricks, umu-launcher, vkbasalt, distrobox, Ryujinx (Switch emulator),"
+            echo "               RetroArch, vesktop, Discord"
+            echo "    Flatpak    Lutris (game manager), ProtonPlus (Proton/Wine version manager),"
+            echo "               PrismLauncher (Minecraft)"
+            echo "    Hardware   Xbox controllers (xone/xpadneo), Switch Pro, DualShock 4, DualSense"
+            echo "    GPU        32-bit libs, shader cache tuning, SCX LAVD gaming scheduler"
+            ;;
+        development)
+            echo "  What this adds:"
+            echo "    Services   Docker 29 (with weekly auto-prune)"
+            echo "    Editor     VSCodium (telemetry-free VS Code fork)"
+            echo "    Languages  Python 3 + uv + ruff, TypeScript, Node (pnpm + bun), Rust (rustc + cargo + clippy + rust-analyzer), Go"
+            echo "    Tools      GitHub CLI, git-lfs, jq, yq, pre-commit, sqlite, httpie, mkcert, gcc"
+            echo "    AI         Claude Code (Anthropic Claude CLI)"
+            echo "    Nix        nil (LSP), nixpkgs-fmt, nix-output-monitor"
+            ;;
+        print3d)
+            echo "  What this adds:"
+            echo "    Flatpak    Blender — 3D modelling, sculpting, rendering, animation"
+            echo "               OrcaSlicer — FDM slicer with multi-material and plate support"
+            ;;
+        virtualization)
+            echo "  What this adds:"
+            echo "    Services   libvirtd + QEMU/KVM hypervisor (hardware-accelerated VMs)"
+            echo "    Apps       GNOME Boxes (VM management UI)"
+            echo "    Features   Virtual TPM 2.0 — required for Windows 11 guests"
+            echo "    Groups     User added to libvirtd (manage VMs without sudo)"
+            ;;
+    esac
+    echo ""
     echo "  Run 'just rebuild' to apply."
 
 # Disable an optional feature module.  Usage: just disable-feature gaming
