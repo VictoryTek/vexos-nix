@@ -5,24 +5,22 @@
     ./modules/gnome.nix
     ./modules/gnome-desktop.nix
     ./modules/remote-desktop.nix    # auto-configures grdctl RDP credentials from /etc/nixos/secrets/rdp-password
-    ./modules/gaming.nix
+    ./modules/gaming.nix             # optional: vexos.features.gaming.enable (bundles gpu-gaming + system-gaming)
+    ./modules/development.nix        # optional: vexos.features.development.enable
+    ./modules/3d-print.nix           # optional: vexos.features.print3d.enable
+    ./modules/virtualization.nix     # optional: vexos.features.virtualization.enable
     ./modules/audio.nix
     ./modules/gpu.nix
-    ./modules/gpu-gaming.nix        # 32-bit libs, vulkan-tools, mesa-demos
     ./modules/flatpak.nix
     ./modules/flatpak-desktop.nix   # desktop-only Flatpak apps via extraApps
-    ./modules/3d-print.nix          # Blender, OrcaSlicer
     ./modules/network.nix
     ./modules/network-desktop.nix   # samba CLI
     ./modules/packages-common.nix
     ./modules/packages-desktop.nix
-    ./modules/development.nix
-    ./modules/virtualization.nix
     ./modules/branding.nix
     ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix
     ./modules/system-latest-kernel.nix  # Linux 7.x (linuxPackages_latest)
-    ./modules/system-gaming.nix     # gaming kernel params, THP, SCX
     ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on desktop
     ./modules/security.nix          # AppArmor MAC baseline (all roles)
     ./modules/nix.nix

@@ -6,6 +6,15 @@ default:
     #!/usr/bin/env bash
     just --list
     variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [[ "$variant" != *stateless* && "$variant" != *headless* && "$variant" != *vanilla* && -n "$variant" ]]; then
+        echo ""
+        echo "Available recipes (optional feature toggles):"
+        echo "    features                           List enabled/disabled optional feature modules"
+        echo "    enable-feature <feature>           Enable an optional feature module"
+        echo "    disable-feature <feature>          Disable an optional feature module"
+        echo ""
+        echo "    Optional features: gaming  development  print3d  virtualization"
+    fi
     if [[ "$variant" == *server* ]]; then
         echo ""
         echo "Available recipes (GUI Server / Headless Server roles):"
@@ -1042,6 +1051,146 @@ disable-kill-switch:
     systemctl stop vpn-kill-switch.service
     echo "✓ VPN kill switch disabled — clearnet egress restored."
     echo "  Re-enable with: just enable-kill-switch"
+
+# ── Desktop Feature Toggles ──────────────────────────────────────────────────
+# Run `just features` to see available features and their status.
+
+# Available optional feature names (desktop role).
+_feature_names := "gaming development print3d virtualization"
+
+# Guard: abort if the current host is stateless, headless-server, or vanilla (features not supported there).
+[private]
+_require-desktop-role:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [[ "$variant" == *stateless* || "$variant" == *headless* || "$variant" == *vanilla* ]]; then
+        echo "error: feature recipes are not available on stateless, headless-server, or vanilla roles."
+        echo "       current variant: ${variant:-unknown}"
+        exit 1
+    fi
+
+# List all optional features and their enabled/disabled status.
+[private]
+features: _require-desktop-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    FEAT_FILE="/etc/nixos/features.nix"
+    _check() {
+        local feat="$1"
+        if grep -qP "vexos\.features\.${feat//./\\.}\.enable\s*=\s*true" "$FEAT_FILE" 2>/dev/null; then
+            printf "    \033[32m✓\033[0m %s\n" "$feat"
+        else
+            printf "    \033[90m✗\033[0m %s\n" "$feat"
+        fi
+    }
+    echo ""
+    echo "Optional features (/etc/nixos/features.nix):"
+    echo ""
+    _check gaming
+    _check development
+    _check print3d
+    _check virtualization
+    echo ""
+    echo "Use 'just enable-feature <feature>' / 'just disable-feature <feature>' to toggle."
+    echo ""
+
+# Enable an optional feature module.  Usage: just enable-feature gaming
+[private]
+enable-feature feature: _require-desktop-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    FEAT_FILE="/etc/nixos/features.nix"
+    FEATURE="{{feature}}"
+
+    VALID_FEATURES="{{_feature_names}}"
+    if ! echo "$VALID_FEATURES" | tr ' ' '\n' | grep -qx "$FEATURE"; then
+        echo "error: unknown feature '$FEATURE'"
+        echo "available: $VALID_FEATURES"
+        exit 1
+    fi
+
+    if [ ! -f "$FEAT_FILE" ]; then
+        echo "Creating $FEAT_FILE from template..."
+        _jf_dir="{{justfile_directory()}}"
+        TEMPLATE_SRC=""
+        for _candidate in "$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
+            if [ -f "$_candidate/template/features.nix" ]; then
+                TEMPLATE_SRC="$_candidate/template/features.nix"
+                break
+            fi
+        done
+        if [ -z "$TEMPLATE_SRC" ]; then
+            echo "error: cannot find template/features.nix in any known location" >&2
+            echo "searched: $_jf_dir /etc/nixos $HOME/Projects/vexos-nix" >&2
+            exit 1
+        fi
+        sudo cp "$TEMPLATE_SRC" "$FEAT_FILE"
+        sudo sed -i 's/\r//' "$FEAT_FILE"
+    fi
+
+    OPTION="vexos.features.${FEATURE}.enable"
+
+    if grep -q "${OPTION}\s*=\s*true" "$FEAT_FILE" 2>/dev/null; then
+        echo "$FEATURE is already enabled."
+        exit 0
+    fi
+
+    if grep -qP "^\s*#?\s*${OPTION//./\\.}" "$FEAT_FILE" 2>/dev/null; then
+        sudo sed -i -E "s/^(\s*)#?\s*(${OPTION//./\\.})\s*=\s*(true|false)\s*;/\1${OPTION} = true;/" "$FEAT_FILE"
+    else
+        sudo sed -i "s|}|  ${OPTION} = true;\n}|" "$FEAT_FILE"
+    fi
+
+    echo "✓ $FEATURE enabled in $FEAT_FILE"
+    echo ""
+    printf "Rebuild now to apply? [y/N]: "
+    read -r REBUILD_ANSWER || true
+    case "${REBUILD_ANSWER,,}" in
+        y|yes) just rebuild ;;
+        *) echo "Skipped — run 'just rebuild' when ready." ;;
+    esac
+
+# Disable an optional feature module.  Usage: just disable-feature gaming
+[private]
+disable-feature feature: _require-desktop-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    FEAT_FILE="/etc/nixos/features.nix"
+    FEATURE="{{feature}}"
+
+    VALID_FEATURES="{{_feature_names}}"
+    if ! echo "$VALID_FEATURES" | tr ' ' '\n' | grep -qx "$FEATURE"; then
+        echo "error: unknown feature '$FEATURE'"
+        echo "available: $VALID_FEATURES"
+        exit 1
+    fi
+
+    OPTION="vexos.features.${FEATURE}.enable"
+
+    if [ ! -f "$FEAT_FILE" ]; then
+        echo "$FEATURE is already disabled (features.nix does not exist)."
+        exit 0
+    fi
+
+    if grep -q "${OPTION}\s*=\s*false" "$FEAT_FILE" 2>/dev/null; then
+        echo "$FEATURE is already disabled."
+        exit 0
+    fi
+
+    if grep -qP "^\s*${OPTION//./\\.}\s*=\s*true" "$FEAT_FILE" 2>/dev/null; then
+        sudo sed -i -E "s/^(\s*)(${OPTION//./\\.})\s*=\s*true\s*;/\1# \2 = false;/" "$FEAT_FILE"
+        echo "✓ $FEATURE disabled in $FEAT_FILE"
+        echo ""
+        printf "Rebuild now to apply? [y/N]: "
+        read -r REBUILD_ANSWER || true
+        case "${REBUILD_ANSWER,,}" in
+            y|yes) just rebuild ;;
+            *) echo "Skipped — run 'just rebuild' when ready." ;;
+        esac
+    else
+        echo "$FEATURE is already disabled."
+    fi
 
 # ── Server Services Management ───────────────────────────────────────────────
 # Run `just services` to see available modules and their status.

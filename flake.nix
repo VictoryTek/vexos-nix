@@ -97,6 +97,13 @@
       let path = /etc/nixos/server-services.nix;
       in if builtins.pathExists path then [ path ] else [];
 
+    # Optional per-host feature toggles for the desktop role.
+    # Empty list when absent so desktop outputs stay buildable on machines that
+    # haven't run `just enable-feature` yet.
+    featuresModule =
+      let path = /etc/nixos/features.nix;
+      in if builtins.pathExists path then [ path ] else [];
+
     # Optional per-machine user override for the stateless role.
     # Written by stateless-setup.sh / migrate-to-stateless.sh at install time.
     # Without this file the compiled-in default is a locked account
@@ -133,12 +140,12 @@
       desktop = {
         homeFile     = ./home-desktop.nix;
         baseModules  = commonBase ++ [ upModule ];
-        extraModules = [];
+        extraModules = featuresModule;
       };
       htpc = {
         homeFile     = ./home-htpc.nix;
         baseModules  = commonBase ++ [ upModule ];
-        extraModules = [];
+        extraModules = featuresModule;
       };
       stateless = {
         homeFile     = ./home-stateless.nix;
@@ -153,7 +160,7 @@
         # cannot safely reference _module.args.
         # vexboardBase: overlay + NixOS module for the default server dashboard.
         baseModules  = commonBase ++ [ upModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
-        extraModules = serverServicesModule;
+        extraModules = serverServicesModule ++ featuresModule;
       };
       headless-server = {
         homeFile     = ./home-headless-server.nix;

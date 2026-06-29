@@ -2,140 +2,157 @@
 # Gaming stack: Steam, Proton, MangoHud, Gamescope, GameMode,
 # Wine/Proton tooling, Distrobox.
 # Lutris, ProtonPlus, and Bottles are installed via Flatpak (see modules/flatpak.nix).
+#
+# Enable on a per-host basis via /etc/nixos/features.nix:
+#   vexos.features.gaming.enable = true;
+# Bundled: gpu-gaming.nix (32-bit libs, shader cache) and system-gaming.nix
+# (kernel params, SCX LAVD) are imported here and activate with the same option.
 { config, pkgs, lib, ... }:
+let
+  cfg = config.vexos.features.gaming;
+in
 {
-  # ── Steam ─────────────────────────────────────────────────────────────────
-  # programs.steam.enable also enables hardware.steam-hardware.enable automatically.
-  programs.steam = {
-    enable = true;
-    remotePlay.openFirewall = true;
-    dedicatedServer.openFirewall = false;
-    gamescopeSession.enable = true; # Gamescope session for Steam gaming mode
-
-    # Proton-GE as an additional compatibility tool (unfree)
-    extraCompatPackages = [
-      pkgs.proton-ge-bin
-    ];
-  };
-
-  # ── Gamescope micro-compositor (HDR, VRR, frame limiting) ─────────────────
-  programs.gamescope = {
-    enable = true;
-    capSysNice = true; # lets gamescope renice itself for lower latency
-  };
-
-  # ── GameMode — performance daemon (CPU/GPU boost on game start) ───────────
-  programs.gamemode = {
-    enable = true;
-    settings = {
-      general = {
-        renice = 10;             # negated by gamemode → nice = -10 (higher priority)
-        inhibit_screensaver = 1; # prevent GNOME screen-lock mid-game
-      };
-      cpu = {
-        # Auto-pin game threads to preferred cores on Ryzen 3D V-Cache and
-        # Intel P+E-core (12th gen+) CPUs; no-op on unsupported hardware.
-        pin_cores = "yes";
-      };
-      # gpu section is GPU-vendor-specific — see modules/gpu/amd.nix (AMD)
-    };
-  };
-
-  # ── Gaming utilities ──────────────────────────────────────────────────────
-  environment.systemPackages = [
-    # Proton / Wine tooling
-    pkgs.protontricks    # winetricks wrapper for Steam games
-    pkgs.umu-launcher    # Proton launcher for non-Steam games
-
-    # Display / overlay
-    pkgs.mangohud        # In-game performance overlay; use mangohud %command% in Steam launch options
-    pkgs.vkbasalt        # Vulkan post-processing layer (CAS, FXAA, etc.)
-
-    # Wine (Staging + Wow64 multilib)
-    pkgs.wineWow64Packages.stagingFull
-
-    # Disk / prefix maintenance
-    pkgs.duperemove      # deduplicates Wine prefix content
-
-    # Container tooling (Distrobox for running other distro environments)
-    pkgs.distrobox
-
-    # Emulation
-    pkgs.ryubing         # Nintendo Switch emulator (Ryujinx fork)
-    pkgs.retroarch       # multi-system emulator frontend
-
-    # Communication
-    pkgs.vesktop         # feature-rich Discord client (Vencord-based)
-    pkgs.discord         # official Discord client
-
-    # NOTE: lutris, ProtonPlus, and Bottles are installed via Flatpak
-    # (net.lutris.Lutris, com.vysp3r.ProtonPlus, and com.usebottles.bottles in modules/flatpak.nix).
+  imports = [
+    ./gpu-gaming.nix
+    ./system-gaming.nix
   ];
 
-  # ── Controllers ───────────────────────────────────────────────────────────
-  # Gamepad and controller support: Xbox (xone/xpadneo), Nintendo Switch,
-  # Sony DualShock/DualSense, and generic HID udev rules.
+  options.vexos.features.gaming.enable = lib.mkEnableOption "gaming stack (Steam, Proton, GameMode, Wine, controllers, GPU gaming libs, gaming kernel params)";
 
-  # Xbox One / Series S|X USB dongle and wired controllers
-  hardware.xone.enable = true;
-  # Xbox wireless controllers via Bluetooth
-  hardware.xpadneo.enable = true;
+  config = lib.mkIf cfg.enable {
+    # ── Steam ─────────────────────────────────────────────────────────────────
+    # programs.steam.enable also enables hardware.steam-hardware.enable automatically.
+    programs.steam = {
+      enable = true;
+      remotePlay.openFirewall = true;
+      dedicatedServer.openFirewall = false;
+      gamescopeSession.enable = true; # Gamescope session for Steam gaming mode
 
-  # Nintendo Switch Pro Controller / Joy-Cons; Sony controllers (kernel drivers)
-  boot.kernelModules = [ "hid_nintendo" "hid_sony" ];
+      # Proton-GE as an additional compatibility tool (unfree)
+      extraCompatPackages = [
+        pkgs.proton-ge-bin
+      ];
+    };
 
-  services.udev.extraRules = ''
-    # ── Sony DualShock 4 (USB) ──
-    KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", MODE="0660", GROUP="input"
-    KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="0660", GROUP="input"
-    # ── Sony DualSense (USB) ──
-    KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ce6", MODE="0660", GROUP="input"
-    # ── Sony DualSense Edge (USB) ──
-    KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0df2", MODE="0660", GROUP="input"
-    # ── Sony controllers via Bluetooth ──
-    KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", MODE="0660", GROUP="input"
-    # ── 8BitDo Ultimate Bluetooth ──
-    SUBSYSTEM=="input", ATTRS{idVendor}=="2dc8", ATTRS{idProduct}=="3106", MODE="0660", GROUP="input"
-    # ── Generic: allow all input devices for the input group ──
-    SUBSYSTEM=="input", MODE="0660", GROUP="input"
-  '';
+    # ── Gamescope micro-compositor (HDR, VRR, frame limiting) ─────────────────
+    programs.gamescope = {
+      enable = true;
+      capSysNice = true; # lets gamescope renice itself for lower latency
+    };
 
-  # Grant the primary user access to GameMode CPU governor, input devices, and USB peripherals.
-  users.users.${config.vexos.user.name}.extraGroups = [ "gamemode" "input" "plugdev" ];
+    # ── GameMode — performance daemon (CPU/GPU boost on game start) ───────────
+    programs.gamemode = {
+      enable = true;
+      settings = {
+        general = {
+          renice = 10;             # negated by gamemode → nice = -10 (higher priority)
+          inhibit_screensaver = 1; # prevent GNOME screen-lock mid-game
+        };
+        cpu = {
+          # Auto-pin game threads to preferred cores on Ryzen 3D V-Cache and
+          # Intel P+E-core (12th gen+) CPUs; no-op on unsupported hardware.
+          pin_cores = "yes";
+        };
+        # gpu section is GPU-vendor-specific — see modules/gpu/amd.nix (AMD)
+      };
+    };
 
-  # ── bubblewrap setuid override ────────────────────────────────────────────
-  # bubblewrap 0.11.x removed setuid priv mode. programs.steam.enable still
-  # sets security.wrappers.bwrap with setuid = true, which causes bwrap to
-  # abort on launch ("setuid use of bubblewrap is not supported in this build").
-  # Override the wrapper to remove the setuid bit; bwrap uses unprivileged
-  # user namespaces (CLONE_NEWUSER) instead, which the kernel supports.
-  security.wrappers.bwrap = lib.mkForce {
-    source      = "${pkgs.bubblewrap}/bin/bwrap";
-    setuid      = false;
-    setgid      = false;
-    owner       = "root";
-    group       = "root";
-    permissions = "u+rx,g+x,o+x";
+    # ── Gaming utilities ──────────────────────────────────────────────────────
+    environment.systemPackages = [
+      # Proton / Wine tooling
+      pkgs.protontricks    # winetricks wrapper for Steam games
+      pkgs.umu-launcher    # Proton launcher for non-Steam games
+
+      # Display / overlay
+      pkgs.mangohud        # In-game performance overlay; use mangohud %command% in Steam launch options
+      pkgs.vkbasalt        # Vulkan post-processing layer (CAS, FXAA, etc.)
+
+      # Wine (Staging + Wow64 multilib)
+      pkgs.wineWow64Packages.stagingFull
+
+      # Disk / prefix maintenance
+      pkgs.duperemove      # deduplicates Wine prefix content
+
+      # Container tooling (Distrobox for running other distro environments)
+      pkgs.distrobox
+
+      # Emulation
+      pkgs.ryubing         # Nintendo Switch emulator (Ryujinx fork)
+      pkgs.retroarch       # multi-system emulator frontend
+
+      # Communication
+      pkgs.vesktop         # feature-rich Discord client (Vencord-based)
+      pkgs.discord         # official Discord client
+
+      # NOTE: lutris, ProtonPlus, and Bottles are installed via Flatpak
+      # (net.lutris.Lutris, com.vysp3r.ProtonPlus, and com.usebottles.bottles in modules/flatpak.nix).
+    ];
+
+    # ── Controllers ───────────────────────────────────────────────────────────
+    # Gamepad and controller support: Xbox (xone/xpadneo), Nintendo Switch,
+    # Sony DualShock/DualSense, and generic HID udev rules.
+
+    # Xbox One / Series S|X USB dongle and wired controllers
+    hardware.xone.enable = true;
+    # Xbox wireless controllers via Bluetooth
+    hardware.xpadneo.enable = true;
+
+    # Nintendo Switch Pro Controller / Joy-Cons; Sony controllers (kernel drivers)
+    boot.kernelModules = [ "hid_nintendo" "hid_sony" ];
+
+    services.udev.extraRules = ''
+      # ── Sony DualShock 4 (USB) ──
+      KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4", MODE="0660", GROUP="input"
+      KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="09cc", MODE="0660", GROUP="input"
+      # ── Sony DualSense (USB) ──
+      KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0ce6", MODE="0660", GROUP="input"
+      # ── Sony DualSense Edge (USB) ──
+      KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0df2", MODE="0660", GROUP="input"
+      # ── Sony controllers via Bluetooth ──
+      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="054c", MODE="0660", GROUP="input"
+      # ── 8BitDo Ultimate Bluetooth ──
+      SUBSYSTEM=="input", ATTRS{idVendor}=="2dc8", ATTRS{idProduct}=="3106", MODE="0660", GROUP="input"
+      # ── Generic: allow all input devices for the input group ──
+      SUBSYSTEM=="input", MODE="0660", GROUP="input"
+    '';
+
+    # Grant the primary user access to GameMode CPU governor, input devices, and USB peripherals.
+    users.users.${config.vexos.user.name}.extraGroups = [ "gamemode" "input" "plugdev" ];
+
+    # ── bubblewrap setuid override ────────────────────────────────────────────
+    # bubblewrap 0.11.x removed setuid priv mode. programs.steam.enable still
+    # sets security.wrappers.bwrap with setuid = true, which causes bwrap to
+    # abort on launch ("setuid use of bubblewrap is not supported in this build").
+    # Override the wrapper to remove the setuid bit; bwrap uses unprivileged
+    # user namespaces (CLONE_NEWUSER) instead, which the kernel supports.
+    security.wrappers.bwrap = lib.mkForce {
+      source      = "${pkgs.bubblewrap}/bin/bwrap";
+      setuid      = false;
+      setgid      = false;
+      owner       = "root";
+      group       = "root";
+      permissions = "u+rx,g+x,o+x";
+    };
+
+    # ── AppArmor Wine baseline ─────────────────────────────────────────────────
+    # wineWow64Packages.stagingFull installs setuid wrappers (wineserver, wine-preloader)
+    # that could be misused by a compromised Wine prefix. Place wineserver in
+    # AppArmor complain mode so that deviations from normal operation appear in
+    # audit logs without blocking legitimate games.
+    # Switch to "enforce" once a site-specific profile is tuned.
+    security.apparmor.policies."usr.bin.wineserver".profile = ''
+      #include <tunables/global>
+
+      /usr/bin/wineserver flags=(complain) {
+        #include <abstractions/base>
+        capability sys_ptrace,
+        @{PROC}/@{pid}/mem rw,
+        @{PROC}/@{pid}/task/*/mem rw,
+        /tmp/** rwk,
+        @{HOME}/.wine/** rwlk,
+        @{HOME}/.local/share/Steam/** rwlk,
+        owner @{HOME}/** rwlk,
+      }
+    '';
   };
-
-  # ── AppArmor Wine baseline ─────────────────────────────────────────────────
-  # wineWow64Packages.stagingFull installs setuid wrappers (wineserver, wine-preloader)
-  # that could be misused by a compromised Wine prefix. Place wineserver in
-  # AppArmor complain mode so that deviations from normal operation appear in
-  # audit logs without blocking legitimate games.
-  # Switch to "enforce" once a site-specific profile is tuned.
-  security.apparmor.policies."usr.bin.wineserver".profile = ''
-    #include <tunables/global>
-
-    /usr/bin/wineserver flags=(complain) {
-      #include <abstractions/base>
-      capability sys_ptrace,
-      @{PROC}/@{pid}/mem rw,
-      @{PROC}/@{pid}/task/*/mem rw,
-      /tmp/** rwk,
-      @{HOME}/.wine/** rwlk,
-      @{HOME}/.local/share/Steam/** rwlk,
-      owner @{HOME}/** rwlk,
-    }
-  '';
 }

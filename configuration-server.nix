@@ -29,6 +29,10 @@
     ./modules/users.nix
     ./modules/asus-opt.nix
     ./modules/boot-discovery.nix
+    ./modules/gaming.nix             # optional: vexos.features.gaming.enable (bundles gpu-gaming + system-gaming)
+    ./modules/development.nix        # optional: vexos.features.development.enable
+    ./modules/3d-print.nix           # optional: vexos.features.print3d.enable
+    ./modules/virtualization.nix     # optional: vexos.features.virtualization.enable
   ];
 
   # ---------- Branding ----------

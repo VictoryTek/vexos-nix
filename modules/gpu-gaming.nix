@@ -2,26 +2,28 @@
 # 32-bit GPU libraries (Steam/Proton) and gaming diagnostic tools.
 # Sets hardware.graphics.enable32Bit = true unconditionally.
 #
-# Import in any configuration that runs Steam or Proton.
+# Activated by vexos.features.gaming.enable (declared in modules/gaming.nix).
 # Do NOT import on VM guests or headless roles.
-{ pkgs, ... }:
+{ config, lib, pkgs, ... }:
 {
-  hardware.graphics.enable32Bit = true;
+  config = lib.mkIf config.vexos.features.gaming.enable {
+    hardware.graphics.enable32Bit = true;
 
-  # 32-bit VA-API and Mesa — required for Steam/Proton 32-bit graphics paths.
-  hardware.graphics.extraPackages32 = with pkgs.pkgsi686Linux; [
-    libva
-    libva-vdpau-driver
-    mesa
-  ];
+    # 32-bit VA-API and Mesa — required for Steam/Proton 32-bit graphics paths.
+    hardware.graphics.extraPackages32 = with pkgs.pkgsi686Linux; [
+      libva
+      libva-vdpau-driver
+      mesa
+    ];
 
-  environment.systemPackages = with pkgs; [
-    vulkan-tools  # vulkaninfo — verify Vulkan driver and capabilities
-    mesa-demos    # glxinfo, glxgears — OpenGL/Vulkan renderer diagnostics
-  ];
+    environment.systemPackages = with pkgs; [
+      vulkan-tools  # vulkaninfo — verify Vulkan driver and capabilities
+      mesa-demos    # glxinfo, glxgears — OpenGL/Vulkan renderer diagnostics
+    ];
 
-  # Increase Mesa's on-disk shader cache from the default 1 GB to 4 GB.
-  # Larger cache means fewer recompilations on repeat play sessions (AMD and Intel).
-  # Ignored by the NVIDIA proprietary driver (uses its own shader cache).
-  environment.variables.MESA_SHADER_CACHE_MAX_SIZE = "4G";
+    # Increase Mesa's on-disk shader cache from the default 1 GB to 4 GB.
+    # Larger cache means fewer recompilations on repeat play sessions (AMD and Intel).
+    # Ignored by the NVIDIA proprietary driver (uses its own shader cache).
+    environment.variables.MESA_SHADER_CACHE_MAX_SIZE = "4G";
+  };
 }
