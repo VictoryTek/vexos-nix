@@ -6,15 +6,6 @@ default:
     #!/usr/bin/env bash
     just --list
     variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
-    if [[ "$variant" != *stateless* && "$variant" != *headless* && "$variant" != *vanilla* && -n "$variant" ]]; then
-        echo ""
-        echo "Available recipes (optional feature toggles):"
-        echo "    features                           List enabled/disabled optional feature modules"
-        echo "    enable-feature <feature>           Enable an optional feature module"
-        echo "    disable-feature <feature>          Disable an optional feature module"
-        echo ""
-        echo "    Optional features: gaming  development  print3d  virtualization"
-    fi
     if [[ "$variant" == *server* ]]; then
         echo ""
         echo "Available recipes (GUI Server / Headless Server roles):"
@@ -41,6 +32,7 @@ default:
 # ── System Build & Deploy ────────────────────────────────────────────────────
 
 # Print the active role and GPU variant (e.g. vexos-desktop-amd).
+[group('System Build & Deploy')]
 variant:
     @cat /etc/nixos/vexos-variant 2>/dev/null || echo "unknown (run a build first)"
 
@@ -114,6 +106,7 @@ _resolve-flake-dir target flake_override="":
 #   just switch                  — interactive prompt
 #   just switch desktop amd      — direct switch
 #   just switch desktop amd .    — explicit flake override
+[group('System Build & Deploy')]
 switch role="" variant="" flake="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -232,6 +225,7 @@ switch role="" variant="" flake="":
 
 # Dry-run build without switching — useful for testing config changes.
 # Example: just build desktop amd
+[group('System Build & Deploy')]
 build role variant flake="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -255,6 +249,7 @@ build role variant flake="":
     sudo nixos-rebuild build --flake "path:${_flake_dir}#${TARGET}"
 
 # Rebuild the system using the current variant.
+[group('System Build & Deploy')]
 rebuild:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -265,6 +260,7 @@ rebuild:
     sudo nixos-rebuild switch --impure --flake "path:/etc/nixos#${target}"
 
 # Update all flake inputs, then rebuild and switch using the current variant.
+[group('System Build & Deploy')]
 update:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -381,6 +377,7 @@ update:
 #
 # WARNING: may compile large packages from source (Rust, LLVM, kernels, etc.)
 # and take a long time.  For normal daily use, run 'just update' instead.
+[group('System Build & Deploy')]
 update-all:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -409,6 +406,7 @@ update-all:
 #
 # nixpkgs and all other inputs stay pinned at whatever version is
 # currently in /etc/nixos/flake.lock — no source builds triggered.
+[group('System Build & Deploy')]
 deploy:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -438,6 +436,7 @@ deploy:
 # Usage:
 #   just upgrade-analysis 26.05    — analyse upgrade to 26.05
 #   just upgrade-analysis 26.11    — analyse upgrade to 26.11
+[group('System Upgrades & Rollbacks')]
 upgrade-analysis target_version:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -616,6 +615,7 @@ upgrade-analysis target_version:
 # Run `just rebuild` or `just switch` afterwards to apply.
 # NOTE: system.stateVersion is intentionally NOT changed — it must remain at the
 # version the system was first installed on. See README for details.
+[group('System Upgrades & Rollbacks')]
 version-upgrade:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -671,6 +671,7 @@ version-upgrade:
     echo ""
 
 # Roll back to the previous NixOS generation and set it as the boot default.
+[group('System Upgrades & Rollbacks')]
 rollback:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -683,6 +684,7 @@ rollback:
     echo "Now on generation: ${new}"
 
 # Roll forward to the next (newer) NixOS generation and set it as the boot default.
+[group('System Upgrades & Rollbacks')]
 rollforward:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -715,6 +717,7 @@ rollforward:
 #      /etc/nixos/vexos-variant — falls back to a manual switch prompt if absent)
 #
 # Requires: nix (with nix-command + flakes enabled), run on a Linux host.
+[group('Package Updates')]
 update-vscode version:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -804,10 +807,12 @@ update-vscode version:
 # ── System Administration ────────────────────────────────────────────────────
 
 # Reboot the system immediately.
+[group('System Administration')]
 reboot:
     sudo systemctl reboot
 
 # Shut down the system immediately.
+[group('System Administration')]
 shutdown:
     sudo systemctl poweroff
 
@@ -818,6 +823,7 @@ shutdown:
 # re-applies the folder layout on the next graphical login.
 # Run in a terminal (NOT inside a GNOME session) or log out first for best
 # results, since GNOME may re-write some keys while running.
+[group('System Administration')]
 reset-defaults:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -839,6 +845,7 @@ reset-defaults:
 # 'just rebuild' to activate — RDP credentials will then be configured
 # automatically on every GNOME session start.
 # Only needed on desktop, server, and htpc roles.
+[group('System Administration')]
 setup-rdp:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -881,6 +888,7 @@ setup-rdp:
 # Usage:
 #   just set-hostname mypc       — direct
 #   just set-hostname            — interactive prompt
+[group('System Administration')]
 set-hostname name="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -967,6 +975,7 @@ set-hostname name="":
 # Usage:
 #   just ssh                     — interactive prompts
 #   just ssh nimda@10.35.1.50   — direct
+[group('System Administration')]
 ssh target="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1001,6 +1010,7 @@ ssh target="":
 # First-time Tailscale setup — grants operator rights to the current user, then connects.
 # Run once after enabling services.tailscale.enable = true in your NixOS config and rebuilding.
 # On first run, Tailscale will print a URL to authenticate — open it in a browser.
+[group('VPN')]
 setup-tailscale:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1026,6 +1036,7 @@ setup-tailscale:
 
 # Enable the VPN kill switch — blocks all clearnet egress when no VPN tunnel is active.
 # Desktop and HTPC roles only. On the stateless role the kill switch is always active.
+[group('VPN')]
 enable-kill-switch:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1040,6 +1051,7 @@ enable-kill-switch:
 
 # Disable the VPN kill switch — restores normal clearnet egress.
 # Desktop and HTPC roles only. On the stateless role the kill switch cannot be disabled.
+[group('VPN')]
 disable-kill-switch:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1071,7 +1083,7 @@ _require-desktop-role:
     fi
 
 # List all optional features and their enabled/disabled status.
-[private]
+[group('Optional Feature Toggles')]
 features: _require-desktop-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1096,7 +1108,7 @@ features: _require-desktop-role
     echo ""
 
 # Enable an optional feature module.  Usage: just enable-feature gaming
-[private]
+[group('Optional Feature Toggles')]
 enable-feature feature: _require-desktop-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1152,7 +1164,7 @@ enable-feature feature: _require-desktop-role
     esac
 
 # Disable an optional feature module.  Usage: just disable-feature gaming
-[private]
+[group('Optional Feature Toggles')]
 disable-feature feature: _require-desktop-role
     #!/usr/bin/env bash
     set -euo pipefail
