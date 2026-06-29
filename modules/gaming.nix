@@ -80,7 +80,10 @@ in
       pkgs.retroarch       # multi-system emulator frontend
 
       # Communication
-      pkgs.vesktop         # feature-rich Discord client (Vencord-based)
+      # Use unstable: stable vesktop 1.6.5 vendors an exact pnpm-10.29.2 build
+      # input flagged insecure (CVE-2026-48995 et al.); unstable's vesktop (same
+      # version) builds with a non-flagged pnpm. pnpm is build-time only.
+      pkgs.unstable.vesktop # feature-rich Discord client (Vencord-based)
       pkgs.discord         # official Discord client
     ];
 

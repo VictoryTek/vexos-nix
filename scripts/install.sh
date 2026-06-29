@@ -209,22 +209,16 @@ fi
 
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}${NVIDIA_SUFFIX}"
 
-# Server roles (both headless-server and server) cannot be activated live: doing so
-# restarts display-manager.service during switch-to-configuration, which kills the
-# live ISO's GNOME session (and this script). Use `nixos-rebuild boot` to install
-# the new generation as default without runtime activation; user reboots into the
-# new system.
-REBUILD_ACTION="switch"
-if [ "$ROLE" = "headless-server" ] || [ "$ROLE" = "server" ]; then
-  REBUILD_ACTION="boot"
-fi
+# Always use 'boot' instead of 'switch': nixos-rebuild switch restarts
+# display-manager.service during switch-to-configuration, which kills the live ISO's
+# GNOME session and logs the user out. Using 'boot' installs the new generation as
+# default without runtime activation; the user reboots into the new system.
+REBUILD_ACTION="boot"
 
 # ---------- Build & switch ---------------------------------------------------
 echo ""
 echo -e "${BOLD}Building ${CYAN}${FLAKE_TARGET}${RESET}${BOLD} (action: ${REBUILD_ACTION})...${RESET}"
-if [ "$REBUILD_ACTION" = "boot" ]; then
-  echo -e "${YELLOW}[${ROLE}] Using 'nixos-rebuild boot' to preserve the live GNOME session. The new system will not activate until you reboot.${RESET}"
-fi
+echo -e "${YELLOW}Using 'nixos-rebuild boot' to preserve the live session. The new system will not activate until you reboot.${RESET}"
 echo ""
 
 # ---------- UEFI / BIOS preflight check -------------------------------------
@@ -467,51 +461,32 @@ echo ""
 
 if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE_TARGET}"; then
   echo ""
-  if [ "$REBUILD_ACTION" = "boot" ]; then
-    echo -e "${GREEN}${BOLD}✓ Build complete. New generation registered as default.${RESET}"
-    echo -e "${YELLOW}[${ROLE}] Build complete. Reboot now to activate the new system. The live ISO will remain active until you do.${RESET}"
+  echo -e "${GREEN}${BOLD}✓ Build complete. New generation registered as default.${RESET}"
+  echo -e "${YELLOW}Reboot now to activate the new system. The live ISO will remain active until you do.${RESET}"
+  if [ -f /etc/nixos/kernel-install-override.nix ]; then
     echo ""
-    printf "Reboot now? [Y/n] "
-    read -r REBOOT_CHOICE </dev/tty
-    REBOOT_CHOICE="${REBOOT_CHOICE%$'\r'}"
-    case "${REBOOT_CHOICE,,}" in
-      n|no)
-        echo -e "${YELLOW}Reboot skipped. Run 'systemctl reboot' when ready.${RESET}"
-        ;;
-      *)
-        echo "Rebooting..."
-        systemctl reboot
-        ;;
-    esac
-  else
-    echo -e "${GREEN}${BOLD}✓ Build and switch successful!${RESET}"
-    if [ -f /etc/nixos/kernel-install-override.nix ]; then
-      echo ""
-      NV_NOTE=$(grep -oP "nvidiaDriverVariant = \"\K[^\"]*" /etc/nixos/kernel-install-override.nix 2>/dev/null || true)
-      if [ -n "$NV_NOTE" ]; then
-        echo -e "${YELLOW}Note: installed with channel-default kernel and NVIDIA driver variant '${NV_NOTE}'."
-      else
-        echo -e "${YELLOW}Note: installed with channel-default kernel (linuxPackages)."
-      fi
-      echo -e "Run 'just update' or use the Up app after reboot to upgrade to the"
-      echo -e "target versions automatically once packages are cached (1-3 days).${RESET}"
+    NV_NOTE=$(grep -oP "nvidiaDriverVariant = \"\K[^\"]*" /etc/nixos/kernel-install-override.nix 2>/dev/null || true)
+    if [ -n "$NV_NOTE" ]; then
+      echo -e "${YELLOW}Note: installed with channel-default kernel and NVIDIA driver variant '${NV_NOTE}'."
+    else
+      echo -e "${YELLOW}Note: installed with channel-default kernel (linuxPackages)."
     fi
-    echo ""
-    printf "Reboot now? [y/N] "
-    read -r REBOOT_CHOICE </dev/tty
-    REBOOT_CHOICE="${REBOOT_CHOICE%$'\r'}"
-    case "${REBOOT_CHOICE,,}" in
-      y|yes)
-        echo "Rebooting..."
-        systemctl reboot
-        ;;
-      *)
-        echo ""
-        echo -e "${YELLOW}Skipping reboot. Log out and back in to apply session changes.${RESET}"
-        echo ""
-        ;;
-    esac
+    echo -e "Run 'just update' or use the Up app after reboot to upgrade to the"
+    echo -e "target versions automatically once packages are cached (1-3 days).${RESET}"
   fi
+  echo ""
+  printf "Reboot now? [Y/n] "
+  read -r REBOOT_CHOICE </dev/tty
+  REBOOT_CHOICE="${REBOOT_CHOICE%$'\r'}"
+  case "${REBOOT_CHOICE,,}" in
+    n|no)
+      echo -e "${YELLOW}Reboot skipped. Run 'systemctl reboot' when ready.${RESET}"
+      ;;
+    *)
+      echo "Rebooting..."
+      systemctl reboot
+      ;;
+  esac
 else
   echo ""
   echo -e "${RED}${BOLD}✗ nixos-rebuild ${REBUILD_ACTION} failed. Reboot skipped.${RESET}"
