@@ -22,7 +22,7 @@
           enabled-extensions =
             config.vexos.gnome.commonExtensions ++ config.vexos.gnome.extraExtensions;
           favorite-apps = [
-            "brave-browser.desktop"
+            "brave-origin.desktop"
             "app.zen_browser.zen.desktop"
             "org.gnome.Nautilus.desktop"
             "com.mitchellh.ghostty.desktop"

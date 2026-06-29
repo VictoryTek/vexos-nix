@@ -54,20 +54,4 @@
   # directly into ~/.config/dconf/user, overwriting manual changes on every
   # rebuild.  Removed to preserve user customizations.
 
-  # ── MIME associations ──────────────────────────────────────────────────────
-  # Declaratively registers Brave as the XDG MIME default for all web schemes.
-  # force = true on both paths ensures Home Manager never stalls on activation
-  # when GNOME has already written these files to disk (or a stale .backup exists).
-  xdg.mimeApps = {
-    enable = true;
-    defaultApplications = {
-      "x-scheme-handler/http"  = [ "brave-browser.desktop" ];
-      "x-scheme-handler/https" = [ "brave-browser.desktop" ];
-      "text/html"              = [ "brave-browser.desktop" ];
-      "application/xhtml+xml"  = [ "brave-browser.desktop" ];
-      "x-scheme-handler/ftp"   = [ "brave-browser.desktop" ];
-    };
-  };
-  xdg.configFile."mimeapps.list".force = true;
-  xdg.dataFile."applications/mimeapps.list".force = true;
 }

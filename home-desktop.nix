@@ -8,6 +8,7 @@
     ./home/bash-common.nix
     ./home/photogimp.nix
     ./home/gnome-common.nix
+    ./home/gnome-common-desktop.nix
   ];
 
   photogimp.enable = true;
