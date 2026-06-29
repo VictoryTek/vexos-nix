@@ -7,6 +7,7 @@
   # bash-common.nix works on all roles regardless of working directory.
   environment.etc."nixos/justfile".source = ../justfile;
   environment.etc."nixos/template/server-services.nix".source = ../template/server-services.nix;
+  environment.etc."nixos/template/features.nix".source = ../template/features.nix;
 
   environment.systemPackages = with pkgs; [
     just    # Command runner (justfile)
