@@ -131,6 +131,13 @@
     kernelOverrideFile = ./kernel-install-override.nix;
     hasKernelOverride  = builtins.pathExists kernelOverrideFile;
 
+    # ── Optional per-host feature toggles ──────────────────────────────────────
+    # Written by `just enable-feature <feature>` / `just disable-feature <feature>`.
+    # Covers gaming, development, print3d, and virtualization opt-in toggles.
+    # Not applicable to stateless, headless-server, or vanilla roles.
+    featuresFile = ./features.nix;
+    hasFeatures  = builtins.pathExists featuresFile;
+
     # ── Variant builder ─────────────────────────────────────────────────────
     # Constructs a complete NixOS configuration for a given variant.
     # • hostname   → the variant name, also written to /etc/nixos/vexos-variant
@@ -160,6 +167,7 @@
 
           # GPU-specific drivers and settings for this variant.
         ] ++ modules
+          ++ lib.optional hasFeatures      featuresFile
           ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
@@ -213,6 +221,7 @@
           ./hardware-configuration.nix
           vexos-nix.nixosModules.htpcBase
         ] ++ modules
+          ++ lib.optional hasFeatures      featuresFile
           ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
@@ -291,7 +300,8 @@
           vexos-nix.nixosModules.serverBase
         ]
         ++ modules
-        ++ lib.optional hasServices servicesFile
+        ++ lib.optional hasServices  servicesFile
+        ++ lib.optional hasFeatures  featuresFile
         ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 

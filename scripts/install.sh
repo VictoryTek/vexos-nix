@@ -314,7 +314,7 @@ if [ "$ASUS_ENABLE" = "true" ]; then
       echo -e "  ${GREEN}✓ ASUS laptop support enabled (battery charge limit set to 80%).${RESET}"
     else
       echo "  Patching /etc/nixos/flake.nix to enable OpenRGB for ASUS desktop..."
-      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { programs.openrgb.enable = true; };/' /etc/nixos/flake.nix
+      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { pkgs, ... }: { environment.systemPackages = [ pkgs.openrgb-with-all-plugins ]; boot.kernelModules = [ "i2c-dev" ]; services.udev.packages = [ pkgs.openrgb-with-all-plugins ]; };/' /etc/nixos/flake.nix
       echo -e "  ${GREEN}✓ OpenRGB enabled for ASUS desktop Aura RGB control.${RESET}"
     fi
     echo ""
@@ -326,7 +326,9 @@ if [ "$ASUS_ENABLE" = "true" ]; then
       echo "      vexos.hardware.asus.enable = true;"
       echo "      vexos.hardware.asus.batteryChargeLimit = 80;"
     else
-      echo "      programs.openrgb.enable = true;"
+      echo "      environment.systemPackages = [ pkgs.openrgb-with-all-plugins ];"
+      echo "      boot.kernelModules = [ \"i2c-dev\" ];"
+      echo "      services.udev.packages = [ pkgs.openrgb-with-all-plugins ];"
     fi
     echo ""
   fi

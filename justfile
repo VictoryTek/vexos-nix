@@ -880,6 +880,52 @@ disable-kill-switch:
 # ── Desktop Feature Toggles ──────────────────────────────────────────────────
 # Run `just features` to see available features and their status.
 
+# Patch /etc/nixos/flake.nix to load features.nix on every rebuild.
+# Required once on systems where the thin wrapper predates feature toggle support.
+# Safe to re-run — exits immediately if the wrapper is already up to date.
+[group('Optional Feature Toggles')]
+fix-flake:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    WRAPPER="/etc/nixos/flake.nix"
+
+    if [ ! -f "$WRAPPER" ]; then
+        echo "error: $WRAPPER not found." >&2
+        exit 1
+    fi
+
+    if grep -q "features\.nix" "$WRAPPER" 2>/dev/null; then
+        echo "✓ $WRAPPER already loads features.nix — nothing to do."
+        exit 0
+    fi
+
+    # Old-style wrapper: _mkVariantWith ends with ] ++ modules;
+    if grep -q '] ++ modules;' "$WRAPPER"; then
+        sudo sed -i \
+          's|] ++ modules;|] ++ modules\n          ++ (if builtins.pathExists ./features.nix then [ ./features.nix ] else []);|' \
+          "$WRAPPER"
+        echo "✓ $WRAPPER patched (old-style wrapper)."
+        echo "  Run 'just rebuild' to apply."
+        exit 0
+    fi
+
+    # Newer-style wrapper: uses lib.optional hasKernelOverride — insert features line before it
+    # (0, addr limits to first match so only _mkVariantWith is patched, not htpc/server builders)
+    if grep -q 'lib\.optional hasKernelOverride' "$WRAPPER"; then
+        sudo sed -i \
+          '0,/lib\.optional hasKernelOverride/s|++ lib\.optional hasKernelOverride|++ (if builtins.pathExists ./features.nix then [ ./features.nix ] else [])\n          ++ lib.optional hasKernelOverride|' \
+          "$WRAPPER"
+        echo "✓ $WRAPPER patched (kernel-override-style wrapper)."
+        echo "  Run 'just rebuild' to apply."
+        exit 0
+    fi
+
+    echo "error: could not identify wrapper version — patch manually." >&2
+    echo "  Add this to the modules list in _mkVariantWith in $WRAPPER:" >&2
+    echo "    ++ (if builtins.pathExists ./features.nix then [ ./features.nix ] else [])" >&2
+    exit 1
+
+
 # Available optional feature names (desktop role).
 _feature_names := "gaming development print3d virtualization"
 
@@ -1004,6 +1050,15 @@ enable-feature feature: _require-desktop-role
     esac
     echo ""
     echo "  Run 'just rebuild' to apply."
+
+    # Warn if the thin wrapper at /etc/nixos/flake.nix won't load features.nix —
+    # without this the feature toggle resets to false on every rebuild.
+    if [ -f /etc/nixos/flake.nix ] && ! grep -q "features\.nix" /etc/nixos/flake.nix 2>/dev/null; then
+        echo ""
+        echo "  ⚠ Warning: /etc/nixos/flake.nix does not load features.nix."
+        echo "    Features will not persist across reboots until fixed."
+        echo "    Run 'just fix-flake' then 'just rebuild' to resolve."
+    fi
 
 # Disable an optional feature module.  Usage: just disable-feature gaming
 [group('Optional Feature Toggles')]
