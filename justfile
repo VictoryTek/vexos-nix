@@ -899,31 +899,41 @@ fix-flake:
         exit 0
     fi
 
+    PATCHED=false
+
     # Old-style wrapper: _mkVariantWith ends with ] ++ modules;
     if grep -q '] ++ modules;' "$WRAPPER"; then
         sudo sed -i \
           's|] ++ modules;|] ++ modules\n          ++ (if builtins.pathExists ./features.nix then [ ./features.nix ] else []);|' \
           "$WRAPPER"
-        echo "✓ $WRAPPER patched (old-style wrapper)."
-        echo "  Run 'just rebuild' to apply."
-        exit 0
+        echo "✓ $WRAPPER patched."
+        PATCHED=true
     fi
 
     # Newer-style wrapper: uses lib.optional hasKernelOverride — insert features line before it
     # (0, addr limits to first match so only _mkVariantWith is patched, not htpc/server builders)
-    if grep -q 'lib\.optional hasKernelOverride' "$WRAPPER"; then
+    if [ "$PATCHED" = "false" ] && grep -q 'lib\.optional hasKernelOverride' "$WRAPPER"; then
         sudo sed -i \
           '0,/lib\.optional hasKernelOverride/s|++ lib\.optional hasKernelOverride|++ (if builtins.pathExists ./features.nix then [ ./features.nix ] else [])\n          ++ lib.optional hasKernelOverride|' \
           "$WRAPPER"
-        echo "✓ $WRAPPER patched (kernel-override-style wrapper)."
-        echo "  Run 'just rebuild' to apply."
-        exit 0
+        echo "✓ $WRAPPER patched."
+        PATCHED=true
     fi
 
-    echo "error: could not identify wrapper version — patch manually." >&2
-    echo "  Add this to the modules list in _mkVariantWith in $WRAPPER:" >&2
-    echo "    ++ (if builtins.pathExists ./features.nix then [ ./features.nix ] else [])" >&2
-    exit 1
+    if [ "$PATCHED" = "false" ]; then
+        echo "error: could not identify wrapper version — patch manually." >&2
+        echo "  Add this to the modules list in _mkVariantWith in $WRAPPER:" >&2
+        echo "    ++ (if builtins.pathExists ./features.nix then [ ./features.nix ] else [])" >&2
+        exit 1
+    fi
+
+    echo ""
+    printf "Rebuild now to apply? [y/N]: "
+    read -r ANSWER || true
+    case "${ANSWER,,}" in
+        y|yes) just rebuild ;;
+        *) echo "Run 'just rebuild' when ready." ;;
+    esac
 
 
 # Available optional feature names (desktop role).
