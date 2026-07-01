@@ -977,12 +977,21 @@ features: _require-desktop-role
     echo ""
 
 # Enable an optional feature module.  Usage: just enable-feature gaming
+# Use 'just enable-feature all' to enable every feature.
 [group('Optional Feature Toggles')]
 enable-feature feature: _require-desktop-role
     #!/usr/bin/env bash
     set -euo pipefail
-    FEAT_FILE="/etc/nixos/features.nix"
     FEATURE="{{feature}}"
+
+    if [ "$FEATURE" = "all" ]; then
+        for f in {{_feature_names}}; do
+            just enable-feature "$f"
+        done
+        exit 0
+    fi
+
+    FEAT_FILE="/etc/nixos/features.nix"
 
     VALID_FEATURES="{{_feature_names}}"
     if ! echo "$VALID_FEATURES" | tr ' ' '\n' | grep -qx "$FEATURE"; then
@@ -1071,12 +1080,21 @@ enable-feature feature: _require-desktop-role
     fi
 
 # Disable an optional feature module.  Usage: just disable-feature gaming
+# Use 'just disable-feature all' to disable every feature.
 [group('Optional Feature Toggles')]
 disable-feature feature: _require-desktop-role
     #!/usr/bin/env bash
     set -euo pipefail
-    FEAT_FILE="/etc/nixos/features.nix"
     FEATURE="{{feature}}"
+
+    if [ "$FEATURE" = "all" ]; then
+        for f in {{_feature_names}}; do
+            just disable-feature "$f"
+        done
+        exit 0
+    fi
+
+    FEAT_FILE="/etc/nixos/features.nix"
 
     VALID_FEATURES="{{_feature_names}}"
     if ! echo "$VALID_FEATURES" | tr ' ' '\n' | grep -qx "$FEATURE"; then
