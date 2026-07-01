@@ -393,7 +393,7 @@ fi
 #   b) Re-runs of the installer where flake.nix was re-downloaded and patched
 #      (hostId, ASUS, GRUB) but not yet re-staged — git+file:// would otherwise
 #      evaluate the stale committed version, ignoring the fresh patches.
-for f in flake.nix hardware-configuration.nix stateless-user-override.nix; do
+for f in flake.nix hardware-configuration.nix stateless-user-override.nix features.nix; do
   if [ -f "/etc/nixos/$f" ]; then
     sudo "$GIT" -C /etc/nixos add -f "$f"
   fi

@@ -163,7 +163,7 @@ GITIGNORE
         # untracked files, which drops ALL enabled services after every update.
         # Force-add all host-local config files so they are tracked regardless of
         # when they were created.
-        for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix server-services.nix; do
+        for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix server-services.nix features.nix; do
           if [ -f "/etc/nixos/$_f" ]; then
             git -C /etc/nixos add -f "$_f" 2>/dev/null || true
           fi
