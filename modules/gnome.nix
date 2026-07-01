@@ -132,6 +132,14 @@
   # ── GDM display manager ───────────────────────────────────────────────────
   services.displayManager.gdm.enable = true;
 
+  # Unlock the GNOME Keyring on auto-login. pam_gnome_keyring is already wired
+  # for normal GDM login (password unlocks the keyring); gdm-autologin bypasses
+  # PAM password auth so the keyring stays locked without this line.
+  # Prerequisite: the user's login.keyring must have an empty master password —
+  # delete ~/.local/share/keyrings/login.keyring once so GNOME creates a fresh
+  # empty-password keyring that PAM can unlock without a passphrase.
+  security.pam.services.gdm-autologin.enableGnomeKeyring = true;
+
   # ── GNOME Remote Desktop (RDP) ────────────────────────────────────────────
   # Wayland-native remote desktop via PipeWire screen-cast portal.
   # The NixOS GNOME module sets this to mkDefault true; we declare it
