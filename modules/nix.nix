@@ -154,6 +154,36 @@ GITIGNORE
           echo "Done — secrets/ is now excluded from the Nix store on all future rebuilds."
         fi
 
+        # ── Auto-heal stale thin wrapper: ensure features.nix is loaded ──────
+        # /etc/nixos/flake.nix is written once at install time from
+        # template/etc-nixos-flake.nix and is never resynced by this script —
+        # only the vexos-nix flake input gets bumped above, not the wrapper's
+        # own text. Older wrappers predate the fix that wires
+        # /etc/nixos/features.nix into the module list, so every feature
+        # toggle silently reverts to disabled on every update. Self-heal here
+        # (same patch `just fix-flake` applies manually) so already-installed
+        # hosts pick this up automatically. Not applicable to
+        # stateless/headless-server/vanilla — those roles never wire in
+        # featuresModule.
+        if [[ "$VARIANT" != *stateless* && "$VARIANT" != *headless* && "$VARIANT" != *vanilla* ]]; then
+          if ! grep -q "features\.nix" /etc/nixos/flake.nix 2>/dev/null; then
+            echo "Wrapper does not load features.nix — patching automatically..."
+            if grep -q '] ++ modules;' /etc/nixos/flake.nix; then
+              sed -i \
+                's|] ++ modules;|] ++ modules\n          ++ (if builtins.pathExists ./features.nix then [ ./features.nix ] else []);|' \
+                /etc/nixos/flake.nix
+              echo "✓ Wrapper patched (old-style)."
+            elif grep -q 'lib\.optional hasKernelOverride' /etc/nixos/flake.nix; then
+              sed -i \
+                '0,/lib\.optional hasKernelOverride/s|++ lib\.optional hasKernelOverride|++ (if builtins.pathExists ./features.nix then [ ./features.nix ] else [])\n          ++ lib.optional hasKernelOverride|' \
+                /etc/nixos/flake.nix
+              echo "✓ Wrapper patched (current-style)."
+            else
+              echo "warning: could not auto-patch wrapper — run 'just fix-flake' manually." >&2
+            fi
+          fi
+        fi
+
         # ── Repair repos initialised with old gitignore ──────────────────────
         # Earlier versions of this migration excluded hardware-configuration.nix,
         # kernel-install-override.nix, and stateless-user-override.nix from git,
@@ -162,8 +192,10 @@ GITIGNORE
         # init, so it is typically untracked.  git+file:// silently excludes
         # untracked files, which drops ALL enabled services after every update.
         # Force-add all host-local config files so they are tracked regardless of
-        # when they were created.
-        for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix server-services.nix features.nix; do
+        # when they were created.  flake.nix is included here too so a wrapper
+        # patched by the auto-heal step above is committed before the
+        # git+file:// dry-build/switch below.
+        for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix server-services.nix features.nix flake.nix; do
           if [ -f "/etc/nixos/$_f" ]; then
             git -C /etc/nixos add -f "$_f" 2>/dev/null || true
           fi
