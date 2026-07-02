@@ -8,6 +8,7 @@
     ./docker.nix
     ./podman.nix
     ./dockhand.nix
+    ./arcane.nix
     # ── Media Servers ────────────────────────────────────────────────────────
     ./jellyfin.nix
     ./plex.nix

@@ -4,7 +4,7 @@
 # After editing, run `just rebuild` or `just switch server <gpu>` to apply.
 #
 # Available services:
-#   docker, jellyfin, plex, audiobookshelf, tautulli, navidrome,
+#   docker, arcane, jellyfin, plex, audiobookshelf, tautulli, navidrome,
 #   seerr,
 #   arr (SABnzbd + Sonarr + Radarr + Lidarr + Prowlarr),
 #   komga, kavita, papermc, nextcloud, syncthing, immich, minio, photoprism,
@@ -41,6 +41,9 @@
 
   # ── Container Runtime ────────────────────────────────────────────────────
   # vexos.server.docker.enable = false;
+  # vexos.server.arcane.enable = false;                  # Port 3552 — Docker management UI
+  # vexos.server.arcane.appUrl = "https://arcane.example.com";
+  # vexos.server.arcane.environmentFile = "/etc/nixos/secrets/arcane-env"; # ENCRYPTION_KEY + JWT_SECRET (openssl rand -hex 32)
 
   # ── Media Servers ────────────────────────────────────────────────────────
   # vexos.server.jellyfin.enable = false;
