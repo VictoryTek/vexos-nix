@@ -98,9 +98,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** FEATURES 2.1
   - **Resolution:** Added `modules/server/backup.nix` (`vexos.server.backup`) using `services.restic.backups`, with a static `_server_service_names`-keyed table of default data paths assembled via `lib.optionals config.vexos.server.<x>.enable`, a PostgreSQL `pg_dumpall` pre/cleanup hook gated on `services.postgresql.enable`, and Syncthing deliberately excluded (its dataDir is the whole user home directory). Registered in `modules/server/default.nix` and wired into `justfile` (service list, enable-time repository/password prompts, status mapping, `backup-now` recipe). Failure-alert hook left as a documented comment for H-17 (ntfy), which doesn't exist yet. (`modules/server/backup.nix`, `modules/server/default.nix`, `justfile`)
 
-- [ ] **H-17** `[F]` Wire system events into the self-hosted ntfy server that currently has zero producers
+- [x] **H-17** `[F]` Wire system events into the self-hosted ntfy server that currently has zero producers
   - **Source:** FEATURES 2.2 · `modules/server/ntfy.nix`
-  - New `modules/notify.nix` with `vexos.notify.ntfyUrl` option; `vexos-notify` helper script; parametrised `notify-failure@.service`; one-line hook at end of `vexos-update`
+  - **Resolution:** Added `modules/notify.nix` (cross-role, imported by all six `configuration-*.nix` alongside `modules/nix.nix`) with `vexos.notify.ntfyUrl`/`tokenFile` options, a safe-no-op-by-default `vexos-notify` script, and a generic `notify-failure@.service` template. Wired two producers: `restic-backups-main` (H-16) fires `notify-failure@backup` on failure, and `vexos-update` sends a completion notice after a successful `nixos-rebuild switch`. ntfy token provisioning remains a documented manual step (`ntfy token add`) — upstream `services.ntfy-sh` has no declarative token/ACL mechanism. (`modules/notify.nix`, `modules/server/backup.nix`, `modules/nix.nix`, all six `configuration-*.nix`)
 
 ### Architecture — Large Scope
 
