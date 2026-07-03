@@ -104,9 +104,9 @@ Check boxes are ticked as items are completed in this session.
 
 ### Architecture — Large Scope
 
-- [ ] **H-18** `[A]` `mkHost` vs `mkBaseModule` share the same `roles` table but re-implement `baseModules` independently — vanilla overlay divergence already present
+- [x] **H-18** `[A]` `mkHost` vs `mkBaseModule` share the same `roles` table but re-implement `baseModules` independently — vanilla overlay divergence already present
   - **Source:** ARCH 1.2 · `flake.nix:285-314` vs `:125-170`
-  - Refactor `mkBaseModule` to read `roles.<role>.baseModules` directly instead of duplicating the predicate logic; reuse `unstableOverlayModule` (defined at `:56-65`) instead of re-inlining it; fix vanilla variant receiving overlays it is documented not to have
+  - **Resolution:** `mkBaseModule` now reads `roles.${role}.baseModules` directly instead of three separate hand-derived copies (a re-inlined overlay block, an `environment.systemPackages` role-string predicate, and two `lib.optionals (role == ...)` blocks for proxmox/sops/vexboard). Confirmed via synthetic `nixosSystem` builds that `nixosModules.vanillaBase` no longer carries the unstable/custom-pkgs overlays (the actual bug — overlay count 2 → 0), while `serverBase`/`headlessServerBase` are unaffected. All `nixosConfigurations` (`mkHost`) `.drv` hashes are byte-identical before/after, confirming zero blast radius on the tracked repo's own builds. (`flake.nix`)
 
 - [ ] **H-19** `[A]` Builder-machine `/etc/nixos` state leaks into flake outputs via `builtins.pathExists` at eval time
   - **Source:** ARCH 1.1 · `flake.nix:89-99`

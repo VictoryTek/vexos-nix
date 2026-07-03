@@ -292,22 +292,20 @@
     ];
 
     # Build a nixosModules.*Base export from the same per-role wiring table.
-    # The only divergences from `mkHost` are intentional:
+    # Reuses roles.${role}.baseModules directly (the same set mkHost draws from),
+    # so overlay/upModule/proxmox/sops/vexboard membership can never drift between
+    # the two — see the `roles` table's own comment above. The only intentional
+    # divergences from `mkHost` are:
     #   • imports the role's configuration-*.nix (not a ./hosts/<role>-<gpu>.nix
     #     host file) — these *Base modules are consumed by the thin wrapper at
     #     /etc/nixos/flake.nix on each host, which provides the per-host bits.
     #   • does NOT import /etc/nixos/hardware-configuration.nix — that's already
     #     handled by the consumer flake.
-    #   • headless-server omits the `up` GUI app from environment.systemPackages.
     mkBaseModule = role: configFile: { config, ... }: {
       imports =
         [ home-manager.nixosModules.home-manager configFile ]
-        ++ roles.${role}.extraModules
-        ++ lib.optionals (role == "server" || role == "headless-server")
-             [ proxmoxOverlayModule inputs.proxmox-nixos.nixosModules.proxmox-ve sops-nix.nixosModules.sops ]
-        ++ lib.optionals (role == "server" || role == "headless-server")
-             [ { nixpkgs.overlays = [ inputs.vexboard.overlays.default ]; }
-               inputs.vexboard.nixosModules.vexboard ];
+        ++ roles.${role}.baseModules
+        ++ roles.${role}.extraModules;
       home-manager = {
         useGlobalPkgs    = true;
         useUserPackages  = true;
@@ -317,17 +315,6 @@
         # additive default — consumers of these *Base modules don't override it.
         backupFileExtension = "backup";
       };
-      nixpkgs.overlays = [
-        (final: prev: {
-          unstable = import nixpkgs-unstable {
-            inherit (final) config;
-            inherit (final.stdenv.hostPlatform) system;
-          };
-        })
-        (import ./pkgs)
-      ];
-      environment.systemPackages =
-        lib.optional (role != "headless-server" && role != "vanilla") up.packages.x86_64-linux.default;
     };
   in
   {
