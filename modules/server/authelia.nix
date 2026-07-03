@@ -19,6 +19,33 @@ in
       default = 9091;
       description = "Port for the Authelia web portal.";
     };
+
+    jwtSecretFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        Path to a file containing the JWT secret, passed to the container via
+        Authelia's native AUTHELIA_JWT_SECRET_FILE mechanism.
+      '';
+    };
+
+    sessionSecretFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        Path to a file containing the session secret, passed to the container via
+        Authelia's native AUTHELIA_SESSION_SECRET_FILE mechanism.
+      '';
+    };
+
+    storageEncryptionKeyFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        Path to a file containing the storage encryption key, passed to the container
+        via Authelia's native AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE mechanism.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -30,9 +57,21 @@ in
       ports = [ "${toString cfg.port}:9091" ];
       volumes = [
         "/var/lib/authelia/config:/config"
-      ];
+      ]
+      ++ lib.optional (cfg.jwtSecretFile != null) "${cfg.jwtSecretFile}:/secrets/jwt_secret:ro"
+      ++ lib.optional (cfg.sessionSecretFile != null) "${cfg.sessionSecretFile}:/secrets/session_secret:ro"
+      ++ lib.optional (cfg.storageEncryptionKeyFile != null) "${cfg.storageEncryptionKeyFile}:/secrets/storage_encryption_key:ro";
       environment = {
         TZ = config.time.timeZone;
+      }
+      // lib.optionalAttrs (cfg.jwtSecretFile != null) {
+        AUTHELIA_JWT_SECRET_FILE = "/secrets/jwt_secret";
+      }
+      // lib.optionalAttrs (cfg.sessionSecretFile != null) {
+        AUTHELIA_SESSION_SECRET_FILE = "/secrets/session_secret";
+      }
+      // lib.optionalAttrs (cfg.storageEncryptionKeyFile != null) {
+        AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE = "/secrets/storage_encryption_key";
       };
     };
 

@@ -86,9 +86,9 @@ Check boxes are ticked as items are completed in this session.
 
 ### Features — High Value
 
-- [ ] **H-14** `[F]` Re-land snapper btrfs snapshots — btrfs-assistant is currently stranded without a backend
+- [x] **H-14** `[F]` ~~Re-land snapper btrfs snapshots~~ — DECLINED
   - **Source:** FEATURES 1.1 · `modules/system.nix` (existing `vexos.btrfs.enable` block)
-  - Inside the existing `lib.mkIf config.vexos.btrfs.enable` block add `services.snapper.configs.root` with sensible retention (5 hourly / 7 daily / 4 weekly); optionally add a pre-switch snapshot call to `vexos-update`
+  - **Resolution:** Declined by user — NixOS generation rollback already covers the primary use case for this project; the added complexity of a second snapshot/rollback system (snapper) wasn't judged worth it. `btrfs-assistant` remains installed but without a configured backend.
 
 - [ ] **H-15** `[F]` Complete the sops-nix "phased migration" — it stalled at 5 secrets; plaintext backend leaks into store (see H-10)
   - **Source:** FEATURES 1.2, ARCH 4.2 · `modules/secrets-sops.nix`, `modules/server/vexboard.nix`

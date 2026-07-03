@@ -6,7 +6,7 @@
 #
 # Web UI:  http://<server-ip>:7280
 # Service: vexboard.service
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.vexboard;
 in
@@ -51,9 +51,25 @@ in
               > /etc/nixos/secrets/vexboard-secret
             chmod 0600 /etc/nixos/secrets/vexboard-secret
           Then add to your config:  vexos.server.vexboard.secretFile = "/etc/nixos/secrets/vexboard-secret";
+          (Skip this if vexos.secrets.backend = "sops" — the secret is generated
+          automatically on first activation instead.)
         '';
       }
     ];
+
+    # Auto-generate the secret file on first activation when using the plaintext
+    # backend, so enabling VexBoard doesn't require a manual openssl step. Under
+    # the sops backend, secrets-sops.nix forces secretFile to a sops-managed path
+    # that sops-nix itself populates at activation, so this is skipped.
+    system.activationScripts.vexboardSecret =
+      lib.mkIf (config.vexos.secrets.backend != "sops") ''
+        if [ ! -e "${cfg.secretFile}" ]; then
+          mkdir -p "$(dirname "${cfg.secretFile}")"
+          echo "VEXBOARD_AUTH__SECRET=$(${pkgs.openssl}/bin/openssl rand -base64 48)" \
+            > "${cfg.secretFile}"
+          chmod 0600 "${cfg.secretFile}"
+        fi
+      '';
 
     services.vexboard = {
       enable = true;

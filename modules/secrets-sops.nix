@@ -72,6 +72,38 @@ in
         assertion = config.sops.secrets ? "attic-server-token-rs256-secret-base64";
         message = "sops secret 'attic-server-token-rs256-secret-base64' must be declared for vexos.secrets.backend = \"sops\".";
       }
+      {
+        assertion = config.sops.secrets ? "vexboard-auth-secret";
+        message = "sops secret 'vexboard-auth-secret' must be declared for vexos.secrets.backend = \"sops\".";
+      }
+      {
+        assertion = config.sops.secrets ? "kiji-proxy-openai-key";
+        message = "sops secret 'kiji-proxy-openai-key' must be declared for vexos.secrets.backend = \"sops\".";
+      }
+      {
+        assertion = config.sops.secrets ? "listmonk-admin-user";
+        message = "sops secret 'listmonk-admin-user' must be declared for vexos.secrets.backend = \"sops\".";
+      }
+      {
+        assertion = config.sops.secrets ? "listmonk-admin-password";
+        message = "sops secret 'listmonk-admin-password' must be declared for vexos.secrets.backend = \"sops\".";
+      }
+      {
+        assertion = config.sops.secrets ? "vaultwarden-admin-token";
+        message = "sops secret 'vaultwarden-admin-token' must be declared for vexos.secrets.backend = \"sops\".";
+      }
+      {
+        assertion = config.sops.secrets ? "authelia-jwt-secret";
+        message = "sops secret 'authelia-jwt-secret' must be declared for vexos.secrets.backend = \"sops\".";
+      }
+      {
+        assertion = config.sops.secrets ? "authelia-session-secret";
+        message = "sops secret 'authelia-session-secret' must be declared for vexos.secrets.backend = \"sops\".";
+      }
+      {
+        assertion = config.sops.secrets ? "authelia-storage-encryption-key";
+        message = "sops secret 'authelia-storage-encryption-key' must be declared for vexos.secrets.backend = \"sops\".";
+      }
     ];
 
     sops = {
@@ -111,6 +143,54 @@ in
           group = "root";
           mode = "0400";
         };
+
+        vexboard-auth-secret = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        };
+
+        kiji-proxy-openai-key = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        };
+
+        listmonk-admin-user = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        };
+
+        listmonk-admin-password = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        };
+
+        vaultwarden-admin-token = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        };
+
+        authelia-jwt-secret = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        };
+
+        authelia-session-secret = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        };
+
+        authelia-storage-encryption-key = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        };
       };
 
       templates = {
@@ -132,6 +212,43 @@ in
             ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64=${config.sops.placeholder.attic-server-token-rs256-secret-base64}
           '';
         };
+
+        "vexboard-credentials" = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+          content = ''
+            VEXBOARD_AUTH__SECRET=${config.sops.placeholder.vexboard-auth-secret}
+          '';
+        };
+
+        "kiji-proxy-env" = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+          content = ''
+            OPENAI_API_KEY=${config.sops.placeholder.kiji-proxy-openai-key}
+          '';
+        };
+
+        "listmonk-env" = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+          content = ''
+            LISTMONK_ADMIN_USER=${config.sops.placeholder.listmonk-admin-user}
+            LISTMONK_ADMIN_PASSWORD=${config.sops.placeholder.listmonk-admin-password}
+          '';
+        };
+
+        "vaultwarden-env" = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+          content = ''
+            ADMIN_TOKEN=${config.sops.placeholder.vaultwarden-admin-token}
+          '';
+        };
       };
     } // lib.optionalAttrs (cfg.sopsFile != null) {
       defaultSopsFile = cfg.sopsFile;
@@ -141,5 +258,12 @@ in
     vexos.server.photoprism.passwordFile = lib.mkForce config.sops.secrets."photoprism-password".path;
     vexos.server.minio.rootCredentialsFile = lib.mkForce config.sops.templates."minio-credentials".path;
     vexos.server.attic.environmentFile = lib.mkForce config.sops.templates."attic-credentials".path;
+    vexos.server.vexboard.secretFile = lib.mkForce config.sops.templates."vexboard-credentials".path;
+    vexos.server.kiji-proxy.environmentFile = lib.mkForce config.sops.templates."kiji-proxy-env".path;
+    services.listmonk.secretFile = lib.mkForce config.sops.templates."listmonk-env".path;
+    vexos.server.vaultwarden.environmentFile = lib.mkForce config.sops.templates."vaultwarden-env".path;
+    vexos.server.authelia.jwtSecretFile = lib.mkForce config.sops.secrets."authelia-jwt-secret".path;
+    vexos.server.authelia.sessionSecretFile = lib.mkForce config.sops.secrets."authelia-session-secret".path;
+    vexos.server.authelia.storageEncryptionKeyFile = lib.mkForce config.sops.secrets."authelia-storage-encryption-key".path;
   };
 }

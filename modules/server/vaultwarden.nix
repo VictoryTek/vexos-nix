@@ -53,6 +53,16 @@ in
         enable this if you are terminating TLS on this host.
       '';
     };
+
+    environmentFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        Path to an env file containing ADMIN_TOKEN=<argon2id-or-bcrypt-hash>.
+        Loaded as a systemd EnvironmentFile. Enables the Vaultwarden admin panel.
+        See: https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -75,10 +85,8 @@ in
         ROCKET_ADDRESS = "127.0.0.1";
         SIGNUPS_ALLOWED = false;
         DOMAIN         = cfg.domain;
-        # To enable the admin panel, set ADMIN_TOKEN via environmentFile:
-        #   services.vaultwarden.environmentFile = "/run/secrets/vaultwarden-env";
-        # where the file contains: ADMIN_TOKEN=<argon2id-hash>
       };
+      environmentFile = lib.optional (cfg.environmentFile != null) cfg.environmentFile;
     };
 
     networking.firewall.allowedTCPPorts =

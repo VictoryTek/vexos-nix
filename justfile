@@ -1141,6 +1141,55 @@ _require-server-role:
         exit 1
     fi
 
+# Guided one-time setup for the sops-nix encrypted secrets backend
+# (vexos.secrets.backend = "sops"). Generates the local age key used to
+# decrypt secrets on this host, then prints the public key and a .sops.yaml
+# snippet to add to the repo. Does not create or encrypt the secrets file
+# itself — use the `sops <file>.yaml` edit workflow for that, it's already
+# the right tool for the job.
+secrets-init: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    KEY_FILE="/var/lib/sops-nix/key.txt"
+
+    if [ -f "$KEY_FILE" ]; then
+        echo "age key already exists at $KEY_FILE"
+    else
+        echo "Generating age key at $KEY_FILE ..."
+        sudo mkdir -p "$(dirname "$KEY_FILE")"
+        sudo nix shell nixpkgs#age -c age-keygen -o "$KEY_FILE"
+        sudo chmod 0600 "$KEY_FILE"
+    fi
+
+    PUBLIC_KEY=$(sudo nix shell nixpkgs#age -c age-keygen -y "$KEY_FILE" 2>/dev/null || true)
+    if [ -z "$PUBLIC_KEY" ]; then
+        PUBLIC_KEY=$(sudo grep '^# public key:' "$KEY_FILE" | cut -d' ' -f4)
+    fi
+
+    echo ""
+    echo "Public key: $PUBLIC_KEY"
+    echo ""
+    echo "Add this to .sops.yaml in the repo root:"
+    echo ""
+    echo "creation_rules:"
+    echo "  - path_regex: secrets/.*\\.yaml\$"
+    echo "    key_groups:"
+    echo "      - age:"
+    echo "          - $PUBLIC_KEY"
+    echo ""
+    echo "Then create/edit the secrets file with:  sops secrets/server/secrets.yaml"
+    echo "Required keys (see modules/secrets-sops.nix):"
+    echo "  nextcloud-admin-pass, photoprism-password, minio-root-user,"
+    echo "  minio-root-password, attic-server-token-rs256-secret-base64,"
+    echo "  vexboard-auth-secret, kiji-proxy-openai-key, listmonk-admin-user,"
+    echo "  listmonk-admin-password, vaultwarden-admin-token,"
+    echo "  authelia-jwt-secret, authelia-session-secret,"
+    echo "  authelia-storage-encryption-key"
+    echo ""
+    echo "Finally, set in your host config:"
+    echo "  vexos.secrets.backend = \"sops\";"
+    echo "  vexos.secrets.sopsFile = ./secrets/server/secrets.yaml;"
+
 # Interactively create a ZFS pool for use as Proxmox VM/container backing storage.
 # Server roles only.  Requires modules/zfs-server.nix in the active build.
 # All work runs as root via sudo. The recipe:
