@@ -1127,7 +1127,7 @@ disable-feature feature: _require-desktop-role
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -1189,6 +1189,18 @@ secrets-init: _require-server-role
     echo "Finally, set in your host config:"
     echo "  vexos.secrets.backend = \"sops\";"
     echo "  vexos.secrets.sopsFile = ./secrets/server/secrets.yaml;"
+
+# Manually trigger a restic backup run outside the daily timer.
+# Requires vexos.server.backup.enable = true.
+backup-now: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! systemctl list-unit-files restic-backups-main.service &>/dev/null; then
+        echo "error: restic-backups-main.service not found — enable it first with 'just enable backup'."
+        exit 1
+    fi
+    sudo systemctl start restic-backups-main.service --wait
+    echo "✓ Backup run complete. Check status with: systemctl status restic-backups-main.service"
 
 # Interactively create a ZFS pool for use as Proxmox VM/container backing storage.
 # Server roles only.  Requires modules/zfs-server.nix in the active build.
@@ -1275,6 +1287,7 @@ available-services:
     _svc papermc             "High-performance Minecraft Java server"
     _hdr "Infrastructure"
     _svc attic               "Self-hosted Nix binary cache server"
+    _svc backup              "Declarative restic backups of enabled services"
     _svc caddy               "Automatic HTTPS web server & reverse proxy"
     _svc docker              "Container runtime (Docker Engine)"
     _svc dockhand            "Web UI for managing Podman containers"
@@ -1477,6 +1490,7 @@ status service: _require-server-role
                       URLS="http://localhost:8080 http://localhost:8989 http://localhost:7878 http://localhost:8686 http://localhost:9696" ;;
       attic)          UNITS="atticd";               URLS="http://localhost:8400" ;;
       audiobookshelf) UNITS="audiobookshelf";       URLS="http://localhost:8234" ;;
+      backup)         UNITS="restic-backups-main";  URLS="" ;;
       caddy)          UNITS="caddy";                URLS="http://localhost:8880" ;;
       nas)            UNITS="cockpit";              URLS="http://localhost:9090" ;;
       cockpit)        UNITS="cockpit";              URLS="http://localhost:9090" ;;
@@ -1585,7 +1599,7 @@ services: _require-server-role
     _hdr "Communications";             _check matrix-conduit
     _hdr "Files & Storage";            _check immich;         _check nextcloud;     _check syncthing;     _check minio;         _check photoprism
     _hdr "Gaming";                     _check papermc
-    _hdr "Infrastructure";             _check attic;          _check caddy;          _check docker;        _check dockhand;      _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
+    _hdr "Infrastructure";             _check attic;          _check backup;         _check caddy;          _check docker;        _check dockhand;      _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
     _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
     _hdr "Media Requests & Automation";_check arr;            _check seerr
     _hdr "Monitoring & Admin";         _check nas;            _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma;  _check portbook;  _check vexboard
@@ -1701,6 +1715,38 @@ enable service: _require-server-role
         fi
     fi
 
+    # Backup repository + password file prompts — both required at enable time.
+    if [ "$SERVICE" = "backup" ]; then
+        REPO_OPTION="vexos.server.backup.repository"
+        _backup_repo=""
+        while [ -z "$_backup_repo" ]; do
+            read -r -p "  Enter the restic repository (e.g. /mnt/backup/restic-repo or sftp:user@host:/path): " _backup_repo
+        done
+        if grep -qP "^\s*#?\s*${REPO_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+            sudo sed -i -E "s|^(\s*)#?\s*(${REPO_OPTION//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${REPO_OPTION} = \"${_backup_repo}\";|" "$SVC_FILE"
+        else
+            sudo sed -i "s|${OPTION} = true;|${OPTION} = true;\n  ${REPO_OPTION} = \"${_backup_repo}\";|" "$SVC_FILE"
+        fi
+
+        PW_OPTION="vexos.server.backup.passwordFile"
+        _backup_pw_file=""
+        echo "  The password file must contain only the restic repository password."
+        while [ -z "$_backup_pw_file" ]; do
+            read -r -p "  Enter the path to the restic password file (e.g. /etc/nixos/secrets/backup-password): " _backup_pw_file
+        done
+        if [ ! -f "$_backup_pw_file" ]; then
+            sudo mkdir -p "$(dirname "$_backup_pw_file")"
+            openssl rand -base64 48 | sudo tee "$_backup_pw_file" > /dev/null
+            sudo chmod 0600 "$_backup_pw_file"
+            echo "  Generated a new random password at $_backup_pw_file"
+        fi
+        if grep -qP "^\s*#?\s*${PW_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+            sudo sed -i -E "s|^(\s*)#?\s*(${PW_OPTION//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${PW_OPTION} = \"${_backup_pw_file}\";|" "$SVC_FILE"
+        else
+            sudo sed -i "s|${REPO_OPTION} = \"${_backup_repo}\";|${REPO_OPTION} = \"${_backup_repo}\";\n  ${PW_OPTION} = \"${_backup_pw_file}\";|" "$SVC_FILE"
+        fi
+    fi
+
     echo "✓ Enabled: $SERVICE"
 
     # Ensure VexBoard has a secretFile — required by the build assertion.
@@ -1772,6 +1818,12 @@ enable service: _require-server-role
         echo "  Client:   attic login myserver http://<server-ip>:8400 <token>"
         echo "            attic cache create mycache"
         echo "            attic push mycache <store-path>"
+        ;;
+      backup)
+        echo "  Service:  restic-backups-main.service"
+        echo "  About:    Daily restic backup of every enabled service's data directory"
+        echo "            (plus a PostgreSQL dump if services.postgresql is enabled)."
+        echo "  Run now:  just backup-now"
         ;;
       audiobookshelf)
         echo "  Service:  audiobookshelf.service"

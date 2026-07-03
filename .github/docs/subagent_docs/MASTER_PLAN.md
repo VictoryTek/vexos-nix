@@ -90,9 +90,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** FEATURES 1.1 · `modules/system.nix` (existing `vexos.btrfs.enable` block)
   - **Resolution:** Declined by user — NixOS generation rollback already covers the primary use case for this project; the added complexity of a second snapshot/rollback system (snapper) wasn't judged worth it. `btrfs-assistant` remains installed but without a configured backend.
 
-- [ ] **H-15** `[F]` Complete the sops-nix "phased migration" — it stalled at 5 secrets; plaintext backend leaks into store (see H-10)
+- [x] **H-15** `[F]` Complete the sops-nix "phased migration" — it stalled at 5 secrets; plaintext backend leaks into store (see H-10)
   - **Source:** FEATURES 1.2, ARCH 4.2 · `modules/secrets-sops.nix`, `modules/server/vexboard.nix`
-  - Extend `secrets-sops.nix` for remaining services (vexboard, code-server, kiji-proxy, vaultwarden, listmonk, authelia); add `just secrets-init` guided setup recipe; auto-generate VexBoard secret at activation; resolves ARCH 4.2 (sops unreachable by default)
+  - **Resolution:** Wired vexboard, kiji-proxy, and listmonk (all already had file-based secret inputs) into `secrets-sops.nix`. Added new `environmentFile`/`jwtSecretFile`/`sessionSecretFile`/`storageEncryptionKeyFile` options to `vaultwarden.nix` and `authelia.nix` (neither had any secret plumbing before) and wired those too. Added `just secrets-init` (age key + guidance) and VexBoard plaintext-path auto-generation at activation. `code-server` explicitly excluded — upstream module has no file-based secret input, only an eval-time string, incompatible with sops's runtime-only decryption. (`modules/secrets-sops.nix`, `modules/server/vaultwarden.nix`, `modules/server/authelia.nix`, `modules/server/vexboard.nix`, `justfile`)
 
 - [ ] **H-16** `[F]` Declarative restic backup module — no backup tooling exists anywhere for 50+ stateful services
   - **Source:** FEATURES 2.1
