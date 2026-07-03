@@ -141,7 +141,10 @@ in
     ];
 
     services.restic.backups.main = {
-      inherit (cfg) repository repositoryFile passwordFile pruneOpts timerConfig;
+      inherit (cfg) repository repositoryFile pruneOpts timerConfig;
+      # Upstream passwordFile is typed `nullOr str`, not `path` — convert so our
+      # nicer path-typed option (catches typos at eval time) still fits.
+      passwordFile = lib.mkIf (cfg.passwordFile != null) (toString cfg.passwordFile);
       paths = enabledServicePaths ++ cfg.extraPaths
         ++ lib.optional config.services.postgresql.enable postgresDumpFile;
       backupPrepareCommand = lib.mkIf config.services.postgresql.enable ''
