@@ -24,6 +24,7 @@
     ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on desktop
     ./modules/security.nix          # AppArmor MAC baseline (all roles)
     ./modules/nix.nix
+    ./modules/notify.nix
     ./modules/nix-desktop.nix       # 14-day GC retention (workstation standard)
     ./modules/locale.nix
     ./modules/users.nix

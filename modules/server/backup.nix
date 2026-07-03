@@ -5,9 +5,6 @@
 #
 # Repository target (local disk, SFTP, B2, etc.) is entirely up to the user —
 # see vexos.server.backup.repository / repositoryFile.
-#
-# Failure alerting: H-17 (ntfy wiring) does not exist yet. Once it does, add:
-#   systemd.services."restic-backups-main".onFailure = [ "notify-failure@backup.service" ];
 { config, lib, ... }:
 let
   cfg = config.vexos.server.backup;
@@ -155,5 +152,7 @@ in
         rm -f "${postgresDumpFile}"
       '';
     };
+
+    systemd.services."restic-backups-main".onFailure = [ "notify-failure@backup.service" ];
   };
 }

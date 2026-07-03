@@ -94,9 +94,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** FEATURES 1.2, ARCH 4.2 · `modules/secrets-sops.nix`, `modules/server/vexboard.nix`
   - **Resolution:** Wired vexboard, kiji-proxy, and listmonk (all already had file-based secret inputs) into `secrets-sops.nix`. Added new `environmentFile`/`jwtSecretFile`/`sessionSecretFile`/`storageEncryptionKeyFile` options to `vaultwarden.nix` and `authelia.nix` (neither had any secret plumbing before) and wired those too. Added `just secrets-init` (age key + guidance) and VexBoard plaintext-path auto-generation at activation. `code-server` explicitly excluded — upstream module has no file-based secret input, only an eval-time string, incompatible with sops's runtime-only decryption. (`modules/secrets-sops.nix`, `modules/server/vaultwarden.nix`, `modules/server/authelia.nix`, `modules/server/vexboard.nix`, `justfile`)
 
-- [ ] **H-16** `[F]` Declarative restic backup module — no backup tooling exists anywhere for 50+ stateful services
+- [x] **H-16** `[F]` Declarative restic backup module — no backup tooling exists anywhere for 50+ stateful services
   - **Source:** FEATURES 2.1
-  - New `modules/server/backup.nix` using `services.restic.backups`; assemble default paths from enabled services (`lib.optionals`); include PostgreSQL pre-hook dump; register in `modules/server/default.nix` and justfile extension points; failure alerts wire into H-17
+  - **Resolution:** Added `modules/server/backup.nix` (`vexos.server.backup`) using `services.restic.backups`, with a static `_server_service_names`-keyed table of default data paths assembled via `lib.optionals config.vexos.server.<x>.enable`, a PostgreSQL `pg_dumpall` pre/cleanup hook gated on `services.postgresql.enable`, and Syncthing deliberately excluded (its dataDir is the whole user home directory). Registered in `modules/server/default.nix` and wired into `justfile` (service list, enable-time repository/password prompts, status mapping, `backup-now` recipe). Failure-alert hook left as a documented comment for H-17 (ntfy), which doesn't exist yet. (`modules/server/backup.nix`, `modules/server/default.nix`, `justfile`)
 
 - [ ] **H-17** `[F]` Wire system events into the self-hosted ntfy server that currently has zero producers
   - **Source:** FEATURES 2.2 · `modules/server/ntfy.nix`

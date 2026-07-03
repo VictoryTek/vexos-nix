@@ -325,6 +325,7 @@ GITIGNORE
         nixos-rebuild switch \
           --flake git+file:///etc/nixos#"$VARIANT" \
           --print-build-logs
+        vexos-notify "Update applied on $(hostname)"
       '')
     ];
   }; # end config

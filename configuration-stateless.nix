@@ -19,6 +19,7 @@
     ./modules/security.nix          # AppArmor MAC baseline (all roles)
     ./modules/impermanence.nix
     ./modules/nix.nix
+    ./modules/notify.nix
     ./modules/nix-stateless.nix     # 7-day GC retention (state resets on reboot)
     ./modules/locale.nix
     ./modules/users.nix

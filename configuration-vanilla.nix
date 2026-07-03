@@ -11,6 +11,7 @@
     ./modules/locale.nix
     ./modules/users.nix
     ./modules/nix.nix
+    ./modules/notify.nix
     ./modules/asus-opt.nix
     ./modules/boot-discovery.nix
   ];
