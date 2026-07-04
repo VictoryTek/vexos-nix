@@ -13,6 +13,12 @@ in
       default = 9010;
       description = "Port for the Mealie web interface.";
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Mealie's port.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -22,6 +28,6 @@ in
       port = cfg.port;
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

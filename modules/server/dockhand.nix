@@ -37,6 +37,12 @@ in
         path inside the container and DATA_DIR is set accordingly.
       '';
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Dockhand's port.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -78,6 +84,6 @@ in
     };
 
     # Open the firewall for Dockhand's web UI.
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

@@ -38,6 +38,12 @@ in
         to a decrypted runtime template path.
       '';
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for MinIO's API and console ports.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -48,6 +54,6 @@ in
       rootCredentialsFile = cfg.rootCredentialsFile;
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.apiPort cfg.consolePort ];
+    networking.firewall.allowedTCPPorts = lib.optionals cfg.openFirewall [ cfg.apiPort cfg.consolePort ];
   };
 }

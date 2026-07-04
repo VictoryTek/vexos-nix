@@ -8,12 +8,24 @@ in
 {
   options.vexos.server.kavita = {
     enable = lib.mkEnableOption "Kavita ebook and manga library server";
+
+    port = lib.mkOption {
+      type = lib.types.port;
+      default = 5000;
+      description = "Port for the Kavita web interface.";
+    };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Kavita's port.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
     services.kavita = {
       enable = true;
-      settings.Port = 5000;
+      settings.Port = cfg.port;
       tokenKeyFile = "/var/lib/kavita/token-key";
     };
 
@@ -30,6 +42,6 @@ in
       fi
     '';
 
-    networking.firewall.allowedTCPPorts = [ 5000 ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

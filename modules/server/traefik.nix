@@ -46,6 +46,12 @@ in
         Enable only for local debugging on isolated LANs.
       '';
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Traefik's entrypoint (and dashboard, if enabled) ports.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -68,7 +74,7 @@ in
 
     # Only open the dashboard port when the insecure dashboard is explicitly enabled.
     networking.firewall.allowedTCPPorts =
-      [ cfg.httpPort cfg.httpsPort ]
-      ++ lib.optional cfg.insecureDashboard cfg.dashboardPort;
+      lib.optionals cfg.openFirewall [ cfg.httpPort cfg.httpsPort ]
+      ++ lib.optional (cfg.openFirewall && cfg.insecureDashboard) cfg.dashboardPort;
   };
 }

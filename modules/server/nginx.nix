@@ -21,6 +21,12 @@ in
       default = 443;
       description = "Default HTTPS listen port for Nginx virtual hosts.";
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Nginx's HTTP/HTTPS ports.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -34,6 +40,6 @@ in
       recommendedTlsSettings = true;
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.httpPort cfg.httpsPort ];
+    networking.firewall.allowedTCPPorts = lib.optionals cfg.openFirewall [ cfg.httpPort cfg.httpsPort ];
   };
 }

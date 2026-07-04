@@ -29,6 +29,12 @@ in
         to a decrypted runtime secret path.
       '';
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for PhotoPrism's port.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -39,6 +45,6 @@ in
       passwordFile = cfg.passwordFile;
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

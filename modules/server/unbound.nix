@@ -9,6 +9,12 @@ in
 {
   options.vexos.server.unbound = {
     enable = lib.mkEnableOption "Unbound local DNS resolver";
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Unbound's DNS port (TCP and UDP).";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -30,7 +36,7 @@ in
       };
     };
 
-    networking.firewall.allowedTCPPorts = [ 5335 ];
-    networking.firewall.allowedUDPPorts = [ 5335 ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall 5335;
+    networking.firewall.allowedUDPPorts = lib.optional cfg.openFirewall 5335;
   };
 }

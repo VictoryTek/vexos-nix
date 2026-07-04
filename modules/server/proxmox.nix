@@ -47,6 +47,12 @@ in
         Find the name with: ip link show
       '';
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for the Proxmox VE web UI and VNC/SPICE console ports.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -62,8 +68,12 @@ in
     ];
 
     services.proxmox-ve = {
-      enable    = true;
-      ipAddress = cfg.ipAddress;
+      enable       = true;
+      ipAddress    = cfg.ipAddress;
+      # The upstream module opens its own ports (8006 admin, 111 rpcbind, 80/443
+      # http(s)) independently of the 8007 VNC/SPICE port added below — thread
+      # our toggle through so openFirewall = false actually suppresses all of it.
+      openFirewall = cfg.openFirewall;
     };
 
     # ── vmbr0 bridge — managed by NetworkManager ────────────────────────────
@@ -121,7 +131,7 @@ in
     # ── Firewall ────────────────────────────────────────────────────────────
     # 8006 = Proxmox web UI / API
     # 8007 = VNC/SPICE websocket proxy (noVNC console)
-    networking.firewall.allowedTCPPorts = [ 8006 8007 ];
+    networking.firewall.allowedTCPPorts = lib.optionals cfg.openFirewall [ 8006 8007 ];
 
     # Allow the kernel to forward packets between the bridge and VM tap interfaces.
     boot.kernel.sysctl = {

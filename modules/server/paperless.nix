@@ -16,6 +16,12 @@ in
       default = 28981;
       description = "Port for the Paperless-ngx web interface.";
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Paperless-ngx's port.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -25,6 +31,6 @@ in
       address = "0.0.0.0";
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

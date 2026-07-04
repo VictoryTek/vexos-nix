@@ -72,6 +72,12 @@ in
         to a decrypted runtime secret path.
       '';
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Nextcloud's HTTP/HTTPS port(s).";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -94,7 +100,7 @@ in
     # Port 80 is open in HTTPS mode (redirect path) or explicit insecure mode.
     # Port 443 is open only when HTTPS mode is enabled.
     networking.firewall.allowedTCPPorts =
-      lib.optional (cfg.https || cfg.allowInsecureHttp) 80
-      ++ lib.optional cfg.https 443;
+      lib.optional (cfg.openFirewall && (cfg.https || cfg.allowInsecureHttp)) 80
+      ++ lib.optional (cfg.openFirewall && cfg.https) 443;
   };
 }

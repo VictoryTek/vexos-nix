@@ -29,6 +29,12 @@ in
         Generate with: echo -n 'yourpassword' | nix run nixpkgs#libargon2 -- "$(head -c 20 /dev/random | base64)" -e
       '';
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for code-server's port.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -52,6 +58,6 @@ in
       hashedPassword = cfg.hashedPassword;
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

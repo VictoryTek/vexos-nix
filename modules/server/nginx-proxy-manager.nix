@@ -28,6 +28,12 @@ in
       default = 81;
       description = "Port for the Nginx Proxy Manager admin interface.";
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Nginx Proxy Manager's ports.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -47,6 +53,6 @@ in
       ];
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.httpPort cfg.httpsPort cfg.adminPort ];
+    networking.firewall.allowedTCPPorts = lib.optionals cfg.openFirewall [ cfg.httpPort cfg.httpsPort cfg.adminPort ];
   };
 }

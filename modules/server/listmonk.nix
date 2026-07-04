@@ -15,6 +15,12 @@ in
       default = 9025;
       description = "Port for the Listmonk web interface. Default 9025 avoids conflict with Mealie/MinIO on port 9000.";
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Listmonk's port.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -23,6 +29,6 @@ in
       settings.app.address = "0.0.0.0:${toString cfg.port}";
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

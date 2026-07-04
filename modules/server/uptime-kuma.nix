@@ -13,6 +13,12 @@ in
       default = 3001;
       description = "Port for the Uptime Kuma web interface.";
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Uptime Kuma's port.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -25,6 +31,6 @@ in
       volumes = [ "uptime-kuma-data:/app/data" ];
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

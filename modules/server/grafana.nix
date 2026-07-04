@@ -15,6 +15,12 @@ in
       default = 3030;
       description = "Port for the Grafana web UI.";
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Grafana's port.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -44,6 +50,6 @@ in
       };
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

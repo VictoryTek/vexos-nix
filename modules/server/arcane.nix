@@ -48,6 +48,12 @@ in
         `openssl rand -hex 32`). Required before enabling Arcane.
       '';
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Arcane's port.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -90,6 +96,6 @@ in
       environmentFiles = lib.optional (cfg.environmentFile != null) cfg.environmentFile;
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

@@ -19,6 +19,12 @@ in
       default = 8443;
       description = "Port for Caddy HTTPS listener.";
     };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Open the firewall for Caddy's HTTP/HTTPS ports.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -35,6 +41,6 @@ in
       #   '';
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.httpPort cfg.httpsPort ];
+    networking.firewall.allowedTCPPorts = lib.optionals cfg.openFirewall [ cfg.httpPort cfg.httpsPort ];
   };
 }
