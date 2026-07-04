@@ -138,9 +138,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M4 · `modules/server/headscale.nix:24`
   - **Resolution:** Confirmed the current nixpkgs uses `services.headscale.settings.server_url` — the top-level `serverUrl` this module previously set is deprecated (renamed via `mkRenamedOptionModule`). Added a required `vexos.server.headscale.serverUrl` option (invalid-placeholder-default + assertion, matching `vaultwarden.nix`'s established pattern) and wired it to the current option path. Verified via forced builds that the assertion fires without a real value and that a supplied value correctly reaches `settings.server_url`. (`modules/server/headscale.nix`)
 
-- [ ] **M-05** `[B]` `lib.mkDefault [ "btrfs" ]` in initrd discarded by every generated `hardware-configuration.nix`
+- [x] **M-05** `[B]` `lib.mkDefault [ "btrfs" ]` in initrd discarded by every generated `hardware-configuration.nix`
   - **Source:** BUGS M5 · `modules/stateless-disk.nix:74`
-  - Change to plain `[ "btrfs" ]` (list options merge at equal priority; no longer dropped by higher-priority empty list)
+  - **Resolution:** Changed to plain `[ "btrfs" ]` so it shares priority 100 with `hardware-configuration.nix`'s own always-present `boot.initrd.kernelModules` definition, merging (concatenating) instead of being discarded whenever that list happens to be empty. Verified with synthetic builds against both an empty and a non-empty stub `hardware-configuration.nix` that `btrfs` is now always present in the final merged list. (`modules/stateless-disk.nix`)
 
 - [ ] **M-06** `[B]` Bluetooth codec list omits SBC — SBC-only devices cannot establish A2DP audio
   - **Source:** BUGS M6 · `modules/audio.nix:38`

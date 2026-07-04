@@ -75,7 +75,12 @@ in
     {
       # Force unconditional early loading of btrfs — availableKernelModules relies
       # on udev hotplug ordering which is unreliable in early initrd.
-      boot.initrd.kernelModules = lib.mkDefault [ "btrfs" ];
+      # Plain (priority-100) assignment, not mkDefault: hardware-configuration.nix
+      # always declares its own priority-100 boot.initrd.kernelModules, even when
+      # empty, which would otherwise discard a lower-priority mkDefault list
+      # entirely rather than merge with it (list options only merge definitions
+      # at the single highest-priority tier present).
+      boot.initrd.kernelModules = [ "btrfs" ];
 
       # ── Boot partition (EFI / FAT32) ──────────────────────────────────────
       # lib.mkDefault: hardware-configuration.nix overrides with UUID path.
