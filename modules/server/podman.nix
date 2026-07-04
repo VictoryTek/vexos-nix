@@ -28,6 +28,13 @@ in
     # (virtualisation.oci-containers.containers.*).
     virtualisation.oci-containers.backend = "podman";
 
+    # Several docker-backed service modules set virtualisation.docker.enable =
+    # lib.mkDefault true so they work standalone. Podman's dockerCompat above
+    # already provides the same /run/docker.sock those modules need, and
+    # nixpkgs asserts against dockerCompat + real docker running together —
+    # force real docker off so podman + those services can coexist.
+    virtualisation.docker.enable = lib.mkForce false;
+
     assertions = [
       {
         assertion = !(config.vexos.server.docker.enable or false);

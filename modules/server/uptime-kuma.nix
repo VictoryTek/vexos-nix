@@ -17,7 +17,7 @@ in
 
   config = lib.mkIf cfg.enable {
     virtualisation.docker.enable = lib.mkDefault true;
-    virtualisation.oci-containers.backend = "docker";
+    virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
     virtualisation.oci-containers.containers.uptime-kuma = {
       image = "louislam/uptime-kuma:1";

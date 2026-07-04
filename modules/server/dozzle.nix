@@ -19,7 +19,7 @@ in
 
   config = lib.mkIf cfg.enable {
     virtualisation.docker.enable = lib.mkDefault true;
-    virtualisation.oci-containers.backend = "docker";
+    virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
     virtualisation.oci-containers.containers.dozzle = {
       image = "amir20/dozzle:latest";
