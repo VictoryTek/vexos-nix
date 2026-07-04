@@ -146,9 +146,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M6 · `modules/audio.nix:38`
   - **Resolution:** Added `"sbc" "sbc_xq"` to `bluez5.codecs`, ahead of the existing higher-quality codecs. `bluez5.codecs` is an allowlist, not a preference-with-fallback list, so devices supporting only the mandatory baseline SBC codec previously shared zero codecs with the host and couldn't establish A2DP at all. Verified the final merged codec list on `vexos-desktop-amd`. (`modules/audio.nix`)
 
-- [ ] **M-07** `[B]` `gnome-background-reload` resume service is `wantedBy` targets that this same module masks
+- [x] **M-07** `[B]` `gnome-background-reload` resume service is `wantedBy` targets that this same module masks
   - **Source:** BUGS M7 · `modules/system-nosleep.nix:69-93`
-  - Delete the dead resume service block (~25 lines); the masked targets can never activate it
+  - **Resolution:** Deleted the dead resume service block. Its `wantedBy` targets (suspend/hibernate/hybrid-sleep) are permanently masked by this same file's Layer 4, so the service could never activate. Verified the service is absent from the built config. (`modules/system-nosleep.nix`)
 
 - [ ] **M-08** `[B]` AppArmor wineserver profile attaches to `/usr/bin/wineserver` — that path doesn't exist on NixOS
   - **Source:** BUGS M8 · `modules/gaming.nix:111-124`

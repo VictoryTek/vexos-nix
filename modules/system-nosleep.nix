@@ -60,29 +60,4 @@
       };
     }
   ];
-
-  # ── Belt-and-suspenders: post-resume GNOME background reload ─────────────
-  # Executes after resume IF sleep somehow gets through layers 1–4.
-  # Toggles the wallpaper URI (picture-options zoom → stretch → zoom) to force
-  # mutter's background actor to invalidate and repaint its texture cache.
-  # Runs as the primary user; uses the stable systemd user D-Bus socket path.
-  systemd.services."gnome-background-reload" = {
-    description = "Reload GNOME background after resume (wallpaper corruption workaround)";
-    after    = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" ];
-    wantedBy = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      User = config.vexos.user.name;
-      Environment = [
-        "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${toString config.users.users.${config.vexos.user.name}.uid}/bus"
-        "HOME=/home/${config.vexos.user.name}"
-      ];
-      # Toggle picture-options to force a background repaint, then restore.
-      ExecStart = pkgs.writeShellScript "gnome-bg-reload" ''
-        ${pkgs.glib}/bin/gsettings set org.gnome.desktop.background picture-options stretch
-        sleep 1
-        ${pkgs.glib}/bin/gsettings set org.gnome.desktop.background picture-options zoom
-      '';
-    };
-  };
 }
