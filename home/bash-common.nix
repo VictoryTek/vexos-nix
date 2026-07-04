@@ -26,11 +26,6 @@
       ll  = "ls -la";
       ".." = "cd ..";
 
-      # Always resolve the vexos justfile from /etc/nixos so `just` works
-      # regardless of the current working directory (critical on stateless
-      # where ~ is a tmpfs and contains no justfile).
-      just = "just --justfile /etc/nixos/justfile --working-directory /etc/nixos";
-
       # Tailscale shortcuts
       ts   = "tailscale";
       tss  = "tailscale status";
@@ -38,6 +33,15 @@
 
       # System service shortcuts
       sshstatus = "systemctl status sshd";
+    }
+    # Always resolve the vexos justfile from /etc/nixos so `just` works
+    # regardless of the current working directory (critical on stateless
+    # where ~ is a tmpfs and contains no justfile). Only set when
+    # modules/packages-common.nix has actually deployed the file — the
+    # vanilla role deliberately doesn't import it, so `just` isn't
+    # installed there either and the alias would otherwise be dead.
+    // lib.optionalAttrs (osConfig.environment.etc ? "nixos/justfile") {
+      just = "just --justfile /etc/nixos/justfile --working-directory /etc/nixos";
     };
   };
 }

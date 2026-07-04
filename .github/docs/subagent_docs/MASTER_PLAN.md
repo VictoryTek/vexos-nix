@@ -194,9 +194,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M17 · `home-desktop.nix:13`, `home/photogimp.nix`
   - **Resolution:** Confirmed with the user (whose working GIMP install predates or exists outside this repo's declarative management) before proceeding. Added `org.gimp.GIMP` to `modules/flatpak-desktop.nix`'s `extraApps` list — the exact file already scoped to the desktop role, matching `photogimp.nix`'s own scope. Verified in the merged Flatpak app list. (`modules/flatpak-desktop.nix`)
 
-- [ ] **M-19** `[B]` `just` alias broken on the vanilla role — it points to a justfile that vanilla never deploys
+- [x] **M-19** `[B]` `just` alias broken on the vanilla role — it points to a justfile that vanilla never deploys
   - **Source:** BUGS M18 · `home/bash-common.nix`, `configuration-vanilla.nix:10-16`
-  - Make the alias conditional on the justfile existing, or import `packages-common.nix` in vanilla
+  - **Resolution:** Made the alias conditional (`lib.optionalAttrs (osConfig.environment.etc ? "nixos/justfile")`) rather than importing `packages-common.nix`, since that would add several CLI tools (git, curl, wget, btop, inxi, pciutils) contradicting vanilla's own stated "mirrors stock NixOS+GNOME, no custom packages" design intent. Verified the alias is present on desktop and correctly absent on vanilla, with zero behavior change for every other role. (`home/bash-common.nix`)
 
 - [ ] **M-20** `[B]` SSH password auth + open port 22 + GNOME auto-login on non-server roles with no fail2ban
   - **Source:** BUGS M19 · `modules/network.nix:156-175`, `modules/gnome.nix:126-130`
