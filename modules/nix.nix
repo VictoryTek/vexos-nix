@@ -219,7 +219,11 @@ GITIGNORE
         if [ -f "$OVERRIDE_FILE" ]; then
           echo "Kernel install override detected — checking if target kernel is now cached..."
           rm "$OVERRIDE_FILE"
-          DRY_CHECK=$(nixos-rebuild dry-build --flake git+file:///etc/nixos#"$VARIANT" 2>&1 || true)
+          if ! DRY_CHECK=$(nixos-rebuild dry-build --flake git+file:///etc/nixos#"$VARIANT" 2>&1); then
+            echo "error: dry-build failed while checking kernel cache status:" >&2
+            printf '%s\n' "$DRY_CHECK" >&2
+            exit 1
+          fi
           KERNEL_BLOCK_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk)'
           STILL_HEAVY=$(printf '%s\n' "$DRY_CHECK" \
             | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
@@ -248,8 +252,14 @@ GITIGNORE
           flake update --flake git+file:///etc/nixos
 
         echo "Checking for packages that require a local source build..."
-        DRY=$(nixos-rebuild dry-build \
-          --flake git+file:///etc/nixos#"$VARIANT" 2>&1 || true)
+        if ! DRY=$(nixos-rebuild dry-build \
+          --flake git+file:///etc/nixos#"$VARIANT" 2>&1); then
+          echo "error: dry-build failed after updating flake inputs — restoring flake.lock:" >&2
+          printf '%s\n' "$DRY" >&2
+          cp /etc/nixos/flake.lock.bak /etc/nixos/flake.lock
+          rm -f /etc/nixos/flake.lock.bak
+          exit 1
+        fi
 
         # Three-way local-build classifier:
         #
@@ -320,11 +330,11 @@ GITIGNORE
           printf '%s\n' "$NON_HEAVY_BUILDS" | grep '[^[:space:]]' | sed 's/^/VEXOS_LOCAL_BUILD:   /'
         fi
 
-        rm -f /etc/nixos/flake.lock.bak
         echo "Applying update..."
         nixos-rebuild switch \
           --flake git+file:///etc/nixos#"$VARIANT" \
           --print-build-logs
+        rm -f /etc/nixos/flake.lock.bak
         vexos-notify "Update applied on $(hostname)"
       '')
     ];

@@ -174,9 +174,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M15 · `hosts/server-*.nix`, `hosts/headless-server-*.nix`
   - **Resolution:** Wrapped all 8 host files' hostId placeholders in `lib.mkDefault`; extended `zfs-server.nix`'s assertion to reject all 8 committed placeholders (not just `"00000000"`), moving its own fallback to `lib.mkOverride 1500` to avoid a same-priority conflict with the host files. This correctly broke CI (every server/headless-server config now fails the strengthened assertion by design, since none carry a real per-machine value) — resolved by user decision: added a `networking.hostId` line to the stub `hardware-configuration.nix` CI already writes, mirroring the existing stateless-password CI fixture pattern. `template/etc-nixos-flake.nix` (the real thin-wrapper deployment path) was already correct and untouched. (`hosts/{server,headless-server}-{amd,nvidia,intel,vm}.nix`, `modules/zfs-server.nix`, `.github/workflows/ci.yml`)
 
-- [ ] **M-14** `[B]` `vexos-update` deletes the `flake.lock` backup before the step that can still fail
+- [x] **M-14** `[B]` `vexos-update` deletes the `flake.lock` backup before the step that can still fail
   - **Source:** BUGS M21 · `modules/nix.nix:168-239`
-  - Move `flake.lock.bak` removal to after successful `nixos-rebuild switch`; remove `|| true` from dry-build calls so evaluation failures surface
+  - **Resolution:** Moved `flake.lock.bak` removal to after a successful `nixos-rebuild switch` (relies on `set -euo pipefail` aborting before that line on failure — verified with an isolated bash simulation). Both `nixos-rebuild dry-build` calls now detect their own failure instead of swallowing it via `|| true`, restoring/removing the lock backup as appropriate before exiting. (`modules/nix.nix`)
 
 - [ ] **M-15** `[B]` kavita requires a manually created token file with no assertion — enable → permanent crash loop
   - **Source:** BUGS M22 · `modules/server/kavita.nix:22`
