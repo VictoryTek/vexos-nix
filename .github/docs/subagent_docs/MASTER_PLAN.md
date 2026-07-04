@@ -186,9 +186,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M23 · `justfile:1330-1334`
   - **Resolution:** Anchored all 4 occurrences of the fragile `sed -i "s|}|..."` pattern (enable-feature, enable service, and both VexBoard auto-secret/auto-enable insertions — not just the one named in the source) to `"\$ s|^}|..."` — only the file's actual final line. Directly reproduced the corruption with a synthetic nested-brace file and confirmed the old pattern corrupts it while the new pattern doesn't. (`justfile`)
 
-- [ ] **M-17** `[B]` Homepage container rejects all requests — `HOMEPAGE_ALLOWED_HOSTS` is unset on v0.10+
+- [x] **M-17** `[B]` Homepage container rejects all requests — `HOMEPAGE_ALLOWED_HOSTS` is unset on v0.10+
   - **Source:** BUGS M24 · `modules/server/homepage.nix:30-38`
-  - Add `environment.HOMEPAGE_ALLOWED_HOSTS = "<allowedHost>"` to the container definition
+  - **Resolution:** Added `vexos.server.homepage.allowedHosts` option (default `"localhost:<port>"`, works out of the box) wired to the container's `HOMEPAGE_ALLOWED_HOSTS` env var. Homepage has no wildcard support for this value, so the option description documents adding every real access hostname/IP. Verified both default and custom-override behavior. (`modules/server/homepage.nix`)
 
 - [ ] **M-18** `[B]` PhotoGIMP launcher ships on desktop but `org.gimp.GIMP` is never installed
   - **Source:** BUGS M17 · `home-desktop.nix:13`, `home/photogimp.nix`
