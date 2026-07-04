@@ -202,13 +202,13 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M19 · `modules/network.nix:156-175`, `modules/gnome.nix:126-130`
   - **Resolution:** Per explicit user preference (password auth was deliberately restored in a prior session), only the fail2ban option was implemented — `PasswordAuthentication` untouched. Added `modules/security-desktop.nix` (Option B module, matching `security-server.nix`'s fail2ban config) imported by desktop/htpc/stateless — the three roles with SSH+password-auth that lacked it (server/headless-server already had it). Removed the redundant `allowedTCPPorts = [ 22 ]` line, verified port 22 stays open via `openssh.openFirewall`. GNOME auto-login noted as compounding context but left out of scope. (`modules/security-desktop.nix`, `configuration-{desktop,htpc,stateless}.nix`, `modules/network.nix`)
 
-- [ ] **M-21** `[B]` install.sh cache check excludes `linux-[0-9]` from `SOURCE_BUILDS` — kernel compiles bypass the abort rule
+- [x] **M-21** `[B]` ~~install.sh cache check excludes `linux-[0-9]` from `SOURCE_BUILDS`~~ — STALE, no longer applicable
   - **Source:** BUGS M16 · `scripts/install.sh:359,401`
-  - Remove the `linux-[0-9]` exclusion from the `SOURCE_BUILDS` grep pattern
+  - **Resolution:** Investigated; the current `install.sh` has no `linux-[0-9]` exclusion pattern anywhere, and its cache-check section is explicitly documented as informational-only — `nixos-rebuild` always proceeds regardless of what's found, with no "abort rule" left to bypass. That abort-and-restore-lock behavior lives in `vexos-update` (`HEAVY_BUILD_REGEX`, already covered by M-14), not `install.sh`. The script has evolved past the described bug since the original analysis; user confirmed to mark resolved rather than invent an abort mechanism install.sh doesn't use by design. No code changes made.
 
-- [ ] **M-22** `[B]` Seven OCI containers track `:latest` — silently self-updating, non-reproducible, one already broken (M-17)
+- [x] **M-22** `[B]` Seven OCI containers track `:latest` — silently self-updating, non-reproducible, one already broken (M-17)
   - **Source:** BUGS M25, ARCH 3.2 · `portainer.nix`, `homepage.nix`, `stirling-pdf.nix`, `authelia.nix`, `nginx-proxy-manager.nix`, `dockhand.nix`, `dozzle.nix`
-  - Pin to version tags (or digests); at minimum pin `authelia` (guards auth) and `nginx-proxy-manager` (terminates TLS) immediately
+  - **Resolution:** Pinned all 7 (not just the two "at minimum") to versions verified live against Docker Hub/GHCR (`portainer-ce:2.43.0`, `homepage:v1.13.2`, `s-pdf:2.14.0`, `authelia:4.39.20`, `nginx-proxy-manager:2.15.1`, `dockhand:v1.0.36`, `dozzle:v10.6.7`). Per user request, added `.github/workflows/update-container-images.yml` — a new Wednesday-scheduled workflow (matching `update-flake-lock.yml`'s direct-commit style) that checks each registry for a newer matching tag and bumps the pin automatically, resolving the reproducibility-vs-staying-current tradeoff. Verified all 7 images resolve correctly together in a forced build. (`modules/server/{portainer,homepage,stirling-pdf,authelia,nginx-proxy-manager,dockhand,dozzle}.nix`, `.github/workflows/update-container-images.yml`)
 
 - [ ] **M-23** `[B]` Several services exposed LAN-wide with no authentication by module design, no opt-out
   - **Source:** BUGS M26 · `loki.nix`, `netdata.nix`, `zigbee2mqtt.nix`, `kiji-proxy.nix`, `portbook.nix`

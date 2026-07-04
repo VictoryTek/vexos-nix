@@ -1,0 +1,93 @@
+name: Update container image pins
+
+# Checks the 7 OCI-container services in modules/server/*.nix (portainer, homepage,
+# stirling-pdf, authelia, nginx-proxy-manager, dockhand, dozzle) for a newer version
+# tag and rewrites the pin in place. These services are pinned (not :latest) so
+# nixos-rebuild stays reproducible between runs of this workflow — see MASTER_PLAN
+# M-22. Mirrors update-flake-lock.yml's direct-commit-to-main style (no PR).
+
+on:
+  schedule:
+    - cron: '0 4 * * 3'   # Wednesdays, 04:00 UTC
+  workflow_dispatch:        # Manual trigger
+
+permissions:
+  contents: write           # Required to commit and push updated pins back to main
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Check for newer container image versions
+        id: check
+        run: |
+          set -euo pipefail
+
+          # file:image-repo:registry:tag-regex
+          # registry: dockerhub | ghcr
+          SERVICES=(
+            "modules/server/portainer.nix:portainer/portainer-ce:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/stirling-pdf.nix:frooodle/s-pdf:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/authelia.nix:authelia/authelia:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/nginx-proxy-manager.nix:jc21/nginx-proxy-manager:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/dozzle.nix:amir20/dozzle:dockerhub:^v[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/homepage.nix:gethomepage/homepage:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/dockhand.nix:finsys/dockhand:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
+          )
+
+          latest_dockerhub_tag() {
+            local repo="$1" pattern="$2"
+            curl -fsS "https://hub.docker.com/v2/repositories/${repo}/tags?page_size=100&ordering=last_updated" \
+              | jq -r '.results[].name' \
+              | grep -E "$pattern" \
+              | sort -V | tail -1
+          }
+
+          latest_ghcr_tag() {
+            local repo="$1" pattern="$2"
+            local token
+            token=$(curl -fsS "https://ghcr.io/token?scope=repository:${repo}:pull" | jq -r '.token')
+            curl -fsS -H "Authorization: Bearer ${token}" "https://ghcr.io/v2/${repo}/tags/list" \
+              | jq -r '.tags[]' \
+              | grep -E "$pattern" \
+              | sort -V | tail -1
+          }
+
+          CHANGED_FILES=""
+          for entry in "${SERVICES[@]}"; do
+            IFS=':' read -r file repo registry pattern <<< "$entry"
+            current=$(grep -oP 'image\s*=\s*"[^"]+:\K[^"]+' "$file")
+            if [ "$registry" = "dockerhub" ]; then
+              latest=$(latest_dockerhub_tag "$repo" "$pattern" || true)
+            else
+              latest=$(latest_ghcr_tag "$repo" "$pattern" || true)
+            fi
+            if [ -z "$latest" ]; then
+              echo "warning: could not determine latest tag for $repo — skipping"
+              continue
+            fi
+            if [ "$latest" != "$current" ]; then
+              echo "Bumping $repo: $current -> $latest"
+              sed -i "s|${repo}:${current}|${repo}:${latest}|" "$file"
+              CHANGED_FILES="$CHANGED_FILES $file"
+            else
+              echo "$repo already at latest ($current)"
+            fi
+          done
+
+          echo "changed_files=$CHANGED_FILES" >> "$GITHUB_OUTPUT"
+
+      - name: Commit updated image pins
+        if: steps.check.outputs.changed_files != ''
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ${{ steps.check.outputs.changed_files }}
+          git commit -m "chore: bump pinned container image versions"
+          git push

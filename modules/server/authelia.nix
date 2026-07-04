@@ -53,7 +53,7 @@ in
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
     virtualisation.oci-containers.containers.authelia = {
-      image = "authelia/authelia:latest";
+      image = "authelia/authelia:4.39.20";
       ports = [ "${toString cfg.port}:9091" ];
       volumes = [
         "/var/lib/authelia/config:/config"

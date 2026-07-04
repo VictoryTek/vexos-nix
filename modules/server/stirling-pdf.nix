@@ -20,7 +20,7 @@ in
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
     virtualisation.oci-containers.containers.stirling-pdf = {
-      image = "frooodle/s-pdf:latest";
+      image = "frooodle/s-pdf:2.14.0";
       ports = [ "${toString cfg.port}:8080" ];
       volumes = [
         "stirling-pdf-data:/usr/share/tessdata"

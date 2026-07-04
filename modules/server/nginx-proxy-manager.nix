@@ -35,7 +35,7 @@ in
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
     virtualisation.oci-containers.containers.nginx-proxy-manager = {
-      image = "jc21/nginx-proxy-manager:latest";
+      image = "jc21/nginx-proxy-manager:2.15.1";
       ports = [
         "${toString cfg.httpPort}:80"
         "${toString cfg.httpsPort}:443"

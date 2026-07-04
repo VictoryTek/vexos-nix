@@ -54,7 +54,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.dockhand = {
-      image     = "ghcr.io/finsys/dockhand:latest";
+      image     = "ghcr.io/finsys/dockhand:v1.0.36";
       autoStart = true;
 
       # Expose Dockhand on the configured host port.

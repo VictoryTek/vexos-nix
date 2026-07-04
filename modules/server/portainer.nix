@@ -22,7 +22,7 @@ in
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
     virtualisation.oci-containers.containers.portainer = {
-      image = "portainer/portainer-ce:latest";
+      image = "portainer/portainer-ce:2.43.0";
       ports = [ "${toString cfg.port}:9443" ];
       volumes = [
         "/var/run/docker.sock:/var/run/docker.sock:ro"

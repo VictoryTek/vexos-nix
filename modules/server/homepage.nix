@@ -34,7 +34,7 @@ in
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
     virtualisation.oci-containers.containers.homepage = {
-      image = "ghcr.io/gethomepage/homepage:latest";
+      image = "ghcr.io/gethomepage/homepage:v1.13.2";
       ports = [ "${toString cfg.port}:3000" ];
       volumes = [
         "homepage-config:/app/config"
