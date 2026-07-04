@@ -78,6 +78,17 @@ if ! command -v btrfs &>/dev/null; then
   exit 1
 fi
 
+# ---------- Detect the primary user account ----------------------------------
+# Adopt whatever account is actually UID 1000 rather than assuming "nimda" —
+# the user may have renamed it during their original NixOS install. Falls back
+# to "nimda" (today's hardcoded default) if no UID 1000 account exists.
+DETECTED_USER=$(getent passwd 1000 | cut -d: -f1 || true)
+if [ -z "$DETECTED_USER" ]; then
+  DETECTED_USER="nimda"
+fi
+echo -e "${BOLD}Detected primary user account: ${CYAN}${DETECTED_USER}${RESET}"
+echo ""
+
 # ---------- Detect root Btrfs partition -------------------------------------
 echo -e "${BOLD}Detecting disk layout...${RESET}"
 echo ""
@@ -322,7 +333,7 @@ if [ "$VARIANT" = "nvidia" ]; then
   done
 fi
 
-# ---------- Preserve existing nimda password ---------------------------------
+# ---------- Preserve existing user password -----------------------------------
 # Read the current shadow hash so the pre-migration password carries forward
 # into the stateless build.  The stateless role uses users.mutableUsers = false,
 # which means /etc/shadow is regenerated from the Nix config on every activation.
@@ -333,15 +344,15 @@ HASHED_PW=""
 CUSTOM_PASSWORD_SET=false
 
 echo ""
-echo -e "${BOLD}Preserving existing nimda login password...${RESET}"
-EXISTING_HASH=$(getent shadow nimda 2>/dev/null | cut -d: -f2 || true)
+echo -e "${BOLD}Preserving existing ${DETECTED_USER} login password...${RESET}"
+EXISTING_HASH=$(getent shadow "$DETECTED_USER" 2>/dev/null | cut -d: -f2 || true)
 # A valid yescrypt/SHA-512 hash starts with $ — "!" or "*" means locked/unset.
 if [[ "${EXISTING_HASH}" == '$'* ]]; then
   HASHED_PW="${EXISTING_HASH}"
   CUSTOM_PASSWORD_SET=true
   echo -e "${GREEN}  ✓ Password hash found — your existing password will work after reboot.${RESET}"
 else
-  echo -e "${YELLOW}  No password hash for nimda found in /etc/shadow (locked or no password set).${RESET}"
+  echo -e "${YELLOW}  No password hash for ${DETECTED_USER} found in /etc/shadow (locked or no password set).${RESET}"
   echo -e "${BOLD}  Please set a new login password for the stateless installation:${RESET}"
   # Stock NixOS installs do not include openssl in PATH; fetch it from the
   # binary cache when missing (same pattern as the git bootstrap in install.sh).
@@ -376,9 +387,16 @@ fi
 if [ -n "$HASHED_PW" ]; then
   echo ""
   echo -e "${BOLD}Writing /etc/nixos/stateless-user-override.nix...${RESET}"
+  # vexos.user.name is only written when it differs from the compiled-in
+  # default ("nimda") — no need for a no-op override otherwise.
+  USER_NAME_OVERRIDE=""
+  if [ "$DETECTED_USER" != "nimda" ]; then
+    USER_NAME_OVERRIDE="  vexos.user.name = \"${DETECTED_USER}\";"
+  fi
   tee /etc/nixos/stateless-user-override.nix > /dev/null << NIXEOF
 { lib, ... }: {
-  users.users.nimda.hashedPassword = lib.mkOverride 50 "${HASHED_PW}";
+${USER_NAME_OVERRIDE}
+  users.users.${DETECTED_USER}.hashedPassword = lib.mkOverride 50 "${HASHED_PW}";
 }
 NIXEOF
   echo -e "${GREEN}  ✓ /etc/nixos/stateless-user-override.nix written.${RESET}"
@@ -445,7 +463,7 @@ echo "  2. After reboot, / will be a fresh tmpfs on every boot."
 echo "     /nix and /persistent survive reboots. Everything else is ephemeral."
 echo ""
 echo -e "${BOLD}Login credentials after reboot:${RESET}"
-echo -e "  Username: ${CYAN}nimda${RESET}"
+echo -e "  Username: ${CYAN}${DETECTED_USER}${RESET}"
 if $CUSTOM_PASSWORD_SET; then
   echo -e "  Password: ${CYAN}(same as before migration)${RESET}"
 else

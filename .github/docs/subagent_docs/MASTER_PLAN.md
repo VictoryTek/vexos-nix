@@ -112,9 +112,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** ARCH 1.1 · `flake.nix:89-99`
   - **Resolution:** Split `roles.<role>.extraModules` into `extraModules` (shared, pure — e.g. impermanence) and a new `hostLocalModules` (the three impure `/etc/nixos/*` checks: `serverServicesModule`, `featuresModule` — folded in for consistency, same defect shape — and `statelessUserOverrideModule`). `mkHost` includes both (preserving real repo-checkout deployment behavior — confirmed via byte-identical `.drv` hashes before/after); `mkBaseModule` includes only `extraModules`, since `template/etc-nixos-flake.nix` (the actual `nixosModules.*Base` consumer) already performs the equivalent host-local check itself with its own relative paths. (`flake.nix`)
 
-- [ ] **H-12b** `[F]` Auto-detect and adopt existing NixOS username at install time
+- [x] **H-12b** `[F]` Auto-detect and adopt existing NixOS username at install time
   - **Source:** H-12 design intent — original goal was to adopt the username set during NixOS install
-  - On the **migration path** (`migrate-to-stateless.sh`, running on a live system), detect UID 1000 user via `getent passwd 1000 | cut -d: -f1` and write `vexos.user.name = "<detected>";` to the local config. On a **fresh ISO install** there is no prior user to detect, so the default "nimda" remains. Scope: migration script + optional installer prompt.
+  - **Resolution:** `migrate-to-stateless.sh` now detects the real UID 1000 account (`getent passwd 1000`, falling back to `"nimda"`) and uses it for the shadow-password lookup, the final login printout, and — only when it differs from the default — writes `vexos.user.name = "<detected>";` into the existing `stateless-user-override.nix` mechanism. Verified end-to-end with a synthetic `nixosSystem` build that `modules/users.nix` correctly creates the detected account. The optional `install.sh` prompt was explicitly declined by the user — there's no prior account to detect on a fresh ISO install, so it would be a separate feature, not a fix. (`scripts/migrate-to-stateless.sh`)
 
 ---
 
