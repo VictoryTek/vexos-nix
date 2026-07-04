@@ -43,7 +43,7 @@ in
     services.zigbee2mqtt = {
       enable = true;
       settings = {
-        homeassistant = false;
+        homeassistant.enabled = false;
         permit_join = false;
         serial.port = cfg.serialPort;
         frontend = {
