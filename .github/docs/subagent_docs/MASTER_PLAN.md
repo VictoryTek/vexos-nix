@@ -198,9 +198,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M18 · `home/bash-common.nix`, `configuration-vanilla.nix:10-16`
   - **Resolution:** Made the alias conditional (`lib.optionalAttrs (osConfig.environment.etc ? "nixos/justfile")`) rather than importing `packages-common.nix`, since that would add several CLI tools (git, curl, wget, btop, inxi, pciutils) contradicting vanilla's own stated "mirrors stock NixOS+GNOME, no custom packages" design intent. Verified the alias is present on desktop and correctly absent on vanilla, with zero behavior change for every other role. (`home/bash-common.nix`)
 
-- [ ] **M-20** `[B]` SSH password auth + open port 22 + GNOME auto-login on non-server roles with no fail2ban
+- [x] **M-20** `[B]` SSH password auth + open port 22 + GNOME auto-login on non-server roles with no fail2ban
   - **Source:** BUGS M19 · `modules/network.nix:156-175`, `modules/gnome.nix:126-130`
-  - Enable fail2ban on desktop roles, or set `PasswordAuthentication = false`; remove redundant `allowedTCPPorts = [ 22 ]` (openssh `openFirewall` already covers it)
+  - **Resolution:** Per explicit user preference (password auth was deliberately restored in a prior session), only the fail2ban option was implemented — `PasswordAuthentication` untouched. Added `modules/security-desktop.nix` (Option B module, matching `security-server.nix`'s fail2ban config) imported by desktop/htpc/stateless — the three roles with SSH+password-auth that lacked it (server/headless-server already had it). Removed the redundant `allowedTCPPorts = [ 22 ]` line, verified port 22 stays open via `openssh.openFirewall`. GNOME auto-login noted as compounding context but left out of scope. (`modules/security-desktop.nix`, `configuration-{desktop,htpc,stateless}.nix`, `modules/network.nix`)
 
 - [ ] **M-21** `[B]` install.sh cache check excludes `linux-[0-9]` from `SOURCE_BUILDS` — kernel compiles bypass the abort rule
   - **Source:** BUGS M16 · `scripts/install.sh:359,401`
