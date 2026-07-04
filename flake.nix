@@ -90,6 +90,18 @@
       nixpkgs.overlays = [ (import ./pkgs) ];
     };
 
+    # ── Impure /etc/nixos/* host-file checks — mkHost-only, see roles.hostLocalModules ──
+    # These three all read the *builder machine's* /etc/nixos at flake-eval time, which
+    # is only meaningful when `nix` runs directly on the target host — true for `mkHost`
+    # (real deployment from a plain repo checkout, see justfile:_resolve-flake-dir
+    # falling back to $HOME/Projects/vexos-nix) but NOT for `mkBaseModule`
+    # (nixosModules.*Base), whose actual consumer — template/etc-nixos-flake.nix — does
+    # this exact same check itself with its own relative paths (./server-services.nix
+    # etc., unambiguous since that file always lives at /etc/nixos/flake.nix). Baking
+    # these into nixosModules.*Base too would be redundant (silently deduped by the
+    # module system on a real host) and would make that module's own evaluation
+    # dependent on ambient builder-machine state for no reason — see roles table below.
+
     # Optional opt-in services module loaded from the host's /etc/nixos.
     # Empty list when the file is absent so server/headless-server outputs stay
     # buildable on machines that haven't deployed server-services.nix yet.
@@ -136,34 +148,48 @@
     # that template/etc-nixos-flake.nix imports). Keeping both pathways derived
     # from this same table is what prevents the historical drift between
     # commonModules and nixosModules.base.
+    #
+    # extraModules       — shared, pure modules included by BOTH mkHost and
+    #                       mkBaseModule (e.g. impermanence).
+    # hostLocalModules   — impure /etc/nixos/* file checks. Included by mkHost only
+    #                       (real deployment from a repo checkout runs directly on the
+    #                       target host, so this is legitimate there); deliberately
+    #                       NOT included by mkBaseModule, since template/etc-nixos-flake.nix
+    #                       — the actual consumer of nixosModules.*Base — already
+    #                       performs the equivalent check itself. See the comment above
+    #                       serverServicesModule/featuresModule/statelessUserOverrideModule.
     roles = {
       desktop = {
-        homeFile     = ./home-desktop.nix;
-        baseModules  = commonBase ++ [ upModule ];
-        extraModules = featuresModule;
+        homeFile         = ./home-desktop.nix;
+        baseModules      = commonBase ++ [ upModule ];
+        extraModules     = [];
+        hostLocalModules = featuresModule;
       };
       htpc = {
-        homeFile     = ./home-htpc.nix;
-        baseModules  = commonBase ++ [ upModule ];
-        extraModules = featuresModule;
+        homeFile         = ./home-htpc.nix;
+        baseModules      = commonBase ++ [ upModule ];
+        extraModules     = [];
+        hostLocalModules = featuresModule;
       };
       stateless = {
-        homeFile     = ./home-stateless.nix;
-        baseModules  = commonBase ++ [ upModule ];
-        extraModules = [ impermanence.nixosModules.impermanence ] ++ statelessUserOverrideModule;
+        homeFile         = ./home-stateless.nix;
+        baseModules      = commonBase ++ [ upModule ];
+        extraModules     = [ impermanence.nixosModules.impermanence ];
+        hostLocalModules = statelessUserOverrideModule;
       };
       server = {
-        homeFile     = ./home-server.nix;
+        homeFile         = ./home-server.nix;
         # upModule: server has a display — GUI update app is included.
         # proxmoxBase: overlay + NixOS module imported here (not in
         # modules/server/proxmox.nix) to avoid infinite recursion — `imports`
         # cannot safely reference _module.args.
         # vexboardBase: overlay + NixOS module for the default server dashboard.
-        baseModules  = commonBase ++ [ upModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
-        extraModules = serverServicesModule ++ featuresModule;
+        baseModules      = commonBase ++ [ upModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
+        extraModules     = [];
+        hostLocalModules = serverServicesModule ++ featuresModule;
       };
       headless-server = {
-        homeFile     = ./home-headless-server.nix;
+        homeFile         = ./home-headless-server.nix;
         # No upModule — headless servers have no display, so the GUI update
         # app is intentionally omitted.
         # proxmoxBase: overlay + NixOS module imported here to avoid infinite
@@ -173,13 +199,15 @@
         # here ensures services.vexboard option exists so the wrapper evaluates
         # cleanly even when disabled. Not enabled by default (no mkDefault in
         # configuration-headless-server.nix) — users can opt in via server-services.nix.
-        baseModules  = commonBase ++ proxmoxBase ++ sopsBase ++ vexboardBase;
-        extraModules = serverServicesModule;
+        baseModules      = commonBase ++ proxmoxBase ++ sopsBase ++ vexboardBase;
+        extraModules     = [];
+        hostLocalModules = serverServicesModule;
       };
       vanilla = {
-        homeFile     = ./home-vanilla.nix;
-        baseModules  = [];
-        extraModules = [];
+        homeFile         = ./home-vanilla.nix;
+        baseModules      = [];
+        extraModules     = [];
+        hostLocalModules = [];
       };
     };
 
@@ -205,7 +233,7 @@
     #   1. /etc/nixos/hardware-configuration.nix   (host-specific)
     #   2. role.baseModules                        (overlay, upModule, proxmox …)
     #   3. home-manager wiring                     (per-role homeFile)
-    #   4. role.extraModules                       (impermanence / serverServicesModule)
+    #   4. role.extraModules + role.hostLocalModules (impermanence / serverServicesModule)
     #   5. ./hosts/<role>-<gpu>.nix                (host file)
     #   6. legacyExtra                             (gpu/nvidia.nix + { vexos.gpu.nvidiaDriverVariant = …; })
     mkHost = { name, role, gpu, nvidiaVariant ? null }:
@@ -239,6 +267,7 @@
           ++ r.baseModules
           ++ [ (mkHomeManagerModule r.homeFile) ]
           ++ r.extraModules
+          ++ r.hostLocalModules
           ++ [ hostFile ]
           ++ legacyExtra
           ++ [ variantModule ];

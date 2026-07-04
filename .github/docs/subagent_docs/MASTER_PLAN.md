@@ -108,9 +108,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** ARCH 1.2 · `flake.nix:285-314` vs `:125-170`
   - **Resolution:** `mkBaseModule` now reads `roles.${role}.baseModules` directly instead of three separate hand-derived copies (a re-inlined overlay block, an `environment.systemPackages` role-string predicate, and two `lib.optionals (role == ...)` blocks for proxmox/sops/vexboard). Confirmed via synthetic `nixosSystem` builds that `nixosModules.vanillaBase` no longer carries the unstable/custom-pkgs overlays (the actual bug — overlay count 2 → 0), while `serverBase`/`headlessServerBase` are unaffected. All `nixosConfigurations` (`mkHost`) `.drv` hashes are byte-identical before/after, confirming zero blast radius on the tracked repo's own builds. (`flake.nix`)
 
-- [ ] **H-19** `[A]` Builder-machine `/etc/nixos` state leaks into flake outputs via `builtins.pathExists` at eval time
+- [x] **H-19** `[A]` Builder-machine `/etc/nixos` state leaks into flake outputs via `builtins.pathExists` at eval time
   - **Source:** ARCH 1.1 · `flake.nix:89-99`
-  - Move `serverServicesModule` and `statelessUserOverrideModule` path-existence checks to the host-side `nixosModules.*Base` consumption path (see `template/etc-nixos-flake.nix`) so evaluation is deterministic regardless of where `nix` runs
+  - **Resolution:** Split `roles.<role>.extraModules` into `extraModules` (shared, pure — e.g. impermanence) and a new `hostLocalModules` (the three impure `/etc/nixos/*` checks: `serverServicesModule`, `featuresModule` — folded in for consistency, same defect shape — and `statelessUserOverrideModule`). `mkHost` includes both (preserving real repo-checkout deployment behavior — confirmed via byte-identical `.drv` hashes before/after); `mkBaseModule` includes only `extraModules`, since `template/etc-nixos-flake.nix` (the actual `nixosModules.*Base` consumer) already performs the equivalent host-local check itself with its own relative paths. (`flake.nix`)
 
 - [ ] **H-12b** `[F]` Auto-detect and adopt existing NixOS username at install time
   - **Source:** H-12 design intent — original goal was to adopt the username set during NixOS install
