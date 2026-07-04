@@ -162,9 +162,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M10 · `modules/system.nix:91-95`
   - **Resolution:** Replaced the dead boot parameter with a `services.udev.extraRules` entry (`ACTION=="add|change", KERNEL=="nvme*|sd*", ATTR{queue/scheduler}="kyber"`), the current supported mechanism. Verified the rule merges correctly with `modules/gaming.nix`'s own udev rules block rather than conflicting. (`modules/system.nix`)
 
-- [ ] **M-11** `[B]` `just reset-defaults` removes wrong stamp name and leaves all GNOME extensions permanently disabled
+- [x] **M-11** `[B]` `just reset-defaults` removes wrong stamp name and leaves all GNOME extensions permanently disabled
   - **Source:** BUGS M11 · `justfile:804-820`
-  - Change `rm -f` to match all stamp variants with `.dconf-*-initialized*` glob (or explicit list of all current stamp names)
+  - **Resolution:** Replaced the single hardcoded `.dconf-app-folders-initialized-v2` removal with a `.dconf-*-initialized*` glob, covering all four stamp variants actually in use (app-folders v2/v3, extensions unversioned/v3 — desktop's stamps were `-v3`, not `-v2`, and `extensions-initialized` wasn't being cleared at all, which is why extensions stayed disabled). Verified against real stamp names in an isolated scratch `$HOME` that exactly the four dconf stamps are removed and unrelated migration stamps are preserved. (`justfile`)
 
 - [ ] **M-12** `[B]` Attic `just enable-attic` help text instructs HS256 token; atticd requires RS256 RSA key
   - **Source:** BUGS M12 · `justfile:1437-1444`
