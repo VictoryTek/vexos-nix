@@ -13,7 +13,7 @@ in
   config = lib.mkIf cfg.enable {
     services.kavita = {
       enable = true;
-      port = 5000;
+      settings.Port = 5000;
       tokenKeyFile = "/var/lib/kavita/token-key";
     };
 

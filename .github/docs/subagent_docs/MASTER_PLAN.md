@@ -180,11 +180,11 @@ Check boxes are ticked as items are completed in this session.
 
 - [x] **M-15** `[B]` kavita requires a manually created token file with no assertion — enable → permanent crash loop
   - **Source:** BUGS M22 · `modules/server/kavita.nix:22`
-  - **Resolution:** Added `system.activationScripts.kavitaTokenKey`, auto-generating the 512-bit token key idempotently on first activation, matching VexBoard's existing secret-auto-generation pattern (H-15) — appropriate here since the key is a purely internal secret never typed by a user, unlike code-server's password. Verified byte length, permissions, and idempotency directly. Noted (not fixed, out of scope) a pre-existing unrelated `services.kavita.port` deprecation warning. (`modules/server/kavita.nix`)
+  - **Resolution:** Added `system.activationScripts.kavitaTokenKey`, auto-generating the 512-bit token key idempotently on first activation, matching VexBoard's existing secret-auto-generation pattern (H-15) — appropriate here since the key is a purely internal secret never typed by a user, unlike code-server's password. Verified byte length, permissions, and idempotency directly. The noted unrelated `services.kavita.port` deprecation warning was fixed in the same pass as M-16, at the user's request (`port` → `settings.Port`). (`modules/server/kavita.nix`)
 
-- [ ] **M-16** `[B]` `just enable` corrupts `server-services.nix` once the file contains nested braces
+- [x] **M-16** `[B]` `just enable` corrupts `server-services.nix` once the file contains nested braces
   - **Source:** BUGS M23 · `justfile:1330-1334`
-  - Anchor substitution to the final `}` line (`$ s|^}|...|`) or append before EOF with awk
+  - **Resolution:** Anchored all 4 occurrences of the fragile `sed -i "s|}|..."` pattern (enable-feature, enable service, and both VexBoard auto-secret/auto-enable insertions — not just the one named in the source) to `"\$ s|^}|..."` — only the file's actual final line. Directly reproduced the corruption with a synthetic nested-brace file and confirmed the old pattern corrupts it while the new pattern doesn't. (`justfile`)
 
 - [ ] **M-17** `[B]` Homepage container rejects all requests — `HOMEPAGE_ALLOWED_HOSTS` is unset on v0.10+
   - **Source:** BUGS M24 · `modules/server/homepage.nix:30-38`

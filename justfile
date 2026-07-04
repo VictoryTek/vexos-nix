@@ -1030,7 +1030,7 @@ enable-feature feature: _require-desktop-role
     if grep -qP "^\s*#?\s*${OPTION//./\\.}" "$FEAT_FILE" 2>/dev/null; then
         sudo sed -i -E "s/^(\s*)#?\s*(${OPTION//./\\.})\s*=\s*(true|false)\s*;/\1${OPTION} = true;/" "$FEAT_FILE"
     else
-        sudo sed -i "s|}|  ${OPTION} = true;\n}|" "$FEAT_FILE"
+        sudo sed -i "\$ s|^}|  ${OPTION} = true;\n}|" "$FEAT_FILE"
     fi
 
     echo "✓ $FEATURE enabled in $FEAT_FILE"
@@ -1661,8 +1661,9 @@ enable service: _require-server-role
     if grep -qP "^\s*#?\s*${OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
         sudo sed -i -E "s/^(\s*)#?\s*(${OPTION//./\\.})\s*=\s*(true|false)\s*;/\1${OPTION} = true;/" "$SVC_FILE"
     else
-        # Insert before the closing brace
-        sudo sed -i "s|}|  ${OPTION} = true;\n}|" "$SVC_FILE"
+        # Insert before the closing brace (anchored to the last line so a
+        # nested "}" earlier in the file can never be mistaken for it)
+        sudo sed -i "\$ s|^}|  ${OPTION} = true;\n}|" "$SVC_FILE"
     fi
 
     # Plex Pass prompt — ask once at enable time
@@ -1765,7 +1766,7 @@ enable service: _require-server-role
             if grep -qP "^\s*#\s*vexos\.server\.vexboard\.secretFile" "$svc_file" 2>/dev/null; then
                 sudo sed -i -E 's|^(\s*)#\s*(vexos\.server\.vexboard\.secretFile\s*=\s*"[^"]*")\s*;|\1\2;|' "$svc_file"
             else
-                sudo sed -i "s|}|  vexos.server.vexboard.secretFile = \"${secret_path}\";\n}|" "$svc_file"
+                sudo sed -i "\$ s|^}|  vexos.server.vexboard.secretFile = \"${secret_path}\";\n}|" "$svc_file"
             fi
         fi
     }
@@ -1782,7 +1783,7 @@ enable service: _require-server-role
             if grep -qP "^\s*#?\s*${VB_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
                 sudo sed -i -E "s/^(\s*)#?\s*(${VB_OPTION//./\\.})\s*=\s*(true|false)\s*;/\1${VB_OPTION} = true;/" "$SVC_FILE"
             else
-                sudo sed -i "s|}|  ${VB_OPTION} = true;\n}|" "$SVC_FILE"
+                sudo sed -i "\$ s|^}|  ${VB_OPTION} = true;\n}|" "$SVC_FILE"
             fi
             echo "  + VexBoard also enabled (server dashboard — http://<server-ip>:7280)"
         fi
