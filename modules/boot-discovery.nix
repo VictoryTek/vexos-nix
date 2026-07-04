@@ -5,10 +5,10 @@
 # Runs once per boot as a oneshot service. No per-host configuration required.
 # The service is a no-op when no other EFI System Partitions are found.
 #
-# ESP discovery uses sfdisk --dump to read GPT tables directly from raw block
-# devices.  This works regardless of whether udev has created by-parttype
-# symlinks or the kernel has populated PARTTYPE in sysfs — both of which were
-# found to be absent on NVMe drives on this system.
+# ESP discovery uses sfdisk --dump to read partition tables (GPT or MBR)
+# directly from raw block devices.  This works regardless of whether udev has
+# created by-parttype symlinks or the kernel has populated PARTTYPE in sysfs —
+# both of which were found to be absent on NVMe drives on this system.
 { pkgs, ... }:
 let
   discoveryScript = pkgs.writeShellScript "vexos-boot-discovery" ''
@@ -28,12 +28,16 @@ let
         return 0
       fi
       log "registering: $label (disk=$disk part=$part_num)"
-      efibootmgr --create \
+      local out
+      if out="$(efibootmgr --create \
         --disk "$disk" \
         --part "$part_num" \
         --loader "$loader" \
-        --label "$label" \
-        >/dev/null 2>&1 || true
+        --label "$label" 2>&1)"; then
+        log "registered: $label"
+      else
+        log "FAILED to register $label: $out"
+      fi
     }
 
     # Iterate every disk device and read its GPT via sfdisk --dump.
@@ -42,9 +46,13 @@ let
       [[ "$blk_type" == "disk" ]] || continue
 
       while IFS= read -r sline; do
-        # Match partition entries whose type GUID is the ESP GUID.
-        # sfdisk --dump line: /dev/nvme0n1p1 : start=N, size=N, type=GUID, uuid=GUID
-        [[ "''${sline,,}" == *"type=$ESP_PARTTYPE"* ]] || continue
+        # Match partition entries whose type is the ESP type — either the GPT
+        # GUID (c12a7328-...) or, for MBR/DOS-labeled disks, the 2-hex-digit
+        # code "ef". sfdisk --dump reports type= differently per table format:
+        #   GPT: /dev/nvme0n1p1 : start=N, size=N, type=GUID, uuid=GUID
+        #   MBR: /dev/sda1      : start=N, size=N, type=ef
+        part_type="$(echo "''${sline,,}" | sed -n 's/.*type=\([^,]*\).*/\1/p')"
+        [[ "$part_type" == "$ESP_PARTTYPE" || "$part_type" == "ef" ]] || continue
 
         # Extract partition device path (everything before " :")
         esp_dev="''${sline%% :*}"

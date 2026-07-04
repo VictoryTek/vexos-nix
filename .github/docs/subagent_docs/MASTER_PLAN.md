@@ -122,9 +122,9 @@ Check boxes are ticked as items are completed in this session.
 
 ### Bugs — Medium Impact
 
-- [ ] **M-01** `[B]` boot-discovery finds at most one ESP — `by-parttype/` is a last-one-wins symlink, not per-partition
+- [x] **M-01** `[B]` boot-discovery finds at most one ESP — `by-parttype/` is a last-one-wins symlink, not per-partition
   - **Source:** BUGS M1 · `modules/boot-discovery.nix:35`
-  - Switch to `by-parttypeuuid/` enumeration or `lsblk -o PATH,PARTTYPE -J`; add `trap` for mount-leak cleanup
+  - **Resolution:** The `by-parttype/` issue itself had already been superseded by a prior rewrite to `sfdisk --dump`-based discovery (module header already documented this). Found and fixed two remaining real defects via code review: (1) ESP matching only recognized the GPT GUID, silently skipping MBR-labeled disks (MBR ESP type code `ef` never matched) — plausible root cause for the user's reported dual-boot-on-separate-drives failure. (2) `efibootmgr --create` failures were unconditionally swallowed via `|| true`, so no failure was ever visible in the journal. Both fixed; verified the new GPT+MBR matching logic against synthetic sfdisk-dump lines for all four cases (GPT ESP/non-ESP, MBR ESP/non-ESP). Not verified against real dual-boot hardware — live diagnostics weren't available this session. (`modules/boot-discovery.nix`)
 
 - [ ] **M-02** `[B]` Container backend conflict — `podman.nix` and six docker-backed modules all set the same option at priority 100
   - **Source:** BUGS M2 · `modules/server/podman.nix:34`, `modules/server/{dozzle,portainer,homepage,authelia,uptime-kuma,stirling-pdf,nginx-proxy-manager}.nix`
