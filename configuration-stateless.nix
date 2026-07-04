@@ -17,6 +17,7 @@
     ./modules/system-latest-kernel.nix  # Linux 7.x (linuxPackages_latest)
     ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on stateless
     ./modules/security.nix          # AppArmor MAC baseline (all roles)
+    ./modules/security-desktop.nix  # fail2ban SSH brute-force protection
     ./modules/impermanence.nix
     ./modules/nix.nix
     ./modules/notify.nix

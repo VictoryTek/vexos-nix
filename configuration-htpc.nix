@@ -19,6 +19,7 @@
     ./modules/system-lts-kernel.nix  # Linux 6.12 LTS (HTPC stability)
     ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on HTPC
     ./modules/security.nix          # AppArmor MAC baseline (all roles)
+    ./modules/security-desktop.nix  # fail2ban SSH brute-force protection
     ./modules/nix.nix
     ./modules/notify.nix
     ./modules/nix-desktop.nix       # 14-day GC retention (workstation standard)

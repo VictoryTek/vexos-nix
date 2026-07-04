@@ -171,7 +171,8 @@
     users.users.${config.vexos.user.name}.openssh.authorizedKeys.keyFiles =
       lib.optional (builtins.pathExists ../authorized_keys) ../authorized_keys;
 
-    networking.firewall.allowedTCPPorts = [ 22 ];
+    # Redundant with services.openssh.openFirewall (default true), which
+    # already opens port 22 whenever services.openssh.enable = true.
 
     # ── Tailscale ─────────────────────────────────────────────────────────────
     services.tailscale = {
