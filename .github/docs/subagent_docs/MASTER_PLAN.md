@@ -150,9 +150,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M7 · `modules/system-nosleep.nix:69-93`
   - **Resolution:** Deleted the dead resume service block. Its `wantedBy` targets (suspend/hibernate/hybrid-sleep) are permanently masked by this same file's Layer 4, so the service could never activate. Verified the service is absent from the built config. (`modules/system-nosleep.nix`)
 
-- [ ] **M-08** `[B]` AppArmor wineserver profile attaches to `/usr/bin/wineserver` — that path doesn't exist on NixOS
+- [x] **M-08** `[B]` AppArmor wineserver profile attaches to `/usr/bin/wineserver` — that path doesn't exist on NixOS
   - **Source:** BUGS M8 · `modules/gaming.nix:111-124`
-  - Change profile path to `/nix/store/*-wine-*/bin/wineserver` glob
+  - **Resolution:** Changed the profile's attachment path to `${pkgs.wineWow64Packages.stagingFull}/bin/wineserver` — the exact real store path of the Wine package this same file already installs — instead of the suggested glob, since it's more precise and automatically stays correct if the package changes. Verified the rendered profile text contains a real, concrete store path. (`modules/gaming.nix`)
 
 - [ ] **M-09** `[B]` `plugdev` group is never created — user membership is a silent no-op
   - **Source:** BUGS M9 · `modules/gaming.nix:103`

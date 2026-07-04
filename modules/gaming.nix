@@ -165,7 +165,7 @@ in
     security.apparmor.policies."usr.bin.wineserver".profile = ''
       #include <tunables/global>
 
-      /usr/bin/wineserver flags=(complain) {
+      ${pkgs.wineWow64Packages.stagingFull}/bin/wineserver flags=(complain) {
         #include <abstractions/base>
         capability sys_ptrace,
         @{PROC}/@{pid}/mem rw,
