@@ -178,9 +178,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M21 · `modules/nix.nix:168-239`
   - **Resolution:** Moved `flake.lock.bak` removal to after a successful `nixos-rebuild switch` (relies on `set -euo pipefail` aborting before that line on failure — verified with an isolated bash simulation). Both `nixos-rebuild dry-build` calls now detect their own failure instead of swallowing it via `|| true`, restoring/removing the lock backup as appropriate before exiting. (`modules/nix.nix`)
 
-- [ ] **M-15** `[B]` kavita requires a manually created token file with no assertion — enable → permanent crash loop
+- [x] **M-15** `[B]` kavita requires a manually created token file with no assertion — enable → permanent crash loop
   - **Source:** BUGS M22 · `modules/server/kavita.nix:22`
-  - Add `systemd.tmpfiles` rule to generate the key, or add an assertion + `just enable kavita` prompt (matching code-server's pattern)
+  - **Resolution:** Added `system.activationScripts.kavitaTokenKey`, auto-generating the 512-bit token key idempotently on first activation, matching VexBoard's existing secret-auto-generation pattern (H-15) — appropriate here since the key is a purely internal secret never typed by a user, unlike code-server's password. Verified byte length, permissions, and idempotency directly. Noted (not fixed, out of scope) a pre-existing unrelated `services.kavita.port` deprecation warning. (`modules/server/kavita.nix`)
 
 - [ ] **M-16** `[B]` `just enable` corrupts `server-services.nix` once the file contains nested braces
   - **Source:** BUGS M23 · `justfile:1330-1334`
