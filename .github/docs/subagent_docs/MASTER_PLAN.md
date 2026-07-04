@@ -142,9 +142,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M5 · `modules/stateless-disk.nix:74`
   - **Resolution:** Changed to plain `[ "btrfs" ]` so it shares priority 100 with `hardware-configuration.nix`'s own always-present `boot.initrd.kernelModules` definition, merging (concatenating) instead of being discarded whenever that list happens to be empty. Verified with synthetic builds against both an empty and a non-empty stub `hardware-configuration.nix` that `btrfs` is now always present in the final merged list. (`modules/stateless-disk.nix`)
 
-- [ ] **M-06** `[B]` Bluetooth codec list omits SBC — SBC-only devices cannot establish A2DP audio
+- [x] **M-06** `[B]` Bluetooth codec list omits SBC — SBC-only devices cannot establish A2DP audio
   - **Source:** BUGS M6 · `modules/audio.nix:38`
-  - Add `"sbc" "sbc_xq"` to `bluez5.codecs`
+  - **Resolution:** Added `"sbc" "sbc_xq"` to `bluez5.codecs`, ahead of the existing higher-quality codecs. `bluez5.codecs` is an allowlist, not a preference-with-fallback list, so devices supporting only the mandatory baseline SBC codec previously shared zero codecs with the host and couldn't establish A2DP at all. Verified the final merged codec list on `vexos-desktop-amd`. (`modules/audio.nix`)
 
 - [ ] **M-07** `[B]` `gnome-background-reload` resume service is `wantedBy` targets that this same module masks
   - **Source:** BUGS M7 · `modules/system-nosleep.nix:69-93`
