@@ -134,9 +134,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M3 · `modules/server/unbound.nix:19`
   - **Resolution:** Changed Unbound to port 5335 (conventional Unbound-behind-AdGuard/Pi-hole port) across `settings.server.port`, both firewall port lists, and the header comment. Updated matching references in `template/server-services.nix` and two `justfile` spots. Verified via forced-branch build that Unbound (5335) and Avahi (5353) now coexist without conflict. (`modules/server/unbound.nix`, `template/server-services.nix`, `justfile`)
 
-- [ ] **M-04** `[B]` headscale `serverUrl = "http://0.0.0.0:<port>"` — clients cannot connect to a bind address
+- [x] **M-04** `[B]` headscale `serverUrl = "http://0.0.0.0:<port>"` — clients cannot connect to a bind address
   - **Source:** BUGS M4 · `modules/server/headscale.nix:24`
-  - Replace with a required option for the real public URL; verify whether NixOS 25.11 uses `services.headscale.settings.server_url`
+  - **Resolution:** Confirmed the current nixpkgs uses `services.headscale.settings.server_url` — the top-level `serverUrl` this module previously set is deprecated (renamed via `mkRenamedOptionModule`). Added a required `vexos.server.headscale.serverUrl` option (invalid-placeholder-default + assertion, matching `vaultwarden.nix`'s established pattern) and wired it to the current option path. Verified via forced builds that the assertion fires without a real value and that a supplied value correctly reaches `settings.server_url`. (`modules/server/headscale.nix`)
 
 - [ ] **M-05** `[B]` `lib.mkDefault [ "btrfs" ]` in initrd discarded by every generated `hardware-configuration.nix`
   - **Source:** BUGS M5 · `modules/stateless-disk.nix:74`
