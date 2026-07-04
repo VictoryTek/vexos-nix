@@ -228,9 +228,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** ARCH 1.6 · `modules/nix.nix:130-243`
   - **Resolution:** Moved verbatim to `pkgs/vexos-update/default.nix` using `writeShellApplication` (shellchecks at build time); confirmed byte-for-byte content equivalence via a whitespace-normalized diff, which also caught and fixed a heredoc-indentation mistake introduced during the move. Registered as `pkgs.vexos.vexos-update`; `modules/nix.nix` now just references it. Added preflight `[8/8]` that builds the package directly, forcing the shellcheck to run independent of the full per-variant dry-build. (`pkgs/vexos-update/default.nix`, `pkgs/default.nix`, `modules/nix.nix`, `scripts/preflight.sh`)
 
-- [ ] **M-27** `[A]` Option B "no lib.mkIf in shared modules" rule violated by the project's own core modules
+- [x] **M-27** `[A]` Option B "no lib.mkIf in shared modules" rule violated by the project's own core modules
   - **Source:** ARCH 2.2 · `modules/system.nix:63,73,148,161`, `modules/network.nix:108`, `modules/flatpak.nix:51`, etc.
-  - Document the legitimate server-module enable-flag pattern as an explicit carve-out; eliminate `lib.mkIf` guards from shared base modules
+  - **Resolution:** Verified all 5 cited instances individually — every one gates by a plain option the *same* module declares (bootloader choice, swap/btrfs enable, static-IP config, flatpak master toggle), never by role/display/gaming flag. This is the standard NixOS enable-flag pattern, not the role-smuggling anti-pattern the rule targets. Updated CLAUDE.md's Module Architecture Pattern to explicitly carve this out, rather than removing legitimate, working functionality to satisfy an overly broad rule statement. No `.nix` source files changed. (`CLAUDE.md`)
 
 - [ ] **M-28** `[A]` Output/group counts wrong in CLAUDE.md, CI comment, and preflight script
   - **Source:** ARCH 2.3

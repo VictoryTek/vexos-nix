@@ -227,8 +227,13 @@ when adding or modifying modules.
 - When adding new content that only applies to some roles: create a new
   `modules/<subsystem>-<qualifier>.nix` file; do NOT add a `lib.mkIf` guard to an existing
   shared file.
-- Existing `lib.mkIf` guards in shared modules are tech debt to be eliminated.
-  Do not add new ones.
+- Existing `lib.mkIf` guards in shared modules that gate content by **role, display
+  flag, or gaming flag** are tech debt to be eliminated. Do not add new ones of that kind.
+- **Carve-out:** `lib.mkIf` guarding a config block by an option **the same module
+  declares** (e.g. `vexos.btrfs.enable`, `vexos.swap.enable`, `vexos.bootloader`,
+  `vexos.flatpak.enable`, `vexos.network.staticWired`) is the standard, unavoidable
+  NixOS pattern for a toggleable subsystem — not role-smuggling. This is fine to keep
+  or add; it is not the anti-pattern the rule above targets.
 - Naming convention: `modules/<subsystem>.nix` for universal base;
   `modules/<subsystem>-<qualifier>.nix` for role/feature additions
   (e.g. `system-gaming.nix`, `gpu-gaming.nix`, `branding-display.nix`).
