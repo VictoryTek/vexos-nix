@@ -13,5 +13,6 @@
     "net.cozic.joplin_desktop"                  # Joplin note-taking app
     "org.onlyoffice.desktopeditors"             # Office suite
     "com.ranfdev.DistroShelf"                   # Distribution browser
+    "org.gimp.GIMP"                             # GIMP — required by home/photogimp.nix's overlay
   ];
 }

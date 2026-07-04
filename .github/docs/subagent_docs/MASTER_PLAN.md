@@ -190,9 +190,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M24 · `modules/server/homepage.nix:30-38`
   - **Resolution:** Added `vexos.server.homepage.allowedHosts` option (default `"localhost:<port>"`, works out of the box) wired to the container's `HOMEPAGE_ALLOWED_HOSTS` env var. Homepage has no wildcard support for this value, so the option description documents adding every real access hostname/IP. Verified both default and custom-override behavior. (`modules/server/homepage.nix`)
 
-- [ ] **M-18** `[B]` PhotoGIMP launcher ships on desktop but `org.gimp.GIMP` is never installed
+- [x] **M-18** `[B]` PhotoGIMP launcher ships on desktop but `org.gimp.GIMP` is never installed
   - **Source:** BUGS M17 · `home-desktop.nix:13`, `home/photogimp.nix`
-  - Add `org.gimp.GIMP` to the desktop Flatpak install list, or gate `photogimp.enable` on GIMP being present
+  - **Resolution:** Confirmed with the user (whose working GIMP install predates or exists outside this repo's declarative management) before proceeding. Added `org.gimp.GIMP` to `modules/flatpak-desktop.nix`'s `extraApps` list — the exact file already scoped to the desktop role, matching `photogimp.nix`'s own scope. Verified in the merged Flatpak app list. (`modules/flatpak-desktop.nix`)
 
 - [ ] **M-19** `[B]` `just` alias broken on the vanilla role — it points to a justfile that vanilla never deploys
   - **Source:** BUGS M18 · `home/bash-common.nix`, `configuration-vanilla.nix:10-16`
