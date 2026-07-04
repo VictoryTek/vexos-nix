@@ -14,6 +14,10 @@
 #   LOG_PII_CHANGES=true
 #   # PROXY_PORT is set automatically from the port option
 #
+# ⚠ No authentication of its own — anyone who can reach the port can proxy
+#   traffic (and any configured API keys) through this host. Defaults to
+#   localhost-only (openFirewall = false), matching the documented usage above.
+#
 # ⚠ The package hash in pkgs/kiji-proxy/default.nix is set automatically by
 #   `just enable kiji-proxy`.  See that file if you need to set it manually.
 { config, lib, pkgs, ... }:
@@ -28,6 +32,18 @@ in
       type        = lib.types.port;
       default     = 8080;
       description = "Port the proxy listens on (forward proxy + health API).";
+    };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Open the firewall for the proxy's port. Defaults to false — the
+        documented usage pattern is localhost-only
+        (HTTP_PROXY=http://127.0.0.1:<port> in client env), and the proxy has
+        no authentication of its own. Set to true only if you specifically
+        need other LAN devices to use this proxy.
+      '';
     };
 
     environmentFile = lib.mkOption {
@@ -73,6 +89,6 @@ in
       };
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

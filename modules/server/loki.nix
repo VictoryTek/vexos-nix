@@ -2,6 +2,9 @@
 # Loki — log aggregation system (Grafana stack).
 # Pair with Grafana for log visualization. Ships logs via Promtail or Alloy agents.
 # Default port: 3100
+# ⚠ auth_enabled = false — Loki has no authentication of its own. Anyone who can
+#   reach the port can read and write logs. Set openFirewall = false to restrict
+#   access to localhost/VPN only.
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.loki;
@@ -9,6 +12,17 @@ in
 {
   options.vexos.server.loki = {
     enable = lib.mkEnableOption "Loki log aggregation";
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Open the firewall for Loki's port. Defaults to true — Loki is intended
+        to receive logs from other machines on the LAN. It has no
+        authentication of its own; set to false to restrict access to
+        localhost/VPN only.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -62,6 +76,6 @@ in
       };
     };
 
-    networking.firewall.allowedTCPPorts = [ 3100 ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall 3100;
   };
 }

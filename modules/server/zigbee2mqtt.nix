@@ -4,6 +4,9 @@
 # Set serialPort to your Zigbee coordinator device (e.g. /dev/ttyUSB0, /dev/ttyACM0).
 # MQTT broker: Mosquitto is started automatically on 127.0.0.1:1883 (loopback-only, not firewalled).
 # Pair with home-assistant or node-red for automations.
+# ⚠ The web frontend has no authentication of its own — anyone who can reach the
+#   port can control paired Zigbee devices. Set openFirewall = false to restrict
+#   access to localhost/VPN only.
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.zigbee2mqtt;
@@ -22,6 +25,17 @@ in
       type = lib.types.port;
       default = 8088;
       description = "Port for the Zigbee2MQTT web frontend.";
+    };
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Open the firewall for the Zigbee2MQTT web frontend. Defaults to true —
+        the frontend is intended to be reachable from other devices on the
+        LAN. It has no authentication of its own; set to false to restrict
+        access to localhost/VPN only.
+      '';
     };
   };
 
@@ -60,6 +74,6 @@ in
       requires = [ "mosquitto.service" ];
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   };
 }

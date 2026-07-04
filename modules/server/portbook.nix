@@ -20,6 +20,10 @@
 #
 # ⚠ The package hash in pkgs/portbook/default.nix is set automatically by
 #   `just enable portbook`.  See that file if you need to set it manually.
+#
+# ⚠ No authentication of its own — anyone who can reach the port can view
+#   which processes are listening on which ports on this host. Set
+#   openFirewall = false to restrict access to localhost/VPN only.
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.portbook;
@@ -27,6 +31,17 @@ in
 {
   options.vexos.server.portbook = {
     enable = lib.mkEnableOption "Portbook localhost port discovery dashboard";
+
+    openFirewall = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Open the firewall for Portbook's port. Defaults to true — the
+        dashboard is intended to be reachable from other devices on the LAN.
+        It has no authentication of its own; set to false to restrict access
+        to localhost/VPN only.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -68,6 +83,6 @@ in
     # explain) are available in any user's PATH without enabling the daemon.
     environment.systemPackages = [ pkgs.vexos.portbook ];
 
-    networking.firewall.allowedTCPPorts = [ 7777 ];
+    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall 7777;
   };
 }

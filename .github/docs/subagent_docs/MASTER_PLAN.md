@@ -210,9 +210,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M25, ARCH 3.2 · `portainer.nix`, `homepage.nix`, `stirling-pdf.nix`, `authelia.nix`, `nginx-proxy-manager.nix`, `dockhand.nix`, `dozzle.nix`
   - **Resolution:** Pinned all 7 (not just the two "at minimum") to versions verified live against Docker Hub/GHCR (`portainer-ce:2.43.0`, `homepage:v1.13.2`, `s-pdf:2.14.0`, `authelia:4.39.20`, `nginx-proxy-manager:2.15.1`, `dockhand:v1.0.36`, `dozzle:v10.6.7`). Per user request, added `.github/workflows/update-container-images.yml` — a new Wednesday-scheduled workflow (matching `update-flake-lock.yml`'s direct-commit style) that checks each registry for a newer matching tag and bumps the pin automatically, resolving the reproducibility-vs-staying-current tradeoff. Verified all 7 images resolve correctly together in a forced build. (`modules/server/{portainer,homepage,stirling-pdf,authelia,nginx-proxy-manager,dockhand,dozzle}.nix`, `.github/workflows/update-container-images.yml`)
 
-- [ ] **M-23** `[B]` Several services exposed LAN-wide with no authentication by module design, no opt-out
+- [x] **M-23** `[B]` Several services exposed LAN-wide with no authentication by module design, no opt-out
   - **Source:** BUGS M26 · `loki.nix`, `netdata.nix`, `zigbee2mqtt.nix`, `kiji-proxy.nix`, `portbook.nix`
-  - Add `openFirewall ? default true` option; bind `kiji-proxy` to loopback by default; add warning comments
+  - **Resolution:** Added `openFirewall` option to all five (default `true` for loki/netdata/zigbee2mqtt/portbook, preserving current behavior; default `false` for kiji-proxy, matching its documented localhost-only usage). kiji-proxy's `PROXY_PORT` bind format is undocumented upstream, so loopback restriction is enforced via the firewall rather than guessing at an app-level bind-address change. Added warning comments to all five noting the lack of built-in auth. Verified both defaults and overrides. Found (flagged, not fixed — out of scope) a pre-existing, unrelated `services.zigbee2mqtt.settings.homeassistant` conflict at the current nixpkgs pin. (`modules/server/{loki,netdata,zigbee2mqtt,kiji-proxy,portbook}.nix`)
 
 - [ ] **M-24** `[B]` SMB1 re-enabled globally on every display role — affects all SMB connections, not just the legacy NAS
   - **Source:** BUGS M27 · `modules/network-desktop.nix:30-33`
