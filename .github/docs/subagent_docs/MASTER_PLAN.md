@@ -158,9 +158,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M9 · `modules/gaming.nix:103`
   - **Resolution:** Dropped the `plugdev` membership rather than declaring an empty group — repo-wide grep confirmed no udev rule in this project ever targets `GROUP="plugdev"` (all controller rules already use `GROUP="input"`), so creating the group would have had no functional effect. Verified the merged `extraGroups` list no longer contains `plugdev`. (`modules/gaming.nix`)
 
-- [ ] **M-10** `[B]` `elevator=kyber` kernel boot parameter was removed in kernel 5.0 — I/O scheduler not set
+- [x] **M-10** `[B]` `elevator=kyber` kernel boot parameter was removed in kernel 5.0 — I/O scheduler not set
   - **Source:** BUGS M10 · `modules/system.nix:91-95`
-  - Replace with a udev rule: `ACTION=="add|change", KERNEL=="nvme*|sd*", ATTR{queue/scheduler}="kyber"`
+  - **Resolution:** Replaced the dead boot parameter with a `services.udev.extraRules` entry (`ACTION=="add|change", KERNEL=="nvme*|sd*", ATTR{queue/scheduler}="kyber"`), the current supported mechanism. Verified the rule merges correctly with `modules/gaming.nix`'s own udev rules block rather than conflicting. (`modules/system.nix`)
 
 - [ ] **M-11** `[B]` `just reset-defaults` removes wrong stamp name and leaves all GNOME extensions permanently disabled
   - **Source:** BUGS M11 · `justfile:804-820`

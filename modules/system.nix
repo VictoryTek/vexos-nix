@@ -87,12 +87,13 @@
       # EFI / systemd-boot — standard bootloader for all vexos-nix hosts.
       # vexos.bootloader selects the backend; see options above.
 
-      # ── Kernel parameters ───────────────────────────────────────────────
-      boot.kernelParams = [
-        # I/O scheduler: Kyber is low-latency; well suited for NVMe SSDs.
-        # Override per-device via udev if mixing SSDs and HDDs.
-        "elevator=kyber"
-      ];
+      # ── I/O scheduler ────────────────────────────────────────────────────
+      # Kyber is low-latency; well suited for NVMe SSDs. The elevator= boot
+      # parameter was removed in kernel 5.0 (this project runs 6.x) — set via
+      # udev instead, the current supported mechanism.
+      services.udev.extraRules = ''
+        ACTION=="add|change", KERNEL=="nvme*|sd*", ATTR{queue/scheduler}="kyber"
+      '';
 
       # ── Plymouth (graphical boot splash) ────────────────────────────────
       # Display roles set boot.plymouth.enable = true in their config.
