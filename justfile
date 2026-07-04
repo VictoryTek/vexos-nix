@@ -1426,7 +1426,7 @@ service-info service="":
         portbook)        printf "  %-18s  Web UI  http://<server-ip>:7777   |  CLI: portbook ls / tui / watch\n"       "$1" ;;
         prometheus)      printf "  %-18s  Web UI  http://<server-ip>:9092\n"                                               "$1" ;;
         proxmox)         printf "  %-18s  Web UI  https://<server-ip>:8006  |  Ports :3128 (SPICE), :5900-5999 (VNC)\n"        "$1" ;;
-        unbound)         printf "  %-18s  DNS on :5353\n"                                                                  "$1" ;;
+        unbound)         printf "  %-18s  DNS on :5335\n"                                                                  "$1" ;;
         zigbee2mqtt)     printf "  %-18s  Web UI  http://<server-ip>:8088\n"                                                   "$1" ;;
         *)               printf "  %-18s  (no info available)\n"                                                       "$1" ;;
       esac
@@ -2273,7 +2273,7 @@ enable service: _require-server-role
         ;;
       unbound)
         echo "  Service:  unbound.service"
-        echo "  DNS:      Port 5353 (UDP/TCP)"
+        echo "  DNS:      Port 5335 (UDP/TCP)"
         echo "  About:    Validating, recursive DNS resolver with DNS-over-TLS forwarding to Cloudflare (1.1.1.1)."
         ;;
       zigbee2mqtt)

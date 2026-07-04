@@ -130,9 +130,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M2 · `modules/server/podman.nix:34`, `modules/server/{dozzle,portainer,homepage,authelia,uptime-kuma,stirling-pdf,nginx-proxy-manager}.nix`
   - **Resolution:** Changed all seven docker-backed modules' `virtualisation.oci-containers.backend = "docker";` to `lib.mkDefault "docker"`, letting podman's plain-priority `"podman"` win cleanly when both are enabled. While validating the full combination, found and fixed (by user decision) a second, adjacent, pre-existing conflict: nixpkgs's own dockerCompat/docker assertion, since the seven modules' `virtualisation.docker.enable = lib.mkDefault true` was never overridden when podman is active — added `virtualisation.docker.enable = lib.mkForce false;` to `podman.nix`. Verified both the podman+all-seven-services combination and the docker-only (no podman) path build cleanly. (`modules/server/{dozzle,portainer,homepage,authelia,uptime-kuma,stirling-pdf,nginx-proxy-manager,podman}.nix`)
 
-- [ ] **M-03** `[B]` Unbound on port 5353 collides with Avahi mDNS, which is enabled on every role
+- [x] **M-03** `[B]` Unbound on port 5353 collides with Avahi mDNS, which is enabled on every role
   - **Source:** BUGS M3 · `modules/server/unbound.nix:19`
-  - Change unbound to port 5335 (conventional unbound-behind-AdGuard port)
+  - **Resolution:** Changed Unbound to port 5335 (conventional Unbound-behind-AdGuard/Pi-hole port) across `settings.server.port`, both firewall port lists, and the header comment. Updated matching references in `template/server-services.nix` and two `justfile` spots. Verified via forced-branch build that Unbound (5335) and Avahi (5353) now coexist without conflict. (`modules/server/unbound.nix`, `template/server-services.nix`, `justfile`)
 
 - [ ] **M-04** `[B]` headscale `serverUrl = "http://0.0.0.0:<port>"` — clients cannot connect to a bind address
   - **Source:** BUGS M4 · `modules/server/headscale.nix:24`

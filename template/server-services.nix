@@ -103,7 +103,7 @@
   # vexos.server.traefik.enable = false;                # Ports 8882/8445 + 8079 dashboard
   # vexos.server.adguard.enable = false;
   # vexos.server.headscale.enable = false;              # Port 8085 — Tailscale control server
-  # vexos.server.unbound.enable = false;                 # Port 5353 — DNS resolver
+  # vexos.server.unbound.enable = false;                 # Port 5335 — DNS resolver
   # vexos.server.nginx-proxy-manager.enable = false;     # Port 81 admin + 8881/8444
 
   # ── Monitoring & Management ──────────────────────────────────────────────
