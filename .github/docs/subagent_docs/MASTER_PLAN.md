@@ -224,9 +224,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** ARCH 1.5
   - **Resolution:** `modules/server/odysseus.nix` (the specific offender — an ad-hoc `preStart` git-clone + docker-compose pattern) was deleted entirely under H-08, per user preference to run it ad-hoc via `docker compose` directly rather than as a declarative module. Confirmed no other file in `modules/server/` uses a compose-in-systemd pattern — the only remaining `docker-compose` reference anywhere is the CLI tool itself in `docker.nix`. No "compose exception rule" needs documenting since no current instance requires one. No files modified.
 
-- [ ] **M-26** `[A]` `vexos-update` (240-line shell application) embedded as a Nix string — no shellcheck, wrong module
+- [x] **M-26** `[A]` `vexos-update` (240-line shell application) embedded as a Nix string — no shellcheck, wrong module
   - **Source:** ARCH 1.6 · `modules/nix.nix:130-243`
-  - Move to `pkgs/vexos-update/` using `writeShellApplication` (shellchecks at build time); add to preflight
+  - **Resolution:** Moved verbatim to `pkgs/vexos-update/default.nix` using `writeShellApplication` (shellchecks at build time); confirmed byte-for-byte content equivalence via a whitespace-normalized diff, which also caught and fixed a heredoc-indentation mistake introduced during the move. Registered as `pkgs.vexos.vexos-update`; `modules/nix.nix` now just references it. Added preflight `[8/8]` that builds the package directly, forcing the shellcheck to run independent of the full per-variant dry-build. (`pkgs/vexos-update/default.nix`, `pkgs/default.nix`, `modules/nix.nix`, `scripts/preflight.sh`)
 
 - [ ] **M-27** `[A]` Option B "no lib.mkIf in shared modules" rule violated by the project's own core modules
   - **Source:** ARCH 2.2 · `modules/system.nix:63,73,148,161`, `modules/network.nix:108`, `modules/flatpak.nix:51`, etc.
