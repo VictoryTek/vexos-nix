@@ -232,9 +232,10 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** ARCH 2.2 · `modules/system.nix:63,73,148,161`, `modules/network.nix:108`, `modules/flatpak.nix:51`, etc.
   - **Resolution:** Verified all 5 cited instances individually — every one gates by a plain option the *same* module declares (bootloader choice, swap/btrfs enable, static-IP config, flatpak master toggle), never by role/display/gaming flag. This is the standard NixOS enable-flag pattern, not the role-smuggling anti-pattern the rule targets. Updated CLAUDE.md's Module Architecture Pattern to explicitly carve this out, rather than removing legitimate, working functionality to satisfy an overly broad rule statement. No `.nix` source files changed. (`CLAUDE.md`)
 
-- [ ] **M-28** `[A]` Output/group counts wrong in CLAUDE.md, CI comment, and preflight script
+- [x] **M-28** `[A]` Output/group counts wrong in CLAUDE.md, CI comment, and preflight script
   - **Source:** ARCH 2.3
   - Update CLAUDE.md "30 outputs" → 34; `ci.yml:64-65` "4 groups/22 configs" → 6 groups/34 configs; `preflight.sh:14` "5 configuration-*.nix" → 6; remove `# NEW` markers from `flake.nix:250-259`
+  - **Resolution:** Re-verified every sub-claim directly rather than trusting the plan text. `ci.yml`'s group/config counts (6 groups, 30 configs total) were already correct, and no `# NEW` markers exist in `flake.nix` — no changes needed for either. Found the real bugs by direct count: `flake.nix:351` said "34 outputs" while `flake.nix:277` (same file) correctly said "30 outputs" — fixed the contradiction to 30 (confirmed via `hostList` entry count). `CLAUDE.md` said preflight has "7 checks" (actual: 9 stages, `[0/8]`-`[8/8]`, since M-26 added stage 8) — fixed. `CLAUDE.md` also listed a nonexistent `nvidia-legacy470` GPU variant and said "six variants" when only 5 exist (`amd`, `nvidia`, `nvidia-legacy535`, `intel`, `vm`) — removed the phantom variant and corrected the count. `preflight.sh:14` said "5 configuration-*.nix files"; actual is 6 — fixed. (`flake.nix`, `CLAUDE.md`, `scripts/preflight.sh`)
 
 - [ ] **M-29** `[A]` Firewall exposure is inconsistent: 18 modules offer an `openFirewall` option, ~35 open ports unconditionally
   - **Source:** ARCH 3.1 · scattered across `modules/server/*`

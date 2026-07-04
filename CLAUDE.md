@@ -148,7 +148,7 @@ Test Command(s):
 - `nix flake show --impure` — validates flake structure and lists all outputs (safe, low RAM)
 - `sudo nixos-rebuild dry-build --flake .#vexos-<role>-<gpu>` — per-variant closure validation (safe, low RAM)
 - `nix eval --impure ".#nixosConfigurations.<config>.config.system.build.toplevel.drvPath"` — forces full evaluation without building (used in CI; equivalent to `nix flake check --no-build` for a single target)
-- `bash scripts/preflight.sh` — full pre-push validation (all 7 checks)
+- `bash scripts/preflight.sh` — full pre-push validation (9 stages, `[0/8]`-`[8/8]`)
 - **DO NOT use `nix flake check`** — see FORBIDDEN COMMANDS
 
 Package Manager(s): **Nix (nix CLI / nix flake)**
@@ -193,8 +193,8 @@ Package Manager(s): **Nix (nix CLI / nix flake)**
 - Special Constraints:
   - The flake defines 30 outputs across six roles (`desktop`, `stateless`, `server`,
     `headless-server`, `htpc`, `vanilla`) × GPU variants (`amd`, `nvidia`,
-    `nvidia-legacy535`, `nvidia-legacy470`, `intel`, `vm` — not all roles include all
-    six variants; see `flake.nix` for the authoritative list)
+    `nvidia-legacy535`, `intel`, `vm` — not all roles include all five variants; see
+    `flake.nix` for the authoritative list)
   - Host configs in `hosts/` import the role's `configuration-*.nix` + the appropriate
     `modules/gpu/` variant
   - `hardware-configuration.nix` MUST NOT be added to this repository — it is generated

@@ -348,7 +348,7 @@
   in
   {
     # ── nixosConfigurations — generated from hostList via mkHost ─────────────
-    # 34 outputs. To add/remove a system, edit `hostList` above; nothing else.
+    # 30 outputs. To add/remove a system, edit `hostList` above; nothing else.
     nixosConfigurations = lib.listToAttrs (map (h: {
       name  = h.name;
       value = mkHost {

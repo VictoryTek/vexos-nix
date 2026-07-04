@@ -11,7 +11,7 @@
 #   [1/8] nix flake show (structure validation — safe, low RAM)
 #   [2/8] Dry-build current machine variant only (full CI validation handled by GitHub Actions)
 #   [3/8] hardware-configuration.nix not tracked
-#   [4/8] system.stateVersion (all 5 configuration-*.nix files)
+#   [4/8] system.stateVersion (all 6 configuration-*.nix files)
 #   [5/8] flake.lock validation (committed, pinned, freshness)
 #   [6/8] Nix formatting
 #   [7/8] Secret scan
