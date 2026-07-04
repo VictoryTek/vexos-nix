@@ -154,9 +154,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M8 · `modules/gaming.nix:111-124`
   - **Resolution:** Changed the profile's attachment path to `${pkgs.wineWow64Packages.stagingFull}/bin/wineserver` — the exact real store path of the Wine package this same file already installs — instead of the suggested glob, since it's more precise and automatically stays correct if the package changes. Verified the rendered profile text contains a real, concrete store path. (`modules/gaming.nix`)
 
-- [ ] **M-09** `[B]` `plugdev` group is never created — user membership is a silent no-op
+- [x] **M-09** `[B]` `plugdev` group is never created — user membership is a silent no-op
   - **Source:** BUGS M9 · `modules/gaming.nix:103`
-  - Add `users.groups.plugdev = {};` or drop the membership in favour of the existing `input` group rule
+  - **Resolution:** Dropped the `plugdev` membership rather than declaring an empty group — repo-wide grep confirmed no udev rule in this project ever targets `GROUP="plugdev"` (all controller rules already use `GROUP="input"`), so creating the group would have had no functional effect. Verified the merged `extraGroups` list no longer contains `plugdev`. (`modules/gaming.nix`)
 
 - [ ] **M-10** `[B]` `elevator=kyber` kernel boot parameter was removed in kernel 5.0 — I/O scheduler not set
   - **Source:** BUGS M10 · `modules/system.nix:91-95`

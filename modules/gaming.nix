@@ -138,8 +138,11 @@ in
       SUBSYSTEM=="input", MODE="0660", GROUP="input"
     '';
 
-    # Grant the primary user access to GameMode CPU governor, input devices, and USB peripherals.
-    users.users.${config.vexos.user.name}.extraGroups = [ "gamemode" "input" "plugdev" ];
+    # Grant the primary user access to GameMode CPU governor and input devices.
+    # (Controller/USB peripheral access is granted via the udev GROUP="input" rules
+    # below, not a "plugdev" group — NixOS doesn't declare one, and nothing here
+    # ever targets it.)
+    users.users.${config.vexos.user.name}.extraGroups = [ "gamemode" "input" ];
 
     # ── bubblewrap setuid override ────────────────────────────────────────────
     # bubblewrap 0.11.x removed setuid priv mode. programs.steam.enable still
