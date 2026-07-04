@@ -12,5 +12,5 @@
 
   # REQUIRED: replace with the real value from the target host.
   # Generate: head -c 8 /etc/machine-id
-  networking.hostId = "a0000001";
+  networking.hostId = lib.mkDefault "a0000001";
 }

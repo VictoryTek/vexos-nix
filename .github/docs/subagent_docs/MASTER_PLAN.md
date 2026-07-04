@@ -170,9 +170,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M12 · `justfile:1437-1444`
   - **Resolution:** Fixed the post-enable info block for attic to match `attic.nix`'s own correct documentation: `ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64` → `RS256`, and the generation command → `openssl genrsa -traditional 4096 | base64 -w0`. Confirmed no `HS256` references remain anywhere in the repo. (`justfile`)
 
-- [ ] **M-13** `[B]` All server host variants share the same placeholder ZFS `hostId` — pool-import protection bypassed
+- [x] **M-13** `[B]` All server host variants share the same placeholder ZFS `hostId` — pool-import protection bypassed
   - **Source:** BUGS M15 · `hosts/server-*.nix`, `hosts/headless-server-*.nix`
-  - Change to `lib.mkDefault` + assertion that the value differs from the placeholder; document per-machine override in the template path
+  - **Resolution:** Wrapped all 8 host files' hostId placeholders in `lib.mkDefault`; extended `zfs-server.nix`'s assertion to reject all 8 committed placeholders (not just `"00000000"`), moving its own fallback to `lib.mkOverride 1500` to avoid a same-priority conflict with the host files. This correctly broke CI (every server/headless-server config now fails the strengthened assertion by design, since none carry a real per-machine value) — resolved by user decision: added a `networking.hostId` line to the stub `hardware-configuration.nix` CI already writes, mirroring the existing stateless-password CI fixture pattern. `template/etc-nixos-flake.nix` (the real thin-wrapper deployment path) was already correct and untouched. (`hosts/{server,headless-server}-{amd,nvidia,intel,vm}.nix`, `modules/zfs-server.nix`, `.github/workflows/ci.yml`)
 
 - [ ] **M-14** `[B]` `vexos-update` deletes the `flake.lock` backup before the step that can still fail
   - **Source:** BUGS M21 · `modules/nix.nix:168-239`

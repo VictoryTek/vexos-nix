@@ -64,14 +64,30 @@
   # Set networking.hostId explicitly in hosts/<role>-<gpu>.nix, e.g.:
   #   networking.hostId = "deadbeef";
   # Generate a value with:  head -c 8 /etc/machine-id
-  networking.hostId = lib.mkDefault "00000000";
+  #
+  # Priority 1500 (weaker than lib.mkDefault's 1000): this is a rock-bottom
+  # fallback only, so hosts/<role>-<gpu>.nix's own lib.mkDefault placeholder
+  # naturally wins over it — both str-type values at equal priority would
+  # otherwise conflict rather than merge.
+  networking.hostId = lib.mkOverride 1500 "00000000";
 
   assertions = [
     {
-      assertion = config.networking.hostId != "00000000";
+      # Rejects both the raw fallback ("00000000") and the 8 committed
+      # per-variant placeholders in hosts/{server,headless-server}-*.nix
+      # (a0000001-4, b0000001-4). Those are lib.mkDefault too, so every
+      # unedited install of the same role+GPU variant would otherwise share
+      # the identical value — defeating ZFS's protection against importing a
+      # pool that's already imported on another machine.
+      assertion = !(builtins.elem config.networking.hostId [
+        "00000000"
+        "a0000001" "a0000002" "a0000003" "a0000004"
+        "b0000001" "b0000002" "b0000003" "b0000004"
+      ]);
       message = ''
-        ZFS requires a unique networking.hostId per host. Set it in
-        hosts/<role>-<gpu>.nix, e.g.:
+        ZFS requires a unique networking.hostId per host — this is still a
+        shared placeholder committed in hosts/<role>-<gpu>.nix, not a real
+        per-machine value. Set it in hosts/<role>-<gpu>.nix, e.g.:
           networking.hostId = "deadbeef";
         Generate with:  head -c 8 /etc/machine-id
       '';

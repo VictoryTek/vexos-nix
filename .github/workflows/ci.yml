@@ -161,6 +161,13 @@ jobs:
               fsType = lib.mkDefault "ext4";
             };
             boot.loader.grub.device = lib.mkDefault "/dev/sda";
+            # CI eval fixture only: satisfies zfs-server.nix's assertion that
+            # networking.hostId isn't one of the committed placeholder values
+            # (hosts/{server,headless-server}-*.nix). Plain priority beats both
+            # the host files' mkDefault and zfs-server.nix's mkOverride 1500
+            # fallback, so this applies uniformly across every matrix group
+            # without needing a per-group conditional step.
+            networking.hostId = "cafebabe";
           }
           EOF
 
