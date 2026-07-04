@@ -166,9 +166,9 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M11 · `justfile:804-820`
   - **Resolution:** Replaced the single hardcoded `.dconf-app-folders-initialized-v2` removal with a `.dconf-*-initialized*` glob, covering all four stamp variants actually in use (app-folders v2/v3, extensions unversioned/v3 — desktop's stamps were `-v3`, not `-v2`, and `extensions-initialized` wasn't being cleared at all, which is why extensions stayed disabled). Verified against real stamp names in an isolated scratch `$HOME` that exactly the four dconf stamps are removed and unrelated migration stamps are preserved. (`justfile`)
 
-- [ ] **M-12** `[B]` Attic `just enable-attic` help text instructs HS256 token; atticd requires RS256 RSA key
+- [x] **M-12** `[B]` Attic `just enable-attic` help text instructs HS256 token; atticd requires RS256 RSA key
   - **Source:** BUGS M12 · `justfile:1437-1444`
-  - Fix help text to match `attic.nix` header: `openssl genrsa -traditional 4096 | base64 -w0` → `ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64`
+  - **Resolution:** Fixed the post-enable info block for attic to match `attic.nix`'s own correct documentation: `ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64` → `RS256`, and the generation command → `openssl genrsa -traditional 4096 | base64 -w0`. Confirmed no `HS256` references remain anywhere in the repo. (`justfile`)
 
 - [ ] **M-13** `[B]` All server host variants share the same placeholder ZFS `hostId` — pool-import protection bypassed
   - **Source:** BUGS M15 · `hosts/server-*.nix`, `hosts/headless-server-*.nix`
