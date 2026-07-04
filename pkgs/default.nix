@@ -14,5 +14,7 @@ final: prev: {
     # ── AI & Privacy ────────────────────────────────────────────────────────
     kiji-proxy           = final.callPackage ./kiji-proxy { };
     portbook             = final.callPackage ./portbook { };
+    # ── System ──────────────────────────────────────────────────────────────
+    vexos-update         = final.callPackage ./vexos-update { };
   };
 }

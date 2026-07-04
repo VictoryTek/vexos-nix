@@ -214,15 +214,15 @@ Check boxes are ticked as items are completed in this session.
   - **Source:** BUGS M26 · `loki.nix`, `netdata.nix`, `zigbee2mqtt.nix`, `kiji-proxy.nix`, `portbook.nix`
   - **Resolution:** Added `openFirewall` option to all five (default `true` for loki/netdata/zigbee2mqtt/portbook, preserving current behavior; default `false` for kiji-proxy, matching its documented localhost-only usage). kiji-proxy's `PROXY_PORT` bind format is undocumented upstream, so loopback restriction is enforced via the firewall rather than guessing at an app-level bind-address change. Added warning comments to all five noting the lack of built-in auth. Verified both defaults and overrides. Found and separately fixed a pre-existing, unrelated `services.zigbee2mqtt.settings.homeassistant` shape conflict (upstream nixpkgs now expects `homeassistant.enabled = ...`, not a bare boolean) — `homeassistant = false;` → `homeassistant.enabled = false;`; confirmed the full build now succeeds. (`modules/server/{loki,netdata,zigbee2mqtt,kiji-proxy,portbook}.nix`)
 
-- [ ] **M-24** `[B]` SMB1 re-enabled globally on every display role — affects all SMB connections, not just the legacy NAS
+- [x] **M-24** `[B]` ~~SMB1 re-enabled globally on every display role~~ — INTENTIONALLY SKIPPED, no code change
   - **Source:** BUGS M27 · `modules/network-desktop.nix:30-33`
-  - Convert to `vexos.network.allowSmb1 = false` opt-in; or scope to the specific NAS via per-server config
+  - **Resolution:** User explicitly flagged that SMB network-drive discovery in this repo was hard-won (significant past debugging pain) and is currently working — asked to be extremely careful with any SMB change. Investigated: `"client min protocol" = "NT1"` is a *minimum*, not a forced value — modern SMB2/3 shares are unaffected; it only matters for the one legacy SMB1-only NAS this was added for. Both of the MASTER_PLAN's literal fixes carry real regression risk here: defaulting a new `allowSmb1` option to `false` would break the legacy NAS on next rebuild unless immediately re-enabled, and Samba's client `min protocol` has no true per-remote-host scoping (only a manual fstab `vers=1.0` mount, a materially different workflow from the current automatic Nautilus network browsing). Presented the tradeoff; user chose to leave the setting exactly as-is rather than risk a regression. No files modified.
 
 ### Architecture — Medium Impact
 
-- [ ] **M-25** `[A]` Three deployment paradigms in `modules/server/` — odysseus compose-in-systemd bypasses service management
+- [x] **M-25** `[A]` ~~Three deployment paradigms in `modules/server/` — odysseus compose-in-systemd bypasses service management~~ — RESOLVED BY REMOVAL
   - **Source:** ARCH 1.5
-  - Convert odysseus `preStart` clone+compose to proper `virtualisation.oci-containers` definition; document compose exception rule for genuinely multi-container topologies
+  - **Resolution:** `modules/server/odysseus.nix` (the specific offender — an ad-hoc `preStart` git-clone + docker-compose pattern) was deleted entirely under H-08, per user preference to run it ad-hoc via `docker compose` directly rather than as a declarative module. Confirmed no other file in `modules/server/` uses a compose-in-systemd pattern — the only remaining `docker-compose` reference anywhere is the CLI tool itself in `docker.nix`. No "compose exception rule" needs documenting since no current instance requires one. No files modified.
 
 - [ ] **M-26** `[A]` `vexos-update` (240-line shell application) embedded as a Nix string — no shellcheck, wrong module
   - **Source:** ARCH 1.6 · `modules/nix.nix:130-243`
