@@ -15,8 +15,10 @@
 #
 # cockpit-zfs is intentionally excluded: it requires a ZFS pool to already
 # be configured on the host and has its own default auto-enable logic.
-# When cockpit-zfs becomes packageable (upstream nixpkgs or a self-contained
-# lockfile), adding it here is a one-line addition to this file.
+# Re-checked at this repo's pinned nixpkgs rev (2026-07): pkgs.cockpit-zfs
+# now exists but still fails to build — see modules/server/cockpit.nix for
+# the current blocking reason. When it builds, adding it here is a one-line
+# addition to this file.
 { config, lib, ... }:
 let
   cfg = config.vexos.server.nas;

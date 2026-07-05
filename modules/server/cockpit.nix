@@ -10,11 +10,15 @@
 # environment.pathsToLink = [ "/share/cockpit" ]. See:
 #   .github/docs/subagent_docs/nas_phase_a_cockpit_navigator_spec.md
 #
-# NOTE: cockpit-zfs (Phase B) is deferred — upstream v1.2.26 uses a
-# Yarn Berry v4 monorepo with unresolved workspace: deps in the zfs/
-# package-lock.json, making sandbox builds infeasible without upstream
-# changes. Revisit when cockpit-zfs lands in nixpkgs or upstream ships
-# a self-contained lockfile. Phase C (cockpit-file-sharing) is next.
+# NOTE: cockpit-zfs (Phase B) is deferred. Re-checked at this repo's pinned
+# nixpkgs rev (2026-07): pkgs.cockpit-zfs now exists (1.2.27-3, not marked
+# meta.broken) — the original Yarn Berry v4 workspace: deps blocker is gone.
+# But `nix build` against it still fails: a Tailwind/PostCSS error in the
+# shared @45drives/houston-common-ui workspace
+# ("[vite:css] [postcss] Cannot convert undefined or null to object" in
+# ToggleSwitchGroup.vue's scoped style compilation) aborts the whole
+# workspace build before cockpit-zfs itself builds. Revisit when this
+# upstream CSS build bug is fixed. Phase C (cockpit-file-sharing) is next.
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.cockpit;
