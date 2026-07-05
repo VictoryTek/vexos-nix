@@ -1,10 +1,13 @@
 name: Update container image pins
 
-# Checks the 7 OCI-container services in modules/server/*.nix (portainer, homepage,
-# stirling-pdf, authelia, nginx-proxy-manager, dockhand, dozzle) for a newer version
-# tag and rewrites the pin in place. These services are pinned (not :latest) so
-# nixos-rebuild stays reproducible between runs of this workflow — see MASTER_PLAN
-# M-22. Mirrors update-flake-lock.yml's direct-commit-to-main style (no PR).
+# Checks the 8 OCI-container services in modules/server/*.nix (portainer, homepage,
+# stirling-pdf, authelia, nginx-proxy-manager, dockhand, dozzle, arcane) for a newer
+# version tag and rewrites the pin in place. These services are pinned (not :latest)
+# so nixos-rebuild stays reproducible between runs of this workflow — see MASTER_PLAN
+# M-22/M-35. Mirrors update-flake-lock.yml's direct-commit-to-main style (no PR).
+# No separate "pull and restart" recipe exists or is needed — the next
+# `just update`/`update-all`/`deploy` on any host pulls whatever pin this workflow
+# committed and applies it via the normal nixos-rebuild switch path.
 
 on:
   schedule:
@@ -39,6 +42,7 @@ jobs:
             "modules/server/dozzle.nix:amir20/dozzle:dockerhub:^v[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/homepage.nix:gethomepage/homepage:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/dockhand.nix:finsys/dockhand:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/arcane.nix:getarcaneapp/manager:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
           )
 
           latest_dockerhub_tag() {

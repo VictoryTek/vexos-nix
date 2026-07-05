@@ -82,7 +82,7 @@ in
     virtualisation.oci-containers.backend = "docker";
 
     virtualisation.oci-containers.containers.arcane = {
-      image = "ghcr.io/getarcaneapp/manager:latest";
+      image = "ghcr.io/getarcaneapp/manager:v1.19.4";
       ports = [ "${toString cfg.port}:3552" ];
       volumes = [
         "/var/run/docker.sock:/var/run/docker.sock"

@@ -9,6 +9,8 @@
 # Create file with: sudo install -m 0600 -o root -g root /dev/stdin /etc/nixos/secrets/attic-credentials
 # Permissions enforced at boot by modules/secrets.nix (0700 dir, 0600 files).
 # After enabling, use `attic login` on clients pointing to http://<host>:8400
+# To push this repo's own custom pkgs/* packages (cockpit-navigator, portbook,
+# vexos-update, etc.) after logging in, run: just attic-push [cache-name]
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.attic;

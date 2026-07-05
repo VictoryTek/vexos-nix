@@ -2372,3 +2372,53 @@ disable service: _require-server-role
 
     echo "✗ Disabled: $SERVICE"
     echo "  → Run 'just rebuild' to apply."
+
+# ── Binary Cache ──────────────────────────────────────────────────────────────
+
+# Build this repo's custom pkgs/* packages and push them to a configured Attic
+# cache. Requires `attic login <cache> <url> <token>` to have already been run
+# once (see `just enable attic`'s setup guidance). Usage: just attic-push [cache]
+[group('Binary Cache')]
+attic-push cache="vexos":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v attic &>/dev/null; then
+        echo "error: 'attic' CLI not found on PATH." >&2
+        echo "  Install it, then run: attic login {{cache}} <url> <token>" >&2
+        echo "  See 'just enable attic' for setup guidance." >&2
+        exit 1
+    fi
+
+    PACKAGES="cockpit-navigator cockpit-file-sharing cockpit-identities brave-origin kiji-proxy portbook vexos-update"
+
+    # Some packages (kiji-proxy) use a placeholder hash until `just enable
+    # kiji-proxy` patches it in locally, so a single package failing to build
+    # shouldn't abort the whole push — build/push each independently and
+    # report a summary at the end.
+    FAILED=""
+    BUILD_LOG=$(mktemp)
+    trap 'rm -f "$BUILD_LOG"' EXIT
+    echo "Building and pushing custom packages..."
+    for pkg in $PACKAGES; do
+        echo "  building vexos.${pkg}..."
+        if out_path=$(nix build --impure --no-link --print-out-paths \
+            ".#nixosConfigurations.vexos-desktop-amd.pkgs.vexos.${pkg}" 2>"$BUILD_LOG"); then
+            echo "  pushing ${pkg} -> {{cache}}..."
+            if ! attic push "{{cache}}" "$out_path"; then
+                echo "  ✗ push failed: ${pkg}" >&2
+                FAILED="$FAILED $pkg"
+            fi
+        else
+            echo "  ✗ build failed: ${pkg} (skipping — run 'just enable ${pkg}' first if it needs a one-time setup step)" >&2
+            tail -5 "$BUILD_LOG" >&2
+            FAILED="$FAILED $pkg"
+        fi
+    done
+
+    echo ""
+    if [ -n "$FAILED" ]; then
+        echo "✗ Pushed with failures. Skipped/failed:${FAILED}" >&2
+        exit 1
+    fi
+    echo "✓ Pushed all custom packages to Attic cache '{{cache}}'."
