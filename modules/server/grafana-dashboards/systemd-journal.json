@@ -1,0 +1,62 @@
+{
+  "title": "Systemd / Journal (Loki)",
+  "uid": "vexos-systemd-journal",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "timezone": "browser",
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "1m",
+  "tags": ["vexos", "loki", "systemd"],
+  "templating": {
+    "list": [
+      {
+        "name": "unit",
+        "label": "Systemd unit",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": "label_values(SYSTEMD_UNIT)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Log volume by unit",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (SYSTEMD_UNIT) (count_over_time({job=\"fluent-bit\", SYSTEMD_UNIT=~\"$unit\"}[$__interval]))",
+          "legendFormat": "{{SYSTEMD_UNIT}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Logs",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 8 },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"fluent-bit\", SYSTEMD_UNIT=~\"$unit\"}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

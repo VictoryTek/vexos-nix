@@ -60,7 +60,9 @@
     ./grafana.nix
     ./scrutiny.nix
     ./prometheus.nix
+    ./alertmanager.nix
     ./loki.nix
+    ./fluent-bit.nix
     ./netdata.nix
     ./dozzle.nix
     ./portainer.nix

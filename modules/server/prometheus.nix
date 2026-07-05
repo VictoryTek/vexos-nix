@@ -26,6 +26,7 @@ in
         enable = true;
         openFirewall = false;
         port = 9100;
+        enabledCollectors = [ "systemd" ];
       };
 
       scrapeConfigs = [
@@ -38,6 +39,52 @@ in
           ];
         }
       ];
+
+      rules = lib.optional config.vexos.server.alertmanager.enable (builtins.toJSON {
+        groups = [
+          {
+            name = "vexos-node";
+            rules = [
+              {
+                alert = "NodeDown";
+                expr = "up{job=\"node\"} == 0";
+                for = "5m";
+                labels.severity = "critical";
+                annotations = {
+                  summary = "Node exporter target down";
+                  description = "Prometheus has not been able to scrape the node exporter for 5 minutes.";
+                };
+              }
+              {
+                alert = "NodeFilesystemAlmostFull";
+                expr = "node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay\"} < 0.1";
+                for = "15m";
+                labels.severity = "warning";
+                annotations = {
+                  summary = "Filesystem {{ $labels.mountpoint }} almost full";
+                  description = "Less than 10% free space remaining on {{ $labels.mountpoint }}.";
+                };
+              }
+              {
+                alert = "SystemdUnitFailed";
+                expr = "node_systemd_unit_state{state=\"failed\"} == 1";
+                for = "5m";
+                labels.severity = "warning";
+                annotations = {
+                  summary = "systemd unit {{ $labels.name }} failed";
+                  description = "systemd unit {{ $labels.name }} has been in the failed state for 5 minutes.";
+                };
+              }
+            ];
+          }
+        ];
+      });
+
+      alertmanagers = lib.optional config.vexos.server.alertmanager.enable {
+        static_configs = [
+          { targets = [ "localhost:${toString config.vexos.server.alertmanager.port}" ]; }
+        ];
+      };
     };
 
     networking.firewall.allowedTCPPorts = [ cfg.port ];
