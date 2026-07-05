@@ -57,6 +57,14 @@
 
     system = "x86_64-linux";
 
+    # Dedicated pkgs instance for checks.gnome-boot (see there). nixosTest
+    # supplies its own pkgs instance to the test VM; modules/nix.nix sets
+    # nixpkgs.config.allowUnfree = true as a NixOS module option, which NixOS's
+    # own module system rejects once pkgs is externally supplied with a
+    # different config — building this up front with matching config avoids
+    # that mismatch instead of fighting it from inside the test module.
+    testPkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
+
     # Inline NixOS module: exposes pkgs.unstable.* sourced from nixpkgs-unstable.
     # Used to pin a small set of fast-moving packages to latest (nodejs, papermc;
     # vscode-fhs when enabled).
@@ -433,6 +441,61 @@
         vexos.stateless.disk.device = lib.mkForce "/dev/vda";
       };
       asus = ./modules/asus-opt.nix;
+    };
+
+    # ── Checks — invoked individually, never via `nix flake check` ──────────
+    # (see FORBIDDEN COMMANDS in CLAUDE.md — that would evaluate/build every
+    # check for every one of the 30 nixosConfigurations in parallel).
+    # Run with: nix build .#checks.x86_64-linux.gnome-boot
+    checks.${system}.gnome-boot = testPkgs.testers.nixosTest {
+      name = "gnome-boot";
+
+      # Reuses vexos-desktop-vm's exact module composition (mkHost, above),
+      # minus /etc/nixos/hardware-configuration.nix — that's host-specific
+      # and impure; nixosTest supplies its own QEMU-appropriate virtual
+      # hardware automatically, same as every other NixOS test.
+      nodes.machine = {
+        imports =
+          roles.desktop.baseModules
+          ++ [ (mkHomeManagerModule roles.desktop.homeFile) ]
+          ++ roles.desktop.extraModules
+          ++ roles.desktop.hostLocalModules
+          ++ [ ./hosts/desktop-vm.nix ];
+
+        # modules/network.nix sets networking.hostName via lib.mkDefault, which
+        # conflicts with the testing framework's own same-priority default —
+        # force it so evaluation doesn't have to pick a winner between two
+        # equal-priority mkDefaults.
+        networking.hostName = lib.mkForce "gnome-boot-test";
+
+        # nixosTest supplies its own externally-created pkgs instance, and
+        # NixOS unconditionally forbids setting any nixpkgs.config.* option
+        # once that's the case (regardless of whether the value matches) —
+        # modules/nix.nix sets nixpkgs.config.allowUnfree = true, so force it
+        # empty for this test only. Safe here: the VM path never needs an
+        # unfree package (no NVIDIA driver, and hosts/desktop-vm.nix already
+        # force-disables Steam).
+        nixpkgs.config = lib.mkForce { };
+      };
+
+      testScript = { nodes, ... }:
+        let
+          user = nodes.machine.config.users.users.${nodes.machine.config.vexos.user.name};
+          uid = toString user.uid;
+        in ''
+          machine.start()
+          machine.wait_for_unit("multi-user.target")
+          machine.wait_for_unit("display-manager.service")
+          machine.wait_for_unit("graphical.target")
+
+          # A GNOME/mutter regression that produces a black screen still
+          # often leaves display-manager.service/graphical.target reporting
+          # "active" — the Wayland socket only appears once a real
+          # compositor session is actually running, so that's the
+          # meaningful signal for this specific regression class.
+          machine.wait_for_file("/run/user/${uid}/wayland-0", timeout=180)
+          machine.succeed("pgrep -f gnome-shell")
+        '';
     };
   };
 }

@@ -215,12 +215,19 @@ nix flake update nixpkgs-unstable
 # 2. Verify a VM variant dry-builds
 sudo nixos-rebuild dry-build --flake .#vexos-desktop-vm
 
-# 3. Push and do a live VM test (GNOME Boxes or virt-manager)
-#    Boot the VM and confirm GDM starts — a black screen means the new
-#    nixpkgs-unstable has a GNOME regression. Roll back with:
+# 3. Run the automated GNOME boot test — boots a VM in QEMU and checks that
+#    a real Wayland session actually starts (the specific signal a "black
+#    screen" regression breaks; NEVER use `nix flake check` — see FORBIDDEN
+#    COMMANDS — this builds only the one named check):
+nix build .#checks.x86_64-linux.gnome-boot
+
+# 4. Optionally, also do a live VM test (GNOME Boxes or virt-manager) as a
+#    final human check for anything the automated test doesn't cover.
+#    A black screen means the new nixpkgs-unstable has a GNOME regression.
+#    Roll back with:
 git revert HEAD  # or manually restore the previous flake.lock revision
 
-# 4. If the VM boots correctly, the bump is safe to leave in place.
+# 5. If the automated test (and any manual check) pass, the bump is safe to leave in place.
 ```
 
 
