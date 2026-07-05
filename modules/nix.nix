@@ -112,9 +112,12 @@ in
     # the Up GUI app call this instead of raw `nix flake update && nixos-rebuild`
     # so the hold/rollback logic is identical regardless of how the update is
     # triggered.  Implementation lives in pkgs/vexos-update/ (writeShellApplication
-    # shellchecks it at build time) rather than embedded here.
+    # shellchecks it at build time) rather than embedded here.  Called directly
+    # via callPackage (not through the pkgs.vexos overlay namespace) so this
+    # universal module — applied to every role, including vanilla, which does
+    # not include customPkgsOverlayModule — stays overlay-independent.
     environment.systemPackages = [
-      pkgs.vexos.vexos-update
+      (pkgs.callPackage ../pkgs/vexos-update { })
     ];
   }; # end config
 }
