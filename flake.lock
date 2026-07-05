@@ -178,11 +178,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1782847225,
-        "narHash": "sha256-JC9PjqKYG9ve5U8aDOLQipp3+KLANBHUvGdLZlxzdKI=",
+        "lastModified": 1783148766,
+        "narHash": "sha256-uslt2pqShTIXDdAHRHv2QkYLsVdY8Oqwz0EA48/RSM8=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "95ca1e203c0750115fd4a6f17d5a245dfe6b1edd",
+        "rev": "a50de1b7d8a586adc18d2395c19de7d6058e6030",
         "type": "github"
       },
       "original": {
@@ -319,11 +319,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781979836,
-        "narHash": "sha256-OwwEiM7pzU8J2TM4qoxSvTqXF4j01LPhvYUGHlK+5QE=",
+        "lastModified": 1783180777,
+        "narHash": "sha256-Ne6QlHAm17Y4PEfYN71TI4EhpVZlpPPOu3Hz5bj7eq8=",
         "owner": "VictoryTek",
         "repo": "Up",
-        "rev": "5317b6dbd455ba7ca2e6a0226362838bf530aa54",
+        "rev": "ad405b88fe541e0581e33b266fcc6d3bf3e97a69",
         "type": "github"
       },
       "original": {
@@ -359,11 +359,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1783105886,
-        "narHash": "sha256-O87Sf2UDzx720kV4o9bUE0ZfH4MkY8Vit6/MKVHL0EE=",
+        "lastModified": 1783177512,
+        "narHash": "sha256-plQweYlNSyShsIAJ7E30PVnKblcynA1awx4ALStyCjE=",
         "owner": "VictoryTek",
         "repo": "vexboard",
-        "rev": "296ccf0c5aa009c0bf5950e79112f721dc44e402",
+        "rev": "db5ff765b2474e21867970cb433a50e7b7797d58",
         "type": "github"
       },
       "original": {
