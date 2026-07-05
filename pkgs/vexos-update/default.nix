@@ -112,6 +112,12 @@ GITIGNORE
     # packages were not in cache at install time.  On each update, check
     # whether the target packages are now cached; if so, remove the override
     # so the next rebuild upgrades to the intended kernel automatically.
+    # Kernel modules: cacheable but can take hours to compile until Hydra builds
+    # them. Shared by the kernel-override auto-clear check below and the main
+    # three-way local-build classifier further down — defined once here so both
+    # use sites can't drift apart.
+    HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk)'
+
     OVERRIDE_FILE="/etc/nixos/kernel-install-override.nix"
     if [ -f "$OVERRIDE_FILE" ]; then
       echo "Kernel install override detected — checking if target kernel is now cached..."
@@ -121,10 +127,9 @@ GITIGNORE
         printf '%s\n' "$DRY_CHECK" >&2
         exit 1
       fi
-      KERNEL_BLOCK_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk)'
       STILL_HEAVY=$(printf '%s\n' "$DRY_CHECK" \
         | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
-        | grep -E "$KERNEL_BLOCK_REGEX" || true)
+        | grep -E "$HEAVY_BUILD_REGEX" || true)
       if [ -n "$STILL_HEAVY" ]; then
         printf '%s\n' \
           '# Written by vexos-nix installer — fallback to channel-default kernel.' \
@@ -173,8 +178,12 @@ GITIGNORE
     #   fast local build; proceed; log as VEXOS_LOCAL_BUILD:.
     #
     # VEXOS_UPDATE_STRICT=1: block on ALL local builds (strict environments).
+    # (HEAVY_BUILD_REGEX is defined once, above, for both this classifier and
+    # the kernel-override check.)
 
-    HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk)'
+    # Also defined in scripts/install.sh's UNAVOIDABLE_REGEX (kept in sync
+    # manually — install.sh runs standalone via `curl | bash` with no local
+    # repo present, so it can't source this file).
     UNAVOIDABLE_REGEX='^(NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|nvidia-persistenced-|openrazer-[0-9])'
 
     # Extract all "will be built" derivation names.

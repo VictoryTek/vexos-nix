@@ -433,6 +433,9 @@ SOURCE_BUILDS=$(printf '%s\n' "$DRY_OUT" \
   || true)
 
 if [ -n "$SOURCE_BUILDS" ]; then
+  # Also defined in pkgs/vexos-update/default.nix's UNAVOIDABLE_REGEX (kept in
+  # sync manually — this script runs standalone via `curl | bash` before NixOS
+  # is installed, with no local repo present to source a shared fragment from).
   UNAVOIDABLE_REGEX='^(NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|nvidia-persistenced-|openrazer-[0-9])'
   UNAVOIDABLE=$(printf '%s\n' "$SOURCE_BUILDS" | grep -E "$UNAVOIDABLE_REGEX" || true)
   OTHER=$(printf '%s\n' "$SOURCE_BUILDS" | grep -Ev "$UNAVOIDABLE_REGEX" || true)
