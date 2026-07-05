@@ -249,9 +249,10 @@ Check boxes are ticked as items are completed in this session.
 
 ### Features — Medium Value
 
-- [ ] **M-31** `[F]` Finish observability: Loki has no log shipper, Grafana has no dashboards, nothing alerts
+- [x] **M-31** `[F]` Finish observability: Loki has no log shipper, Grafana has no dashboards, nothing alerts
   - **Source:** FEATURES 2.3
   - Add `promtail.nix` wired to local Loki; provision Loki datasource + stock dashboards (node-exporter-full, systemd/journal) into Grafana; optional Alertmanager webhook → ntfy (from H-17)
+  - **Resolution:** `promtail` no longer exists in nixpkgs (removed as EOL); used Fluent Bit instead (`modules/server/fluent-bit.nix`), nixpkgs' own suggested lightweight replacement, verified its systemd/loki plugin options via Context7. `grafana.nix` now provisions a Loki datasource and two dashboards — the real community "Node Exporter Full" (grafana.com ID 1860, pinned via `fetchurl`) and a hand-authored `systemd-journal.json` for Loki/journal browsing. Added `modules/server/alertmanager.nix` wiring Prometheus alert rules (node down, filesystem almost full, failed systemd unit) through nixpkgs' own `services.prometheus.alertmanager-ntfy` bridge (discovered during research — a ready-made, upstream-maintained relay, better than the custom Python script originally discussed) to the local `vexos.server.ntfy` instance. Verified end-to-end wiring via `extendModules` (webhook route, ntfy base URL, provisioned datasources/dashboards, rule/alertmanager counts) against a real evaluated closure. (`modules/server/fluent-bit.nix`, `modules/server/alertmanager.nix`, `modules/server/grafana-dashboards/systemd-journal.json`, `modules/server/grafana.nix`, `modules/server/prometheus.nix`, `modules/server/default.nix`)
 
 - [ ] **M-32** `[F]` Add qBittorrent + Bazarr opt-in options to the arr stack
   - **Source:** FEATURES 2.4 · `modules/server/arr.nix`
