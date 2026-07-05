@@ -47,6 +47,7 @@
     # ── Networking & Reverse Proxies ─────────────────────────────────────────
     ./nginx.nix
     ./caddy.nix
+    ./proxy.nix
     ./traefik.nix
     ./adguard.nix
     ./headscale.nix
