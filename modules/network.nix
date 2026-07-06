@@ -1,6 +1,6 @@
 # modules/network.nix
 # Networking: NetworkManager, Avahi/mDNS, firewall baseline, systemd-resolved.
-# BBR TCP sysctl tuning is co-located with other kernel tunables in performance.nix.
+# BBR TCP sysctl tuning is co-located with other kernel tunables in system.nix.
 { config, pkgs, lib, ... }:
 {
   options.vexos.network.staticWired = lib.mkOption {

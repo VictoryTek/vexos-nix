@@ -357,9 +357,10 @@ Check boxes are ticked as items are completed in this session.
 
 ### Architecture — Low Impact
 
-- [ ] **L-14** `[A]` Stale file-rename residue — three modules reference deleted `performance.nix`; stale file headers
+- [x] **L-14** `[A]` Stale file-rename residue — three modules reference deleted `performance.nix`; stale file headers
   - **Source:** ARCH 2.4 · `modules/network.nix:3`, `modules/gpu/vm.nix:10`, `modules/branding.nix:5`, `hosts/desktop-amd.nix:1`
   - Update all four references to the correct current filename/path
+  - **Resolution:** `modules/gpu/vm.nix:10` had no `performance.nix` reference at all (plan citation itself stale) — left alone. Fixed the two real ones: `network.nix`/`branding.nix` both pointed at deleted `modules/performance.nix`; BBR tuning and Plymouth enable both actually live in `modules/system.nix` now. Checked all 24 `hosts/*.nix` files for the same stale-header pattern as the plan's one cited example and found 3 more instances beyond `desktop-amd.nix` (intel, nvidia, vm) — all 4 desktop host files' headers said `hosts/<gpu>.nix` instead of `hosts/desktop-<gpu>.nix`; fixed all 4 together. Comment-only change, verified via clean evaluation across all 6 roles. (`modules/network.nix`, `modules/branding.nix`, `hosts/desktop-{amd,intel,nvidia,vm}.nix`)
 
 - [ ] **L-15** `[A]` `distroName` priority arithmetic re-derived at every site — needs a single option with documented precedence
   - **Source:** ARCH 3.4 · `configuration-server.nix`, `configuration-htpc.nix`, `configuration-headless-server.nix`

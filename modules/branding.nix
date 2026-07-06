@@ -2,7 +2,7 @@
 # Custom vexos branding: Plymouth boot watermark and system pixmaps logos.
 # Optionally sets the GDM login-screen logo via dconf.
 #
-# Plymouth enable is deliberately kept in modules/performance.nix.
+# Plymouth enable is deliberately kept in modules/system.nix.
 # This module only sets the theme and logo (branding concerns).
 { pkgs, lib, config, ... }:
 let

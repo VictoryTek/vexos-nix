@@ -1,4 +1,4 @@
-# hosts/vm.nix
+# hosts/desktop-vm.nix
 # vexos — Virtual machine guest desktop build (QEMU/KVM + VirtualBox).
 # Rebuild: sudo nixos-rebuild switch --flake .#vexos-desktop-vm
 #

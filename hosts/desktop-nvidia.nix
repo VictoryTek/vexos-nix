@@ -1,4 +1,4 @@
-# hosts/nvidia.nix
+# hosts/desktop-nvidia.nix
 # vexos — NVIDIA GPU desktop build.
 # Rebuild: sudo nixos-rebuild switch --flake .#vexos-desktop-nvidia
 { lib, ... }:

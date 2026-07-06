@@ -1,4 +1,4 @@
-# hosts/intel.nix
+# hosts/desktop-intel.nix
 # vexos — Intel GPU desktop build (integrated iGPU or Arc A-series discrete).
 # Rebuild: sudo nixos-rebuild switch --flake .#vexos-desktop-intel
 { lib, ... }:
