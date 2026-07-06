@@ -119,26 +119,31 @@ GITIGNORE
     HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk)'
 
     OVERRIDE_FILE="/etc/nixos/kernel-install-override.nix"
+    write_kernel_override() {
+      printf '%s\n' \
+        '# Written by vexos-nix installer — fallback to channel-default kernel.' \
+        '# Removed automatically by vexos-update once target kernel packages are cached.' \
+        '# To upgrade manually: delete this file, then run: just update' \
+        '{ lib, pkgs, ... }:' \
+        '{' \
+        '  boot.kernelPackages = lib.mkForce pkgs.linuxPackages;' \
+        '}' > "$OVERRIDE_FILE"
+    }
+
     if [ -f "$OVERRIDE_FILE" ]; then
       echo "Kernel install override detected — checking if target kernel is now cached..."
       rm "$OVERRIDE_FILE"
       if ! DRY_CHECK=$(nixos-rebuild dry-build --flake git+file:///etc/nixos#"$VARIANT" 2>&1); then
-        echo "error: dry-build failed while checking kernel cache status:" >&2
+        echo "error: dry-build failed while checking kernel cache status — restoring override:" >&2
         printf '%s\n' "$DRY_CHECK" >&2
+        write_kernel_override
         exit 1
       fi
       STILL_HEAVY=$(printf '%s\n' "$DRY_CHECK" \
         | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
         | grep -E "$HEAVY_BUILD_REGEX" || true)
       if [ -n "$STILL_HEAVY" ]; then
-        printf '%s\n' \
-          '# Written by vexos-nix installer — fallback to channel-default kernel.' \
-          '# Removed automatically by vexos-update once target kernel packages are cached.' \
-          '# To upgrade manually: delete this file, then run: just update' \
-          '{ lib, pkgs, ... }:' \
-          '{' \
-          '  boot.kernelPackages = lib.mkForce pkgs.linuxPackages;' \
-          '}' > "$OVERRIDE_FILE"
+        write_kernel_override
         echo "Target kernel packages not yet cached — keeping channel-default kernel."
         echo "Run 'just update' again in 1-3 days to upgrade automatically."
       else
