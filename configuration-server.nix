@@ -37,8 +37,7 @@
   ];
 
   # ---------- Branding ----------
-  # Override branding.nix's lib.mkDefault "VexOS Desktop" (priority 1000).
-  system.nixos.distroName = lib.mkOverride 500 "VexOS Server";
+  # branding.nix's own role-conditional derives "VexOS Server" from this.
   vexos.branding.role  = "server";
   boot.plymouth.enable = true;   # graphical boot splash
 

@@ -54,10 +54,9 @@
   ];
 
   # ---------- Branding ----------
-  # Override branding.nix's lib.mkDefault "VexOS Desktop" (priority 1000).
-  # Using mkOverride 500 so host files can still use plain assignments (priority 100)
-  # to set more specific names like "VexOS HTPC AMD" when needed.
-  system.nixos.distroName = lib.mkOverride 500 "VexOS HTPC";
+  # branding.nix's own role-conditional derives "VexOS HTPC" from this.
+  # Host files can still use plain assignments (priority 100) to set more
+  # specific names like "VexOS HTPC AMD" when needed.
   vexos.branding.role  = "htpc";
   boot.plymouth.enable = true;   # graphical boot splash
 

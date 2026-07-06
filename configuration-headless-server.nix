@@ -49,9 +49,9 @@
   # Use the "headless-server" role; branding.nix maps it to the existing
   # files/.../server/ asset directories via its `assetRole` let-binding,
   # so no asset duplication is required while keeping role identity distinct.
-  # Override distroName to distinguish from the GUI server role.
+  # branding.nix's own role-conditional derives "VexOS Headless Server"
+  # distroName from this, distinguishing it from the GUI server role.
   vexos.branding.role     = "headless-server";
-  system.nixos.distroName = lib.mkOverride 500 "VexOS Headless Server";
 
   # ---------- State version ----------
   # Set once at install time — do not change after initial deployment.

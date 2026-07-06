@@ -93,6 +93,7 @@ in
     if config.vexos.branding.role == "stateless" then "VexOS Stateless"
     else if config.vexos.branding.role == "server" then "VexOS Server"
     else if config.vexos.branding.role == "htpc" then "VexOS HTPC"
+    else if config.vexos.branding.role == "headless-server" then "VexOS Headless Server"
     else "VexOS Desktop"
   );
   system.nixos.label      = "26.05";
