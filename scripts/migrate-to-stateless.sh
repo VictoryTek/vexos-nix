@@ -399,6 +399,9 @@ ${USER_NAME_OVERRIDE}
   users.users.${DETECTED_USER}.hashedPassword = lib.mkOverride 50 "${HASHED_PW}";
 }
 NIXEOF
+  # tee writes with the invoking process's umask (0644 by default) — tighten
+  # to root-only since this file carries a crackable password hash.
+  chmod 0600 /etc/nixos/stateless-user-override.nix
   echo -e "${GREEN}  ✓ /etc/nixos/stateless-user-override.nix written.${RESET}"
 fi
 
@@ -440,7 +443,7 @@ cp /etc/nixos/flake.lock    "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null || 
 cp /etc/nixos/hardware-configuration.nix "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null && \
   echo -e "  ${GREEN}✓ hardware-configuration.nix persisted${RESET}" || \
   echo -e "  ${YELLOW}⚠ hardware-configuration.nix not found${RESET}"
-cp /etc/nixos/stateless-user-override.nix "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null && \
+cp -p /etc/nixos/stateless-user-override.nix "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null && \
   echo -e "  ${GREEN}✓ stateless-user-override.nix persisted${RESET}" || true
 printf '%s' "vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}" > "${BTRFS_MOUNT}/@persist/etc/nixos/vexos-variant"
 echo -e "  ${GREEN}✓ vexos-variant persisted${RESET}"

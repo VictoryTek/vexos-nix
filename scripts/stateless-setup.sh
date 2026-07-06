@@ -369,6 +369,9 @@ sudo tee /mnt/etc/nixos/stateless-user-override.nix > /dev/null << NIXEOF
   users.users.nimda.hashedPassword = lib.mkOverride 50 "${HASHED_PW}";
 }
 NIXEOF
+# tee writes with the invoking process's umask (0644 on the live ISO) —
+# tighten to root-only since this file carries a crackable password hash.
+sudo chmod 0600 /mnt/etc/nixos/stateless-user-override.nix
 echo -e "${GREEN}  ✓ /mnt/etc/nixos/stateless-user-override.nix written.${RESET}"
 
 # ---------- Git-track the flake so Nix uses git+file: not path:+narHash ------
@@ -426,7 +429,7 @@ sudo cp /mnt/etc/nixos/hardware-configuration.nix /mnt/persistent/etc/nixos/ 2>/
 sudo cp /mnt/etc/nixos/flake.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/flake.lock /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/.gitignore /mnt/persistent/etc/nixos/ 2>/dev/null || true
-sudo cp /mnt/etc/nixos/stateless-user-override.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
+sudo cp -p /mnt/etc/nixos/stateless-user-override.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 printf '%s' "vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}" | sudo tee /mnt/persistent/etc/nixos/vexos-variant > /dev/null
 # Persist the git repo so post-boot git+file:///etc/nixos URIs work and secrets stay out of the Nix store.
 sudo cp -r /mnt/etc/nixos/.git /mnt/persistent/etc/nixos/
