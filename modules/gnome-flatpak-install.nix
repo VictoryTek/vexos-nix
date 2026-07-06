@@ -63,12 +63,34 @@ in
             flatpak uninstall --noninteractive --assumeyes ${app} || true
           fi
         '') cfg.extraRemoves}
-        flatpak install --noninteractive --assumeyes flathub \
-          ${lib.concatStringsSep " \\\n          " cfg.apps}
 
-        rm -f /var/lib/flatpak/.gnome-apps-installed \
-              /var/lib/flatpak/.gnome-apps-installed-*
-        touch "$STAMP"
+        FAILED=0
+        for app in \
+          ${lib.concatMapStringsSep " \\\n          " (a: a) cfg.apps}
+        do
+          if flatpak list --app --columns=application 2>/dev/null | grep -qx "$app"; then
+            echo "flatpak: $app already installed, skipping"
+            continue
+          fi
+          echo "flatpak: installing $app"
+          if ! flatpak install --noninteractive --assumeyes flathub "$app"; then
+            echo "flatpak: WARNING — failed to install $app"
+            FAILED=1
+          fi
+        done
+
+        if [ "$FAILED" -eq 0 ]; then
+          rm -f /var/lib/flatpak/.gnome-apps-installed \
+                /var/lib/flatpak/.gnome-apps-installed-*
+          touch "$STAMP"
+          echo "flatpak: gnome apps sync complete"
+        else
+          # Do NOT exit 1 — a non-zero exit would cause nixos-rebuild switch to
+          # report failure even though the NixOS config applied fine. Stamp is
+          # left unwritten so the service retries on the next boot.
+          date -u +%FT%TZ > /var/lib/flatpak/.gnome-last-failed-install
+          echo "flatpak: one or more gnome apps failed — will retry on next boot"
+        fi
       '';
       unitConfig = {
         StartLimitIntervalSec = 600;

@@ -54,23 +54,41 @@ Spec: `.github/docs/subagent_docs/L-08_zfs_package_skew_spec.md`
    `flake.lock`) rather than assuming from memory — option name,
    default, and semantics all current.
 
-9. **Build Validation:**
-   - Bracket/brace/paren balance check on the file: braces 5/5,
-     brackets 6/6, parens 17/17 — consistent before/after the edit.
-   - Manual read-through confirms valid Nix syntax: `[ config.boot.zfs.package ]
-     ++ (with pkgs; [ ... ])` is a standard list-concatenation pattern,
-     and `config` is already in scope and used elsewhere in this same
-     file.
-   - This session's environment has no `nix` binary (Windows host, no
-     WSL2/Nix installed) — the vexos-nix-specific
-     `nix flake show --impure` / `nixos-rebuild dry-build --flake
-     .#vexos-server-amd` / `.#vexos-headless-server-amd` steps (required
-     here since this change touches a server module) could not be
-     executed in this session, consistent with the constraint noted in
-     the L-06/L-07 reviews this session.
+9. **Build Validation** — this Windows session has no local `nix`
+   binary, but a WSL2 Ubuntu distro with Nix 2.34.1 was found and used
+   to run the real checks against the mounted repo
+   (`/mnt/c/Projects/vexos-nix`):
+   - `nix flake show --impure` → PASS, all 30 `nixosConfigurations` and
+     all `nixosModules` evaluate.
+   - `nix eval --impure ".#nixosConfigurations.vexos-desktop-amd.config.system.build.toplevel.drvPath"` → PASS
+   - same for `vexos-desktop-nvidia` → PASS
+   - same for `vexos-desktop-vm` → PASS
+   - `vexos-server-amd` and `vexos-headless-server-amd` (required
+     since this change touches `modules/zfs-server.nix`): direct
+     `nixos-rebuild dry-build` isn't possible on this non-NixOS WSL
+     Ubuntu (no `nixos-rebuild` binary), so used the CI-equivalent
+     `nix eval --impure ...toplevel.drvPath`. Both host files ship only
+     placeholder `networking.hostId` values by design (M-13), which
+     `zfs-server.nix`'s own assertion correctly rejects — supplied a
+     throwaway real-looking value (`cafebabe`, matching CI's own fixture
+     at `.github/workflows/ci.yml:170`) via `extendModules` at eval time
+     (no on-disk changes) purely to get past that unrelated assertion
+     and reach real module evaluation. Both →
+     **PASS** — full toplevel closure evaluates with no assertion or
+     type errors, confirming the `config.boot.zfs.package` reference
+     resolves correctly.
+   - Ran the full `bash scripts/preflight.sh` end-to-end → **exit 0,
+     "Preflight PASSED — safe to push."** All 8 stages passed or
+     produced only pre-existing, expected WARNs (missing optional tools:
+     `jq`, `nixpkgs-fmt`, `gitleaks`; the `vexboard.nix:90`
+     "change-me" placeholder-secret WARN, which is the intentional
+     assert-guarded default documented in H-09, not a real secret).
+     Stage `[8/8]` (`pkgs.vexos.vexos-update` build/shellcheck) built
+     successfully.
    - `git ls-files hardware-configuration.nix` → empty, unaffected.
    - No `system.stateVersion` change; no new flake inputs.
-   - No FORBIDDEN COMMANDS used.
+   - No FORBIDDEN COMMANDS used (`nix flake check` was never invoked;
+     the WSL environment lacks `nixos-rebuild switch`/`boot` entirely).
 
 ## Score Table
 
@@ -83,20 +101,12 @@ Spec: `.github/docs/subagent_docs/L-08_zfs_package_skew_spec.md`
 | Security | 100% | A |
 | Performance | 100% | A |
 | Consistency | 100% | A |
-| Build Success | Not run — Nix unavailable in this session's environment; syntax/bracket-balance verified instead | Pending |
+| Build Success | 100% — `nix flake show`, 5 target evaluations, and full `preflight.sh` all passed via WSL2 | A |
 
-**Overall Grade: A, pending real dry-build verification**
+**Overall Grade: A (100%)**
 
 ## Result
 
-**PASS on all reviewable criteria.** Phase 6 (Preflight) — including the
-mandatory `nixos-rebuild dry-build --flake .#vexos-server-amd` and
-`.#vexos-headless-server-amd` this server-module change requires — could
-not run in this session (no Nix on this Windows host). Per the pattern
-established for L-06/L-07 this session, deferred to the user's NixOS
-machine: please run
-`sudo nixos-rebuild dry-build --flake .#vexos-server-amd` and
-`.#vexos-headless-server-amd` (or `bash scripts/preflight.sh`, which
-covers the desktop variants — the server-specific dry-builds are an
-additional Phase 3 requirement for this change per CLAUDE.md) before
-pushing.
+**PASS.** Phase 6 (Preflight) has genuinely run and passed for this
+commit, including the server/headless-server evaluations this
+server-module change requires. Safe to push.
