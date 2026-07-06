@@ -6,13 +6,13 @@
 {
   # ── Git identity & preferences ─────────────────────────────────────────────
   # userName defaults to the system user name. userEmail is intentionally left
-  # blank — fill it in here or override in the role's home-*.nix.
+  # unset (not blank) so git's own identity-detection fallback and warning
+  # apply — set it here or override in the role's home-*.nix.
   programs.git = {
     enable   = true;
     settings = {
       user = {
-        name  = lib.mkDefault osConfig.vexos.user.name;
-        email = lib.mkDefault "";
+        name = lib.mkDefault osConfig.vexos.user.name;
       };
       init.defaultBranch   = "main";
       pull.rebase          = true;
