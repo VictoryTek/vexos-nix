@@ -47,12 +47,15 @@
   services.zfs.trim.interval       = "weekly";
 
   # ── Userland tools needed by scripts/create-zfs-pool.sh ──────────────────
-  environment.systemPackages = with pkgs; [
-    zfs           # zpool, zfs (also pulled in by boot.supportedFilesystems but listed for clarity)
+  environment.systemPackages = [
+    config.boot.zfs.package  # zpool, zfs — already pulled in by boot.supportedFilesystems;
+                             # referenced explicitly (rather than pkgs.zfs) so this stays
+                             # correct if boot.zfs.package is ever pinned to a different build
+  ] ++ (with pkgs; [
     gptfdisk      # sgdisk
     util-linux    # wipefs, lsblk
     pciutils      # lspci (optional, for disk topology hints)
-  ];
+  ]);
 
   # ── networking.hostId ────────────────────────────────────────────────────
   # ZFS REQUIRES a stable, unique 8-hex-digit hostId per machine.
