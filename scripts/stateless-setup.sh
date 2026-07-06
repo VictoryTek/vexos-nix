@@ -31,7 +31,25 @@ cleanup() {
 }
 trap cleanup EXIT
 
-REPO_RAW="https://raw.githubusercontent.com/VictoryTek/vexos-nix/main"
+# ---------- Resolve one commit for this entire run ---------------------------
+# main is a moving target, and this script's downloads (template flake, disko
+# template) plus the disk-formatting/install steps that follow can span several
+# minutes. Resolve the commit once so every download in this run is consistent.
+# If VEXOS_REV is already set (inherited from install.sh, which resolves and
+# exports it before handing off here), reuse it instead of re-resolving —
+# that's what keeps the whole install.sh -> stateless-setup.sh chain pinned to
+# one commit rather than each script picking its own point-in-time HEAD.
+if [ -z "${VEXOS_REV:-}" ]; then
+  if command -v git >/dev/null 2>&1; then
+    _REV_GIT="git"
+  else
+    _REV_GIT="$(nix --extra-experimental-features 'nix-command flakes' \
+      build nixpkgs#git --no-link --print-out-paths)/bin/git"
+  fi
+  VEXOS_REV="$("$_REV_GIT" ls-remote https://github.com/VictoryTek/vexos-nix main | cut -f1)"
+fi
+
+REPO_RAW="https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}"
 TEMPLATE_URL="${REPO_RAW}/template/etc-nixos-flake.nix"
 DISKO_TEMPLATE_URL="${REPO_RAW}/template/stateless-disko.nix"
 DISKO_TMP="/tmp/vexos-stateless-disk.nix"

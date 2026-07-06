@@ -25,7 +25,24 @@
 
 set -euo pipefail
 
-SCRIPT_URL="https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh"
+# ---------- Resolve one commit for this entire run ---------------------------
+# main is a moving target, and a full install can take several minutes. Without
+# this, install.sh handing off to stateless-setup.sh/migrate-to-stateless.sh via
+# `curl main/... | bash` could silently mix code from two different commits if
+# main is updated mid-run. Resolve the commit once and export it so those
+# sub-scripts inherit the same pin instead of re-resolving main themselves.
+if [ -z "${VEXOS_REV:-}" ]; then
+  if command -v git >/dev/null 2>&1; then
+    _REV_GIT="git"
+  else
+    _REV_GIT="$(nix --extra-experimental-features 'nix-command flakes' \
+      build nixpkgs#git --no-link --print-out-paths)/bin/git"
+  fi
+  VEXOS_REV="$("$_REV_GIT" ls-remote https://github.com/VictoryTek/vexos-nix main | cut -f1)"
+fi
+export VEXOS_REV
+
+SCRIPT_URL="https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/install.sh"
 
 # ---------- Color helpers (only if stdout is a TTY with color support) -------
 if [ -t 1 ] && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
@@ -46,7 +63,7 @@ echo -e "${BOLD}${CYAN}   vexos-nix Interactive Installer${RESET}"
 echo -e "${BOLD}${CYAN}============================================${RESET}"
 echo ""
 echo -e "${YELLOW}Source: ${SCRIPT_URL}${RESET}"
-echo -e "${YELLOW}Verify: https://github.com/VictoryTek/vexos-nix/blob/main/scripts/install.sh${RESET}"
+echo -e "${YELLOW}Verify: https://github.com/VictoryTek/vexos-nix/blob/${VEXOS_REV}/scripts/install.sh${RESET}"
 echo ""
 
 # ---------- Role selection ---------------------------------------------------
@@ -116,14 +133,16 @@ if [ "$ROLE" = "stateless" ]; then
     echo ""
     echo -e "${CYAN}Live ISO detected — launching stateless disk setup (erases target disk)...${RESET}"
     echo ""
-    curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/stateless-setup.sh | bash
+    curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/stateless-setup.sh" | bash
     exit 0
   else
     # Running on an existing NixOS install — in-place Btrfs migration
     echo ""
     echo -e "${CYAN}Existing install detected — launching in-place stateless migration...${RESET}"
     echo ""
-    curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/migrate-to-stateless.sh | sudo bash
+    # sudo resets the environment by default, so plain `export` above would not
+    # reach this child — pass VEXOS_REV explicitly on the sudo command line.
+    curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/migrate-to-stateless.sh" | sudo VEXOS_REV="${VEXOS_REV}" bash
     exit 0
   fi
 fi
