@@ -300,9 +300,10 @@ Check boxes are ticked as items are completed in this session.
   - Fix to describe the actual `hashedPassword` / `stateless-user-override.nix` mechanism
   - **Resolution:** Confirmed the claim was wrong on three counts: the account is actually locked (`hashedPassword = "!"`) by default, not `"vexos"`; the password persists once set via `stateless-user-override.nix` rather than resetting every reboot; and there's no `initialPassword` option in `configuration-stateless.nix` at all. Rewrote the reminder to match `configuration-stateless.nix`'s own already-correct build-time `warnings` block and `stateless-setup.sh`'s actual behavior — locked by default, set via `scripts/stateless-setup.sh` or manually via `stateless-user-override.nix` + `mkpasswd -m sha-512`, persists once set. (`justfile`)
 
-- [ ] **L-03** `[B]` VSCode overlay tooling references non-existent `overlays/vscode.nix` — ~120 lines of dead recipes
+- [x] **L-03** `[B]` VSCode overlay tooling references non-existent `overlays/vscode.nix` — ~120 lines of dead recipes
   - **Source:** BUGS L3 · `justfile:330-348`, `justfile:693-790`
   - Delete the `update-vscode` and version-check recipes (VS Code comes from `pkgs.unstable.vscode-fhs` now)
+  - **Resolution:** Re-checked directly — zero `vscode` references remain anywhere in `justfile`, and `overlays/` doesn't exist as a directory; the ~120 lines of dead recipes this item describes were already deleted by prior commits (`git log -S` confirms they existed historically). Separately found a ~30-line commented-out `programs.vscode` block in `home-desktop.nix` and asked the user whether to remove it too — confirmed to leave it as-is; it's an intentional, indefinitely-paused fallback (re-enable if VSCodium ever becomes unusable), not dead code to clean up. No files changed.
 
 - [ ] **L-04** `[B]` `secrets-sops.nix` assertions are tautologically true — they assert names the same block declares
   - **Source:** BUGS L4 · `modules/secrets-sops.nix:50-75`
