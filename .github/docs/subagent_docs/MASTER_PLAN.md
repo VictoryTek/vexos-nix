@@ -305,9 +305,10 @@ Check boxes are ticked as items are completed in this session.
   - Delete the `update-vscode` and version-check recipes (VS Code comes from `pkgs.unstable.vscode-fhs` now)
   - **Resolution:** Re-checked directly — zero `vscode` references remain anywhere in `justfile`, and `overlays/` doesn't exist as a directory; the ~120 lines of dead recipes this item describes were already deleted by prior commits (`git log -S` confirms they existed historically). Separately found a ~30-line commented-out `programs.vscode` block in `home-desktop.nix` and asked the user whether to remove it too — confirmed to leave it as-is; it's an intentional, indefinitely-paused fallback (re-enable if VSCodium ever becomes unusable), not dead code to clean up. No files changed.
 
-- [ ] **L-04** `[B]` `secrets-sops.nix` assertions are tautologically true — they assert names the same block declares
+- [x] **L-04** `[B]` `secrets-sops.nix` assertions are tautologically true — they assert names the same block declares
   - **Source:** BUGS L4 · `modules/secrets-sops.nix:50-75`
   - Remove the self-referential assertion blocks; only the `sopsFile != null` check does real work
+  - **Resolution:** Confirmed all 13 `config.sops.secrets ? "<name>"` assertions can never fail — this file is the sole declaration site for every one of those names, unconditionally, in the same `config` block as the assertions themselves. Removed all 13, kept only the real `cfg.sopsFile != null` check. Verified via `extendModules` with a real `sopsFile` that all 13 secrets and 6 templates still evaluate identically, and that the one real assertion still correctly fires when `sopsFile` is left unset. (`modules/secrets-sops.nix`)
 
 - [ ] **L-05** `[B]` preflight gitleaks hides its own findings via `2>/dev/null` then prints "review output above"
   - **Source:** BUGS L5 · `scripts/preflight.sh:374-380`

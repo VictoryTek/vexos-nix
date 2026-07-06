@@ -47,62 +47,15 @@ in
   };
 
   config = lib.mkIf (cfg.backend == "sops") {
+    # Only sopsFile is a real check — it's a user-facing option that can
+    # legitimately be left unset. The 13 sibling secrets below are always
+    # unconditionally declared in this same config block, so a
+    # `config.sops.secrets ? "<name>"` assertion for any of them can never
+    # be false; such assertions were removed as dead weight (see L-04).
     assertions = [
       {
         assertion = cfg.sopsFile != null;
         message = "vexos.secrets.sopsFile must be set when vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "nextcloud-admin-pass";
-        message = "sops secret 'nextcloud-admin-pass' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "photoprism-password";
-        message = "sops secret 'photoprism-password' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "minio-root-user";
-        message = "sops secret 'minio-root-user' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "minio-root-password";
-        message = "sops secret 'minio-root-password' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "attic-server-token-rs256-secret-base64";
-        message = "sops secret 'attic-server-token-rs256-secret-base64' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "vexboard-auth-secret";
-        message = "sops secret 'vexboard-auth-secret' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "kiji-proxy-openai-key";
-        message = "sops secret 'kiji-proxy-openai-key' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "listmonk-admin-user";
-        message = "sops secret 'listmonk-admin-user' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "listmonk-admin-password";
-        message = "sops secret 'listmonk-admin-password' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "vaultwarden-admin-token";
-        message = "sops secret 'vaultwarden-admin-token' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "authelia-jwt-secret";
-        message = "sops secret 'authelia-jwt-secret' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "authelia-session-secret";
-        message = "sops secret 'authelia-session-secret' must be declared for vexos.secrets.backend = \"sops\".";
-      }
-      {
-        assertion = config.sops.secrets ? "authelia-storage-encryption-key";
-        message = "sops secret 'authelia-storage-encryption-key' must be declared for vexos.secrets.backend = \"sops\".";
       }
     ];
 
