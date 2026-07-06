@@ -372,9 +372,10 @@ Check boxes are ticked as items are completed in this session.
   - Remove the directory and the CLAUDE.md "Key Directories" entry; overlays live inline in `flake.nix` and `pkgs/default.nix`
   - **Resolution:** Confirmed `overlays/` was untracked by git entirely (empty, local-only filesystem artifact) before removing it. Removed the empty directory and the stale CLAUDE.md bullet, noting where overlays actually live on the `pkgs/` bullet instead. (`CLAUDE.md`)
 
-- [ ] **L-17** `[A]` Expired `TODO(2026-05)` in `plex.nix` — re-check against nixpkgs 25.11
+- [x] **L-17** `[A]` Expired `TODO(2026-05)` in `plex.nix` — re-check against nixpkgs 25.11
   - **Source:** ARCH 4.4 · `modules/server/plex.nix:43`
   - Verify the upstream Plex module fix; remove the workaround if resolved, or re-date with a new target version
+  - **Resolution:** Verified directly against the pinned nixpkgs' `nixos/modules/services/misc/plex.nix` source — still unconditionally sets `LD_LIBRARY_PATH = "/run/opengl-driver/lib"` with no gating, so the workaround is still needed (not removable). Also found the TODO's tracking link was broken — `nixpkgs#310792` is an unrelated, already-closed issue ("goose" version bump) — searched GitHub for the actual bug signature and found a matching-symptom issue (#468070) that was closed as a user-configuration mistake, not a fix, so didn't cite it as a replacement either. Re-dated to 2026-11 (next stable release checkpoint) and replaced the broken issue link with a pointer to the specific upstream module file/line to check directly, which can't go stale the way a GitHub issue number can. Comment-only change, verified via byte-identical `.drv` hashes. (`modules/server/plex.nix`)
 
 - [ ] **L-18** `[A]` Retired stdout-protocol comment archaeology in `nix.nix` — two generations of dead protocol docs
   - **Source:** ARCH 4.5 · `modules/nix.nix:121-127,185-193`

@@ -40,12 +40,15 @@ in
     # Clearing LD_LIBRARY_PATH when hardware transcoding is off prevents Plex
     # from loading the incompatible system VA-API libraries.
     #
-    # TODO(2026-05): Remove this workaround once the upstream nixpkgs Plex module
+    # TODO(2026-11): Remove this workaround once the upstream nixpkgs Plex module
     # no longer unconditionally injects opengl-driver into LD_LIBRARY_PATH.
-    # Track: https://github.com/NixOS/nixpkgs/issues/310792
-    # Verify removal: nix eval .#nixosConfigurations.vexos-server-amd.config \
-    #   .systemd.services.plex.environment.LD_LIBRARY_PATH
-    # If that returns "" or is absent, the upstream fix landed and this mkForce can go.
+    # Re-checked 2026-07: still present in nixos/modules/services/misc/plex.nix
+    # (environment.LD_LIBRARY_PATH = "/run/opengl-driver/lib"; unconditional, no
+    # lib.mkIf gating). Check that file directly, not a GitHub issue number —
+    # the previously-linked nixpkgs issue turned out to be unrelated/mistracked.
+    # Verify removal: check the pinned nixpkgs' plex.nix module source directly;
+    # do NOT rely solely on evaluating this repo's own LD_LIBRARY_PATH result,
+    # since our own mkForce below produces "" regardless of upstream behavior.
     systemd.services.plex.environment.LD_LIBRARY_PATH =
       lib.mkIf (!cfg.plexPass) (lib.mkForce "");
   };
