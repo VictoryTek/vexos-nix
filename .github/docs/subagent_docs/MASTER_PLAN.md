@@ -367,9 +367,10 @@ Check boxes are ticked as items are completed in this session.
   - Add `vexos.branding.distroName` with `lib.mkDefault`; remove the `lib.mkOverride 500` workarounds
   - **Resolution:** Traced the full priority chain across both consumption paths (`mkHost` nixosConfigurations, which always have a stronger per-host bare override, and `nixosModules.*Base` for the thin external wrapper, which has none) before changing anything — this surfaced that naively deleting the `mkOverride 500` lines would have silently broken `distroName` for real deployed hosts using the thin wrapper. Root cause: `modules/branding.nix`'s own role-conditional was missing a `"headless-server"` branch, forcing that one workaround to exist; the other two (`server`, `htpc`) were already byte-for-byte redundant with what the conditional produces. Completed the conditional instead of adding a whole new option layered on top of it, then removed all three `mkOverride 500` lines. Verified via standalone `lib.nixosSystem` builds of all three `*Base` modules that `distroName` resolves to the identical string before and after, and via byte-identical `.drv` hashes that every affected `nixosConfigurations` output is unchanged. (`modules/branding.nix`, `configuration-server.nix`, `configuration-htpc.nix`, `configuration-headless-server.nix`)
 
-- [ ] **L-16** `[A]` Empty `overlays/` directory listed as a key directory in CLAUDE.md
+- [x] **L-16** `[A]` Empty `overlays/` directory listed as a key directory in CLAUDE.md
   - **Source:** ARCH 4.3
   - Remove the directory and the CLAUDE.md "Key Directories" entry; overlays live inline in `flake.nix` and `pkgs/default.nix`
+  - **Resolution:** Confirmed `overlays/` was untracked by git entirely (empty, local-only filesystem artifact) before removing it. Removed the empty directory and the stale CLAUDE.md bullet, noting where overlays actually live on the `pkgs/` bullet instead. (`CLAUDE.md`)
 
 - [ ] **L-17** `[A]` Expired `TODO(2026-05)` in `plex.nix` — re-check against nixpkgs 25.11
   - **Source:** ARCH 4.4 · `modules/server/plex.nix:43`

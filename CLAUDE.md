@@ -178,8 +178,7 @@ Package Manager(s): **Nix (nix CLI / nix flake)**
   - `modules/gpu/` — GPU-brand-specific modules (`amd.nix`, `nvidia.nix`, `intel.nix`, `vm.nix`, plus `*-headless.nix` variants)
   - `modules/server/` — server service modules (one file per service)
   - `home/` — shared home-manager sub-modules
-  - `pkgs/` — custom packages not available in nixpkgs
-  - `overlays/` — nixpkgs overlays
+  - `pkgs/` — custom packages not available in nixpkgs (overlays applied inline in `flake.nix` and `pkgs/default.nix`)
   - `scripts/` — utility and validation scripts, including `scripts/preflight.sh`
   - `files/` — static assets (backgrounds, pixmaps, Plymouth themes per role)
   - `wallpapers/` — wallpaper files per role
