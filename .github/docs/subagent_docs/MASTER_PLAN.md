@@ -290,9 +290,10 @@ Check boxes are ticked as items are completed in this session.
 
 ### Bugs — Minor / Cosmetic
 
-- [ ] **L-01** `[B]` Stale comments contradicting live code (kernel version in vm.nix, Bottles missing, bash-common VS Code path, etc.)
+- [x] **L-01** `[B]` Stale comments contradicting live code (kernel version in vm.nix, Bottles missing, bash-common VS Code path, etc.)
   - **Source:** BUGS L1 · `modules/gpu/vm.nix:5-8`, `modules/gaming.nix:4,70-71`, `home-desktop.nix:21-23`, others
   - Fix kernel comment in vm.nix; add Bottles to flatpak or remove the two claims it's present; fix VS Code comment; fix authorized_keys comment
+  - **Resolution:** Re-verified all four cited claims directly rather than trusting the plan text — all already accurate, fixed by prior commits before this session reached this item (same stale-plan pattern as several earlier items). `vm.nix`'s kernel comment matches its actual `linuxPackages_6_12` pin exactly. `Bottles` has zero references anywhere in the repo — `git log -S"Bottles"` confirms it was referenced historically and cleanly removed (the current gaming Flatpak list has only Lutris/ProtonPlus/PrismLauncher). The VS Code "currently disabled" comment in `home-desktop.nix` matches its actual commented-out `programs.vscode` block. The `authorized_keys`/SSH comment in `modules/network.nix` accurately documents the deliberate password-auth-enabled design — left untouched per this session's standing SSH-caution instruction. No files changed.
 
 - [ ] **L-02** `[B]` justfile default recipe claims "vexos" default password and tells user to edit the wrong file
   - **Source:** BUGS L2 · `justfile:22-30`
