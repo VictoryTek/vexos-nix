@@ -174,6 +174,7 @@ in
         #   journalctl -u flatpak-install-apps --since "$(cat /var/lib/flatpak/.last-failed-install)"
         date -u +%FT%TZ > /var/lib/flatpak/.last-failed-install
         echo "flatpak: one or more apps failed — will retry on next boot"
+        vexos-notify "Flatpak app install failed on $(hostname) — will retry next boot" "VexOS Flatpak"
       fi
     '';
     serviceConfig = {

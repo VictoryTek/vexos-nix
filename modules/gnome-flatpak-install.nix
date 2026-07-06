@@ -90,6 +90,7 @@ in
           # left unwritten so the service retries on the next boot.
           date -u +%FT%TZ > /var/lib/flatpak/.gnome-last-failed-install
           echo "flatpak: one or more gnome apps failed — will retry on next boot"
+          vexos-notify "GNOME flatpak app install failed on $(hostname) — will retry next boot" "VexOS Flatpak"
         fi
       '';
       unitConfig = {

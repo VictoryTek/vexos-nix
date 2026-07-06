@@ -350,9 +350,10 @@ Check boxes are ticked as items are completed in this session.
   - Gate on `variant != "legacy_470"` instead of `variant == "latest"`
   - **Resolution:** The plan's suggested gate (`variant != legacy_470`) targets a variant removed entirely by H-02 earlier this session — against the current two-value enum (`latest`/`legacy_535`) that condition is always true, i.e. equivalent to no gate. Verified directly against NVIDIA's official 535-branch documentation that `legacy_535` supports Turing/Ampere/Ada, not just pre-Turing hardware — variant choice here is an LTS-vs-current-production preference, not a GPU-generation boundary, so it carries no reliable signal about NVDEC presence. Also verified upstream that `nvidia-vaapi-driver` gracefully falls back to software decode on hardware without NVDEC rather than breaking. Removed the gate entirely — installed unconditionally for both variants. Confirmed via direct eval that `vexos-desktop-nvidia-legacy535`'s package list now includes it. (`modules/gpu/nvidia.nix`)
 
-- [ ] **L-13** `[B]` `flatpak-install-apps` exits 0 on failure — `systemctl status` shows green after a 100%-failed install
+- [x] **L-13** `[B]` `flatpak-install-apps` exits 0 on failure — `systemctl status` shows green after a 100%-failed install
   - **Source:** BUGS L17 · `modules/flatpak.nix:143-158`
   - Add a `systemd-cat`-visible warning or a marker unit on failure so failures are observable
+  - **Resolution:** The always-exit-0 design is correct and preserved (a non-zero exit would make `nixos-rebuild switch` itself report failure for an unrelated cosmetic issue). `systemd`'s `onFailure=` mechanism can't apply here since the unit never actually fails — instead, reused this repo's own `vexos-notify`/ntfy infrastructure (H-17), calling it directly from the `FAILED` branch in both `modules/flatpak.nix` and `modules/gnome-flatpak-install.nix` (the L-09-mirrored sibling with the identical gap), matching the exact bare-command pattern `vexos-update` already uses. Confirmed via direct eval of a real built config that the call appears in the generated systemd script and that `vexos-notify` is present in `environment.systemPackages` (proving the ambient-PATH assumption holds). (`modules/flatpak.nix`, `modules/gnome-flatpak-install.nix`)
 
 ### Architecture — Low Impact
 
