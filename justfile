@@ -23,9 +23,11 @@ default:
         echo "Active role: stateless (ephemeral / tmpfs root)"
         echo ""
         echo "Reminder:"
-        echo "    Login password resets to 'vexos' on every reboot (by design)."
-        echo "    To change permanently, update initialPassword in"
-        echo "    configuration-stateless.nix and rebuild."
+        echo "    The primary user account starts LOCKED (no password) until you"
+        echo "    set one. Run 'sudo bash scripts/stateless-setup.sh', or manually"
+        echo "    create /etc/nixos/stateless-user-override.nix with a hash from"
+        echo "    'mkpasswd -m sha-512'. Once set, the password persists across"
+        echo "    reboots — it lives in that file, not on the wiped tmpfs root."
         echo ""
     fi
 
