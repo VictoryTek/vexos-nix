@@ -310,9 +310,10 @@ Check boxes are ticked as items are completed in this session.
   - Remove the self-referential assertion blocks; only the `sopsFile != null` check does real work
   - **Resolution:** Confirmed all 13 `config.sops.secrets ? "<name>"` assertions can never fail — this file is the sole declaration site for every one of those names, unconditionally, in the same `config` block as the assertions themselves. Removed all 13, kept only the real `cfg.sopsFile != null` check. Verified via `extendModules` with a real `sopsFile` that all 13 secrets and 6 templates still evaluate identically, and that the one real assertion still correctly fires when `sopsFile` is left unset. (`modules/secrets-sops.nix`)
 
-- [ ] **L-05** `[B]` preflight gitleaks hides its own findings via `2>/dev/null` then prints "review output above"
+- [x] **L-05** `[B]` preflight gitleaks hides its own findings via `2>/dev/null` then prints "review output above"
   - **Source:** BUGS L5 · `scripts/preflight.sh:374-380`
   - Remove `2>/dev/null`; cache the `nix flake show --impure` JSON (called twice at lines 83–84)
+  - **Resolution:** Traced gitleaks' own source and found the bug was worse than described — even without `2>/dev/null`, gitleaks prints zero per-finding detail unless `--verbose` (or `--report-path`) is passed, which the script never did. Removed `2>/dev/null` and added `--verbose`; verified with a real `nix shell nixpkgs#gitleaks` run that scan output (commit count, bytes scanned, leak summary) now actually appears, and confirmed via source that `--verbose` gates the per-finding printer. Also fixed the `nix flake show --impure --json` double-evaluation — captured once, reused for both the pass/fail check and the `nixosConfigurations` count (confirmed correct count of 30 from the single call). (`scripts/preflight.sh`)
 
 - [ ] **L-06** `[B]` `stateless-setup.sh` writes the password hash world-readable (0644) and git-adds it
   - **Source:** BUGS L6 · `scripts/stateless-setup.sh:29-32`

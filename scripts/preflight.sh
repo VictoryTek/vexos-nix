@@ -81,8 +81,8 @@ echo "[1/8] Validating flake structure..."
 # NOTE: nix flake check is FORBIDDEN in this project — it evaluates all 30+
 # nixosConfigurations in parallel and exhausts all 32GB of RAM.
 # nix flake show is the safe alternative: it lists outputs without evaluating them.
-if nix flake show --impure --json > /dev/null 2>&1; then
-  OUTPUT_COUNT=$(nix flake show --impure --json 2>/dev/null | jq '.nixosConfigurations | length' 2>/dev/null || echo "unknown")
+if FLAKE_SHOW_JSON=$(nix flake show --impure --json 2>/dev/null); then
+  OUTPUT_COUNT=$(echo "$FLAKE_SHOW_JSON" | jq '.nixosConfigurations | length' 2>/dev/null || echo "unknown")
   pass "nix flake show passed — ${OUTPUT_COUNT} nixosConfigurations listed"
 else
   fail "nix flake show failed — flake structure is invalid"
@@ -373,7 +373,7 @@ else
   echo ""
   echo "  --- 7e: gitleaks deep secret scan (WARN when not installed) ---"
   if command -v gitleaks &>/dev/null; then
-    if gitleaks detect --source . --no-banner --redact --exit-code 1 2>/dev/null; then
+    if gitleaks detect --source . --no-banner --redact --verbose --exit-code 1; then
       pass "gitleaks: no secrets detected"
     else
       fail "gitleaks: secrets detected — review output above"
