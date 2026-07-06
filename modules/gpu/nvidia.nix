@@ -63,12 +63,13 @@ in
       package = driverPackage;
     };
 
-    # nvidia-vaapi-driver provides VA-API via NVDEC.
-    # NVDEC support is present only on Turing (RTX 20xx) and newer.
-    # Excluded for legacy_535 to avoid broken hardware acceleration.
-    hardware.graphics.extraPackages = lib.mkIf useOpen (
-      with pkgs; [ nvidia-vaapi-driver ]
-    );
+    # nvidia-vaapi-driver provides VA-API via NVDEC (Turing/RTX 20xx and newer).
+    # Installed unconditionally: legacy_535 is a driver-branch preference (LTS
+    # vs. current production), not a GPU-generation boundary — NVIDIA's 535
+    # branch supports Turing/Ampere/Ada too, so a legacy_535 user can have
+    # full NVDEC hardware. On hardware that genuinely lacks NVDEC (older than
+    # Turing), the driver falls back to software decode rather than breaking.
+    hardware.graphics.extraPackages = with pkgs; [ nvidia-vaapi-driver ];
 
     # Prevent hardware-configuration.nix (generated inside a VM) from enabling
     # VirtualBox guest additions on bare-metal hosts. Guest additions fail to
