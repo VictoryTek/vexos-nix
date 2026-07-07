@@ -72,7 +72,7 @@ in
         # password if missing, or unlock it if already empty-password. Idempotent —
         # safe to run on every service start. Non-fatal if the user has set a real
         # keyring password (unlock just fails; existing contents are untouched).
-        printf '' | runuser -u ${lib.escapeShellArg username} -- \
+        printf "" | runuser -u ${lib.escapeShellArg username} -- \
           env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
           gnome-keyring-daemon --unlock --replace --components=secrets,pkcs11,ssh >/dev/null || true
 
