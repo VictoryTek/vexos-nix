@@ -72,14 +72,16 @@ in
         # password if missing, or unlock it if already empty-password. Idempotent —
         # safe to run on every service start. Non-fatal if the user has set a real
         # keyring password (unlock just fails; existing contents are untouched).
-        printf "" | runuser -u ${lib.escapeShellArg username} -- \
+        # NOTE: must be a real newline (empty *line*), not zero bytes — piping
+        # `printf ""` sends immediate EOF with no data, which gnome-keyring-daemon
+        # reads as "no password supplied" and silently skips creating the
+        # collection entirely (verified against journalctl/dbus on vexos-vmc).
+        printf "\n" | runuser -u ${lib.escapeShellArg username} -- \
           env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
           gnome-keyring-daemon --unlock --replace --components=secrets,pkcs11,ssh >/dev/null || true
 
-        # gnome-keyring-daemon forks into the background and returns immediately;
-        # the "login" collection isn't registered on the session bus yet at that
-        # point. Give it a moment, then retry set-credentials a few times in case
-        # it's still not ready.
+        # Small buffer plus retry on set-credentials, kept as defense-in-depth
+        # against any remaining startup latency.
         sleep 2
 
         runuser -u ${lib.escapeShellArg username} -- \
