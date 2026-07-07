@@ -1330,6 +1330,7 @@ available-services:
     _svc code-server         "VS Code running in the browser"
     _svc forgejo             "Self-hosted Git & code collaboration (Gitea fork)"
     _svc homepage            "Customisable server dashboard & start page"
+    _svc joplin              "Self-hosted Joplin Server note sync backend"
     _svc listmonk            "Self-hosted newsletter & mailing list manager"
     _svc mealie              "Self-hosted recipe manager & meal planner"
     _svc paperless           "Document scanning, OCR, tagging & archival"
