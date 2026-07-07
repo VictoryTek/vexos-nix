@@ -392,9 +392,10 @@ Check boxes are ticked as items are completed in this session.
   - `git rm -r scripts/__pycache__/`; add `__pycache__/` to `.gitignore`
   - **Resolution:** Confirmed `scripts/__pycache__/configure-network.cpython-313.pyc` was tracked (the only such artifact in the repo) and `.gitignore` had no `__pycache__` entry at all. Deleted the file from disk (I don't run `git rm` myself — the resulting deletion is staged as part of the normal Phase 7 commit) and added `__pycache__/`/`*.pyc` to `.gitignore`. Verified via `git check-ignore -v` that the pattern correctly prevents recurrence anywhere in the tree. (`.gitignore`)
 
-- [ ] **L-21** `[A]` 384 spec/review process docs (4.9 MB) accumulating in `.github/docs/subagent_docs/`
+- [x] **L-21** `[A]` 384 spec/review process docs (4.9 MB) accumulating in `.github/docs/subagent_docs/`
   - **Source:** ARCH 5.4
   - Establish archive policy: keep latest spec per feature; prune superseded `_v2`/`_final` chains
+  - **Resolution:** Directory had grown to 657 files/6.5MB by the time this item was reached. Identified 5 versioned chains; confirmed the actual supersession relationship by reading content (not just filenames) before deleting anything — caught that `network_share_discovery_review.md`'s unversioned filename was actually its v4 review, not an orphaned early one. Confirmed scope with the user given one chain overlaps the SMB/network-discovery history flagged elsewhere as fragile. Deleted 11 superseded files across 4 chains (`branding_logo_fixes`, `install_sudo_fix`, `network_share_discovery` v1-v3, `stateless_vm_boot` v1), keeping only the latest revision per chain; left `network_discovery_v5` (not a chain) and `stateless_vm_boot_locked_root` (a distinct, unrelated, more recent problem) untouched. Policy documented in the spec doc for future sessions. (`.github/docs/subagent_docs/` — 11 files deleted)
 
 ### Features — Low Value / Effort
 
