@@ -1378,6 +1378,7 @@ service-info service="":
         homepage)        printf "  %-18s  Web UI  http://<server-ip>:3010   (requires docker)\n"                       "$1" ;;
         immich)          printf "  %-18s  Web UI  http://<server-ip>:2283\n"                                           "$1" ;;
         jellyfin)        printf "  %-18s  Web UI  http://<server-ip>:8096\n"                                           "$1" ;;
+        joplin)          printf "  %-18s  Web UI  http://<tailnet-host>:22300   (Tailscale-only)\n"                     "$1" ;;
         kavita)          printf "  %-18s  Web UI  http://<server-ip>:5000\n"                                           "$1" ;;
         kiji-proxy)      printf "  %-18s  Proxy   http://127.0.0.1:8080   |  Health: http://localhost:8080/health\n"    "$1" ;;
         komga)           printf "  %-18s  Web UI  http://<server-ip>:8090\n"                                           "$1" ;;
@@ -1507,6 +1508,7 @@ status service: _require-server-role
       homepage)       UNITS="docker-homepage";      URLS="http://localhost:3010" ;;
       immich)         UNITS="immich-server";        URLS="http://localhost:2283" ;;
       jellyfin)       UNITS="jellyfin";             URLS="http://localhost:8096" ;;
+      joplin)         UNITS="docker-joplin-server docker-joplin-db"; URLS="http://localhost:22300" ;;
       kavita)         UNITS="kavita";               URLS="http://localhost:5000" ;;
       komga)          UNITS="komga";                URLS="http://localhost:8090" ;;
       kiji-proxy)     UNITS="kiji-proxy";           URLS="http://localhost:8080/health" ;;
@@ -1907,6 +1909,13 @@ enable service: _require-server-role
         echo "  Web UI:   http://<server-ip>:8096"
         echo "  About:    Free, open-source media server for streaming movies, TV, music, and photos to any device."
         echo "  Note:     First run launches a setup wizard to add media libraries and create the admin account."
+        ;;
+      joplin)
+        echo "  Services: docker-joplin-server.service  docker-joplin-db.service"
+        echo "  Web UI:   http://<tailnet-host>:22300   (Tailscale-only — see networking.firewall.interfaces.tailscale0)"
+        echo "  About:    Self-hosted sync server for Joplin desktop/mobile clients (two-container stack: app + dedicated Postgres)."
+        echo "  Login:    admin@localhost / admin — change from the web UI after first boot."
+        echo "  Note:     If clients get 'invalid origin' sync errors, set vexos.server.joplin.baseUrl to your tailnet's fully-qualified MagicDNS name."
         ;;
       kavita)
         echo "  Service:  kavita.service"
