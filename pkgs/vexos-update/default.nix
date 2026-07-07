@@ -17,8 +17,6 @@
 # Stdout protocol for Up:
 #   Lines prefixed "VEXOS_CACHE_BLOCK:"  → hard blocker; lock restored.
 #   Lines prefixed "VEXOS_LOCAL_BUILD:"  → informational; non-heavy local build proceeding.
-#   Legacy: "VEXOS_CACHE_LOCAL_OK:" was the prior allowed-list prefix (retired).
-#   Legacy: "VEXOS_CACHE_MISS:" was the original single-channel prefix (retired).
 #   All other lines are forwarded verbatim to the build log view.
 { writeShellApplication }:
 

@@ -377,9 +377,10 @@ Check boxes are ticked as items are completed in this session.
   - Verify the upstream Plex module fix; remove the workaround if resolved, or re-date with a new target version
   - **Resolution:** Verified directly against the pinned nixpkgs' `nixos/modules/services/misc/plex.nix` source — still unconditionally sets `LD_LIBRARY_PATH = "/run/opengl-driver/lib"` with no gating, so the workaround is still needed (not removable). Also found the TODO's tracking link was broken — `nixpkgs#310792` is an unrelated, already-closed issue ("goose" version bump) — searched GitHub for the actual bug signature and found a matching-symptom issue (#468070) that was closed as a user-configuration mistake, not a fix, so didn't cite it as a replacement either. Re-dated to 2026-11 (next stable release checkpoint) and replaced the broken issue link with a pointer to the specific upstream module file/line to check directly, which can't go stale the way a GitHub issue number can. Comment-only change, verified via byte-identical `.drv` hashes. (`modules/server/plex.nix`)
 
-- [ ] **L-18** `[A]` Retired stdout-protocol comment archaeology in `nix.nix` — two generations of dead protocol docs
+- [x] **L-18** `[A]` Retired stdout-protocol comment archaeology in `nix.nix` — two generations of dead protocol docs
   - **Source:** ARCH 4.5 · `modules/nix.nix:121-127,185-193`
   - Remove the retired-prefix and retired-three-class-engine comment blocks; git history retains them
+  - **Resolution:** Plan's cited location was stale — the script (and its comments) moved from `modules/nix.nix` to `pkgs/vexos-update/default.nix` during this session's own M-26. Found the actual two "Legacy:" lines there (`VEXOS_CACHE_LOCAL_OK:`, `VEXOS_CACHE_MISS:`); confirmed both genuinely dead on both sides — neither is emitted by the current script, and Up's actual current source (checked directly, not just its docs) doesn't check for either. Removed both lines. Comment-only change, verified via identical `.drv` hashes and a successful package rebuild (shellcheck still passes). (`pkgs/vexos-update/default.nix`)
 
 - [ ] **L-19** `[A]` `intel-media-driver` shipped in all GPU closures — belongs in `modules/gpu/intel.nix` only
   - **Source:** ARCH 5.2 · `modules/gpu.nix:18`
