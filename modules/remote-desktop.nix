@@ -76,12 +76,30 @@ in
           env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
           gnome-keyring-daemon --unlock --replace --components=secrets,pkcs11,ssh >/dev/null || true
 
+        # gnome-keyring-daemon forks into the background and returns immediately;
+        # the "login" collection isn't registered on the session bus yet at that
+        # point. Give it a moment, then retry set-credentials a few times in case
+        # it's still not ready.
+        sleep 2
+
         runuser -u ${lib.escapeShellArg username} -- \
           env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
           grdctl rdp enable
-        runuser -u ${lib.escapeShellArg username} -- \
-          env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
-          grdctl rdp set-credentials ${lib.escapeShellArg username} "$password"
+
+        cred_ok=0
+        for attempt in 1 2 3 4 5; do
+          if runuser -u ${lib.escapeShellArg username} -- \
+            env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
+            grdctl rdp set-credentials ${lib.escapeShellArg username} "$password"; then
+            cred_ok=1
+            break
+          fi
+          sleep 1
+        done
+        if [ "$cred_ok" -ne 1 ]; then
+          echo "grdctl rdp set-credentials failed after 5 attempts" >&2
+        fi
+
         runuser -u ${lib.escapeShellArg username} -- \
           env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
           grdctl rdp disable-view-only
