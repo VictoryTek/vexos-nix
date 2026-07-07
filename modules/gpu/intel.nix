@@ -21,7 +21,6 @@
   hardware.enableRedistributableFirmware = true;
 
   # Prefer the modern iHD VA-API backend (intel-media-driver, Broadwell 2014+)
-  # intel-media-driver is already included via modules/gpu.nix extraPackages.
   # This env var prevents silent fallback to the legacy i965 (intel-vaapi-driver).
   environment.sessionVariables = {
     LIBVA_DRIVER_NAME = "iHD";
@@ -29,6 +28,7 @@
 
   # Intel-specific graphics acceleration (appended to base packages in modules/gpu.nix)
   hardware.graphics.extraPackages = with pkgs; [
+    intel-media-driver      # iHD VA-API driver (Intel 8th gen+) — Intel-only, not in the shared base
     vpl-gpu-rt              # Intel oneVPL: Quick Sync Video hardware encode/decode (Gen12+)
     intel-compute-runtime   # OpenCL NEO + Level Zero: GPU compute on Arc/Xe/12th gen+
                             # Replace with intel-compute-runtime-legacy1 for Gen8–11 iGPUs

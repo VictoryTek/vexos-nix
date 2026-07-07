@@ -382,9 +382,10 @@ Check boxes are ticked as items are completed in this session.
   - Remove the retired-prefix and retired-three-class-engine comment blocks; git history retains them
   - **Resolution:** Plan's cited location was stale — the script (and its comments) moved from `modules/nix.nix` to `pkgs/vexos-update/default.nix` during this session's own M-26. Found the actual two "Legacy:" lines there (`VEXOS_CACHE_LOCAL_OK:`, `VEXOS_CACHE_MISS:`); confirmed both genuinely dead on both sides — neither is emitted by the current script, and Up's actual current source (checked directly, not just its docs) doesn't check for either. Removed both lines. Comment-only change, verified via identical `.drv` hashes and a successful package rebuild (shellcheck still passes). (`pkgs/vexos-update/default.nix`)
 
-- [ ] **L-19** `[A]` `intel-media-driver` shipped in all GPU closures — belongs in `modules/gpu/intel.nix` only
+- [x] **L-19** `[A]` `intel-media-driver` shipped in all GPU closures — belongs in `modules/gpu/intel.nix` only
   - **Source:** ARCH 5.2 · `modules/gpu.nix:18`
   - Move to `modules/gpu/intel.nix`; remove from the shared GPU base
+  - **Resolution:** Confirmed `modules/gpu.nix`'s own header ("GPU-brand-specific configuration lives in modules/gpu/*.nix") contradicted its shipping an Intel-only package universally. Removed it from the shared base; added it explicitly to both Intel-specific files that implicitly relied on the shared inclusion (`modules/gpu/intel.nix`, which only had the 32-bit variant of its own, and `modules/gpu/intel-headless.nix`, which had no entry at all). Verified via direct package-list evaluation that Intel hosts (display and headless) still get the driver and AMD/NVIDIA/VM hosts no longer do; confirmed via grep no other GPU-brand file depended on it. `.drv` hashes for non-Intel roles legitimately changed (a real closure-shrinking fix, not a no-op) — verified all affected roles (desktop, server, headless-server, htpc, stateless) still evaluate cleanly. (`modules/gpu.nix`, `modules/gpu/intel.nix`, `modules/gpu/intel-headless.nix`)
 
 - [ ] **L-20** `[A]` Tracked Python bytecode artifact `scripts/__pycache__/` in git
   - **Source:** ARCH 5.3

@@ -14,7 +14,6 @@
       libva               # VA-API runtime
       libva-vdpau-driver  # VDPAU via VA-API bridge (renamed from vaapiVdpau)
       libvdpau-va-gl      # VDPAU OpenGL backend
-      intel-media-driver  # iHD VA-API driver (Intel 8th gen+); harmless on AMD/NVIDIA
       mesa                # includes RADV (AMD Vulkan) and llvmpipe
     ];
   };

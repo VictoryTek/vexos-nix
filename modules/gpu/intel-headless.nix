@@ -27,6 +27,7 @@
 
   # Intel-specific graphics acceleration packages
   hardware.graphics.extraPackages = with pkgs; [
+    intel-media-driver      # iHD VA-API driver (Intel 8th gen+) — Intel-only, not in the shared base
     vpl-gpu-rt              # Intel oneVPL: Quick Sync Video hardware encode/decode (Gen12+)
     intel-compute-runtime   # OpenCL NEO + Level Zero: GPU compute on Arc/Xe/12th gen+
   ];
