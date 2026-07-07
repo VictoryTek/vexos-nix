@@ -7,7 +7,7 @@
 #   docker, arcane, jellyfin, plex, audiobookshelf, tautulli, navidrome,
 #   seerr,
 #   arr (SABnzbd + Sonarr + Radarr + Lidarr + Prowlarr),
-#   komga, kavita, papermc, nextcloud, syncthing, immich, minio, photoprism,
+#   komga, kavita, papermc, nextcloud, syncthing, immich, minio, photoprism, joplin,
 #   paperless, forgejo, code-server, attic, vaultwarden, authelia,
 #   nginx, caddy, traefik, adguard, headscale, unbound, nginx-proxy-manager,
 #   cockpit, uptime-kuma, homepage, grafana, scrutiny, prometheus, loki, netdata,
@@ -82,6 +82,10 @@
   # vexos.server.minio.enable = false;                   # Port 9000 API + 9001 console
   # vexos.server.minio.apiPort = 9000;
   # vexos.server.photoprism.enable = false;              # Port 2342 — photo management
+  # vexos.server.joplin.enable = false;                  # Port 22300 — Joplin note sync (Tailscale-only)
+  #   No further config needed: Postgres password auto-generates on first activation,
+  #   baseUrl defaults to http://<hostname>:22300 (works with Tailscale MagicDNS).
+  # vexos.server.joplin.baseUrl = "http://myhost.tailnet-name.ts.net:22300"; # Override only if bare hostname doesn't resolve on your tailnet
 
   # ── Documents ─────────────────────────────────────────────────────────────
   # vexos.server.paperless.enable = false;               # Port 28981 — document management with OCR

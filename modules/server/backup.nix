@@ -36,6 +36,7 @@ let
     homepage         = [ "/var/lib/homepage" ];
     immich           = [ "/var/lib/immich" ];
     jellyfin         = [ "/var/lib/jellyfin" ];
+    joplin           = [ "${config.vexos.server.joplin.dataDir}/dump" ]; # not postgres/ — live pgdata isn't file-backup-safe
     kavita           = [ "/var/lib/kavita" ];
     kiji-proxy       = [ ];
     komga            = [ "/var/lib/komga" ];

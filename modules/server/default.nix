@@ -30,6 +30,7 @@
     ./immich.nix
     ./minio.nix
     ./photoprism.nix
+    ./joplin.nix
     # ── Documents ────────────────────────────────────────────────────────────
     ./paperless.nix
     # ── Development ──────────────────────────────────────────────────────────

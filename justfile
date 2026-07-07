@@ -1130,7 +1130,7 @@ disable-feature feature: _require-desktop-role
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
