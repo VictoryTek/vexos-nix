@@ -387,9 +387,10 @@ Check boxes are ticked as items are completed in this session.
   - Move to `modules/gpu/intel.nix`; remove from the shared GPU base
   - **Resolution:** Confirmed `modules/gpu.nix`'s own header ("GPU-brand-specific configuration lives in modules/gpu/*.nix") contradicted its shipping an Intel-only package universally. Removed it from the shared base; added it explicitly to both Intel-specific files that implicitly relied on the shared inclusion (`modules/gpu/intel.nix`, which only had the 32-bit variant of its own, and `modules/gpu/intel-headless.nix`, which had no entry at all). Verified via direct package-list evaluation that Intel hosts (display and headless) still get the driver and AMD/NVIDIA/VM hosts no longer do; confirmed via grep no other GPU-brand file depended on it. `.drv` hashes for non-Intel roles legitimately changed (a real closure-shrinking fix, not a no-op) — verified all affected roles (desktop, server, headless-server, htpc, stateless) still evaluate cleanly. (`modules/gpu.nix`, `modules/gpu/intel.nix`, `modules/gpu/intel-headless.nix`)
 
-- [ ] **L-20** `[A]` Tracked Python bytecode artifact `scripts/__pycache__/` in git
+- [x] **L-20** `[A]` Tracked Python bytecode artifact `scripts/__pycache__/` in git
   - **Source:** ARCH 5.3
   - `git rm -r scripts/__pycache__/`; add `__pycache__/` to `.gitignore`
+  - **Resolution:** Confirmed `scripts/__pycache__/configure-network.cpython-313.pyc` was tracked (the only such artifact in the repo) and `.gitignore` had no `__pycache__` entry at all. Deleted the file from disk (I don't run `git rm` myself — the resulting deletion is staged as part of the normal Phase 7 commit) and added `__pycache__/`/`*.pyc` to `.gitignore`. Verified via `git check-ignore -v` that the pattern correctly prevents recurrence anywhere in the tree. (`.gitignore`)
 
 - [ ] **L-21** `[A]` 384 spec/review process docs (4.9 MB) accumulating in `.github/docs/subagent_docs/`
   - **Source:** ARCH 5.4
