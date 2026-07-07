@@ -134,10 +134,11 @@
 
   # Unlock the GNOME Keyring on auto-login. pam_gnome_keyring is already wired
   # for normal GDM login (password unlocks the keyring); gdm-autologin bypasses
-  # PAM password auth so the keyring stays locked without this line.
-  # Prerequisite: the user's login.keyring must have an empty master password —
-  # delete ~/.local/share/keyrings/login.keyring once so GNOME creates a fresh
-  # empty-password keyring that PAM can unlock without a passphrase.
+  # PAM password auth so this has no password material to unlock with and is a
+  # no-op for auto-login sessions in practice. Kept for interactive re-logins
+  # (e.g. after loginctl terminate-session). Not required for RDP credential
+  # setup — modules/remote-desktop.nix self-heals the keyring independently of
+  # PAM via `gnome-keyring-daemon --unlock --replace`.
   security.pam.services.gdm-autologin.enableGnomeKeyring = true;
 
   # ── GNOME Remote Desktop (RDP) ────────────────────────────────────────────

@@ -16,12 +16,13 @@
 #   session D-Bus, so credentials land in the user daemon (no TPM required) and are
 #   stored in the GNOME Keyring.
 #
-# Prerequisite for auto-login machines (all vexos roles use auto-login):
-#   modules/gnome.nix sets security.pam.services.gdm-autologin.enableGnomeKeyring = true
-#   so PAM unlocks the keyring on auto-login — but only if the keyring has an empty
-#   master password. Run this once on each machine after deploying:
-#     rm ~/.local/share/keyrings/login.keyring && sudo reboot
-#   GNOME creates a fresh empty-password keyring that PAM can unlock without a passphrase.
+# Keyring self-heal (auto-login never supplies a password to PAM, so
+# pam_gnome_keyring can never unlock or create the "login" collection on its own):
+#   Before calling grdctl, this service runs `gnome-keyring-daemon --unlock --replace`
+#   with an empty stdin password, targeting the same session bus as the grdctl calls
+#   below. That call creates the "login" collection with an empty password if it's
+#   missing, or unlocks it if it already has one — idempotently, on every run. No
+#   manual keyring reset is required on any machine.
 { config, lib, pkgs, ... }:
 let
   cfg      = config.vexos.remoteDesktop;
@@ -44,7 +45,7 @@ in
       description = "Configure GNOME Remote Desktop credentials";
       wantedBy    = [ "graphical.target" ];
       after       = [ "graphical.target" "dbus.service" ];
-      path        = [ pkgs.gnome-remote-desktop pkgs.coreutils pkgs.util-linux ];
+      path        = [ pkgs.gnome-remote-desktop pkgs.gnome-keyring pkgs.coreutils pkgs.util-linux ];
       script      = ''
         if [ ! -f ${lib.escapeShellArg cfg.passwordFile} ]; then
           exit 0
@@ -66,6 +67,14 @@ in
           echo "User session bus not available after 60s — skipping RDP setup" >&2
           exit 0
         fi
+
+        # Self-heal the GNOME Keyring "login" collection: create it with an empty
+        # password if missing, or unlock it if already empty-password. Idempotent —
+        # safe to run on every service start. Non-fatal if the user has set a real
+        # keyring password (unlock just fails; existing contents are untouched).
+        printf '' | runuser -u ${lib.escapeShellArg username} -- \
+          env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
+          gnome-keyring-daemon --unlock --replace --components=secrets,pkcs11,ssh >/dev/null || true
 
         runuser -u ${lib.escapeShellArg username} -- \
           env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
