@@ -1,8 +1,8 @@
-# home/gnome-common-desktop.nix
-# Desktop-role-only addition: registers Brave Origin as the XDG MIME
-# default browser. Split out from home/gnome-common.nix because
-# brave-origin (modules/packages-desktop.nix) is only installed on the
-# desktop role.
+# home/gnome-common-browser.nix
+# Shared addition for every GNOME DE role that installs brave-origin
+# (desktop, server, htpc, stateless — see modules/packages-desktop.nix):
+# registers Brave Origin as the XDG MIME default browser. Not imported by
+# vanilla (no custom packages) or headless-server (no GNOME).
 { ... }:
 {
   # ── MIME associations ──────────────────────────────────────────────────────
