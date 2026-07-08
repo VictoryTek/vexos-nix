@@ -141,9 +141,14 @@ in
       '';
     };
 
+    # No tmpfiles rule for dataDir/postgres: the postgres:16 image's root
+    # entrypoint chowns PGDATA to its own UID on first run and expects to
+    # own it thereafter. A "d ... root root" rule here would re-assert
+    # root:root ownership on every activation (systemd-tmpfiles --create
+    # runs on every nixos-rebuild switch), stripping access from the
+    # already-running container without restarting it.
     systemd.tmpfiles.rules = [
       "d ${cfg.dataDir} 0700 root root -"
-      "d ${cfg.dataDir}/postgres 0700 root root -"
       "d ${cfg.dataDir}/dump 0700 root root -"
     ];
 
