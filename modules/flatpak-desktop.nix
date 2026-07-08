@@ -9,7 +9,6 @@
 { ... }:
 {
   vexos.flatpak.extraApps = [
-    "io.github.pol_rivero.github-desktop-plus"  # GitHub Desktop (community fork)
     "net.cozic.joplin_desktop"                  # Joplin note-taking app
     "org.onlyoffice.desktopeditors"             # Office suite
     "com.ranfdev.DistroShelf"                   # Distribution browser

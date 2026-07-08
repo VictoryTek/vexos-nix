@@ -12,6 +12,11 @@ in
   options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Rust, Go, Claude Code, Nix LSP, rust-analyzer)";
 
   config = lib.mkIf cfg.enable {
+    # ── Flatpak ───────────────────────────────────────────────────────────────
+    vexos.flatpak.extraApps = [
+      "io.github.pol_rivero.github-desktop-plus"  # GitHub Desktop (community fork)
+    ];
+
     # ── Docker ────────────────────────────────────────────────────────────────
     virtualisation.docker = {
       enable = true;
