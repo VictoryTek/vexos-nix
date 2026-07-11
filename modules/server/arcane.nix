@@ -1,7 +1,11 @@
 # modules/server/arcane.nix
-# Arcane — Docker container management UI (OCI container, Docker backend).
-# Grants Arcane control of the host's Docker daemon via the mounted socket —
-# equivalent access level to Portainer; treat as root-equivalent exposure.
+# Arcane — container management UI (OCI container). Deployed as an OCI
+# container, backed by either Docker or Podman (vexos.server.arcane.backend).
+# Only the selected backend is required — enabling Arcane with backend =
+# "docker" does not require Podman, and vice versa.
+# Grants Arcane control of the host's container runtime via the mounted
+# socket — equivalent access level to Portainer; treat as root-equivalent
+# exposure.
 #
 # Default access: http://<host-ip>:3552
 #
@@ -22,6 +26,18 @@ in
 {
   options.vexos.server.arcane = {
     enable = lib.mkEnableOption "Arcane Docker management UI";
+
+    backend = lib.mkOption {
+      type        = lib.types.enum [ "docker" "podman" ];
+      default     = "docker";
+      description = ''
+        Container runtime Arcane manages and is deployed under.
+        "docker" defaults vexos.server.docker.enable on and mounts the real
+        Docker socket. "podman" requires vexos.server.podman.enable = true
+        and mounts Podman's Docker-compat socket. Only the selected backend
+        is required.
+      '';
+    };
 
     port = lib.mkOption {
       type = lib.types.port;
@@ -76,16 +92,26 @@ in
           Then set: vexos.server.arcane.environmentFile = "/etc/nixos/secrets/arcane-env";
         '';
       }
+      {
+        assertion = cfg.backend != "podman" || config.vexos.server.podman.enable;
+        message   = "vexos.server.arcane.enable with backend = \"podman\" requires vexos.server.podman.enable = true. Enable Podman first, or set vexos.server.arcane.backend = \"docker\".";
+      }
+      {
+        assertion = cfg.backend != "docker" || !config.vexos.server.podman.enable;
+        message   = "vexos.server.arcane.enable with backend = \"docker\" (the default) conflicts with vexos.server.podman.enable = true on the same host — Podman forces virtualisation.docker.enable off and takes over virtualisation.oci-containers.backend, which would break Arcane's Docker socket mount. Set vexos.server.arcane.backend = \"podman\" instead.";
+      }
     ];
 
-    virtualisation.docker.enable = lib.mkDefault true;
-    virtualisation.oci-containers.backend = "docker";
+    virtualisation.docker.enable = lib.mkIf (cfg.backend == "docker") (lib.mkDefault true);
+    virtualisation.oci-containers.backend = lib.mkIf (cfg.backend == "docker") (lib.mkDefault "docker");
 
     virtualisation.oci-containers.containers.arcane = {
       image = "ghcr.io/getarcaneapp/manager:v1.19.4";
       ports = [ "${toString cfg.port}:3552" ];
       volumes = [
-        "/var/run/docker.sock:/var/run/docker.sock"
+        (if cfg.backend == "docker"
+         then "/var/run/docker.sock:/var/run/docker.sock"
+         else "/run/podman/podman.sock:/var/run/docker.sock:ro")
         "arcane-data:/app/data"
       ];
       environment = {

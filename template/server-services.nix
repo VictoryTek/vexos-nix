@@ -41,7 +41,7 @@
 
   # ── Container Runtime ────────────────────────────────────────────────────
   # vexos.server.docker.enable = false;
-  # vexos.server.arcane.enable = false;                  # Port 3552 — Docker management UI
+  # vexos.server.arcane.enable = false;                  # Port 3552 — Docker/Podman management UI
   # vexos.server.arcane.appUrl = "https://arcane.example.com";
   # vexos.server.arcane.environmentFile = "/etc/nixos/secrets/arcane-env"; # ENCRYPTION_KEY + JWT_SECRET (openssl rand -hex 32)
 
@@ -145,7 +145,7 @@
   # vexos.server.loki.enable = false;                    # Port 3100 — log aggregation (pair with grafana)
   # vexos.server.netdata.enable = false;                 # Port 19999 — real-time system monitoring
   # vexos.server.dozzle.enable = false;                  # Port 8888 — Docker log viewer (requires docker)
-  # vexos.server.portainer.enable = false;               # Port 9443 — Docker management UI (requires docker)
+  # vexos.server.portainer.enable = false;               # Port 9443 — Docker/Podman management UI
 
   # ── Notifications ────────────────────────────────────────────────────────
   # vexos.server.ntfy.enable = false;                   # Port 2586 — push notifications

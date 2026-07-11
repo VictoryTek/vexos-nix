@@ -1130,7 +1130,7 @@ disable-feature feature: _require-desktop-role
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -1289,11 +1289,12 @@ available-services:
     _hdr "Gaming"
     _svc papermc             "High-performance Minecraft Java server"
     _hdr "Infrastructure"
+    _svc arcane              "Web UI for managing Docker/Podman containers"
     _svc attic               "Self-hosted Nix binary cache server"
     _svc backup              "Declarative restic backups of enabled services"
     _svc caddy               "Automatic HTTPS web server & reverse proxy"
     _svc docker              "Container runtime (Docker Engine)"
-    _svc dockhand            "Web UI for managing Podman containers"
+    _svc dockhand            "Web UI for managing Docker/Podman containers"
     _svc nginx               "High-performance HTTP server & reverse proxy"
     _svc nginx-proxy-manager "Web UI for Nginx reverse proxy & SSL certs"
     _svc podman              "Rootless OCI container runtime"
@@ -1388,13 +1389,14 @@ service-info service="":
                 printf "  %-18s %s\n" "$1" "$_arr_parts"
             fi
             ;;
+        arcane)          printf "  %-18s  Web UI  http://<server-ip>:3552   (Docker/Podman container manager)\n"       "$1" ;;
         attic)           printf "  %-18s  HTTP    http://<server-ip>:8400   (Nix binary cache)\n"                      "$1" ;;
         audiobookshelf)  printf "  %-18s  Web UI  http://<server-ip>:8234\n"                                           "$1" ;;
         caddy)           printf "  %-18s  Ports :8880, :8443\n"                                                           "$1" ;;
         nas)             printf "  %-18s  Web UI  http://<server-ip>:9090   (Cockpit + NAS plugins)\n"               "$1" ;;
         cockpit)         printf "  %-18s  Web UI  http://<server-ip>:9090\n"                                           "$1" ;;
         docker)          printf "  %-18s  No web UI — docker / docker compose CLI\n"                                   "$1" ;;
-        dockhand)        printf "  %-18s  Web UI  http://<server-ip>:8073   (Podman container manager)\n"             "$1" ;;
+        dockhand)        printf "  %-18s  Web UI  http://<server-ip>:8073   (Docker/Podman container manager)\n"      "$1" ;;
         forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000\n"                                           "$1" ;;
         grafana)         printf "  %-18s  Web UI  http://<server-ip>:3030\n"                                           "$1" ;;
         headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
@@ -1452,7 +1454,7 @@ service-info service="":
         node-red)        printf "  %-18s  Web UI  http://<server-ip>:1880\n"                                                   "$1" ;;
         paperless)       printf "  %-18s  Web UI  http://<server-ip>:28981\n"                                                  "$1" ;;
         photoprism)      printf "  %-18s  Web UI  http://<server-ip>:2342\n"                                                   "$1" ;;
-        portainer)       printf "  %-18s  Web UI  https://<server-ip>:9443  (requires docker)\n"                               "$1" ;;
+        portainer)       printf "  %-18s  Web UI  https://<server-ip>:9443  (Docker/Podman container manager)\n"               "$1" ;;
         portbook)        printf "  %-18s  Web UI  http://<server-ip>:7777   |  CLI: portbook ls / tui / watch\n"       "$1" ;;
         prometheus)      printf "  %-18s  Web UI  http://<server-ip>:9092\n"                                               "$1" ;;
         proxmox)         printf "  %-18s  Web UI  https://<server-ip>:8006  |  Ports :3128 (SPICE), :5900-5999 (VNC)\n"        "$1" ;;
@@ -1518,6 +1520,7 @@ status service: _require-server-role
     # Format for URLS:  space-separated http://localhost:<port> entries (empty = no HTTP check)
     case "$SERVICE" in
       adguard)        UNITS="adguardhome";          URLS="http://localhost:3080" ;;
+      arcane)         UNITS="docker-arcane podman-arcane"; URLS="http://localhost:3552" ;;
       arr)            UNITS="sabnzbd sonarr radarr lidarr prowlarr docker-maintainerr";
                       URLS="http://localhost:8080 http://localhost:8989 http://localhost:7878 http://localhost:8686 http://localhost:9696 http://localhost:6246" ;;
       attic)          UNITS="atticd";               URLS="http://localhost:8400" ;;
@@ -1527,7 +1530,7 @@ status service: _require-server-role
       nas)            UNITS="cockpit";              URLS="http://localhost:9090" ;;
       cockpit)        UNITS="cockpit";              URLS="http://localhost:9090" ;;
       docker)         UNITS="docker";               URLS="" ;;
-      dockhand)       UNITS="podman-dockhand";       URLS="http://localhost:8073" ;;
+      dockhand)       UNITS="docker-dockhand podman-dockhand"; URLS="http://localhost:8073" ;;
       forgejo)        UNITS="forgejo";              URLS="http://localhost:3000" ;;
       grafana)        UNITS="grafana";              URLS="http://localhost:3030" ;;
       headscale)      UNITS="headscale";            URLS="http://localhost:8085" ;;
@@ -1570,7 +1573,7 @@ status service: _require-server-role
       node-red)       UNITS="node-red";                 URLS="http://localhost:1880" ;;
       paperless)      UNITS="paperless";                URLS="http://localhost:28981" ;;
       photoprism)     UNITS="photoprism";               URLS="http://localhost:2342" ;;
-      portainer)      UNITS="docker-portainer";         URLS="https://localhost:9443" ;;
+      portainer)      UNITS="docker-portainer podman-portainer"; URLS="https://localhost:9443" ;;
       portbook)       UNITS="portbook";             URLS="http://localhost:7777" ;;
       prometheus)     UNITS="prometheus";               URLS="http://localhost:9092" ;;
       proxmox)        UNITS="pve-cluster pvedaemon pveproxy pvestatd pvescheduler"; URLS="https://localhost:8006" ;;
@@ -1635,7 +1638,7 @@ services: _require-server-role
     _hdr "Communications";             _check matrix-conduit
     _hdr "Files & Storage";            _check immich;         _check nextcloud;     _check syncthing;     _check minio;         _check photoprism
     _hdr "Gaming";                     _check papermc
-    _hdr "Infrastructure";             _check attic;          _check backup;         _check caddy;          _check docker;        _check dockhand;      _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
+    _hdr "Infrastructure";             _check arcane;         _check attic;          _check backup;         _check caddy;          _check docker;        _check dockhand;      _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
     _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
     _hdr "Media Requests & Automation";_check arr;            _check seerr
     _hdr "Monitoring & Admin";         _check nas;            _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma;  _check portbook;  _check vexboard
@@ -1923,6 +1926,18 @@ enable service: _require-server-role
         echo "  Web UI:   http://<server-ip>:3080"
         echo "  DNS:      Listens on port 53 — point your router's DNS at this server after enabling."
         ;;
+      arcane)
+        echo "  Container: arcane (NixOS OCI container, Docker or Podman backend)"
+        echo "  Web UI:    http://<server-ip>:3552"
+        echo "  About:     Modern container management UI — browse containers, images, volumes, and networks from a browser."
+        echo "  Backend:   vexos.server.arcane.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just enable podman' first)."
+        echo "  Required:  vexos.server.arcane.appUrl          = \"https://arcane.example.com\";"
+        echo "             vexos.server.arcane.environmentFile = \"/etc/nixos/secrets/arcane-env\";"
+        echo "  Secrets:   Create the environment file before first start:"
+        echo "               echo \"ENCRYPTION_KEY=\$(openssl rand -hex 32)\"  > /etc/nixos/secrets/arcane-env"
+        echo "               echo \"JWT_SECRET=\$(openssl rand -hex 32)\"     >> /etc/nixos/secrets/arcane-env"
+        echo "               chmod 0600 /etc/nixos/secrets/arcane-env"
+        ;;
       attic)
         echo "  Service:  atticd.service"
         echo "  HTTP:     http://<server-ip>:8400"
@@ -1972,10 +1987,10 @@ enable service: _require-server-role
         echo "  Note:     The nimda user is added to the docker group automatically."
         ;;
       dockhand)
-        echo "  Container: dockhand (NixOS OCI container via Podman)"
+        echo "  Container: dockhand (NixOS OCI container, Docker or Podman backend)"
         echo "  Web UI:    http://<server-ip>:8073"
         echo "  About:     Modern container management UI — browse containers, Compose stacks, logs, and terminals from a browser."
-        echo "  Requires:  Podman must be enabled first (just enable podman)."
+        echo "  Backend:   vexos.server.dockhand.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just enable podman' first)."
         echo "  Note:      Port remapped from upstream default 3000 — Forgejo also uses 3000."
         ;;
       forgejo)
@@ -2339,10 +2354,10 @@ enable service: _require-server-role
         echo "  Login:    Default admin / insecure — change immediately after first login."
         ;;
       portainer)
-        echo "  Container: portainer (NixOS OCI container)"
+        echo "  Container: portainer (NixOS OCI container, Docker or Podman backend)"
         echo "  Web UI:   https://<server-ip>:9443"
-        echo "  About:    Web UI for managing Docker containers, images, volumes, and networks."
-        echo "  Note:     Requires Docker to be enabled (just enable docker)."
+        echo "  About:    Web UI for managing containers, images, volumes, and networks."
+        echo "  Backend:  vexos.server.portainer.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just enable podman' first)."
         ;;
       portbook)
         # ── Auto-patch the package hash if still a placeholder ──────────────────
