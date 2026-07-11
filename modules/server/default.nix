@@ -42,6 +42,7 @@
     # ── AI & Privacy ─────────────────────────────────────────────────────────
     ./kiji-proxy.nix
     ./portbook.nix
+    ./searxng.nix
     # ── Security ─────────────────────────────────────────────────────────────
     ./vaultwarden.nix
     ./authelia.nix
