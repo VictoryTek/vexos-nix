@@ -1130,7 +1130,7 @@ disable-feature feature: _require-desktop-role
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -1344,6 +1344,7 @@ available-services:
     _svc zigbee2mqtt         "Zigbee → MQTT bridge (no proprietary hub needed)"
     _hdr "AI & Privacy"
     _svc kiji-proxy          "Privacy-first OpenAI-compatible AI API proxy"
+    _svc searxng             "Privacy-respecting metasearch engine (no tracking, no query logging)"
     _hdr "Experimental"
     _svc proxmox             "Proxmox VE integration (experimental)"
     echo ""
@@ -1407,6 +1408,7 @@ service-info service="":
         podman)          printf "  %-18s  No web UI — podman / podman compose CLI\n"                                   "$1" ;;
         rustdesk)        printf "  %-18s  Ports :21115-21117 / :21118-21119 (no web UI)\n"                             "$1" ;;
         scrutiny)        printf "  %-18s  Web UI  http://<server-ip>:8078\n"                                           "$1" ;;
+        searxng)         printf "  %-18s  Web UI  http://<server-ip>:8888   (loopback-only by default)\n"              "$1" ;;
         stirling-pdf)    printf "  %-18s  Web UI  http://<server-ip>:8077\n"                                           "$1" ;;
         syncthing)       printf "  %-18s  Web UI  http://<server-ip>:8384\n"                                           "$1" ;;
         tautulli)        printf "  %-18s  Web UI  http://<server-ip>:8181\n"                                           "$1" ;;
@@ -1522,6 +1524,7 @@ status service: _require-server-role
       podman)         UNITS="podman";               URLS="" ;;
       rustdesk)       UNITS="rustdesk-server hbbr hbbs"; URLS="" ;;
       scrutiny)       UNITS="scrutiny";             URLS="http://localhost:8078" ;;
+      searxng)        UNITS="uwsgi";                URLS="http://localhost:8888" ;;
       stirling-pdf)   UNITS="docker-stirling-pdf";   URLS="http://localhost:8077" ;;
       syncthing)      UNITS="syncthing";            URLS="http://localhost:8384" ;;
       tautulli)       UNITS="tautulli";             URLS="http://localhost:8181" ;;
@@ -1755,6 +1758,28 @@ enable service: _require-server-role
     fi
 
     echo "✓ Enabled: $SERVICE"
+
+    # Ensure SearXNG has an environmentFile — server.secret_key in settings.yml
+    # is sourced from $SEARXNG_SECRET_KEY, so a working instance requires one.
+    # Auto-generated (random value) rather than prompted, since there is no
+    # external value for the user to supply — mirrors _ensure_vexboard_secret.
+    if [ "$SERVICE" = "searxng" ]; then
+        SEARXNG_ENV_OPTION="vexos.server.searxng.environmentFile"
+        SEARXNG_SECRET_PATH="/etc/nixos/secrets/searxng.env"
+        if ! grep -qP "^\s*${SEARXNG_ENV_OPTION//./\\.}\s*=" "$SVC_FILE" 2>/dev/null; then
+            if [ ! -f "$SEARXNG_SECRET_PATH" ]; then
+                sudo mkdir -p /etc/nixos/secrets
+                sudo chmod 700 /etc/nixos/secrets
+                printf 'SEARXNG_SECRET_KEY=%s\n' "$(head -c 48 /dev/urandom | base64)" | sudo tee "$SEARXNG_SECRET_PATH" > /dev/null
+                sudo chmod 600 "$SEARXNG_SECRET_PATH"
+            fi
+            if grep -qP "^\s*#\s*${SEARXNG_ENV_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+                sudo sed -i -E "s|^(\s*)#\s*(${SEARXNG_ENV_OPTION//./\\.}\s*=\s*\"[^\"]*\")\s*;|\1\2;|" "$SVC_FILE"
+            else
+                sudo sed -i "\$ s|^}|  ${SEARXNG_ENV_OPTION} = \"${SEARXNG_SECRET_PATH}\";\n}|" "$SVC_FILE"
+            fi
+        fi
+    fi
 
     # Ensure VexBoard has a secretFile — required by the build assertion.
     # Runs when VexBoard is explicitly enabled or auto-enabled alongside a service.
@@ -2017,6 +2042,17 @@ enable service: _require-server-role
         echo "  Service:  scrutiny.service"
         echo "  Web UI:   http://<server-ip>:8078"
         echo "  About:    Hard drive health dashboard powered by S.M.A.R.T. data with alerts on failing metrics."
+        ;;
+      searxng)
+        echo "  Service:  uwsgi.service (SearXNG vassal)"
+        echo "  Web UI:   http://<server-ip>:8888  (loopback-only by default — see Note below)"
+        echo "  About:    Privacy-respecting metasearch engine — aggregates results from many search"
+        echo "            engines without tracking. Hardened by default: uWSGI request logging disabled,"
+        echo "            POST-based search submissions (queries never appear in URLs/logs/referrers)."
+        echo "  Secret:   Auto-generated at /etc/nixos/secrets/searxng.env (SEARXNG_SECRET_KEY)."
+        echo "  Note:     Closed to the network by default (openFirewall=false, binds to 127.0.0.1)."
+        echo "            Front it with Caddy/Nginx/Traefik (already in this repo) to expose it, or"
+        echo "            set vexos.server.searxng.openFirewall = true for direct LAN access."
         ;;
       stirling-pdf)
         echo "  Container: stirling-pdf (NixOS OCI container)"
