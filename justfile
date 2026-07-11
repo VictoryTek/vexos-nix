@@ -1306,7 +1306,7 @@ available-services:
     _svc plex                "Personal media library & streaming server"
     _svc tautulli            "Monitoring & analytics for Plex Media Server"
     _hdr "Media Requests & Automation"
-    _svc arr                 "*arr suite — Sonarr, Radarr, Lidarr, Prowlarr, SABnzbd"
+    _svc arr                 "*arr suite — Sonarr, Radarr, Lidarr, Prowlarr, SABnzbd, Maintainerr"
     _svc seerr               "Media request manager (Jellyfin, Plex, Emby)"
     _hdr "Monitoring & Admin"
     _svc cockpit             "Web-based Linux server management console"
@@ -1360,11 +1360,34 @@ service-info service="":
     #!/usr/bin/env bash
     set -euo pipefail
     SERVICE="{{service}}"
+    SVC_FILE="/etc/nixos/server-services.nix"
 
     _info() {
       case "$1" in
         adguard)         printf "  %-18s  Web UI  http://<server-ip>:3080   |  DNS on :53\n"                           "$1" ;;
-        arr)             printf "  %-18s  SABnzbd :8080  Sonarr :8989  Radarr :7878  Lidarr :8686  Prowlarr :9696\n"   "$1" ;;
+        arr)
+            _arr_full=false
+            grep -qP '^\s*vexos\.server\.arr\.enable\s*=\s*true' "$SVC_FILE" 2>/dev/null && _arr_full=true
+            _arr_parts=""
+            _arr_want() {
+                if $_arr_full || grep -qP "^\s*vexos\.server\.arr\.$1\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+                    _arr_parts="$_arr_parts $2"
+                fi
+            }
+            _arr_want sabnzbd     "SABnzbd :8080"
+            _arr_want sonarr      "Sonarr :8989"
+            _arr_want radarr      "Radarr :7878"
+            _arr_want lidarr      "Lidarr :8686"
+            _arr_want prowlarr    "Prowlarr :9696"
+            _arr_want qbittorrent "qBittorrent :8081"
+            _arr_want bazarr      "Bazarr :6767"
+            _arr_want maintainerr "Maintainerr :6246"
+            if [ -z "$_arr_parts" ]; then
+                printf "  %-18s  (no arr components enabled)\n" "$1"
+            else
+                printf "  %-18s %s\n" "$1" "$_arr_parts"
+            fi
+            ;;
         attic)           printf "  %-18s  HTTP    http://<server-ip>:8400   (Nix binary cache)\n"                      "$1" ;;
         audiobookshelf)  printf "  %-18s  Web UI  http://<server-ip>:8234\n"                                           "$1" ;;
         caddy)           printf "  %-18s  Ports :8880, :8443\n"                                                           "$1" ;;
@@ -1450,7 +1473,6 @@ service-info service="":
         _info "$SERVICE"
         echo ""
     else
-        SVC_FILE="/etc/nixos/server-services.nix"
         if [ ! -f "$SVC_FILE" ]; then
             echo ""
             echo "No services enabled yet — run 'just enable <service>' to get started."
@@ -1463,6 +1485,9 @@ service-info service="":
         FOUND=0
         for svc in {{_server_service_names}}; do
             if grep -qF "vexos.server.${svc}.enable = true;" "$SVC_FILE" 2>/dev/null; then
+                _info "$svc"
+                FOUND=1
+            elif [ "$svc" = "arr" ] && grep -qP '^\s*vexos\.server\.arr\.\w+\.enable\s*=\s*true' "$SVC_FILE" 2>/dev/null; then
                 _info "$svc"
                 FOUND=1
             fi
@@ -1493,8 +1518,8 @@ status service: _require-server-role
     # Format for URLS:  space-separated http://localhost:<port> entries (empty = no HTTP check)
     case "$SERVICE" in
       adguard)        UNITS="adguardhome";          URLS="http://localhost:3080" ;;
-      arr)            UNITS="sabnzbd sonarr radarr lidarr prowlarr";
-                      URLS="http://localhost:8080 http://localhost:8989 http://localhost:7878 http://localhost:8686 http://localhost:9696" ;;
+      arr)            UNITS="sabnzbd sonarr radarr lidarr prowlarr docker-maintainerr";
+                      URLS="http://localhost:8080 http://localhost:8989 http://localhost:7878 http://localhost:8686 http://localhost:9696 http://localhost:6246" ;;
       attic)          UNITS="atticd";               URLS="http://localhost:8400" ;;
       audiobookshelf) UNITS="audiobookshelf";       URLS="http://localhost:8234" ;;
       backup)         UNITS="restic-backups-main";  URLS="" ;;
@@ -1597,6 +1622,8 @@ services: _require-server-role
         nix_name=$(echo "$svc" | sed 's/-/_/g')
         if grep -qP "vexos\.server\.(${svc}|${nix_name})\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
             printf "    \033[32m✓\033[0m %s\n" "$svc"
+        elif [ "$svc" = "arr" ] && grep -qP '^\s*vexos\.server\.arr\.\w+\.enable\s*=\s*true' "$SVC_FILE" 2>/dev/null; then
+            printf "    \033[32m✓\033[0m %s\n" "$svc"
         else
             printf "    \033[90m✗\033[0m %s\n" "$svc"
         fi
@@ -1659,6 +1686,72 @@ enable service: _require-server-role
 
     # The option uses dots as-is (e.g. uptime-kuma stays uptime-kuma)
     OPTION="vexos.server.${SERVICE}.enable"
+
+    # Insert-or-replace a "key = value;" line in $SVC_FILE.
+    _set_flag() {
+        local opt="$1" val="$2" esc="${1//./\\.}"
+        if grep -qP "^\s*#?\s*${esc}\s*=\s*(true|false)\s*;" "$SVC_FILE" 2>/dev/null; then
+            sudo sed -i -E "s/^(\s*)#?\s*(${esc})\s*=\s*(true|false)\s*;/\1${opt} = ${val};/" "$SVC_FILE"
+        else
+            sudo sed -i "\$ s|^}|  ${opt} = ${val};\n}|" "$SVC_FILE"
+        fi
+    }
+
+    # Arr stack: full-stack or individual-component selection.
+    if [ "$SERVICE" = "arr" ]; then
+        ARR_COMPONENTS="sabnzbd sonarr radarr lidarr prowlarr qbittorrent bazarr maintainerr"
+        if grep -qP '^\s*vexos\.server\.arr\.(enable|\w+\.enable)\s*=\s*true' "$SVC_FILE" 2>/dev/null; then
+            echo "arr is already enabled (or has enabled components). Use 'just disable arr' first to reconfigure."
+            exit 0
+        fi
+        echo "  Enable the full *arr stack, or select individual components?"
+        read -r -p "  [F]ull / [i]ndividual: " _arr_mode
+        if [[ "$_arr_mode" =~ ^[Ii]$ ]]; then
+            read -r -p "  Enter components (space or comma separated: ${ARR_COMPONENTS// /, }): " _arr_selected
+            _arr_selected="${_arr_selected//,/ }"
+            _arr_enabled=""
+            for _c in $_arr_selected; do
+                if ! echo "$ARR_COMPONENTS" | tr ' ' '\n' | grep -qx "$_c"; then
+                    echo "  error: unknown arr component '$_c' — skipping"
+                    continue
+                fi
+                _set_flag "vexos.server.arr.${_c}.enable" true
+                _arr_enabled="$_arr_enabled $_c"
+            done
+            if [ -z "$_arr_enabled" ]; then
+                echo "error: no valid components selected" >&2
+                exit 1
+            fi
+            echo "✓ Enabled arr components:$_arr_enabled"
+        else
+            _set_flag "$OPTION" true
+            _arr_enabled=" sabnzbd sonarr radarr lidarr prowlarr"
+            echo "✓ Enabled: $SERVICE (full stack)"
+        fi
+
+        VB_OPTION="vexos.server.vexboard.enable"
+        if ! grep -qP "^\s*vexos\.server\.vexboard\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+            _set_flag "$VB_OPTION" true
+            echo "  + VexBoard also enabled (server dashboard — http://<server-ip>:7280)"
+        fi
+
+        echo "  → Run 'just rebuild' to apply."
+        echo ""
+        echo "  Enabled components:"
+        for _c in $_arr_enabled; do
+            case "$_c" in
+                sabnzbd)     echo "    SABnzbd     → http://<server-ip>:8080" ;;
+                sonarr)      echo "    Sonarr      → http://<server-ip>:8989" ;;
+                radarr)      echo "    Radarr      → http://<server-ip>:7878" ;;
+                lidarr)      echo "    Lidarr      → http://<server-ip>:8686" ;;
+                prowlarr)    echo "    Prowlarr    → http://<server-ip>:9696" ;;
+                qbittorrent) echo "    qBittorrent → http://<server-ip>:8081" ;;
+                bazarr)      echo "    Bazarr      → http://<server-ip>:6767" ;;
+                maintainerr) echo "    Maintainerr → http://<server-ip>:6246" ;;
+            esac
+        done
+        exit 0
+    fi
 
     if grep -q "${OPTION}\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
         echo "$SERVICE is already enabled."
@@ -1829,16 +1922,6 @@ enable service: _require-server-role
         echo "  Service:  adguardhome.service"
         echo "  Web UI:   http://<server-ip>:3080"
         echo "  DNS:      Listens on port 53 — point your router's DNS at this server after enabling."
-        ;;
-      arr)
-        echo "  Services: sabnzbd.service  sonarr.service  radarr.service  lidarr.service  prowlarr.service"
-        echo "  Web UIs:"
-        echo "    SABnzbd  → http://<server-ip>:8080"
-        echo "    Sonarr   → http://<server-ip>:8989"
-        echo "    Radarr   → http://<server-ip>:7878"
-        echo "    Lidarr   → http://<server-ip>:8686"
-        echo "    Prowlarr → http://<server-ip>:9696"
-        echo "  About:    Full *arr media automation stack — SABnzbd downloads, Sonarr/Radarr/Lidarr manage libraries, Prowlarr proxies indexers."
         ;;
       attic)
         echo "  Service:  atticd.service"
@@ -2410,6 +2493,29 @@ disable service: _require-server-role
     fi
 
     OPTION="vexos.server.${SERVICE}.enable"
+
+    # Arr stack may have been enabled as a whole (top-level flag) or as
+    # individual components (per-component flags) — sweep both.
+    if [ "$SERVICE" = "arr" ]; then
+        ARR_FOUND=0
+        for _opt in vexos.server.arr.enable \
+                    vexos.server.arr.sabnzbd.enable vexos.server.arr.sonarr.enable \
+                    vexos.server.arr.radarr.enable vexos.server.arr.lidarr.enable \
+                    vexos.server.arr.prowlarr.enable vexos.server.arr.qbittorrent.enable \
+                    vexos.server.arr.bazarr.enable vexos.server.arr.maintainerr.enable; do
+            if grep -qF "${_opt} = true;" "$SVC_FILE" 2>/dev/null; then
+                sudo sed -i "s/${_opt//./\\.} = true;/${_opt//./\\.} = false;/" "$SVC_FILE"
+                ARR_FOUND=1
+            fi
+        done
+        if [ "$ARR_FOUND" -eq 0 ]; then
+            echo "$SERVICE is already disabled."
+            exit 0
+        fi
+        echo "✗ Disabled: $SERVICE"
+        echo "  → Run 'just rebuild' to apply."
+        exit 0
+    fi
 
     if ! grep -qF "${OPTION} = true;" "$SVC_FILE" 2>/dev/null; then
         echo "$SERVICE is already disabled."

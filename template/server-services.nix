@@ -6,7 +6,7 @@
 # Available services:
 #   docker, arcane, jellyfin, plex, audiobookshelf, tautulli, navidrome,
 #   seerr,
-#   arr (SABnzbd + Sonarr + Radarr + Lidarr + Prowlarr),
+#   arr (SABnzbd + Sonarr + Radarr + Lidarr + Prowlarr + qBittorrent + Bazarr + Maintainerr),
 #   komga, kavita, papermc, nextcloud, syncthing, immich, minio, photoprism, joplin,
 #   paperless, forgejo, code-server, attic, vaultwarden, authelia,
 #   nginx, caddy, traefik, adguard, headscale, unbound, nginx-proxy-manager,
@@ -57,7 +57,17 @@
   # vexos.server.seerr.enable = false;                 # Port 5055 — media requests (Jellyfin, Plex, Emby)
 
   # ── Media Automation (Arr Stack) ─────────────────────────────────────────
-  # vexos.server.arr.enable = false;                    # SABnzbd:8080 Sonarr:8989 Radarr:7878 Lidarr:8686 Prowlarr:9696
+  # vexos.server.arr.enable = false;                    # Full stack: SABnzbd:8080 Sonarr:8989 Radarr:7878 Lidarr:8686 Prowlarr:9696
+  # Or enable components individually (via `just enable arr` → individual mode,
+  # or by setting these directly):
+  # vexos.server.arr.sabnzbd.enable = false;            # Port 8080
+  # vexos.server.arr.sonarr.enable = false;             # Port 8989
+  # vexos.server.arr.radarr.enable = false;             # Port 7878
+  # vexos.server.arr.lidarr.enable = false;             # Port 8686
+  # vexos.server.arr.prowlarr.enable = false;           # Port 9696
+  # vexos.server.arr.qbittorrent.enable = false;        # Port 8081 — torrent client
+  # vexos.server.arr.bazarr.enable = false;              # Port 6767 — subtitle manager
+  # vexos.server.arr.maintainerr.enable = false;         # Port 6246 — automated library cleanup
 
   # ── Books & Comics ───────────────────────────────────────────────────────
   # vexos.server.komga.enable = false;                  # Port 8090 — comics/manga
