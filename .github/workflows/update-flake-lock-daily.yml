@@ -1,0 +1,44 @@
+name: Flake Update — Daily (stable inputs)
+
+# Runs every day at 04:00 UTC. Updates only the stable-tracked inputs
+# (nixpkgs 26.05, up, vexboard). Safe to trigger manually at any time —
+# this workflow never touches nixpkgs-unstable or the other weekly-only
+# inputs; see update-flake-lock-weekly-monday.yml for those.
+
+on:
+  schedule:
+    - cron: '0 4 * * *'   # Every day, 04:00 UTC
+  workflow_dispatch:        # Manual trigger: same scope as the daily schedule
+
+permissions:
+  contents: write           # Required to commit and push flake.lock back to main
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update nixpkgs stable, up, and vexboard
+        run: nix flake update nixpkgs up vexboard
+
+      - name: Commit updated flake.lock
+        run: |
+          if git diff --quiet flake.lock; then
+            echo "flake.lock unchanged — nothing to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flake.lock
+          git commit -m "chore: update flake inputs (daily)"
+          git push

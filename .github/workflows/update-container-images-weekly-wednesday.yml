@@ -1,10 +1,10 @@
-name: Update container image pins
+name: Container Image Pins — Weekly Wednesday
 
 # Checks the 8 OCI-container services in modules/server/*.nix (portainer, homepage,
 # stirling-pdf, authelia, nginx-proxy-manager, dockhand, dozzle, arcane) for a newer
 # version tag and rewrites the pin in place. These services are pinned (not :latest)
 # so nixos-rebuild stays reproducible between runs of this workflow — see MASTER_PLAN
-# M-22/M-35. Mirrors update-flake-lock.yml's direct-commit-to-main style (no PR).
+# M-22/M-35. Mirrors update-flake-lock-daily.yml's direct-commit-to-main style (no PR).
 # No separate "pull and restart" recipe exists or is needed — the next
 # `just update`/`update-all`/`deploy` on any host pulls whatever pin this workflow
 # committed and applies it via the normal nixos-rebuild switch path.
