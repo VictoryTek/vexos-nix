@@ -84,7 +84,7 @@ in
     virtualisation.oci-containers.backend = lib.mkIf (cfg.backend == "docker") (lib.mkDefault "docker");
 
     virtualisation.oci-containers.containers.dockhand = {
-      image     = "ghcr.io/finsys/dockhand:v1.0.36";
+      image     = "fnsys/dockhand:v1.0.37";
       autoStart = true;
 
       # Expose Dockhand on the configured host port.
