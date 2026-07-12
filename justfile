@@ -1855,6 +1855,47 @@ enable service: _require-server-role
 
     echo "✓ Enabled: $SERVICE"
 
+    # Ensure Arcane has appUrl and environmentFile — required by the build
+    # assertion. appUrl is host-specific and must be supplied by the user;
+    # environmentFile (ENCRYPTION_KEY/JWT_SECRET) is auto-generated, mirroring
+    # the SearXNG/VexBoard secret pattern below since there is no external
+    # value for the user to supply for those.
+    if [ "$SERVICE" = "arcane" ]; then
+        ARCANE_URL_OPTION="vexos.server.arcane.appUrl"
+        ARCANE_ENV_OPTION="vexos.server.arcane.environmentFile"
+        ARCANE_SECRET_PATH="/etc/nixos/secrets/arcane-env"
+
+        _arcane_url_set="$(grep -oP "^\s*${ARCANE_URL_OPTION//./\\.}\s*=\s*\"\K[^\"]*" "$SVC_FILE" 2>/dev/null || true)"
+        if [ -z "$_arcane_url_set" ] || [ "$_arcane_url_set" = "http://arcane.example.com" ]; then
+            _arcane_url=""
+            while [ -z "$_arcane_url" ]; do
+                read -r -p "  Enter the public URL for this Arcane instance (e.g. https://arcane.example.com): " _arcane_url
+            done
+            if grep -qP "^\s*#?\s*${ARCANE_URL_OPTION//./\\.}\s*=" "$SVC_FILE" 2>/dev/null; then
+                sudo sed -i -E "s|^(\s*)#?\s*(${ARCANE_URL_OPTION//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${ARCANE_URL_OPTION} = \"${_arcane_url}\";|" "$SVC_FILE"
+            else
+                sudo sed -i "\$ s|^}|  ${ARCANE_URL_OPTION} = \"${_arcane_url}\";\n}|" "$SVC_FILE"
+            fi
+        fi
+
+        if ! grep -qP "^\s*${ARCANE_ENV_OPTION//./\\.}\s*=" "$SVC_FILE" 2>/dev/null; then
+            if [ ! -f "$ARCANE_SECRET_PATH" ]; then
+                sudo mkdir -p /etc/nixos/secrets
+                sudo chmod 700 /etc/nixos/secrets
+                {
+                    printf 'ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)"
+                    printf 'JWT_SECRET=%s\n' "$(openssl rand -hex 32)"
+                } | sudo tee "$ARCANE_SECRET_PATH" > /dev/null
+                sudo chmod 600 "$ARCANE_SECRET_PATH"
+            fi
+            if grep -qP "^\s*#\s*${ARCANE_ENV_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+                sudo sed -i -E "s|^(\s*)#\s*(${ARCANE_ENV_OPTION//./\\.}\s*=\s*\"[^\"]*\")\s*;|\1\2;|" "$SVC_FILE"
+            else
+                sudo sed -i "\$ s|^}|  ${ARCANE_ENV_OPTION} = \"${ARCANE_SECRET_PATH}\";\n}|" "$SVC_FILE"
+            fi
+        fi
+    fi
+
     # Ensure SearXNG has an environmentFile — server.secret_key in settings.yml
     # is sourced from $SEARXNG_SECRET_KEY, so a working instance requires one.
     # Auto-generated (random value) rather than prompted, since there is no
@@ -1931,12 +1972,7 @@ enable service: _require-server-role
         echo "  Web UI:    http://<server-ip>:3552"
         echo "  About:     Modern container management UI — browse containers, images, volumes, and networks from a browser."
         echo "  Backend:   vexos.server.arcane.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just enable podman' first)."
-        echo "  Required:  vexos.server.arcane.appUrl          = \"https://arcane.example.com\";"
-        echo "             vexos.server.arcane.environmentFile = \"/etc/nixos/secrets/arcane-env\";"
-        echo "  Secrets:   Create the environment file before first start:"
-        echo "               echo \"ENCRYPTION_KEY=\$(openssl rand -hex 32)\"  > /etc/nixos/secrets/arcane-env"
-        echo "               echo \"JWT_SECRET=\$(openssl rand -hex 32)\"     >> /etc/nixos/secrets/arcane-env"
-        echo "               chmod 0600 /etc/nixos/secrets/arcane-env"
+        echo "  appUrl and environmentFile (ENCRYPTION_KEY/JWT_SECRET) were configured above."
         ;;
       attic)
         echo "  Service:  atticd.service"
