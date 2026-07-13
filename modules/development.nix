@@ -63,6 +63,7 @@ in
 
       # ── AI tooling ────────────────────────────────────────────────────────────
       pkgs.claude-code # Anthropic Claude CLI
+      pkgs.mcp-nixos # MCP server exposing NixOS/nixpkgs/home-manager option data to MCP-aware tools
 
       # ── Nix tooling ───────────────────────────────────────────────────────────
       pkgs.nil # Nix LSP server
