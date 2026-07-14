@@ -1708,14 +1708,23 @@ enable service: _require-server-role
             exit 0
         fi
         echo "  Enable the full *arr stack, or select individual components?"
-        read -r -p "  [F]ull / [i]ndividual: " _arr_mode
-        if [[ "$_arr_mode" =~ ^[Ii]$ ]]; then
-            read -r -p "  Enter components (space or comma separated: ${ARR_COMPONENTS// /, }): " _arr_selected
+        echo "    1. Full"
+        echo "    2. Individual"
+        read -r -p "  Select [1/2]: " _arr_mode
+        if [ "$_arr_mode" = "2" ]; then
+            echo "  Select components:"
+            _i=0
+            for _c in $ARR_COMPONENTS; do
+                _i=$((_i + 1))
+                printf "    %d. %s\n" "$_i" "$_c"
+            done
+            read -r -p "  Enter numbers (space or comma separated): " _arr_selected
             _arr_selected="${_arr_selected//,/ }"
             _arr_enabled=""
-            for _c in $_arr_selected; do
-                if ! echo "$ARR_COMPONENTS" | tr ' ' '\n' | grep -qx "$_c"; then
-                    echo "  error: unknown arr component '$_c' — skipping"
+            for _n in $_arr_selected; do
+                _c=$(echo "$ARR_COMPONENTS" | tr ' ' '\n' | sed -n "${_n}p")
+                if [ -z "$_c" ]; then
+                    echo "  error: invalid selection '$_n' — skipping"
                     continue
                 fi
                 _set_flag "vexos.server.arr.${_c}.enable" true
