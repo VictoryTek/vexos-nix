@@ -319,11 +319,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1783808207,
-        "narHash": "sha256-OLVoULTyvmM/UZyWhodgMhHw3TFlPE43MlYjE7SjHTs=",
+        "lastModified": 1783982500,
+        "narHash": "sha256-3e1dZLlqswH2xEEBOYS3VGahCYC25UU1GdiMVHGAExA=",
         "owner": "VictoryTek",
         "repo": "Up",
-        "rev": "b1efd4a8d0701b454808740365475ed4745d0d11",
+        "rev": "489f5fe38d3bec80d3c540306eae222900340ccf",
         "type": "github"
       },
       "original": {
@@ -359,11 +359,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1783965542,
-        "narHash": "sha256-hpun1JXNj0Dwyj/3mgzWlSK3ij1lobd3RbUmyjyK5Ec=",
+        "lastModified": 1783989762,
+        "narHash": "sha256-IvUN+VClAPyu6O8rJZmh/yABBT20CHWVB/1w6Ky9qB8=",
         "owner": "VictoryTek",
         "repo": "vexboard",
-        "rev": "55133668255963eab1da7ff6139f2131fb7449b0",
+        "rev": "2e993473989ae590dff232c6792e0ed611997b8a",
         "type": "github"
       },
       "original": {
