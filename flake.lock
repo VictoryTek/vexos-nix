@@ -359,11 +359,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1784083029,
-        "narHash": "sha256-gS9GuIkqbgqFt9oU31Ar29T2xq/BrkwVEMwgtRdMxSw=",
+        "lastModified": 1784132262,
+        "narHash": "sha256-cg+CpBjq/B+hzI1l6NjUWM0Aghs5JFnjs8hvKGwsBys=",
         "owner": "VictoryTek",
         "repo": "vexboard",
-        "rev": "2c350c41a010332d51cf379dec4c3cb8444a78e4",
+        "rev": "0b2f691f1b1bf1f6e70d6728dd436ad2fac8e31a",
         "type": "github"
       },
       "original": {
