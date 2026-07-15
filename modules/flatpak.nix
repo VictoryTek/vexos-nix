@@ -13,6 +13,7 @@ let
     "io.github.kolunmi.Bazaar"
     "org.pulseaudio.pavucontrol"
     "org.gnome.World.PikaBackup"
+    "net.cozic.joplin_desktop"
   ];
 
   appsToInstall = (lib.filter

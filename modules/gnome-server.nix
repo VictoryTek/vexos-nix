@@ -39,6 +39,7 @@
           name = "Office";
           apps = [
             "org.gnome.TextEditor.desktop"
+            "net.cozic.joplin_desktop.desktop"
           ];
         };
 

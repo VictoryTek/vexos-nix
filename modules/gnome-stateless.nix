@@ -41,6 +41,7 @@
           apps = [
             "org.onlyoffice.desktopeditors.desktop"
             "org.gnome.TextEditor.desktop"
+            "net.cozic.joplin_desktop.desktop"
           ];
         };
 
