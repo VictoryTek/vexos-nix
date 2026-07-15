@@ -146,13 +146,13 @@
     # Normalises gpuModule to accept either a single module or a list of modules.
     # Shared builder helper — used by both mkVariant and mkStatelessVariant.
     _mkVariantWith = baseModule: variant: gpuModule: nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
       modules =
         let
           # Convert to list if necessary, preserving backward compatibility
           modules = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
         in
         [
+          { nixpkgs.hostPlatform = "x86_64-linux"; }
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
 
           bootloaderModule
@@ -181,7 +181,6 @@
     # install time.  Without that file the account is locked (hashedPassword = "!") —
     # the setup scripts MUST be run before the first boot.
     mkStatelessVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
       modules =
         let
           modules = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
@@ -193,6 +192,7 @@
           hasUserOverride  = builtins.pathExists userOverrideFile;
         in
         [
+          { nixpkgs.hostPlatform = "x86_64-linux"; }
           { vexos.variant = variant; }
           bootloaderModule
           hardwareModule
@@ -208,13 +208,13 @@
     # HTPC does not use impermanence, so environment.etc is correct here
     # (same pattern as mkServerVariant — NOT the /persistent activationScript path).
     mkHtpcVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
       specialArgs = { inputs = vexos-nix.inputs; };
       modules =
         let
           modules = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
         in
         [
+          { nixpkgs.hostPlatform = "x86_64-linux"; }
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
           bootloaderModule
           hardwareModule
@@ -228,12 +228,12 @@
     # Vanilla role: stock NixOS baseline — no desktop, no gaming, no branding.
     # Suitable for system restore or a clean starting point.
     mkVanillaVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
       modules =
         let
           modules = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
         in
         [
+          { nixpkgs.hostPlatform = "x86_64-linux"; }
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
           bootloaderModule
           hardwareModule
@@ -246,7 +246,6 @@
     # Headless server role: CLI only, no desktop environment.
     # See the mkServerVariant comment above for the ZFS hostId requirement.
     mkHeadlessServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
       specialArgs = { inputs = vexos-nix.inputs; };
       modules =
         let
@@ -255,6 +254,7 @@
           hasServices  = builtins.pathExists servicesFile;
         in
         [
+          { nixpkgs.hostPlatform = "x86_64-linux"; }
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
           bootloaderModule
           hardwareModule
@@ -280,7 +280,6 @@
     # Leaving "XXXXXXXX" in place causes an assertion failure that aborts the
     # build — it is NOT a warning.
     mkServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
       specialArgs = { inputs = vexos-nix.inputs; };
       modules =
         let
@@ -290,6 +289,7 @@
           hasServices  = builtins.pathExists servicesFile;
         in
         [
+          { nixpkgs.hostPlatform = "x86_64-linux"; }
           # Persist the active variant name so vexos-updater and `just rebuild` can read it.
           # The server role does not use impermanence, so environment.etc is correct here.
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }

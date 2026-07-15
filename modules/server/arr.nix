@@ -41,6 +41,8 @@ in
       services.sabnzbd = {
         enable = true;
         openFirewall = true; # Port 8080
+        configFile = null; # use the settings-based config path (configFile is deprecated)
+        settings.misc.host = "0.0.0.0"; # module default is 127.0.0.1, which would make openFirewall pointless
       };
     })
 
