@@ -7,6 +7,9 @@
     brave               # Chromium-based browser
     vexos.brave-origin  # Brave Origin standalone browser
     gparted             # Graphical disk partition editor (system package so .desktop is resolvable by GNOME)
+    ntfs3g              # mkfs.ntfs — lets gparted format NTFS
+    dosfstools          # mkfs.vfat/mkfs.fat — lets gparted format FAT16/FAT32
+    exfatprogs          # mkfs.exfat — lets gparted format exFAT
     jdk21               # Java 21 (LTS)
     localsend           # Cross-platform AirDrop alternative (LAN file sharing)
     mpv                 # Video player (replaces Totem Flatpak on desktop/stateless/server)
