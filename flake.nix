@@ -117,6 +117,17 @@
       let path = /etc/nixos/server-services.nix;
       in if builtins.pathExists path then [ path ] else [];
 
+    # Optional generated storage config, written by the storage recipes. Two
+    # independently-owned files so local and remote configs never clobber each
+    # other: storage-pool.nix (mergerfs branches + SnapRAID parity + backend,
+    # from `just create-mergerfs-pool`) and storage-remote.nix (remote NFS/CIFS
+    # mounts, from `just attach-remote-storage`). Absent files ⇒ empty list, so
+    # server outputs stay buildable on hosts that never created a pool — same
+    # pattern as serverServicesModule.
+    storagePoolModule =
+      (let p = /etc/nixos/storage-pool.nix;   in if builtins.pathExists p then [ p ] else [])
+      ++ (let p = /etc/nixos/storage-remote.nix; in if builtins.pathExists p then [ p ] else []);
+
     # Optional per-host feature toggles for the desktop role.
     # Empty list when absent so desktop outputs stay buildable on machines that
     # haven't run `just enable-feature` yet.
@@ -194,7 +205,7 @@
         # vexboardBase: overlay + NixOS module for the default server dashboard.
         baseModules      = commonBase ++ [ upModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
         extraModules     = [];
-        hostLocalModules = serverServicesModule ++ featuresModule;
+        hostLocalModules = serverServicesModule ++ featuresModule ++ storagePoolModule;
       };
       headless-server = {
         homeFile         = ./home-headless-server.nix;
@@ -209,7 +220,7 @@
         # configuration-headless-server.nix) — users can opt in via server-services.nix.
         baseModules      = commonBase ++ proxmoxBase ++ sopsBase ++ vexboardBase;
         extraModules     = [];
-        hostLocalModules = serverServicesModule;
+        hostLocalModules = serverServicesModule ++ storagePoolModule;
       };
       vanilla = {
         homeFile         = ./home-vanilla.nix;

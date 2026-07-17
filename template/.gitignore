@@ -7,6 +7,11 @@ secrets/
 # Host-generated — produced by nixos-generate-config, unique per machine
 hardware-configuration.nix
 
+# Host-generated — written by `just create-mergerfs-pool` / `just attach-remote-storage`.
+# Contains per-machine disk UUIDs and mount layout; not portable between hosts.
+storage-pool.nix
+storage-remote.nix
+
 # Transient runtime files
 *.bak
 vexos-variant

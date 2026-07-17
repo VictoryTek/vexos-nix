@@ -124,6 +124,12 @@
   # vexos.server.nas.enable = true;                     # ONE-SHOT: enables full NAS stack
   #                                                       # (Cockpit + navigator + file-sharing + identities)
   #                                                       # Individual sub-options below can still override it
+  # vexos.server.nas.backend = "zfs";                   # "zfs" (default) or "mergerfs" (mixed-capacity bulk pool).
+  #   Storage pools are built with interactive recipes (they write
+  #   /etc/nixos/storage-pool.nix and /etc/nixos/storage-remote.nix — do not edit by hand):
+  #     just create-zfs-pool          — matched-disk ZFS pool (Proxmox VM / realtime redundancy)
+  #     just create-mergerfs-pool     — mergerfs+SnapRAID pool from any mix of drives (media/bulk)
+  #     just attach-remote-storage    — mount a pool exported by another host (NFS/SMB)
   # vexos.server.cockpit.enable = false;                # Port 9090
   # vexos.server.cockpit.navigator.enable = true;       # 45Drives file browser plugin
   # vexos.server.cockpit.fileSharing.enable = true;     # 45Drives Samba + NFS share manager (requires cockpit.enable = true)

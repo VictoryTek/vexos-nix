@@ -18,6 +18,8 @@ default:
         echo "    enable-plex-pass           Enable Plex Pass hardware transcoding"
         echo "    disable-plex-pass          Disable Plex Pass hardware transcoding"
         echo "    create-zfs-pool            Create a ZFS pool for Proxmox VM storage (interactive)"
+        echo "    create-mergerfs-pool       Create a mergerfs+SnapRAID bulk pool from mixed drives (interactive)"
+        echo "    attach-remote-storage      Attach a remote NFS/SMB storage pool from another host (interactive)"
     elif [[ "$variant" == *stateless* ]]; then
         echo ""
         echo "Active role: stateless (ephemeral / tmpfs root)"
@@ -1267,6 +1269,51 @@ create-zfs-pool: _require-server-role
 
     sudo bash "$SCRIPT"
 
+# Locate a script under scripts/ (walking up from $PWD, then known checkout
+# locations, then the nix-store flake input) and run it as root. Shared by the
+# storage-pool recipes below.
+[private]
+_run-storage-script script:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SCRIPT_NAME="{{script}}"
+    _jf_raw="{{justfile_directory()}}"
+    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
+    _jf_dir=$(dirname "$_jf_real")
+    SCRIPT=""
+    _walk="$PWD"
+    while [ "$_walk" != "/" ] && [ -z "$SCRIPT" ]; do
+        [ -f "$_walk/scripts/$SCRIPT_NAME" ] && SCRIPT="$_walk/scripts/$SCRIPT_NAME"
+        _walk=$(dirname "$_walk")
+    done
+    for _candidate in "$_jf_raw/scripts" "$_jf_dir/scripts" "/etc/nixos/scripts" "$HOME/Projects/vexos-nix/scripts"; do
+        [ -n "$SCRIPT" ] && break
+        [ -f "$_candidate/$SCRIPT_NAME" ] && SCRIPT="$_candidate/$SCRIPT_NAME"
+    done
+    if [ -z "$SCRIPT" ] && [ -f /etc/nixos/flake.nix ]; then
+        _vexos_store=$(nix eval --raw --expr '(builtins.getFlake "git+file:///etc/nixos").inputs.vexos-nix.outPath' 2>/dev/null || true)
+        [ -n "$_vexos_store" ] && [ -f "$_vexos_store/scripts/$SCRIPT_NAME" ] && SCRIPT="$_vexos_store/scripts/$SCRIPT_NAME"
+    fi
+    [ -n "$SCRIPT" ] || { echo "error: scripts/$SCRIPT_NAME not found in any known location." >&2; exit 1; }
+    sudo bash "$SCRIPT"
+
+# Interactively build a mergerfs + SnapRAID "bulk" storage pool from mixed-
+# capacity drives (media / general bulk storage). Server roles only.
+# Formats the selected disks, mounts them, and writes a declarative
+# /etc/nixos/storage-pool.nix. Requires vexos.server.nas.backend = "mergerfs"
+# (or vexos.server.storage.mergerfs.enable) so the mergerfs userland is present.
+# Destructive actions only run after a typed-keyword confirmation.
+[private]
+create-mergerfs-pool: _require-server-role
+    @just _run-storage-script create-mergerfs-pool.sh
+
+# Attach a storage pool exported by ANOTHER host (NFS or CIFS/SMB) so local
+# services can consume it. Server roles only. Non-destructive — client mount
+# only. Writes/updates a declarative /etc/nixos/storage-remote.nix.
+[private]
+attach-remote-storage: _require-server-role
+    @just _run-storage-script attach-remote-storage.sh
+
 # List all available server service modules (catalog view, no role required).
 [private]
 available-services:
@@ -1663,6 +1710,68 @@ enable service: _require-server-role
         echo "error: unknown service '$SERVICE'"
         echo "available: $VALID_SERVICES"
         exit 1
+    fi
+
+    # ── Storage-tier advisory ────────────────────────────────────────────────
+    # Some services want a specific storage tier. Tell the operator which pool
+    # this service expects, detect whether one exists (local pool OR remote
+    # mount), and offer to set one up. Never blocks enabling — informational.
+    # Single source of truth for service → tier mapping (edit here to reclassify).
+    _storage_tier=""
+    case "$SERVICE" in
+        proxmox)
+            _storage_tier="zfs-vm" ;;
+        nextcloud|immich|photoprism|paperless|minio|syncthing|forgejo)
+            _storage_tier="zfs-live" ;;
+        jellyfin|plex|navidrome|audiobookshelf|kavita|komga|arr)
+            _storage_tier="mergerfs-bulk" ;;
+    esac
+    if [ -n "$_storage_tier" ]; then
+        case "$_storage_tier" in
+            zfs-vm)        echo ""; echo "  Storage: $SERVICE stores VM disks — needs a local ZFS pool." ;;
+            zfs-live)      echo ""; echo "  Storage: $SERVICE stores a database + many small files — best on a ZFS dataset (realtime redundancy)." ;;
+            mergerfs-bulk) echo ""; echo "  Storage: $SERVICE stores a large media library — best on a mergerfs+SnapRAID pool (mixed-capacity drives)." ;;
+        esac
+
+        _local_ok=false; _remote_ok=false
+        if [ "$_storage_tier" = "mergerfs-bulk" ]; then
+            mountpoint -q /storage 2>/dev/null && _local_ok=true
+        else
+            [ -n "$(zpool list -H -o name 2>/dev/null | head -1)" ] && _local_ok=true
+        fi
+        if [ "$_storage_tier" != "zfs-vm" ]; then
+            [ -n "$(findmnt -rn -t nfs,nfs4,cifs 2>/dev/null | head -1)" ] && _remote_ok=true
+        fi
+
+        if $_local_ok; then
+            echo "  ✓ A local pool is present — OK."
+        elif $_remote_ok; then
+            echo "  ✓ Remote storage is mounted — OK."
+        elif [ ! -t 0 ]; then
+            echo "  ⚠ No local pool or remote storage detected — set one up before using $SERVICE."
+        else
+            echo "  ⚠ No local pool or remote storage detected."
+            if [ "$_storage_tier" = "zfs-vm" ]; then
+                read -r -p "  Create a local ZFS pool now? [y/N]: " _sp
+                case "${_sp,,}" in
+                    y|yes) just create-zfs-pool ;;
+                    *)     echo "  Skipped — run 'just create-zfs-pool' before starting VMs." ;;
+                esac
+            else
+                echo "  Where should its storage live?"
+                echo "    1) Local mergerfs+SnapRAID pool   (mixed-capacity drives)"
+                echo "    2) Local ZFS pool                 (matched drives / realtime redundancy)"
+                echo "    3) Attach a remote storage server (NFS/SMB from another host)"
+                echo "    4) Skip — configure later"
+                read -r -p "  Choice [1-4]: " _sp
+                case "$_sp" in
+                    1) just create-mergerfs-pool ;;
+                    2) just create-zfs-pool ;;
+                    3) just attach-remote-storage ;;
+                    *) echo "  Skipped — run 'just create-mergerfs-pool', 'just create-zfs-pool', or 'just attach-remote-storage' later." ;;
+                esac
+            fi
+        fi
     fi
 
     if [ ! -f "$SVC_FILE" ]; then

@@ -138,6 +138,14 @@
     featuresFile = ./features.nix;
     hasFeatures  = builtins.pathExists featuresFile;
 
+    # ── Optional generated storage-pool config (server roles) ──────────────────
+    # Written by `just create-mergerfs-pool` / `just attach-remote-storage`:
+    # mergerfs branches, SnapRAID parity disks, and remote NFS/CIFS mounts.
+    storagePoolFile = ./storage-pool.nix;
+    hasStoragePool  = builtins.pathExists storagePoolFile;
+    storageRemoteFile = ./storage-remote.nix;
+    hasStorageRemote  = builtins.pathExists storageRemoteFile;
+
     # ── Variant builder ─────────────────────────────────────────────────────
     # Constructs a complete NixOS configuration for a given variant.
     # • hostname   → the variant name, also written to /etc/nixos/vexos-variant
@@ -264,6 +272,8 @@
         ]
         ++ modules
         ++ lib.optional hasServices servicesFile
+        ++ lib.optional hasStoragePool storagePoolFile
+        ++ lib.optional hasStorageRemote storageRemoteFile
         ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
@@ -302,6 +312,8 @@
         ++ modules
         ++ lib.optional hasServices  servicesFile
         ++ lib.optional hasFeatures  featuresFile
+        ++ lib.optional hasStoragePool storagePoolFile
+        ++ lib.optional hasStorageRemote storageRemoteFile
         ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
