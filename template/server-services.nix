@@ -7,7 +7,7 @@
 #   docker, arcane, jellyfin, plex, audiobookshelf, tautulli, navidrome,
 #   seerr,
 #   arr (SABnzbd + Sonarr + Radarr + Lidarr + Prowlarr + qBittorrent + Bazarr + Maintainerr),
-#   komga, kavita, papermc, nextcloud, syncthing, immich, minio, photoprism, joplin,
+#   komga, kavita, grimmory, papermc, nextcloud, syncthing, immich, minio, photoprism, joplin,
 #   paperless, forgejo, code-server, attic, vaultwarden, authelia,
 #   nginx, caddy, traefik, adguard, headscale, unbound, nginx-proxy-manager,
 #   cockpit, uptime-kuma, homepage, grafana, scrutiny, prometheus, loki, netdata,
@@ -72,6 +72,10 @@
   # ── Books & Comics ───────────────────────────────────────────────────────
   # vexos.server.komga.enable = false;                  # Port 8090 — comics/manga
   # vexos.server.kavita.enable = false;                 # Port 5000 — ebooks/manga
+  # vexos.server.grimmory.enable = false;               # Port 6060 — ebook/comic/audiobook library
+  #   No further config needed: MariaDB credentials auto-generate on first activation.
+  # vexos.server.grimmory.libraryDir = "/mnt/pool/books";    # Override to point at existing storage
+  # vexos.server.grimmory.bookdropDir = "/mnt/pool/bookdrop"; # (e.g. a mergerfs/storage-remote pool)
 
   # ── Game Servers ─────────────────────────────────────────────────────────
   # vexos.server.papermc.enable = false;

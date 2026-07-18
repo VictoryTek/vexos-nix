@@ -31,6 +31,7 @@ let
     dozzle           = [ ];
     forgejo          = [ "/var/lib/forgejo" ];
     grafana          = [ "/var/lib/grafana" ];
+    grimmory         = [ "${config.vexos.server.grimmory.dataDir}/dump" config.vexos.server.grimmory.libraryDir ]; # not mariadb-config/ — live db files aren't file-backup-safe
     headscale        = [ "/var/lib/headscale" ];
     home-assistant   = [ "/var/lib/hass" ];
     homepage         = [ "/var/lib/homepage" ];

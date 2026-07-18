@@ -1132,7 +1132,7 @@ disable-feature feature: _require-desktop-role
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana headscale home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana grimmory headscale home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -1323,6 +1323,7 @@ available-services:
     echo ""
     echo "Available server service modules:"
     _hdr "Books & Reading"
+    _svc grimmory            "Self-hosted ebook/comic/audiobook library"
     _svc kavita              "Self-hosted manga, comics & book library"
     _svc komga               "Comic book & manga media server"
     _hdr "Communications"
@@ -1446,6 +1447,7 @@ service-info service="":
         dockhand)        printf "  %-18s  Web UI  http://<server-ip>:8073   (Docker/Podman container manager)\n"      "$1" ;;
         forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000\n"                                           "$1" ;;
         grafana)         printf "  %-18s  Web UI  http://<server-ip>:3030\n"                                           "$1" ;;
+        grimmory)        printf "  %-18s  Web UI  http://<server-ip>:6060\n"                                           "$1" ;;
         headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
         home-assistant)  printf "  %-18s  Web UI  http://<server-ip>:8123\n"                                           "$1" ;;
         homepage)        printf "  %-18s  Web UI  http://<server-ip>:3010   (requires docker)\n"                       "$1" ;;
@@ -1580,6 +1582,7 @@ status service: _require-server-role
       dockhand)       UNITS="docker-dockhand podman-dockhand"; URLS="http://localhost:8073" ;;
       forgejo)        UNITS="forgejo";              URLS="http://localhost:3000" ;;
       grafana)        UNITS="grafana";              URLS="http://localhost:3030" ;;
+      grimmory)       UNITS="docker-grimmory docker-grimmory-db"; URLS="http://localhost:6060" ;;
       headscale)      UNITS="headscale";            URLS="http://localhost:8085" ;;
       home-assistant) UNITS="home-assistant";       URLS="http://localhost:8123" ;;
       homepage)       UNITS="docker-homepage";      URLS="http://localhost:3010" ;;
@@ -2157,6 +2160,13 @@ enable service: _require-server-role
         echo "  Web UI:   http://<server-ip>:3030"
         echo "  About:    Metrics and observability dashboard. Pair with Prometheus to graph system and application metrics."
         echo "  Login:    Default admin / admin — change on first login."
+        ;;
+      grimmory)
+        echo "  Services: docker-grimmory.service  docker-grimmory-db.service"
+        echo "  Web UI:   http://<server-ip>:6060"
+        echo "  About:    Self-hosted digital library for ebooks, comics, and audiobooks (two-container stack: app + dedicated MariaDB)."
+        echo "  Login:    Create the admin account on first visit — no default credentials to change."
+        echo "  Note:     Drop files in vexos.server.grimmory.bookdropDir for auto-import into vexos.server.grimmory.libraryDir."
         ;;
       headscale)
         echo "  Service:  headscale.service"
