@@ -42,7 +42,12 @@ in
         enable = true;
         openFirewall = true; # Port 8080
         configFile = null; # use the settings-based config path (configFile is deprecated)
-        settings.misc.host = "0.0.0.0"; # module default is 127.0.0.1, which would make openFirewall pointless
+        settings.misc = {
+          host = "0.0.0.0"; # module default is 127.0.0.1, which would make openFirewall pointless
+          # Tailscale's CGNAT range isn't RFC1918/RFC4193, so SABnzbd otherwise treats
+          # it as "internet" and denies access ("External internet access denied")
+          local_ranges = "100.64.0.0/10";
+        };
       };
     })
 
