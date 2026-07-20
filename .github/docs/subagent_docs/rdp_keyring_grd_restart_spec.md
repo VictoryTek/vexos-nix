@@ -131,6 +131,69 @@ None to user-facing options. `vexos.remoteDesktop.passwordFile` unchanged. No
   `vexos-rdp-setup.service` still needs grd to rebind — which this change now performs
   automatically as the service's final step. Documented in the header comment.
 
+## Addendum (2026-07-19): restart ordering was still wrong
+
+Live testing after the initial fix shipped showed a *different* failure:
+`grdctl status --show-credentials` on `vexos-vmc` reported a stale password from an
+earlier cycle, not the value most recently set via `just setup-rdp`. Root cause: the
+initial fix restarted `gnome-remote-desktop.service` as the **last** step, after
+`grdctl rdp set-credentials` had already run. At the moment `set-credentials`
+executes, the daemon is still bound to its pre-existing (stale) Secret Service
+connection — the keyring `--replace` a few lines earlier swapped the keyring daemon,
+but grd itself doesn't know to reconnect until the restart, which happens *after*
+the write. The credential write during that window lands nowhere grd can read
+consistently, so after the restart the daemon may expose a leftover value from a
+previous successful cycle instead of the one just set.
+
+**Corrected fix:** move the `systemctl --user restart gnome-remote-desktop.service`
+call to immediately after the keyring unlock/`sleep 2`, **before** any `grdctl`
+calls (cert, enable, credentials, view-only). Every subsequent `grdctl` call in the
+script then talks to a daemon already bound to the fresh keyring — eliminating the
+stale-connection window entirely, for both the TLS/enable calls and credentials. A
+short `sleep` is added after the restart to let the user service re-register on the
+session D-Bus before the first `grdctl` call hits it.
+
+## Addendum 2 (2026-07-19): locked-screen session logoff
+
+After the restart-ordering fix, live testing against `vexos-office` showed
+authentication now succeeds (confirmed via `xfreerdp` probe: full negotiation,
+`CONNECTION_STATE_CAPABILITIES_EXCHANGE_DEMAND_ACTIVE`, `gdi_init_ex` framebuffer
+setup) but the server immediately terminates the session with
+`ERRINFO_LOGOFF_BY_USER`. Root cause: GNOME Remote Desktop refuses to serve a
+**locked** screen by design (confirmed via GNOME's own GitLab issue #16, "Remote
+desktop with locked local screen"). `modules/gnome.nix` sets
+`org/gnome/desktop/screensaver.idle-delay = 300` with `lock-delay = 0`, so any
+machine idle for 5+ minutes is locked, and grd then rejects/logs-off any incoming
+RDP connection outright. This is not a bug in our module — it's intentional GNOME
+behavior — but it defeats the user's explicit goal of unattended, walk-away-and-
+reconnect-later access.
+
+**Fix:** add the `allow-locked-remote-desktop` GNOME Shell extension
+(`pkgs.gnomeExtensions.allow-locked-remote-desktop`, nixpkgs version 17, binary
+cached, confirmed via its bundled `metadata.json` to declare
+`"shell-version": ["45","46","47","48","49","50"]` — i.e. explicitly GNOME-50
+compatible) to `modules/gnome.nix`'s `commonExtensions` list, the same mechanism
+already used for `tailscale-status` and `caffeine`. This is a well-known, actively
+maintained (upstream GitHub: jikamens/allow-locked-remote-desktop) extension built
+specifically to patch this GNOME restriction.
+
+**Security tradeoff (explicitly accepted by the user):** the extension's own
+documentation states that if a remote RDP client connects to a locked screen and
+unlocks it, the **physical local console is also unlocked** — not just the remote
+view. Anyone with RDP credentials and network access can therefore unlock the
+physical machine. Given the user's stated threat model (Tailscale-only access,
+explicit preference for simplicity over security for this feature), this is an
+accepted tradeoff, not an oversight.
+
+**Placement decision:** added to `modules/gnome.nix` `commonExtensions` (universal,
+all GNOME roles) rather than via `vexos.gnome.extraExtensions` from
+`remote-desktop.nix`, because `extraExtensions` is only actually consumed by
+`modules/gnome-desktop.nix`'s `enabled-extensions` — `gnome-server.nix`,
+`gnome-htpc.nix`, and `gnome-stateless.nix` do not include it. Using
+`extraExtensions` would silently fail to activate the extension on server/htpc
+roles despite installing the package. This wiring gap is flagged for the user but
+left unfixed — it's a pre-existing, separate issue outside this change's scope.
+
 ## Validation
 
 - `nix flake show --impure` (structure).

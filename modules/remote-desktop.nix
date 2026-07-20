@@ -24,15 +24,21 @@
 #   missing, or unlocks it if it already has one — idempotently, on every run. No
 #   manual keyring reset is required on any machine.
 #
-# Keyring rebind (why RDP hung at "Connecting…" before this existed):
+# Keyring rebind (why RDP hung at "Connecting…", and later why a stale password
+# reappeared after set-credentials, before this existed):
 #   `gnome-keyring-daemon --replace` above kills the keyring daemon the running
 #   gnome-remote-desktop user daemon is bound to. grd caches its Secret Service
 #   connection at startup, so after the swap it queries a dead org.freedesktop.secrets
 #   owner and every RDP connection fails at credential retrieval with "The name is
 #   not activatable" (client hangs at "Connecting…"). This service therefore restarts
-#   the user gnome-remote-desktop.service as its final step, so grd rebinds to the
-#   freshly unlocked keyring. Matches the upstream auto-login recipe, which restarts
-#   grd after unlocking the keyring and setting credentials.
+#   the user gnome-remote-desktop.service immediately after the keyring unlock —
+#   BEFORE any grdctl calls — so every grdctl call below (cert, enable, credentials)
+#   talks to a daemon already bound to the fresh keyring. Restarting only at the end
+#   (after set-credentials) was tried first and was insufficient: set-credentials
+#   would write through the stale pre-restart connection, so the daemon could come
+#   back up exposing a leftover password from an earlier cycle instead of the value
+#   just set. Matches the upstream auto-login recipe, which restarts grd after
+#   unlocking the keyring and before setting credentials.
 #
 # TLS certificate (why RDP never connected before this existed):
 #   gnome-remote-desktop speaks RDP over TLS only, and does not generate its own
@@ -130,8 +136,18 @@ in
           env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
           gnome-keyring-daemon --unlock --replace --components=secrets,pkcs11,ssh >/dev/null || true
 
-        # Small buffer plus retry on set-credentials, kept as defense-in-depth
-        # against any remaining startup latency.
+        # Small buffer for keyring readiness.
+        sleep 2
+
+        # Rebind gnome-remote-desktop to the keyring just unlocked, BEFORE any
+        # grdctl calls below — see "Keyring rebind" in the header comment for why
+        # this must happen first, not last.
+        runuser -u ${lib.escapeShellArg username} -- \
+          env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
+          systemctl --user restart gnome-remote-desktop.service
+
+        # Buffer for the user service to re-register on the session D-Bus before
+        # the first grdctl call below reaches it.
         sleep 2
 
         # Register the TLS certificate BEFORE enabling RDP, so the daemon sees a
@@ -165,17 +181,6 @@ in
         runuser -u ${lib.escapeShellArg username} -- \
           env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
           grdctl rdp disable-view-only
-
-        # Rebind the running gnome-remote-desktop daemon to the keyring the
-        # --replace step above swapped in. grd caches its Secret Service connection
-        # at startup; the --replace killed the keyring daemon grd was bound to, so
-        # without this restart grd queries a dead org.freedesktop.secrets owner and
-        # every RDP connection fails at credential retrieval with "The name is not
-        # activatable" — the client hangs at "Connecting…" and never authenticates.
-        # Must run last, after the keyring is unlocked and credentials are stored.
-        runuser -u ${lib.escapeShellArg username} -- \
-          env HOME="$home" DBUS_SESSION_BUS_ADDRESS="$bus" XDG_RUNTIME_DIR="$runtime" \
-          systemctl --user restart gnome-remote-desktop.service
       '';
       serviceConfig = {
         Type            = "oneshot";
