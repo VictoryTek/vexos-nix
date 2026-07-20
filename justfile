@@ -13,6 +13,7 @@ default:
         echo "    service-info [service]     Show ports and URLs for enabled (or specified) services"
         echo "    services                   List enabled/disabled status of server service modules"
         echo "    status <service>           Show systemctl status and HTTP reachability for a service"
+        echo "    restart <service>          Restart a service's systemd unit(s), clearing any start-limit-hit"
         echo "    enable <service>           Enable a server service module"
         echo "    disable <service>          Disable a server service module"
         echo "    enable-plex-pass           Enable Plex Pass hardware transcoding"
@@ -1549,6 +1550,78 @@ service-info service="":
         echo ""
     fi
 
+# Map a service name to its systemd unit(s) — shared by status and restart.
+# Prints space-separated unit names (without .service) to stdout.
+[private]
+_service-units service:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SERVICE="{{service}}"
+    case "$SERVICE" in
+      adguard)        echo "adguardhome" ;;
+      arcane)         echo "docker-arcane podman-arcane" ;;
+      arr)            echo "sabnzbd sonarr radarr lidarr prowlarr docker-maintainerr"
+                      ;;
+      attic)          echo "atticd" ;;
+      audiobookshelf) echo "audiobookshelf" ;;
+      backup)         echo "restic-backups-main" ;;
+      caddy)          echo "caddy" ;;
+      nas)            echo "cockpit" ;;
+      cockpit)        echo "cockpit" ;;
+      docker)         echo "docker" ;;
+      dockhand)       echo "docker-dockhand podman-dockhand" ;;
+      forgejo)        echo "forgejo" ;;
+      grafana)        echo "grafana" ;;
+      grimmory)       echo "docker-grimmory docker-grimmory-db" ;;
+      headscale)      echo "headscale" ;;
+      home-assistant) echo "home-assistant" ;;
+      homepage)       echo "docker-homepage" ;;
+      immich)         echo "immich-server" ;;
+      jellyfin)       echo "jellyfin" ;;
+      joplin)         echo "docker-joplin-server docker-joplin-db" ;;
+      kavita)         echo "kavita" ;;
+      komga)          echo "komga" ;;
+      kiji-proxy)     echo "kiji-proxy" ;;
+      mealie)         echo "mealie" ;;
+      nextcloud)      echo "phpfpm-nextcloud nginx" ;;
+      nginx)          echo "nginx" ;;
+      ntfy)           echo "ntfy" ;;
+      seerr)          echo "seerr" ;;
+      papermc)        echo "minecraft-server" ;;
+      plex)           echo "plex" ;;
+      podman)         echo "podman" ;;
+      rustdesk)       echo "rustdesk-server hbbr hbbs" ;;
+      scrutiny)       echo "scrutiny" ;;
+      searxng)        echo "uwsgi" ;;
+      stirling-pdf)   echo "docker-stirling-pdf" ;;
+      syncthing)      echo "syncthing" ;;
+      tautulli)       echo "tautulli" ;;
+      traefik)        echo "traefik" ;;
+      uptime-kuma)    echo "docker-uptime-kuma" ;;
+      vaultwarden)    echo "vaultwarden" ;;
+      vexboard)       echo "vexboard" ;;
+      authelia)       echo "docker-authelia" ;;
+      code-server)    echo "code-server" ;;
+      dozzle)         echo "docker-dozzle" ;;
+      listmonk)       echo "listmonk" ;;
+      loki)           echo "loki" ;;
+      matrix-conduit) echo "conduit" ;;
+      minio)          echo "minio" ;;
+      navidrome)      echo "navidrome" ;;
+      netdata)        echo "netdata" ;;
+      nginx-proxy-manager) echo "docker-nginx-proxy-manager" ;;
+      node-red)       echo "node-red" ;;
+      paperless)      echo "paperless" ;;
+      photoprism)     echo "photoprism" ;;
+      portainer)      echo "docker-portainer podman-portainer" ;;
+      portbook)       echo "portbook" ;;
+      prometheus)     echo "prometheus" ;;
+      proxmox)        echo "pve-cluster pvedaemon pveproxy pvestatd pvescheduler" ;;
+      unbound)        echo "unbound" ;;
+      zigbee2mqtt)    echo "zigbee2mqtt" ;;
+      *)              echo "$SERVICE" ;;
+    esac
+
 # Show systemctl status and HTTP reachability for a server service.
 # Usage: just status jellyfin
 [private]
@@ -1564,72 +1637,72 @@ status service: _require-server-role
         exit 1
     fi
 
-    # Map service → systemd unit(s) and HTTP check URL(s)
-    # Format for UNITS: space-separated unit names (without .service)
-    # Format for URLS:  space-separated http://localhost:<port> entries (empty = no HTTP check)
+    UNITS=$(just _service-units "$SERVICE")
+
+    # Map service → HTTP check URL(s)
+    # Format for URLS: space-separated http://localhost:<port> entries (empty = no HTTP check)
     case "$SERVICE" in
-      adguard)        UNITS="adguardhome";          URLS="http://localhost:3080" ;;
-      arcane)         UNITS="docker-arcane podman-arcane"; URLS="http://localhost:3552" ;;
-      arr)            UNITS="sabnzbd sonarr radarr lidarr prowlarr docker-maintainerr";
-                      URLS="http://localhost:8080 http://localhost:8989 http://localhost:7878 http://localhost:8686 http://localhost:9696 http://localhost:6246" ;;
-      attic)          UNITS="atticd";               URLS="http://localhost:8400" ;;
-      audiobookshelf) UNITS="audiobookshelf";       URLS="http://localhost:8234" ;;
-      backup)         UNITS="restic-backups-main";  URLS="" ;;
-      caddy)          UNITS="caddy";                URLS="http://localhost:8880" ;;
-      nas)            UNITS="cockpit";              URLS="http://localhost:9090" ;;
-      cockpit)        UNITS="cockpit";              URLS="http://localhost:9090" ;;
-      docker)         UNITS="docker";               URLS="" ;;
-      dockhand)       UNITS="docker-dockhand podman-dockhand"; URLS="http://localhost:8073" ;;
-      forgejo)        UNITS="forgejo";              URLS="http://localhost:3000" ;;
-      grafana)        UNITS="grafana";              URLS="http://localhost:3030" ;;
-      grimmory)       UNITS="docker-grimmory docker-grimmory-db"; URLS="http://localhost:6060" ;;
-      headscale)      UNITS="headscale";            URLS="http://localhost:8085" ;;
-      home-assistant) UNITS="home-assistant";       URLS="http://localhost:8123" ;;
-      homepage)       UNITS="docker-homepage";      URLS="http://localhost:3010" ;;
-      immich)         UNITS="immich-server";        URLS="http://localhost:2283" ;;
-      jellyfin)       UNITS="jellyfin";             URLS="http://localhost:8096" ;;
-      joplin)         UNITS="docker-joplin-server docker-joplin-db"; URLS="http://localhost:22300" ;;
-      kavita)         UNITS="kavita";               URLS="http://localhost:5000" ;;
-      komga)          UNITS="komga";                URLS="http://localhost:8090" ;;
-      kiji-proxy)     UNITS="kiji-proxy";           URLS="http://localhost:8080/health" ;;
-      mealie)         UNITS="mealie";               URLS="http://localhost:9010" ;;
-      nextcloud)      UNITS="phpfpm-nextcloud nginx"; URLS="http://localhost:80" ;;
-      nginx)          UNITS="nginx";                URLS="http://localhost:80" ;;
-      ntfy)           UNITS="ntfy";                 URLS="http://localhost:2586" ;;
-      seerr)          UNITS="seerr";               URLS="http://localhost:5055" ;;
-      papermc)        UNITS="minecraft-server";     URLS="" ;;
-      plex)           UNITS="plex";                 URLS="http://localhost:32400/web" ;;
-      podman)         UNITS="podman";               URLS="" ;;
-      rustdesk)       UNITS="rustdesk-server hbbr hbbs"; URLS="" ;;
-      scrutiny)       UNITS="scrutiny";             URLS="http://localhost:8078" ;;
-      searxng)        UNITS="uwsgi";                URLS="http://localhost:8888" ;;
-      stirling-pdf)   UNITS="docker-stirling-pdf";   URLS="http://localhost:8077" ;;
-      syncthing)      UNITS="syncthing";            URLS="http://localhost:8384" ;;
-      tautulli)       UNITS="tautulli";             URLS="http://localhost:8181" ;;
-      traefik)        UNITS="traefik";              URLS="http://localhost:8079/dashboard/" ;;
-      uptime-kuma)    UNITS="docker-uptime-kuma";   URLS="http://localhost:3001" ;;
-      vaultwarden)    UNITS="vaultwarden";          URLS="http://localhost:8222" ;;
-      vexboard)       UNITS="vexboard";             URLS="http://localhost:7280" ;;
-      authelia)       UNITS="docker-authelia";          URLS="http://localhost:9091" ;;
-      code-server)    UNITS="code-server";              URLS="http://localhost:4444" ;;
-      dozzle)         UNITS="docker-dozzle";            URLS="http://localhost:8888" ;;
-      listmonk)       UNITS="listmonk";                 URLS="http://localhost:9025" ;;
-      loki)           UNITS="loki";                     URLS="http://localhost:3100/ready" ;;
-      matrix-conduit) UNITS="conduit";                  URLS="http://localhost:6167/_matrix/client/versions" ;;
-      minio)          UNITS="minio";                    URLS="http://localhost:9001 http://localhost:9000" ;;
-      navidrome)      UNITS="navidrome";                URLS="http://localhost:4533" ;;
-      netdata)        UNITS="netdata";                  URLS="http://localhost:19999" ;;
-      nginx-proxy-manager) UNITS="docker-nginx-proxy-manager"; URLS="http://localhost:81" ;;
-      node-red)       UNITS="node-red";                 URLS="http://localhost:1880" ;;
-      paperless)      UNITS="paperless";                URLS="http://localhost:28981" ;;
-      photoprism)     UNITS="photoprism";               URLS="http://localhost:2342" ;;
-      portainer)      UNITS="docker-portainer podman-portainer"; URLS="https://localhost:9443" ;;
-      portbook)       UNITS="portbook";             URLS="http://localhost:7777" ;;
-      prometheus)     UNITS="prometheus";               URLS="http://localhost:9092" ;;
-      proxmox)        UNITS="pve-cluster pvedaemon pveproxy pvestatd pvescheduler"; URLS="https://localhost:8006" ;;
-      unbound)        UNITS="unbound";                  URLS="" ;;
-      zigbee2mqtt)    UNITS="zigbee2mqtt";              URLS="http://localhost:8088" ;;
-      *)              UNITS="$SERVICE";             URLS="" ;;
+      adguard)        URLS="http://localhost:3080" ;;
+      arcane)         URLS="http://localhost:3552" ;;
+      arr)            URLS="http://localhost:8080 http://localhost:8989 http://localhost:7878 http://localhost:8686 http://localhost:9696 http://localhost:6246" ;;
+      attic)          URLS="http://localhost:8400" ;;
+      audiobookshelf) URLS="http://localhost:8234" ;;
+      backup)         URLS="" ;;
+      caddy)          URLS="http://localhost:8880" ;;
+      nas)            URLS="http://localhost:9090" ;;
+      cockpit)        URLS="http://localhost:9090" ;;
+      docker)         URLS="" ;;
+      dockhand)       URLS="http://localhost:8073" ;;
+      forgejo)        URLS="http://localhost:3000" ;;
+      grafana)        URLS="http://localhost:3030" ;;
+      grimmory)       URLS="http://localhost:6060" ;;
+      headscale)      URLS="http://localhost:8085" ;;
+      home-assistant) URLS="http://localhost:8123" ;;
+      homepage)       URLS="http://localhost:3010" ;;
+      immich)         URLS="http://localhost:2283" ;;
+      jellyfin)       URLS="http://localhost:8096" ;;
+      joplin)         URLS="http://localhost:22300" ;;
+      kavita)         URLS="http://localhost:5000" ;;
+      komga)          URLS="http://localhost:8090" ;;
+      kiji-proxy)     URLS="http://localhost:8080/health" ;;
+      mealie)         URLS="http://localhost:9010" ;;
+      nextcloud)      URLS="http://localhost:80" ;;
+      nginx)          URLS="http://localhost:80" ;;
+      ntfy)           URLS="http://localhost:2586" ;;
+      seerr)          URLS="http://localhost:5055" ;;
+      papermc)        URLS="" ;;
+      plex)           URLS="http://localhost:32400/web" ;;
+      podman)         URLS="" ;;
+      rustdesk)       URLS="" ;;
+      scrutiny)       URLS="http://localhost:8078" ;;
+      searxng)        URLS="http://localhost:8888" ;;
+      stirling-pdf)   URLS="http://localhost:8077" ;;
+      syncthing)      URLS="http://localhost:8384" ;;
+      tautulli)       URLS="http://localhost:8181" ;;
+      traefik)        URLS="http://localhost:8079/dashboard/" ;;
+      uptime-kuma)    URLS="http://localhost:3001" ;;
+      vaultwarden)    URLS="http://localhost:8222" ;;
+      vexboard)       URLS="http://localhost:7280" ;;
+      authelia)       URLS="http://localhost:9091" ;;
+      code-server)    URLS="http://localhost:4444" ;;
+      dozzle)         URLS="http://localhost:8888" ;;
+      listmonk)       URLS="http://localhost:9025" ;;
+      loki)           URLS="http://localhost:3100/ready" ;;
+      matrix-conduit) URLS="http://localhost:6167/_matrix/client/versions" ;;
+      minio)          URLS="http://localhost:9001 http://localhost:9000" ;;
+      navidrome)      URLS="http://localhost:4533" ;;
+      netdata)        URLS="http://localhost:19999" ;;
+      nginx-proxy-manager) URLS="http://localhost:81" ;;
+      node-red)       URLS="http://localhost:1880" ;;
+      paperless)      URLS="http://localhost:28981" ;;
+      photoprism)     URLS="http://localhost:2342" ;;
+      portainer)      URLS="https://localhost:9443" ;;
+      portbook)       URLS="http://localhost:7777" ;;
+      prometheus)     URLS="http://localhost:9092" ;;
+      proxmox)        URLS="https://localhost:8006" ;;
+      unbound)        URLS="" ;;
+      zigbee2mqtt)    URLS="http://localhost:8088" ;;
+      *)              URLS="" ;;
     esac
 
     # systemctl status for each unit
@@ -1657,6 +1730,44 @@ status service: _require-server-role
             fi
         done
     fi
+    echo ""
+
+# Restart a server service (all its systemd units), clearing any prior
+# start-limit-hit failure first. Usage: just restart joplin
+[private]
+restart service: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SERVICE="{{service}}"
+
+    VALID_SERVICES="{{_server_service_names}}"
+    if ! echo "$VALID_SERVICES" | tr ' ' '\n' | grep -qx "$SERVICE"; then
+        echo "error: unknown service '$SERVICE'"
+        echo "available: $VALID_SERVICES"
+        exit 1
+    fi
+
+    UNITS=$(just _service-units "$SERVICE")
+    UNIT_SERVICES=""
+    for unit in $UNITS; do
+        UNIT_SERVICES="$UNIT_SERVICES ${unit}.service"
+    done
+
+    echo "Restarting: $SERVICE ($UNIT_SERVICES )"
+    echo ""
+
+    # Clear any prior start-limit-hit failures so the units can actually restart.
+    sudo systemctl reset-failed $UNIT_SERVICES || true
+
+    # Restart all units in one transaction so systemd honors After=/Requires=
+    # ordering between them (e.g. a db unit before the app unit that depends on it).
+    sudo systemctl restart $UNIT_SERVICES
+
+    for unit in $UNITS; do
+        echo ""
+        echo "── systemctl status ${unit}.service ──────────────────────────"
+        systemctl status "${unit}.service" --no-pager --lines=5 || true
+    done
     echo ""
 
 # List all server services and their enabled/disabled status.
