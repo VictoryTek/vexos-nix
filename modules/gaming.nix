@@ -9,6 +9,20 @@
 { config, pkgs, lib, ... }:
 let
   cfg = config.vexos.features.gaming;
+
+  # Pin Vulkan device selection to the NVIDIA dGPU (RTX 5070 Max-Q,
+  # 10de:2d58 — see modules/gpu/nvidia.nix) for these two Electron apps.
+  # Works around a Mutter/NVIDIA 580+ regression (GNOME Mutter #4326) where
+  # Electron 37's Vulkan Wayland path picks the idle AMD iGPU instead of the
+  # NVIDIA GPU actually driving this hybrid laptop's panel, causing a
+  # cross-GPU dmabuf import failure (Discord crash-on-launch; Vesktop
+  # screen-share silently doing nothing).
+  nvidiaVkSelect = pkg: attr: pkg.overrideAttrs (old: {
+    nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
+    postFixup = (old.postFixup or "") + ''
+      wrapProgram $out/bin/${attr} --set MESA_VK_DEVICE_SELECT "10de:2d58!"
+    '';
+  });
 in
 {
   imports = [
@@ -93,8 +107,8 @@ in
       # Use unstable: stable vesktop 1.6.5 vendors an exact pnpm-10.29.2 build
       # input flagged insecure (CVE-2026-48995 et al.); unstable's vesktop (same
       # version) builds with a non-flagged pnpm. pnpm is build-time only.
-      pkgs.unstable.vesktop # feature-rich Discord client (Vencord-based)
-      pkgs.discord         # official Discord client
+      (nvidiaVkSelect pkgs.unstable.vesktop "vesktop") # feature-rich Discord client (Vencord-based)
+      (nvidiaVkSelect pkgs.discord "discord")          # official Discord client
 
       # GNOME Shell extension for GameMode status indicator (tray icon)
       pkgs.gnomeExtensions.gamemode-shell-extension
