@@ -10,17 +10,25 @@
 let
   cfg = config.vexos.features.gaming;
 
-  # Pin Vulkan device selection to the NVIDIA dGPU (RTX 5070 Max-Q,
-  # 10de:2d58 — see modules/gpu/nvidia.nix) for these two Electron apps.
-  # Works around a Mutter/NVIDIA 580+ regression (GNOME Mutter #4326) where
-  # Electron 37's Vulkan Wayland path picks the idle AMD iGPU instead of the
-  # NVIDIA GPU actually driving this hybrid laptop's panel, causing a
-  # cross-GPU dmabuf import failure (Discord crash-on-launch; Vesktop
-  # screen-share silently doing nothing).
+  # Pin GPU selection to the NVIDIA dGPU (RTX 5070 Max-Q, 10de:2d58 — see
+  # modules/gpu/nvidia.nix) for these two Electron apps, on this hybrid
+  # AMD+NVIDIA laptop where NVIDIA drives the panel but Mesa's amdgpu EGL
+  # vendor is also present. Chromium's Ozone/Wayland backend allocates its
+  # GBM/EGL buffers via whichever EGL device GLVND enumerates first, which
+  # is not guaranteed to be the NVIDIA device Mutter composites with — the
+  # resulting cross-GPU dmabuf import then fails ("failed to import supplied
+  # dmabufs: Could not bind the given EGLImage to a CoglTexture2D"), crashing
+  # Discord on launch and breaking Vesktop's screen-share capture.
+  # __EGL_VENDOR_LIBRARY_FILENAMES restricts GLVND to the NVIDIA EGL vendor
+  # only, so Chromium's GBM/EGL allocations always land on the same GPU as
+  # the compositor. MESA_VK_DEVICE_SELECT is kept alongside it for the
+  # separate Vulkan path (screenshare hardware encode).
   nvidiaVkSelect = pkg: attr: pkg.overrideAttrs (old: {
     nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
     postFixup = (old.postFixup or "") + ''
-      wrapProgram $out/bin/${attr} --set MESA_VK_DEVICE_SELECT "10de:2d58!"
+      wrapProgram $out/bin/${attr} \
+        --set __EGL_VENDOR_LIBRARY_FILENAMES /run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json \
+        --set MESA_VK_DEVICE_SELECT "10de:2d58!"
     '';
   });
 in
