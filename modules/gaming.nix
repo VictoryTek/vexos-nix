@@ -10,25 +10,28 @@
 let
   cfg = config.vexos.features.gaming;
 
-  # Pin GPU selection to the NVIDIA dGPU (RTX 5070 Max-Q, 10de:2d58 — see
-  # modules/gpu/nvidia.nix) for these two Electron apps, on this hybrid
-  # AMD+NVIDIA laptop where NVIDIA drives the panel but Mesa's amdgpu EGL
-  # vendor is also present. Chromium's Ozone/Wayland backend allocates its
-  # GBM/EGL buffers via whichever EGL device GLVND enumerates first, which
-  # is not guaranteed to be the NVIDIA device Mutter composites with — the
-  # resulting cross-GPU dmabuf import then fails ("failed to import supplied
-  # dmabufs: Could not bind the given EGLImage to a CoglTexture2D"), crashing
-  # Discord on launch and breaking Vesktop's screen-share capture.
-  # __EGL_VENDOR_LIBRARY_FILENAMES restricts GLVND to the NVIDIA EGL vendor
-  # only, so Chromium's GBM/EGL allocations always land on the same GPU as
-  # the compositor. MESA_VK_DEVICE_SELECT is kept alongside it for the
-  # separate Vulkan path (screenshare hardware encode).
+  # Force XWayland instead of native Wayland for these two Electron apps, on
+  # this hybrid AMD+NVIDIA laptop. Pinning GPU selection (EGL vendor, Vulkan
+  # device — see git history) fixed the immediate crash-on-launch dmabuf
+  # error, but a second failure remained: GNOME Shell forcibly kills the
+  # client's Wayland connection ~20-40s into a clean run ("WL: error in
+  # client communication (pid ...)"), which crashes Discord and silently
+  # breaks Vesktop screen-share. This is a widely-reported Chromium
+  # Ozone/Wayland-vs-Mutter compatibility bug on hybrid-NVIDIA systems
+  # (reported against Cursor, VS Code, Brave — not specific to these two
+  # apps or this fix). Routing through XWayland (--ozone-platform=x11)
+  # avoids Mutter's native-Wayland linux-dmabuf handling entirely, which is
+  # the standard workaround across those projects. GPU-selection env vars
+  # are kept alongside since XWayland's GLX/Vulkan paths still benefit from
+  # them on this hybrid GPU.
   nvidiaVkSelect = pkg: attr: pkg.overrideAttrs (old: {
     nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
     postFixup = (old.postFixup or "") + ''
       wrapProgram $out/bin/${attr} \
         --set __EGL_VENDOR_LIBRARY_FILENAMES /run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json \
-        --set MESA_VK_DEVICE_SELECT "10de:2d58!"
+        --set __GLX_VENDOR_LIBRARY_NAME nvidia \
+        --set MESA_VK_DEVICE_SELECT "10de:2d58!" \
+        --add-flags "--ozone-platform=x11"
     '';
   });
 in

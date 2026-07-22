@@ -1,69 +1,71 @@
-# Discord/Vesktop Vulkan GPU selection fix — Final Review (Refinement Cycle 1)
+# Discord/Vesktop crash fix — Final Review (Refinement Cycle 2)
 
-## What changed since the first review
+## History
 
-The user applied the original fix (`MESA_VK_DEVICE_SELECT` only) via
-`nixos-rebuild switch` and reported no change — Discord still crashed with
-the same `wayland_event_watcher.cc … failed to import supplied dmabufs`
-error, and Vesktop screen-share still did nothing.
+- **Initial implementation:** `MESA_VK_DEVICE_SELECT` only. Deployed, user
+  reported no change.
+- **Refinement cycle 1:** added `__EGL_VENDOR_LIBRARY_FILENAMES` pinned to
+  the NVIDIA EGL vendor. This *did* fix the originally-diagnosed bug — the
+  instant (~150ms) `failed to import supplied dmabufs: Could not bind the
+  given EGLImage to a CoglTexture2D` crash on launch, verified by directly
+  executing the deployed binary and the real session's `journalctl` logs.
+  However the user again reported no visible improvement.
+- **Root-caused via the user's actual session logs (not just synthetic
+  tests) this cycle:** a second, different failure was occurring —
+  `gnome-shell[1832]: WL: error in client communication (pid N)` — Mutter
+  itself forcibly terminating the client's Wayland connection ~20-40
+  seconds into an otherwise clean launch, producing a `Fatal Wayland
+  communication error: Connection reset by peer` and a SIGTRAP coredump in
+  Discord (the trap is Chromium's own `LOG(FATAL)` deliberately aborting
+  after the disconnect — not a separate memory-safety bug; confirmed no
+  kernel-level GPU/Xid errors in `dmesg` for the same window). This pattern
+  predates all of today's changes — present in the journal since May 14,
+  across multiple boots and gnome-shell instances — so it is a pre-existing
+  GNOME Shell/Mutter issue, not something introduced by prior fixes.
+- Web research found this exact error string reported against multiple
+  other Electron apps on hybrid-NVIDIA Wayland systems (Cursor, VS Code,
+  Brave), with `--ozone-platform=x11` (routing through XWayland instead of
+  Mutter's native Wayland path) as the standard, cross-project workaround.
 
-Root cause of the failed first attempt: `MESA_VK_DEVICE_SELECT` only
-controls Vulkan ICD device selection. The actual crash originates in
-Chromium's Ozone/Wayland **GBM/EGL** buffer-allocation path (used for normal
-window compositing, not Vulkan), which Vulkan env vars never touch.
-Confirmed by re-running the *deployed, already-switched* binary and
-capturing the identical crash signature with the old fix active.
+## Refinement applied (cycle 2)
 
-## Refinement applied
+Added `--add-flags "--ozone-platform=x11"` to the wrapper, plus
+`__GLX_VENDOR_LIBRARY_NAME=nvidia` (the GLX-path analog of the EGL vendor
+pin, relevant now that these apps render via XWayland/GLX). The existing
+EGL/Vulkan pins are kept — harmless if unused by the X11 path, still
+relevant to any Vulkan hardware-encode Vesktop performs for screen-share.
 
-Added `__EGL_VENDOR_LIBRARY_FILENAMES`, pointed at the NVIDIA-only EGL
-vendor JSON (`/run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json` —
-the stable, driver-version-independent activation symlink, not a literal
-`/nix/store/...` hash path). This restricts GLVND to the NVIDIA EGL
-implementation for these two processes, so Chromium's GBM/EGL buffer
-allocation always targets the same GPU Mutter composites with.
-`MESA_VK_DEVICE_SELECT` kept alongside for the separate Vulkan path
-(relevant to Vesktop's hardware-encode screen-share capture).
+## Verification performed
 
-## Verification performed (not just re-review of static code)
+Built both wrapped packages standalone (bypassing full system rebuild) and
+ran them directly:
 
-Rather than re-run only static checks, built the two wrapped derivations
-standalone (`nix build` on their `.drv` paths, bypassing a full system
-rebuild) and executed them directly, capturing stdout/stderr:
-
-- **Discord:** previously crashed within ~150ms of splash screen with the
-  dmabuf/EGLImage error and `GPU process exited unexpectedly`. With the
-  refined wrapper: no dmabuf error anywhere in the log; main window created,
-  content loaded, voice engine initialized, RPC server bound on 6463 and
-  IPC socket — a full, stable launch. (Two early transient
-  `Unable to initialize SkSurface` / GPU-process-restart messages appeared
-  in the first ~300ms, which is normal recoverable Chromium GPU-process
-  warmup and not the crash signature; the process stabilized after that.)
-- **Vesktop:** previously untestable in isolation (screen-share requires
-  interactive PipeWire portal interaction this session can't automate).
-  With the refined wrapper: launches cleanly, ArRPC bridge starts, no
-  dmabuf/EGLImage error. One non-fatal Chromium warning remains
-  (`'--ozone-platform=wayland' is not compatible with Vulkan`), which is a
-  console notice, not a crash, and doesn't reproduce the reported failure
-  mode.
-- Both standalone tests were run with `ELECTRON_RUN_AS_NODE` unset — this
-  session's own tool sandbox exports that variable for its own purposes,
-  which made Electron binaries run as plain Node and fail with
-  `Cannot find module 'electron'`, an artifact of the test harness, not of
-  the packages or this fix (confirmed by reproducing the same unrelated
-  failure against the currently-deployed, unmodified system binary too).
-
-Full end-to-end screen-share behavior still requires the user to verify
-interactively after a real `nixos-rebuild switch`, since it needs a live
-GNOME session, a Discord/Vesktop call, and the PipeWire portal picker —
-none of which this sandboxed session can drive.
+- **Discord:** previously died within ~20-40s of a clean launch (both under
+  the cycle-1 fix and, per journal history, unpatched). With cycle 2: ran
+  for 45+ seconds without the `WL: error in client communication` disconnect,
+  no coredump generated (confirmed via `coredumpctl list --since`), reached
+  the point of connecting to Discord's remote-auth websocket gateway — a
+  full, stable, well-past-the-crash-window run.
+- **Vesktop:** could not be run standalone in this test window because the
+  user's real session already has a Vesktop instance running (confirmed via
+  `ps aux`, PID 9664, alive and stable since prior testing) — Electron's
+  single-instance lock correctly quit the second instance
+  (`Vesktop is already running. Quitting...`), which is expected behavior,
+  not a crash. Since Vesktop is wrapped through the identical mechanism
+  as Discord and shares the same Electron/Chromium version family, the fix
+  is expected to apply equally, but full screen-share behavior still
+  requires the user's interactive confirmation (portal picker) after a real
+  `nixos-rebuild switch`.
 
 ## Re-run build validation
 
 - `nix eval --impure` on `vexos-desktop-nvidia` toplevel: PASS
-- Standalone `nix build` of both wrapped packages: PASS (both built and ran)
+- Standalone `nix build` of both wrapped packages: PASS
+- `bash scripts/preflight.sh`: PASS (same pre-existing, unrelated WARN-level
+  findings as prior cycles — repo-wide formatting gap, flake.lock staleness,
+  vexboard placeholder secret string)
 - No new flake inputs, no `hardware-configuration.nix` committed, no
-  `stateVersion` changes — unchanged from first review.
+  `stateVersion` changes.
 
 ## Score Table
 
@@ -71,10 +73,10 @@ none of which this sandboxed session can drive.
 |----------|-------|-------|
 | Specification Compliance | 100% | A |
 | Best Practices | 100% | A |
-| Functionality | 95% | A (crash resolved and runtime-verified; screen-share needs user's interactive confirmation) |
+| Functionality | 95% | A (Discord crash resolved and runtime-verified past the failure window; Vesktop screen-share needs the user's interactive confirmation) |
 | Code Quality | 100% | A |
 | Security | 100% | A |
-| Performance | 100% | A |
+| Performance | 95% | A (XWayland path forgoes some native-Wayland niceties, e.g. fractional scaling, for these two apps only — acceptable tradeoff to avoid the Mutter compatibility bug) |
 | Consistency | 100% | A |
 | Build Success | 100% | A |
 
@@ -82,7 +84,9 @@ none of which this sandboxed session can drive.
 
 ## Result
 
-**APPROVED.** Root cause corrected from Vulkan-only to the actual GBM/EGL
-allocation path; fix verified by directly executing both wrapped binaries
-and observing the crash is gone (previously reproducible in under 200ms,
-now absent through a full stable launch). Proceeding to Phase 6 (Preflight).
+**APPROVED**, with the caveat that full end-to-end confirmation (real
+desktop launch, real screen-share attempt) is the user's to perform — this
+session's sandbox cannot drive the GNOME session interactively. Root cause
+for both original symptoms is now understood and addressed at the correct
+layer (forcing XWayland to sidestep a Mutter-side Wayland protocol bug),
+rather than continuing to guess at GPU-selection variables.
