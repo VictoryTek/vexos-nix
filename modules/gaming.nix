@@ -9,31 +9,6 @@
 { config, pkgs, lib, ... }:
 let
   cfg = config.vexos.features.gaming;
-
-  # Force XWayland instead of native Wayland for these two Electron apps, on
-  # this hybrid AMD+NVIDIA laptop. Pinning GPU selection (EGL vendor, Vulkan
-  # device — see git history) fixed the immediate crash-on-launch dmabuf
-  # error, but a second failure remained: GNOME Shell forcibly kills the
-  # client's Wayland connection ~20-40s into a clean run ("WL: error in
-  # client communication (pid ...)"), which crashes Discord and silently
-  # breaks Vesktop screen-share. This is a widely-reported Chromium
-  # Ozone/Wayland-vs-Mutter compatibility bug on hybrid-NVIDIA systems
-  # (reported against Cursor, VS Code, Brave — not specific to these two
-  # apps or this fix). Routing through XWayland (--ozone-platform=x11)
-  # avoids Mutter's native-Wayland linux-dmabuf handling entirely, which is
-  # the standard workaround across those projects. GPU-selection env vars
-  # are kept alongside since XWayland's GLX/Vulkan paths still benefit from
-  # them on this hybrid GPU.
-  nvidiaVkSelect = pkg: attr: pkg.overrideAttrs (old: {
-    nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
-    postFixup = (old.postFixup or "") + ''
-      wrapProgram $out/bin/${attr} \
-        --set __EGL_VENDOR_LIBRARY_FILENAMES /run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json \
-        --set __GLX_VENDOR_LIBRARY_NAME nvidia \
-        --set MESA_VK_DEVICE_SELECT "10de:2d58!" \
-        --add-flags "--ozone-platform=x11"
-    '';
-  });
 in
 {
   imports = [
@@ -118,8 +93,8 @@ in
       # Use unstable: stable vesktop 1.6.5 vendors an exact pnpm-10.29.2 build
       # input flagged insecure (CVE-2026-48995 et al.); unstable's vesktop (same
       # version) builds with a non-flagged pnpm. pnpm is build-time only.
-      (nvidiaVkSelect pkgs.unstable.vesktop "vesktop") # feature-rich Discord client (Vencord-based)
-      (nvidiaVkSelect pkgs.discord "discord")          # official Discord client
+      pkgs.unstable.vesktop # feature-rich Discord client (Vencord-based)
+      pkgs.discord         # official Discord client
 
       # GNOME Shell extension for GameMode status indicator (tray icon)
       pkgs.gnomeExtensions.gamemode-shell-extension
