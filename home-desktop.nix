@@ -219,7 +219,7 @@
 
         $D write /org/gnome/desktop/app-folders/folders/"Game Utilities"/name "'Game Utilities'"
         $D write /org/gnome/desktop/app-folders/folders/"Game Utilities"/apps \
-          "['com.vysp3r.ProtonPlus.desktop', 'protontricks.desktop', 'vesktop.desktop', 'discord.desktop']"
+          "['com.vysp3r.ProtonPlus.desktop', 'protontricks.desktop', 'dev.vencord.Vesktop.desktop', 'com.discordapp.Discord.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/Office/name   "'Office'"
         $D write /org/gnome/desktop/app-folders/folders/Office/apps \

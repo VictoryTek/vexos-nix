@@ -86,8 +86,8 @@
           apps = [
             "com.vysp3r.ProtonPlus.desktop"
             "protontricks.desktop"
-            "vesktop.desktop"
-            "discord.desktop"
+            "dev.vencord.Vesktop.desktop"
+            "com.discordapp.Discord.desktop"
           ];
         };
 

@@ -25,6 +25,8 @@ in
         "net.lutris.Lutris"
         "com.vysp3r.ProtonPlus"
         "org.prismlauncher.PrismLauncher"
+        "dev.vencord.Vesktop"
+        "com.discordapp.Discord"
       ];
     }
 
@@ -89,13 +91,6 @@ in
       pkgs.ryubing         # Nintendo Switch emulator (Ryujinx fork)
       pkgs.retroarch       # multi-system emulator frontend
 
-      # Communication
-      # Use unstable: stable vesktop 1.6.5 vendors an exact pnpm-10.29.2 build
-      # input flagged insecure (CVE-2026-48995 et al.); unstable's vesktop (same
-      # version) builds with a non-flagged pnpm. pnpm is build-time only.
-      pkgs.unstable.vesktop # feature-rich Discord client (Vencord-based)
-      pkgs.discord         # official Discord client
-
       # GNOME Shell extension for GameMode status indicator (tray icon)
       pkgs.gnomeExtensions.gamemode-shell-extension
     ];
@@ -108,6 +103,16 @@ in
       "net.lutris.Lutris"                # Game manager / Wine frontend
       "com.vysp3r.ProtonPlus"            # Proton/Wine version manager
       "org.prismlauncher.PrismLauncher"  # Minecraft launcher
+
+      # Communication — installed as Flatpak, not nixpkgs: native builds of
+      # both apps cannot screen-share on this hybrid AMD+NVIDIA laptop
+      # (portal/PipeWire screencast dies regardless of GPU-selection env
+      # vars, driver branch, or Wayland/XWayland — see
+      # .github/docs/subagent_docs/discord_vulkan_gpu_select_*.md). Verified
+      # working via Flatpak on this exact hardware (Bazzite comparison test,
+      # then confirmed directly on this system).
+      "dev.vencord.Vesktop"      # feature-rich Discord client (Vencord-based)
+      "com.discordapp.Discord"   # official Discord client
     ];
 
     # ── Controllers ───────────────────────────────────────────────────────────
