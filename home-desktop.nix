@@ -205,7 +205,7 @@
       Type            = "oneshot";
       RemainAfterExit = true;
       ExecStart       = toString (pkgs.writeShellScript "vexos-init-app-folders-desktop" ''
-        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v3"
+        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v4"
         [ -f "$STAMP" ] && exit 0
 
         D="${pkgs.dconf}/bin/dconf"
