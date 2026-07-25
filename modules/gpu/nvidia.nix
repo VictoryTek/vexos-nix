@@ -75,5 +75,9 @@ in
     # VirtualBox guest additions on bare-metal hosts. Guest additions fail to
     # build against linuxPackages_latest (kernel 6.12+).
     virtualisation.virtualbox.guest.enable = lib.mkForce false;
+
+    # Sunshine (modules/sunshine.nix) hardware encoder for NVIDIA — covers both
+    # the "latest" and "legacy_535" driver variants (NVENC is available on both).
+    services.sunshine.settings.encoder = "nvenc";
   };
 }

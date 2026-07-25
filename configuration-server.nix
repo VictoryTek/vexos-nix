@@ -5,6 +5,7 @@
     ./modules/gnome.nix
     ./modules/gnome-server.nix
     ./modules/remote-desktop.nix    # auto-configures grdctl RDP credentials from /etc/nixos/secrets/rdp-password
+    ./modules/sunshine.nix          # self-hosted Moonlight game-stream host
     ./modules/audio.nix
     ./modules/gpu.nix
     ./modules/branding.nix

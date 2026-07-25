@@ -47,4 +47,12 @@
   services.zfs.autoScrub.enable = lib.mkForce false;
   services.zfs.trim.enable      = lib.mkForce false;
 
+  # Sunshine (modules/sunshine.nix) deliberately has no encoder override here —
+  # unlike modules/gpu/{nvidia,amd,intel}.nix. KMS capture on virtio-gpu/QXL is
+  # not reliably supported upstream (some setups need a dummy HDMI plug just to
+  # have a capturable display surface); forcing a hardware encoder that may not
+  # exist would hard-fail instead of falling back. Leave encoder unset so
+  # Sunshine auto-detects, falling back to software encoding. Live-test on
+  # actual VM hardware before relying on this for unattended access.
+
 }

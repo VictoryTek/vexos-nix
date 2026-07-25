@@ -49,4 +49,7 @@
   # VirtualBox guest additions on bare-metal hosts. Guest additions fail to
   # build against linuxPackages_latest (kernel 6.12+).
   virtualisation.virtualbox.guest.enable = lib.mkForce false;
+
+  # Sunshine (modules/sunshine.nix) hardware encoder for Intel — Quick Sync (QSV).
+  services.sunshine.settings.encoder = "quicksync";
 }
