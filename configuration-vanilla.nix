@@ -24,27 +24,6 @@
     ./modules/sunshine.nix           # optional: vexos.features.sunshine.enable
   ];
 
-  # ---------- Bootloader ----------
-  # systemd-boot with EFI — same as nixos-generate-config defaults.
-  # lib.mkDefault allows hardware-configuration.nix to override for BIOS/GRUB.
-  boot.loader.systemd-boot.enable      = lib.mkDefault true;
-  boot.loader.efi.canTouchEfiVariables = lib.mkDefault true;
-
-  # ---------- Networking ----------
-  networking.hostName = lib.mkDefault "vexos";
-  networking.networkmanager.enable = true;
-
-  # ---------- Optional features (off by default — see imports above) ----------
-  # modules/flatpak.nix is imported only because gaming.nix / 3d-print.nix
-  # reference vexos.flatpak.managedApps — it defaults vexos.flatpak.enable to
-  # true, which would silently start installing Flatpak apps on a role that's
-  # supposed to stay stock. Override back to false here so vanilla remains
-  # stock until a user explicitly opts in. Note: enabling e.g. gaming without
-  # also setting vexos.flatpak.enable = true installs its regular packages
-  # (Steam, Proton, GameMode, ...) but not its Flatpak-managed extras (Lutris,
-  # ProtonPlus, PrismLauncher) — both toggles are needed for those.
-  vexos.flatpak.enable = lib.mkDefault false;
-
   # Stub option: gaming.nix (imported above) sets vexos.gnome.extraExtensions to
   # auto-enable a GNOME Shell tray extension. That option is normally declared
   # AND consumed by modules/gnome.nix / gnome-desktop.nix (extension-list merge
@@ -60,55 +39,78 @@
     default = [];
   };
 
-  # ---------- GNOME desktop (stock NixOS default) ----------
-  # Mirrors the desktop environment a standard NixOS GNOME install provides.
-  # No custom extensions, overlays, or vexos-specific packages.
-  services.xserver.enable = true;
-  services.displayManager.gdm.enable   = true;
-  services.desktopManager.gnome.enable = true;
+  config = {
+    # ---------- Bootloader ----------
+    # systemd-boot with EFI — same as nixos-generate-config defaults.
+    # lib.mkDefault allows hardware-configuration.nix to override for BIOS/GRUB.
+    boot.loader.systemd-boot.enable      = lib.mkDefault true;
+    boot.loader.efi.canTouchEfiVariables = lib.mkDefault true;
 
-  # ---------- Audio ----------
-  # PipeWire — same default NixOS uses for GNOME installs.
-  services.pipewire = {
-    enable            = true;
-    alsa.enable       = true;
-    alsa.support32Bit = true;
-    pulse.enable      = true;
+    # ---------- Networking ----------
+    networking.hostName = lib.mkDefault "vexos";
+    networking.networkmanager.enable = true;
+
+    # ---------- Optional features (off by default — see imports above) ----------
+    # modules/flatpak.nix is imported only because gaming.nix / 3d-print.nix
+    # reference vexos.flatpak.managedApps — it defaults vexos.flatpak.enable to
+    # true, which would silently start installing Flatpak apps on a role that's
+    # supposed to stay stock. Override back to false here so vanilla remains
+    # stock until a user explicitly opts in. Note: enabling e.g. gaming without
+    # also setting vexos.flatpak.enable = true installs its regular packages
+    # (Steam, Proton, GameMode, ...) but not its Flatpak-managed extras (Lutris,
+    # ProtonPlus, PrismLauncher) — both toggles are needed for those.
+    vexos.flatpak.enable = lib.mkDefault false;
+
+    # ---------- GNOME desktop (stock NixOS default) ----------
+    # Mirrors the desktop environment a standard NixOS GNOME install provides.
+    # No custom extensions, overlays, or vexos-specific packages.
+    services.xserver.enable = true;
+    services.displayManager.gdm.enable   = true;
+    services.desktopManager.gnome.enable = true;
+
+    # ---------- Audio ----------
+    # PipeWire — same default NixOS uses for GNOME installs.
+    services.pipewire = {
+      enable            = true;
+      alsa.enable       = true;
+      alsa.support32Bit = true;
+      pulse.enable      = true;
+    };
+
+    # ---------- Remote Desktop ----------
+    # Receive: GNOME Remote Desktop exposes RDP on port 3389.
+    # The NixOS GNOME module sets this via mkDefault true; we declare it
+    # explicitly and open the port. After deploy: GNOME Settings → System →
+    # Remote Desktop to set credentials.
+    services.gnome.gnome-remote-desktop.enable = true;
+    networking.firewall.allowedTCPPorts = [ 3389 ];
+    # Send: Remmina as RDP/VNC client.
+    environment.systemPackages = [ pkgs.remmina ];
+
+    # ---------- GNOME theme defaults (locked) ----------
+    # Force GNOME to use the stock Adwaita cursor and icon theme.
+    # Without this, stale dconf values from a previous role (e.g. Bibata cursor
+    # from the desktop role) persist in the user's ~/.config/dconf/user after
+    # switching to vanilla.  Bibata is not installed here, so GNOME renders no
+    # cursor.  A dconf lock ensures these keys override whatever the user db
+    # contains, regardless of prior session history.
+    # Vanilla is an intentional stock NixOS baseline; locking to Adwaita is
+    # correct behaviour — switch to a different role for custom theming.
+    programs.dconf.profiles.user.databases = [
+      {
+        settings."org/gnome/desktop/interface" = {
+          cursor-theme = "Adwaita";
+          icon-theme   = "Adwaita";
+        };
+        locks = [
+          "/org/gnome/desktop/interface/cursor-theme"
+          "/org/gnome/desktop/interface/icon-theme"
+        ];
+      }
+    ];
+
+    # ---------- State version ----------
+    # Do NOT change after initial install.
+    system.stateVersion = "25.11";
   };
-
-  # ---------- Remote Desktop ----------
-  # Receive: GNOME Remote Desktop exposes RDP on port 3389.
-  # The NixOS GNOME module sets this via mkDefault true; we declare it
-  # explicitly and open the port. After deploy: GNOME Settings → System →
-  # Remote Desktop to set credentials.
-  services.gnome.gnome-remote-desktop.enable = true;
-  networking.firewall.allowedTCPPorts = [ 3389 ];
-  # Send: Remmina as RDP/VNC client.
-  environment.systemPackages = [ pkgs.remmina ];
-
-  # ---------- GNOME theme defaults (locked) ----------
-  # Force GNOME to use the stock Adwaita cursor and icon theme.
-  # Without this, stale dconf values from a previous role (e.g. Bibata cursor
-  # from the desktop role) persist in the user's ~/.config/dconf/user after
-  # switching to vanilla.  Bibata is not installed here, so GNOME renders no
-  # cursor.  A dconf lock ensures these keys override whatever the user db
-  # contains, regardless of prior session history.
-  # Vanilla is an intentional stock NixOS baseline; locking to Adwaita is
-  # correct behaviour — switch to a different role for custom theming.
-  programs.dconf.profiles.user.databases = [
-    {
-      settings."org/gnome/desktop/interface" = {
-        cursor-theme = "Adwaita";
-        icon-theme   = "Adwaita";
-      };
-      locks = [
-        "/org/gnome/desktop/interface/cursor-theme"
-        "/org/gnome/desktop/interface/icon-theme"
-      ];
-    }
-  ];
-
-  # ---------- State version ----------
-  # Do NOT change after initial install.
-  system.stateVersion = "25.11";
 }
