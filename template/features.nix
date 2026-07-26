@@ -3,15 +3,17 @@
 # Managed by `just enable-feature <feature>` / `just disable-feature <feature>`.
 # After editing, run `just rebuild` to apply.
 #
-# Available features (desktop role):
+# Available features (desktop, server, htpc, and vanilla roles):
 #   gaming        — Steam, Proton-GE, GameMode, Gamescope, Wine, controllers,
 #                   32-bit GPU libs, SCX LAVD scheduler, gaming kernel params
 #   development   — Docker, VSCodium, Python, Node, Go, Claude Code, Nix LSP
 #   print3d       — Blender and OrcaSlicer (via Flatpak)
 #   virtualization — libvirtd/KVM, QEMU-KVM, GNOME Boxes / virt-manager support
+#   sunshine      — Self-hosted Moonlight game-stream host (KMS capture)
 {
   # vexos.features.gaming.enable         = false;
   # vexos.features.development.enable    = false;
   # vexos.features.print3d.enable        = false;
   # vexos.features.virtualization.enable = false;
+  # vexos.features.sunshine.enable       = false;
 }

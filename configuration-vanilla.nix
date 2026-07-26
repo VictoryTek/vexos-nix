@@ -16,6 +16,7 @@
     ./modules/notify.nix
     ./modules/asus-opt.nix
     ./modules/boot-discovery.nix
+    ./modules/flatpak.nix            # required by gaming.nix / 3d-print.nix's managedApps declarations below
     ./modules/gaming.nix             # optional: vexos.features.gaming.enable (bundles gpu-gaming + system-gaming)
     ./modules/development.nix        # optional: vexos.features.development.enable
     ./modules/3d-print.nix           # optional: vexos.features.print3d.enable
@@ -32,6 +33,17 @@
   # ---------- Networking ----------
   networking.hostName = lib.mkDefault "vexos";
   networking.networkmanager.enable = true;
+
+  # ---------- Optional features (off by default — see imports above) ----------
+  # modules/flatpak.nix is imported only because gaming.nix / 3d-print.nix
+  # reference vexos.flatpak.managedApps — it defaults vexos.flatpak.enable to
+  # true, which would silently start installing Flatpak apps on a role that's
+  # supposed to stay stock. Override back to false here so vanilla remains
+  # stock until a user explicitly opts in. Note: enabling e.g. gaming without
+  # also setting vexos.flatpak.enable = true installs its regular packages
+  # (Steam, Proton, GameMode, ...) but not its Flatpak-managed extras (Lutris,
+  # ProtonPlus, PrismLauncher) — both toggles are needed for those.
+  vexos.flatpak.enable = lib.mkDefault false;
 
   # ---------- GNOME desktop (stock NixOS default) ----------
   # Mirrors the desktop environment a standard NixOS GNOME install provides.

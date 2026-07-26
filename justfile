@@ -703,33 +703,6 @@ setup-rdp:
     echo "configured automatically on every login — no further action needed."
     echo ""
 
-# Show what's left to finish setting up Sunshine (Moonlight game-stream host).
-# Sunshine itself is already running after 'just rebuild' — there is no password
-# file or Nix-level toggle to configure here. Two manual steps remain that cannot
-# be automated: creating the WebUI admin account on first run, and pairing each
-# Moonlight client via a one-time PIN. This recipe prints both, plus this
-# machine's Tailscale IP for the Moonlight "Add Host" step.
-# Only needed on desktop, server, and htpc roles.
-[group('System Administration')]
-enable-sunshine:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    TS_IP=$(tailscale ip -4 2>/dev/null || echo "<run 'tailscale ip -4' to find it>")
-
-    echo ""
-    echo "VexOS Sunshine (Moonlight) Setup"
-    echo "──────────────────────────────────────"
-    echo "Sunshine is already running as a systemd --user service — nothing to"
-    echo "enable in Nix. Two one-time manual steps remain (cannot be scripted):"
-    echo ""
-    echo "1. Create the WebUI admin account (first run only):"
-    echo "     https://$TS_IP:47990"
-    echo ""
-    echo "2. In Moonlight, add this host by IP ($TS_IP), then enter the PIN"
-    echo "   shown under the WebUI's PIN tab to pair the client."
-    echo ""
-
 # Set the system hostname — applies immediately and persists across rebuilds.
 # Usage:
 #   just set-hostname mypc       — direct
@@ -969,17 +942,18 @@ fix-flake:
     esac
 
 
-# Available optional feature names (desktop role).
-_feature_names := "gaming development print3d virtualization"
+# Available optional feature names (desktop, server, htpc, and vanilla roles).
+_feature_names := "gaming development print3d virtualization sunshine"
 
-# Guard: abort if the current host is stateless, headless-server, or vanilla (features not supported there).
+# Guard: abort if the current host is stateless or headless-server (features not
+# supported there — neither role wires /etc/nixos/features.nix into its module set).
 [private]
 _require-desktop-role:
     #!/usr/bin/env bash
     set -euo pipefail
     variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
-    if [[ "$variant" == *stateless* || "$variant" == *headless* || "$variant" == *vanilla* ]]; then
-        echo "error: feature recipes are not available on stateless, headless-server, or vanilla roles."
+    if [[ "$variant" == *stateless* || "$variant" == *headless* ]]; then
+        echo "error: feature recipes are not available on stateless or headless-server roles."
         echo "       current variant: ${variant:-unknown}"
         exit 1
     fi
@@ -1005,6 +979,7 @@ features: _require-desktop-role
     _check development
     _check print3d
     _check virtualization
+    _check sunshine
     echo ""
     echo "Use 'just enable-feature <feature>' / 'just disable-feature <feature>' to toggle."
     echo ""
@@ -1098,6 +1073,18 @@ enable-feature feature: _require-desktop-role
             echo "    Apps       GNOME Boxes (VM management UI)"
             echo "    Features   Virtual TPM 2.0 — required for Windows 11 guests"
             echo "    Groups     User added to libvirtd (manage VMs without sudo)"
+            ;;
+        sunshine)
+            echo "  What this adds:"
+            echo "    Services   Sunshine — self-hosted Moonlight game-stream host (KMS capture)"
+            echo "    Firewall   Sunshine's TCP/UDP port range opened automatically"
+            echo "    Groups     User added to uinput (remote mouse/keyboard input)"
+            echo ""
+            echo "  Two one-time manual steps remain after rebuild (cannot be scripted):"
+            TS_IP=$(tailscale ip -4 2>/dev/null || echo "<run 'tailscale ip -4' to find it>")
+            echo "    1. Create the WebUI admin account (first run only): https://$TS_IP:47990"
+            echo "    2. In Moonlight, add this host by IP ($TS_IP), then enter the PIN"
+            echo "       shown under the WebUI's PIN tab to pair the client."
             ;;
     esac
     echo ""
