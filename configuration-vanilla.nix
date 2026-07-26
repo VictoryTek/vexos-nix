@@ -45,6 +45,21 @@
   # ProtonPlus, PrismLauncher) — both toggles are needed for those.
   vexos.flatpak.enable = lib.mkDefault false;
 
+  # Stub option: gaming.nix (imported above) sets vexos.gnome.extraExtensions to
+  # auto-enable a GNOME Shell tray extension. That option is normally declared
+  # AND consumed by modules/gnome.nix / gnome-desktop.nix (extension-list merge
+  # into dconf enabled-extensions) — vanilla deliberately doesn't import those
+  # (its own minimal, hand-rolled GNOME setup, no custom extensions by design).
+  # Declaring the option here only satisfies evaluation; nothing on vanilla
+  # reads it, so this is an intentional no-op. The GameMode package itself
+  # (pkgs.gnomeExtensions.gamemode-shell-extension) is still installed via
+  # gaming.nix's environment.systemPackages and can be enabled manually through
+  # the GNOME Extensions app if desired.
+  options.vexos.gnome.extraExtensions = lib.mkOption {
+    type    = lib.types.listOf lib.types.str;
+    default = [];
+  };
+
   # ---------- GNOME desktop (stock NixOS default) ----------
   # Mirrors the desktop environment a standard NixOS GNOME install provides.
   # No custom extensions, overlays, or vexos-specific packages.
