@@ -1,9 +1,11 @@
 # configuration-vanilla.nix
 # Vanilla role: stock NixOS baseline for system restore.
-# Intentionally minimal — mirrors what a default nixos-generate-config +
-# GNOME desktop selection produces.
-# Does NOT include: custom kernel, performance tuning, ZRAM, AppArmor,
-# gaming, Flatpak, branding, or custom packages.
+# Intentionally minimal by default — mirrors what a default nixos-generate-config +
+# GNOME desktop selection produces. Does NOT include, by default: custom kernel,
+# performance tuning, ZRAM, AppArmor, gaming, Flatpak, branding, or custom packages.
+# Optional features (gaming, development, print3d, virtualization, sunshine) are
+# available via /etc/nixos/features.nix — see `just enable-feature` — but none are
+# enabled unless explicitly opted into; vanilla stays stock until then.
 { config, pkgs, lib, ... }:
 
 {
@@ -14,6 +16,11 @@
     ./modules/notify.nix
     ./modules/asus-opt.nix
     ./modules/boot-discovery.nix
+    ./modules/gaming.nix             # optional: vexos.features.gaming.enable (bundles gpu-gaming + system-gaming)
+    ./modules/development.nix        # optional: vexos.features.development.enable
+    ./modules/3d-print.nix           # optional: vexos.features.print3d.enable
+    ./modules/virtualization.nix     # optional: vexos.features.virtualization.enable
+    ./modules/sunshine.nix           # optional: vexos.features.sunshine.enable
   ];
 
   # ---------- Bootloader ----------

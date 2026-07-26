@@ -226,7 +226,11 @@
         homeFile         = ./home-vanilla.nix;
         baseModules      = [];
         extraModules     = [];
-        hostLocalModules = [];
+        # Optional feature toggles (gaming, development, print3d, virtualization,
+        # sunshine) are available on vanilla too — same /etc/nixos/features.nix
+        # mechanism as desktop/server/htpc. Empty list when absent so vanilla
+        # outputs stay buildable on machines that haven't run `just enable-feature`.
+        hostLocalModules = featuresModule;
       };
     };
 

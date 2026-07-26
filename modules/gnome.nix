@@ -238,6 +238,9 @@
 
     # RDP/VNC client — connect to other machines
     pkgs.remmina
+
+    # Moonlight client — connect to other machines' Sunshine hosts (modules/sunshine.nix)
+    pkgs.moonlight-qt
   ];
 
   # ── Fonts ─────────────────────────────────────────────────────────────────

@@ -137,6 +137,27 @@ machine's Tailscale IP for adding the host in Moonlight.
   enabled and running simultaneously on desktop/server/htpc roles. No known
   conflict between the two (different ports, different capture/session models).
 
+## Addendum (2026-07-25): Moonlight client was missing
+
+The original request was "set up Sunshine and Moonlight." This spec and its
+implementation covered only the Sunshine **host** side — the Moonlight **client**
+was omitted, an oversight caught by the user after the initial commit, not a
+deliberate scope decision.
+
+**Fix:** add `pkgs.moonlight-qt` (nixpkgs, binary cached, 1.2 MB) to
+`modules/gnome.nix`'s package list, directly alongside the existing `pkgs.remmina`
+entry — this repo already has a precedent for exactly this shape of tool ("client
+for connecting out to other machines," installed universally on every GNOME role,
+not gated by any feature flag). `moonlight-qt` is not `moonlight` (an unrelated
+Discord client mod also in nixpkgs) — confirmed the correct attribute via
+`nix eval` before use.
+
+Placed in `modules/gnome.nix` (universal, all GNOME roles including stateless),
+not scoped to only desktop/server/htpc like `sunshine.nix` — matching Remmina's
+existing placement exactly, since a Moonlight client is equally useful on any
+GNOME machine you might sit at, independent of whether that specific machine also
+hosts Sunshine.
+
 ## Validation
 
 - `nix flake show --impure`.
