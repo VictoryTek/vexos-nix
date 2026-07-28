@@ -4,9 +4,16 @@
 # (TextEditor, Loupe, Calculator, Calendar, Papers, Snapshot). mpv is the
 # video player (nixpkgs, via packages-desktop.nix).
 { config, pkgs, lib, ... }:
+let
+  cfg = config.vexos.gnome;
+in
 {
   imports = [ ./gnome.nix ];
 
+  options.vexos.gnome.variableRefreshRate.enable = lib.mkEnableOption "GNOME Mutter variable refresh rate (VRR / G-Sync compatible) experimental feature";
+
+  config = lib.mkMerge [
+    {
   # ── Role-specific dconf overlay ───────────────────────────────────────────
   # Adds accent-color, enabled-extensions, and favorite-apps to the
   # system dconf user database.  Lists concatenate with the universal
@@ -171,4 +178,18 @@
     ];
     extraRemoves = [ "org.gnome.Totem" ];
   };
+    }
+
+    # ── Variable Refresh Rate (VRR / G-Sync compatible) ─────────────────────
+    # Off by default — Mutter's VRR support is still an experimental-features
+    # flag upstream. Flip vexos.gnome.variableRefreshRate.enable = true once a
+    # DP-Alt-Mode-capable link (external HDMI on this host caps at 60Hz) is in use.
+    (lib.mkIf cfg.variableRefreshRate.enable {
+      programs.dconf.profiles.user.databases = [
+        {
+          settings."org/gnome/mutter".experimental-features = [ "variable-refresh-rate" ];
+        }
+      ];
+    })
+  ];
 }
