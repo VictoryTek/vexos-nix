@@ -154,12 +154,16 @@ The canonical update paths are `just update` (terminal) and the **Up** app (GUI)
 Both run the same `vexos-update` script from `modules/nix.nix`, which uses a
 known-heavy block engine before applying any change:
 
-- **Non-heavy local builds** (system glue, custom vexos scripts, Rust crates,
-  binary wrappers like Discord/Steam) — build locally in seconds to minutes;
-  logged as `VEXOS_LOCAL_BUILD`; update proceeds normally.
-- **Heavy builds** (kernel modules, NVIDIA driver, OpenRazer DKMS module) —
-  compile against the kernel and take hours if not pre-built by Hydra; update
-  paused; `flake.lock` restored; logged as `VEXOS_CACHE_BLOCK`.
+- **Local builds** (system glue, custom vexos scripts, Rust crates, binary
+  wrappers like Discord/Steam, the NVIDIA userspace driver, the OpenRazer DKMS
+  module, and the per-host kernel module aggregate) — build locally in seconds
+  to minutes; logged as `VEXOS_LOCAL_BUILD`; update proceeds normally. The
+  NVIDIA userspace driver, patched OpenRazer, and the kernel module aggregate
+  are never in the binary cache — unfree, locally patched, or host-specific — so
+  blocking on them would stall updates permanently.
+- **Heavy builds** (the kernel source build itself) — take hours if not
+  pre-built by Hydra; update paused; `flake.lock` restored; logged as
+  `VEXOS_CACHE_BLOCK`.
 
 When a heavy-build block occurs, use `just deploy` to apply config-only changes
 from the repo without bumping flake inputs, then retry `just update` in 1-3 days

@@ -344,10 +344,11 @@ update:
 
     # vexos-update (installed by modules/nix.nix) uses a known-heavy block
     # engine before applying any update:
-    #   Non-heavy — system glue, vexos scripts, Rust crates, binary wrappers;
+    #   Non-heavy — system glue, vexos scripts, Rust crates, binary wrappers,
+    #               NVIDIA driver, OpenRazer DKMS, kernel module aggregate;
     #               build locally in seconds-to-minutes; logged as VEXOS_LOCAL_BUILD,
     #               update proceeds normally.
-    #   Heavy     — kernel modules, NVIDIA driver, OpenRazer DKMS; take hours;
+    #   Heavy     — the kernel source build; takes hours;
     #               update paused, flake.lock restored, logged as VEXOS_CACHE_BLOCK.
     # The script also handles flake.lock backup/restore and nixos-rebuild switch.
     # Up uses the same script so behaviour is identical regardless of update path.
@@ -439,9 +440,11 @@ upgrade-analysis target_version:
     NIXPKGS_URL="github:NixOS/nixpkgs/nixos-${TARGET}"
     HM_URL="github:nix-community/home-manager/release-${TARGET}"
 
-    # Same heavy-build regex as vexos-update — packages that take hours due to
-    # kernel compilation (kernel modules, NVIDIA driver, OpenRazer DKMS module).
-    HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk|NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|openrazer-[0-9])'
+    # Same heavy-build regex as vexos-update (pkgs/vexos-update/default.nix —
+    # kept in sync manually): the kernel source build, which takes hours to
+    # compile. Excludes the kernel module aggregates and NVIDIA/OpenRazer
+    # userspace, which are local builds of minutes, not hours.
+    HEAVY_BUILD_REGEX='^linux-[0-9][0-9.]*(-rc[0-9]+)?$'
 
     echo ""
     echo "================================================================"
@@ -523,21 +526,21 @@ upgrade-analysis target_version:
         NON_HEAVY_COUNT=$(printf '%s\n' "$NON_HEAVY_BUILDS" | grep -c '[^[:space:]]' || true)
 
         printf "  %-48s %s\n" "Packages in binary cache (ready to fetch):"         "${FETCH_COUNT}"
-        printf "  %-48s %s\n" "Non-heavy local builds (fast — system glue, scripts):" "${NON_HEAVY_COUNT}"
-        printf "  %-48s %s\n" "Heavy kernel/NVIDIA builds (hours — will block update):" "${HEAVY_COUNT}"
+        printf "  %-48s %s\n" "Other local builds (minutes — update proceeds):" "${NON_HEAVY_COUNT}"
+        printf "  %-48s %s\n" "Heavy kernel source builds (hours — will block update):" "${HEAVY_COUNT}"
         echo ""
 
         if [ -n "$NON_HEAVY_BUILDS" ] && [ "$NON_HEAVY_COUNT" -gt 0 ]; then
-            echo "  ── Non-heavy local builds (fast — update will proceed) ─────────"
+            echo "  ── Other local builds (minutes — update will proceed) ──────────"
             printf '%s\n' "$NON_HEAVY_BUILDS" | grep '[^[:space:]]' | sed 's/^/    /'
             echo ""
         fi
 
         if [ -n "$HEAVY_BUILDS" ] && [ "$HEAVY_COUNT" -gt 0 ]; then
-            echo "  ── Heavy builds — kernel/NVIDIA not yet in cache (will block) ──"
+            echo "  ── Heavy builds — kernel not yet in cache (will block) ─────────"
             printf '%s\n' "$HEAVY_BUILDS" | grep '[^[:space:]]' | sed 's/^/    /'
             echo ""
-            echo "  These packages compile against the kernel and are not yet in the"
+            echo "  The kernel source build is not yet in the"
             echo "  nixos-${TARGET} binary cache. If you upgrade now, vexos-update"
             echo "  will block and restore flake.lock. The cache typically fills"
             echo "  within 1-3 days of a nixpkgs commit."
@@ -565,7 +568,7 @@ upgrade-analysis target_version:
         echo "  4. Once [1/3] shows PASS, update flake.nix in the repo and push — the upgrade applies on next 'just update'."
         echo ""
     elif [ "$HEAVY_COUNT" -gt 0 ] 2>/dev/null; then
-        echo "  ⚠ CONFIG OK — but ${HEAVY_COUNT} heavy kernel/NVIDIA package(s) not yet in cache."
+        echo "  ⚠ CONFIG OK — but ${HEAVY_COUNT} heavy kernel package(s) not yet in cache."
         echo ""
         echo "  Option A — Wait (recommended):"
         echo "    Re-run 'just upgrade-analysis ${TARGET}' in 1-3 days."

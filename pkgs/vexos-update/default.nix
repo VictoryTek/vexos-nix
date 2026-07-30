@@ -110,11 +110,24 @@ GITIGNORE
     # packages were not in cache at install time.  On each update, check
     # whether the target packages are now cached; if so, remove the override
     # so the next rebuild upgrades to the intended kernel automatically.
-    # Kernel modules: cacheable but can take hours to compile until Hydra builds
-    # them. Shared by the kernel-override auto-clear check below and the main
+    # The kernel source build: cacheable but takes hours to compile until Hydra
+    # builds it. Anchored at both ends so it matches only "linux-<version>"
+    # (e.g. linux-7.1.5, linux-6.14-rc1) — deliberately NOT the kernel module
+    # aggregates (linux-<ver>-modules, linux-<ver>-modules-shrunk). Those are
+    # built from this host's boot.extraModulePackages, so they are
+    # configuration-specific and Hydra can never cache them, and they are cheap
+    # regardless (a buildEnv symlink tree plus depmod, and a module-subset
+    # copy). Matching them turned every kernel bump into a permanent false
+    # VEXOS_CACHE_BLOCK on hosts with out-of-tree modules. Protection is
+    # preserved: if the kernel itself must be compiled it appears in the same
+    # dry-build list and blocks here.
+    #
+    # Shared by the kernel-override auto-clear check below and the main
     # three-way local-build classifier further down — defined once here so both
-    # use sites can't drift apart.
-    HEAVY_BUILD_REGEX='^(linux-[0-9][^/]*-modules|linux-[0-9][^/]*-modules-shrunk)'
+    # use sites can't drift apart. Also duplicated in the justfile's
+    # upgrade-analysis recipe (kept in sync manually — a just recipe cannot
+    # source a fragment from this package).
+    HEAVY_BUILD_REGEX='^linux-[0-9][0-9.]*(-rc[0-9]+)?$'
 
     OVERRIDE_FILE="/etc/nixos/kernel-install-override.nix"
     write_kernel_override() {
@@ -168,8 +181,8 @@ GITIGNORE
 
     # Three-way local-build classifier:
     #
-    #   HEAVY_BUILD_REGEX: kernel modules — cacheable but hours to compile.
-    #   If any match → block, restore lock, exit 2. Retry in 1-3 days.
+    #   HEAVY_BUILD_REGEX: the kernel source build — cacheable but hours to
+    #   compile. If any match → block, restore lock, exit 2. Retry in 1-3 days.
     #
     #   UNAVOIDABLE_REGEX: unfree NVIDIA userspace (nvidia-x11 / .run /
     #   settings / persistenced) and locally-patched openrazer — Hydra NEVER
@@ -211,8 +224,8 @@ GITIGNORE
 
     if [ -n "$HEAVY_BUILDS" ]; then
       echo ""
-      echo "VEXOS_CACHE_BLOCK: Update paused — kernel packages require a"
-      echo "VEXOS_CACHE_BLOCK: local source build (typically 1-3 days until Hydra caches them):"
+      echo "VEXOS_CACHE_BLOCK: Update paused — the kernel itself requires a"
+      echo "VEXOS_CACHE_BLOCK: local source build (typically 1-3 days until Hydra caches it):"
       printf '%s\n' "$HEAVY_BUILDS" | grep '[^[:space:]]' | sed 's/^/VEXOS_CACHE_BLOCK:   /'
       echo "VEXOS_CACHE_BLOCK:"
       echo "VEXOS_CACHE_BLOCK: flake.lock restored. No changes were applied."
