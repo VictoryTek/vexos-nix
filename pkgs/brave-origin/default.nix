@@ -2,12 +2,15 @@
 # Brave Origin — pre-built binary package (not yet in nixpkgs).
 # Source: https://brave.com/origin/linux/
 #
-# To update to a new version:
+# `version` and `hash` below are bumped automatically by
+# .github/workflows/update-brave-origin-weekly-thursday.yml (weekly, plus manual
+# workflow_dispatch). Prefer that over editing by hand — it builds the result before
+# committing. To update manually anyway:
 #   1. Update `version` below.
 #   2. Run:
 #        HASH=$(nix-prefetch-url --unpack \
 #          https://github.com/brave/brave-browser/releases/download/v<VER>/brave-origin-<VER>-linux-amd64.zip)
-#        nix hash to-sri --type sha256 "$HASH"
+#        nix hash convert --hash-algo sha256 --to sri "$HASH"
 #   3. Replace `hash` with the new SRI string.
 { lib
 , stdenv

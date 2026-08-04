@@ -1,0 +1,130 @@
+name: Brave Origin Pin — Weekly Thursday
+
+# Brave Origin is not in nixpkgs — it is a hand-maintained pre-built binary package
+# (pkgs/brave-origin/default.nix) with a hardcoded version and fetchzip hash. That means
+# neither the flake-lock update workflows nor Brave's own in-app updater can ever move it:
+# lock updates only touch flake inputs, and /nix/store is read-only. Without this workflow
+# the pin drifts indefinitely on a network-facing browser.
+#
+# This workflow finds the newest STABLE Brave Origin Linux release, rewrites the version
+# and hash in place, BUILDS the result, and only commits if the build succeeds. The build
+# gate matters here in a way it does not for container-image pins: a new upstream binary
+# can introduce shared-library dependencies that break autoPatchelfHook, and CI's
+# `nix eval ... drvPath` would not catch that.
+#
+# Mirrors update-container-images-weekly-wednesday.yml's direct-commit-to-main style.
+# A commit here only updates the repo — hosts receive the new browser on the next
+# `git pull` + user-initiated `sudo nixos-rebuild switch`.
+
+on:
+  schedule:
+    - cron: '0 5 * * 4'   # Thursdays, 05:00 UTC (offset from the 04:00 lock/image jobs)
+  workflow_dispatch:        # Manual trigger: same scope as the schedule
+
+permissions:
+  contents: write           # Required to commit and push the updated pin back to main
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for a newer stable Brave Origin release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          PKG="pkgs/brave-origin/default.nix"
+
+          current=$(grep -oP '^\s*version\s*=\s*"\K[^"]+' "$PKG")
+          echo "Current pin: $current"
+
+          # Stable, beta and nightly all publish into the same releases feed and are
+          # told apart by asset filename:
+          #   stable   brave-origin-1.93.129-linux-amd64.zip
+          #   beta     brave-origin-beta-1.94.102-linux-amd64.zip
+          #   nightly  brave-origin-nightly-1.95.39-linux-amd64.zip
+          # Anchoring on a digit straight after "brave-origin-" selects stable only.
+          # Stable zips are sparse among many nightly releases, so scan two pages.
+          latest=$(
+            for page in 1 2; do
+              curl -fsS -H "Authorization: Bearer $GH_TOKEN" \
+                "https://api.github.com/repos/brave/brave-browser/releases?per_page=100&page=$page"
+            done \
+              | jq -r '.[].assets[].name' \
+              | grep -oP '^brave-origin-\K[0-9]+\.[0-9]+\.[0-9]+(?=-linux-amd64\.zip$)' \
+              | sort -V | tail -1
+          ) || true
+
+          if [ -z "$latest" ]; then
+            echo "warning: could not determine the latest stable version (API limit, or"
+            echo "warning: upstream renamed the release asset) — leaving the pin untouched."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Latest stable: $latest"
+
+          if [ "$latest" = "$current" ]; then
+            echo "brave-origin already at latest ($current)"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          url="https://github.com/brave/brave-browser/releases/download/v${latest}/brave-origin-${latest}-linux-amd64.zip"
+          raw=$(nix-prefetch-url --unpack "$url")
+          hash=$(nix hash convert --hash-algo sha256 --to sri "$raw")
+          echo "New hash: $hash"
+
+          sed -i \
+            -e "s|^\(\s*version\s*=\s*\)\"${current}\"|\1\"${latest}\"|" \
+            -e "s|^\(\s*hash\s*=\s*\)\"sha256-[^\"]*\"|\1\"${hash}\"|" \
+            "$PKG"
+
+          # Guard against a silently-missed substitution.
+          if ! grep -q "\"${latest}\"" "$PKG" || ! grep -q "\"${hash}\"" "$PKG"; then
+            echo "error: in-place rewrite of $PKG did not apply cleanly"
+            exit 1
+          fi
+
+          echo "Bumping brave-origin: $current -> $latest"
+          echo "changed=true"          >> "$GITHUB_OUTPUT"
+          echo "version=$latest"       >> "$GITHUB_OUTPUT"
+
+      # The package is only reachable through the vexos overlay inside each
+      # nixosConfiguration — there is no packages.<system> flake output — so build it
+      # against the flake's own pinned nixpkgs. Nix's dirty-tree evaluation picks up the
+      # modified (tracked) package file without any staging step.
+      - name: Build the bumped package
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          nix build --impure --no-link --print-out-paths --expr '
+            let
+              flake = builtins.getFlake (toString ./.);
+              pkgs  = import flake.inputs.nixpkgs {
+                system   = "x86_64-linux";
+                overlays = [ (import ./pkgs) ];
+              };
+            in pkgs.vexos.brave-origin'
+
+      - name: Commit updated Brave Origin pin
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pkgs/brave-origin/default.nix
+          git commit -m "chore(brave-origin): bump to ${{ steps.check.outputs.version }}"
+          git push
