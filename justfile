@@ -394,17 +394,16 @@ update-all:
 deploy:
     #!/usr/bin/env bash
     set -euo pipefail
-    target=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
-    if [ -z "$target" ]; then
-        echo "error: /etc/nixos/vexos-variant not found. Run 'just switch' first." >&2
-        exit 1
-    fi
-    echo ""
-    echo "Pulling latest vexos-nix config (nixpkgs unchanged)..."
-    sudo nix flake update vexos-nix --flake path:/etc/nixos
-    echo ""
-    echo "Switching to: ${target}"
-    sudo nixos-rebuild switch --impure --flake path:/etc/nixos#"${target}"
+    # vexos-deploy (installed by modules/nix.nix) does the work.  A bare
+    # `nix flake update vexos-nix` is NOT sufficient: /etc/nixos/flake.nix has
+    # nixpkgs.follows = "vexos-nix/nixpkgs", so nixpkgs is a transitive node and
+    # updating vexos-nix re-locks it from the new upstream flake.lock — which,
+    # given the daily lock-bump bot, moves nixpkgs on every deploy.  The script
+    # updates vexos-nix and then holds every other node at its current revision.
+    # Implementation lives in pkgs/vexos-deploy/ (writeShellApplication
+    # shellchecks it at build time, and guarantees jq, which is not present on
+    # every role).
+    sudo vexos-deploy
 
 # ── System Upgrades & Rollbacks ──────────────────────────────────────────────
 

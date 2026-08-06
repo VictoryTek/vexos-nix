@@ -107,7 +107,7 @@ in
     # Required for Steam, NVIDIA drivers, proton-ge-bin, etc.
     nixpkgs.config.allowUnfree = true;
 
-    # ── vexos-update ─────────────────────────────────────────────────────────
+    # ── vexos-update / vexos-deploy ──────────────────────────────────────────
     # Cache-safe update script installed system-wide.  Both `just update` and
     # the Up GUI app call this instead of raw `nix flake update && nixos-rebuild`
     # so the hold/rollback logic is identical regardless of how the update is
@@ -116,8 +116,14 @@ in
     # via callPackage (not through the pkgs.vexos overlay namespace) so this
     # universal module — applied to every role, including vanilla, which does
     # not include customPkgsOverlayModule — stays overlay-independent.
+    #
+    # vexos-deploy is the config-only counterpart called by `just deploy` — it
+    # pulls the latest vexos-nix commit while holding every other flake input
+    # at its current revision, which is the escape hatch vexos-update points at
+    # when it reports VEXOS_CACHE_BLOCK.  Same packaging rationale as above.
     environment.systemPackages = [
       (pkgs.callPackage ../pkgs/vexos-update { })
+      (pkgs.callPackage ../pkgs/vexos-deploy { })
     ];
   }; # end config
 }
