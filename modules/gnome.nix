@@ -236,9 +236,6 @@
     pkgs.gnomeExtensions.background-logo            # Desktop background logo
     pkgs.gnomeExtensions.tiling-assistant           # Half- and quarter-tiling support
 
-    # RDP/VNC client — connect to other machines
-    pkgs.remmina
-
     # Moonlight client — connect to other machines' Sunshine hosts (modules/sunshine.nix)
     pkgs.moonlight-qt
   ];

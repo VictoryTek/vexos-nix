@@ -84,8 +84,6 @@
     # Remote Desktop to set credentials.
     services.gnome.gnome-remote-desktop.enable = true;
     networking.firewall.allowedTCPPorts = [ 3389 ];
-    # Send: Remmina as RDP/VNC client.
-    environment.systemPackages = [ pkgs.remmina ];
 
     # ---------- GNOME theme defaults (locked) ----------
     # Force GNOME to use the stock Adwaita cursor and icon theme.
