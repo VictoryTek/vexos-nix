@@ -310,7 +310,11 @@ ok "wrote $ZFS_POOLS_NIX (pools: ${POOL_NAMES[*]})"
 echo ""
 echo "── Register with Proxmox VE ──────────────────────────────────"
 PVE_STOR_CFG="/etc/pve/storage.cfg"
-if [ -f "$PVE_STOR_CFG" ]; then
+# storage.cfg is NOT pre-seeded by proxmox-nixos the way Debian's Proxmox .deb
+# postinstall does — its absence does not mean Proxmox isn't running. Detect the
+# actual precondition (a live, mounted pmxcfs + the pvesm binary) instead; tee -a
+# below creates storage.cfg on first write if it doesn't exist yet.
+if command -v pvesm >/dev/null 2>&1 && mountpoint -q /etc/pve; then
     printf "Proxmox storage ID [vm-store]: "
     read -r STOR_ID
     STOR_ID="${STOR_ID:-vm-store}"
@@ -321,12 +325,10 @@ if [ -f "$PVE_STOR_CFG" ]; then
             "$STOR_ID" "$PVE_TARGET" | tee -a "$PVE_STOR_CFG" >/dev/null
         ok "storage '$STOR_ID' added to $PVE_STOR_CFG (pool: $PVE_TARGET)"
         # Attempt a live reload so changes appear immediately without a restart.
-        if command -v pvesm >/dev/null 2>&1; then
-            pvesm status >/dev/null 2>&1 && ok "pvesm reloaded" || true
-        fi
+        pvesm status >/dev/null 2>&1 && ok "pvesm reloaded" || true
     fi
 else
-    warn "$PVE_STOR_CFG not found — not running on a Proxmox VE host"
+    warn "pvesm not found or /etc/pve is not a mounted Proxmox cluster filesystem"
     echo "  Register manually in the Proxmox web UI:"
     echo "    Datacenter → Storage → Add → ZFS"
     echo "      ID:      vm-store"
