@@ -261,6 +261,53 @@ zpool status "$POOL"
 zfs list -r "$POOL"
 
 echo ""
+echo "── Registering pool for boot-time auto-import ──────────────────"
+# NixOS only generates a zfs-import-<pool>.service unit for pools declared in
+# fileSystems or listed in boot.zfs.extraPools — an imperatively-created pool
+# like this one otherwise never auto-imports on boot. Persist it declaratively.
+ZFS_POOLS_NIX="/etc/nixos/zfs-pools.nix"
+BEGIN_MARK="# >>> vexos-zfs-pools >>>"
+END_MARK="# <<< vexos-zfs-pools <<<"
+
+EXISTING=""
+if [ -f "$ZFS_POOLS_NIX" ]; then
+    EXISTING=$(awk -v b="$BEGIN_MARK" -v e="$END_MARK" \
+        '$0 ~ b {f=1; next} $0 ~ e {f=0} f' "$ZFS_POOLS_NIX")
+    cp -a "$ZFS_POOLS_NIX" "${ZFS_POOLS_NIX}.bak"
+    warn "existing $ZFS_POOLS_NIX backed up to ${ZFS_POOLS_NIX}.bak"
+fi
+
+declare -a POOL_NAMES=()
+while IFS= read -r line; do
+    name=$(echo "$line" | sed -n 's/^[[:space:]]*"\(.*\)".*/\1/p')
+    [ -n "$name" ] && POOL_NAMES+=("$name")
+done <<< "$EXISTING"
+if ! printf '%s\n' "${POOL_NAMES[@]:-}" | grep -qx "$POOL"; then
+    POOL_NAMES+=("$POOL")
+fi
+
+{
+    echo "# /etc/nixos/zfs-pools.nix"
+    echo "# GENERATED/updated by scripts/create-zfs-pool.sh on $(date '+%Y-%m-%d %H:%M:%S')."
+    echo "# Registers ZFS pools created via 'just create-zfs-pool' so NixOS generates a"
+    echo "# zfs-import-<pool>.service unit for each and imports them automatically on"
+    echo "# every boot. Without this, pools created imperatively never auto-import —"
+    echo "# see modules/zfs-server.nix for why boot.zfs.extraPools must list them."
+    echo "# Host-generated — do NOT commit to the vexos-nix repo."
+    echo "{ ... }:"
+    echo "{"
+    echo "  boot.zfs.extraPools = ["
+    echo "    $BEGIN_MARK"
+    for name in "${POOL_NAMES[@]}"; do
+        echo "    \"$name\""
+    done
+    echo "    $END_MARK"
+    echo "  ];"
+    echo "}"
+} > "$ZFS_POOLS_NIX"
+ok "wrote $ZFS_POOLS_NIX (pools: ${POOL_NAMES[*]})"
+
+echo ""
 echo "── Register with Proxmox VE ──────────────────────────────────"
 PVE_STOR_CFG="/etc/pve/storage.cfg"
 if [ -f "$PVE_STOR_CFG" ]; then
@@ -289,7 +336,8 @@ else
 fi
 
 echo ""
-echo "Persistence: the pool will auto-import on next boot via /etc/zfs/zpool.cache."
-echo "No flake, fstab, or NixOS module changes are needed for the pool itself."
+echo "Persistence: $ZFS_POOLS_NIX now declares this pool in boot.zfs.extraPools."
+echo "Run 'just update && sudo nixos-rebuild switch' to apply — until you do, the pool"
+echo "will NOT survive the next reboot (it is already imported right now, though)."
 echo ""
 ok "done"

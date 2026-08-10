@@ -40,7 +40,14 @@
   boot.kernelPackages = lib.mkOverride 75 pkgs.linuxPackages;
 
 
-  boot.zfs.extraPools              = [ ];     # auto-imported pools added by `just create-zfs-pool` are cached in /etc/zfs/zpool.cache, not listed here
+  # Pools created via `just create-zfs-pool` are registered here declaratively by
+  # scripts/create-zfs-pool.sh, which writes/updates /etc/nixos/zfs-pools.nix
+  # (imported by template/etc-nixos-flake.nix when present). Without an entry in
+  # boot.zfs.extraPools, NixOS generates no zfs-import-<pool>.service unit and the
+  # pool will NOT auto-import on boot — verified against nixpkgs'
+  # nixos/modules/tasks/filesystems/zfs.nix (allPools = fsToPool fileSystems ++
+  # extraPools; nothing else is scanned).
+  boot.zfs.extraPools              = [ ];
   services.zfs.autoScrub.enable    = true;
   services.zfs.autoScrub.interval  = "monthly";
   services.zfs.trim.enable         = true;

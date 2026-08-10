@@ -12,6 +12,10 @@ hardware-configuration.nix
 storage-pool.nix
 storage-remote.nix
 
+# Host-generated — written by `just create-zfs-pool`.
+# Contains per-machine ZFS pool names; not portable between hosts.
+zfs-pools.nix
+
 # Transient runtime files
 *.bak
 vexos-variant

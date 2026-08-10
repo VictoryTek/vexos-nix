@@ -146,6 +146,12 @@
     storageRemoteFile = ./storage-remote.nix;
     hasStorageRemote  = builtins.pathExists storageRemoteFile;
 
+    # ── Optional generated ZFS pool registration (server roles) ────────────────
+    # Written by `just create-zfs-pool`: declares boot.zfs.extraPools so NixOS
+    # generates a zfs-import-<pool>.service unit and the pool auto-imports on boot.
+    zfsPoolsFile = ./zfs-pools.nix;
+    hasZfsPools  = builtins.pathExists zfsPoolsFile;
+
     # ── Variant builder ─────────────────────────────────────────────────────
     # Constructs a complete NixOS configuration for a given variant.
     # • hostname   → the variant name, also written to /etc/nixos/vexos-variant
@@ -274,6 +280,7 @@
         ++ lib.optional hasServices servicesFile
         ++ lib.optional hasStoragePool storagePoolFile
         ++ lib.optional hasStorageRemote storageRemoteFile
+        ++ lib.optional hasZfsPools zfsPoolsFile
         ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
@@ -314,6 +321,7 @@
         ++ lib.optional hasFeatures  featuresFile
         ++ lib.optional hasStoragePool storagePoolFile
         ++ lib.optional hasStorageRemote storageRemoteFile
+        ++ lib.optional hasZfsPools zfsPoolsFile
         ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
