@@ -74,6 +74,12 @@ in
       # http(s)) independently of the 8007 VNC/SPICE port added below — thread
       # our toggle through so openFirewall = false actually suppresses all of it.
       openFirewall = cfg.openFirewall;
+      # Registers vmbr0 with the Proxmox web UI's VM/CT network-device picker.
+      # Purely a UI-registration list — doesn't affect OS-level network config
+      # (see the NetworkManager profiles below, which actually create vmbr0).
+      # Without this, vmbr0 exists and is up but no bridge is selectable when
+      # creating a VM.
+      bridges      = [ "vmbr0" ];
     };
 
     # ── vmbr0 bridge — managed by NetworkManager ────────────────────────────
