@@ -22,7 +22,7 @@ in
       config = {
         homeassistant = {
           name = "Home";
-          unit_system = lib.mkDefault "imperial";
+          unit_system = lib.mkDefault "us_customary";
           time_zone = lib.mkDefault config.time.timeZone;
         };
         http = {
