@@ -3,12 +3,14 @@
 # Default port: 8400 (avoids conflicts with SABnzbd/scrutiny on 8080).
 # Credentials default path: /etc/nixos/secrets/attic-credentials
 #   Override via vexos.server.attic.environmentFile for alternate backends.
-# Requires file containing:
-#   ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64=<secret>
-# Generate secret with: openssl genrsa -traditional 4096 | base64 -w0
-# Create file with: sudo install -m 0600 -o root -g root /dev/stdin /etc/nixos/secrets/attic-credentials
+# Under the plaintext secrets backend, the RS256 signing key is generated
+# automatically on first activation if the credentials file doesn't already
+# exist (see the atticSecret activationScript below). Under the sops backend,
+# secrets-sops.nix supplies the file instead.
 # Permissions enforced at boot by modules/secrets.nix (0700 dir, 0600 files).
-# After enabling, use `attic login` on clients pointing to http://<host>:8400
+# The `attic` CLI is installed automatically when this module is enabled.
+# After enabling and rebuilding, run `just attic-bootstrap` to create the
+# cache, mint tokens, and print client/CI setup values.
 # To push this repo's own custom pkgs/* packages (cockpit-navigator, portbook,
 # vexos-update, etc.) after logging in, run: just attic-push [cache-name]
 { config, lib, pkgs, ... }:
@@ -49,6 +51,22 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # Auto-generate the RS256 signing key on first activation when using the
+    # plaintext backend, so enabling Attic doesn't require a manual openssl
+    # step. Under the sops backend, secrets-sops.nix forces environmentFile to
+    # a sops-managed path that sops-nix itself populates at activation.
+    system.activationScripts.atticSecret =
+      lib.mkIf (config.vexos.secrets.backend != "sops") ''
+        if [ ! -e "${cfg.environmentFile}" ]; then
+          mkdir -p "$(dirname "${cfg.environmentFile}")"
+          echo "ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64=$(${pkgs.openssl}/bin/openssl genrsa -traditional 4096 2>/dev/null | ${pkgs.coreutils}/bin/base64 -w0)" \
+            > "${cfg.environmentFile}"
+          chmod 0600 "${cfg.environmentFile}"
+        fi
+      '';
+
+    environment.systemPackages = [ pkgs.attic-client ];
+
     services.atticd = {
       enable = true;
       environmentFile = cfg.environmentFile;

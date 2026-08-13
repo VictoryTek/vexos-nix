@@ -2226,12 +2226,8 @@ enable service: _require-server-role
         echo "  Service:  atticd.service"
         echo "  HTTP:     http://<server-ip>:8400"
         echo "  About:    Modern, purpose-built Nix binary cache server. Push derivations from any machine; pull on rebuild."
-        echo "  Note:     Create /etc/nixos/secrets/attic-credentials before first start:"
-        echo "              ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64=<secret>"
-        echo "            Generate secret:  openssl genrsa -traditional 4096 | base64 -w0"
-        echo "  Client:   attic login myserver http://<server-ip>:8400 <token>"
-        echo "            attic cache create mycache"
-        echo "            attic push mycache <store-path>"
+        echo "  Note:     Credentials and the 'attic' CLI are set up automatically on rebuild."
+        echo "  Next:     Run 'just attic-bootstrap' after rebuilding to create the cache and mint tokens."
         ;;
       backup)
         echo "  Service:  restic-backups-main.service"
@@ -2882,3 +2878,64 @@ attic-push cache="vexos":
         exit 1
     fi
     echo "✓ Pushed all custom packages to Attic cache '{{cache}}'."
+
+# One-time Attic cache bootstrap: mint an admin token, create the cache if it
+# doesn't exist, print the public key for client substituter config, and mint
+# a push-only token for CI (e.g. GitHub Actions). Run once after `just enable
+# attic && just rebuild`. Safe to re-run — cache creation is idempotent.
+# Usage: just attic-bootstrap [cache]
+[group('Binary Cache')]
+attic-bootstrap cache="vexos":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! systemctl is-active --quiet atticd; then
+        echo "error: atticd.service is not running." >&2
+        echo "  Run 'just enable attic && just rebuild' first." >&2
+        exit 1
+    fi
+
+    if ! command -v attic &>/dev/null; then
+        echo "error: 'attic' CLI not found on PATH." >&2
+        echo "  It's installed automatically when Attic is enabled — run 'just rebuild' first." >&2
+        exit 1
+    fi
+
+    echo "Minting a local admin token..."
+    ADMIN_TOKEN=$(sudo atticd-atticadm make-token --sub "admin" \
+        --pull "*" --push "*" --delete "*" \
+        --create-cache "*" --configure-cache "*" --configure-cache-retention "*" \
+        --validity "10 years")
+
+    attic login local http://localhost:8400 "$ADMIN_TOKEN" >/dev/null
+
+    if attic cache info "{{cache}}" &>/dev/null; then
+        echo "Cache '{{cache}}' already exists — skipping creation."
+    else
+        echo "Creating cache '{{cache}}'..."
+        attic cache create "{{cache}}"
+    fi
+
+    PUBLIC_KEY=$(attic cache info "{{cache}}" | grep -oP '(?<=Public Key: ).*')
+
+    echo "Minting a push-only token for CI..."
+    PUSH_TOKEN=$(sudo atticd-atticadm make-token --sub "github-actions" \
+        --push "{{cache}}" --validity "1 year")
+
+    echo ""
+    echo "=========================================================="
+    echo " Attic bootstrap complete"
+    echo "=========================================================="
+    echo ""
+    echo "Admin token (private — keep for your own future cache administration):"
+    echo "  $ADMIN_TOKEN"
+    echo ""
+    echo "Client substituter config (safe to commit — paste into e.g."
+    echo "configuration-desktop.nix or a host-specific file):"
+    echo "  vexos.attic.cacheUrl  = \"http://<server-ip>:8400/{{cache}}\";"
+    echo "  vexos.attic.publicKey = \"$PUBLIC_KEY\";"
+    echo ""
+    echo "CI push token (secret — add as a GitHub Actions repo secret,"
+    echo "e.g. ATTIC_PUSH_TOKEN):"
+    echo "  $PUSH_TOKEN"
+    echo ""
