@@ -18,5 +18,6 @@
     git     # Version control
     curl    # HTTP / transfer CLI
     wget    # File downloader
+    rsync   # File/directory sync and transfer
   ];
 }
