@@ -1224,6 +1224,82 @@ backup-now: _require-server-role
     sudo systemctl start restic-backups-main.service --wait
     echo "✓ Backup run complete. Check status with: systemctl status restic-backups-main.service"
 
+# Snapshot Plex's data directory (/var/lib/plex) to a single portable tar.gz,
+# suitable for moving to a new server. Usage: just backup-plex [dest.tar.gz]
+backup-plex dest="": _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! systemctl list-unit-files plex.service &>/dev/null; then
+        echo "error: plex.service not found — enable it first with 'just enable plex'." >&2
+        exit 1
+    fi
+
+    DEST="{{dest}}"
+    if [ -z "$DEST" ]; then
+        DEST="./plex-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+    fi
+
+    echo "Stopping plex.service..."
+    sudo systemctl stop plex.service
+    trap 'echo "Restarting plex.service..."; sudo systemctl start plex.service' EXIT
+
+    echo "Archiving /var/lib/plex -> $DEST ..."
+    sudo tar czf "$DEST" -C /var/lib plex
+    sudo chown "$(id -u):$(id -g)" "$DEST"
+
+    echo ""
+    echo "✓ Backup complete: $DEST ($(du -h "$DEST" | cut -f1))"
+    echo "  Move this file to the new server, then run: just restore-plex $DEST"
+
+# Restore a Plex data directory backup created by `just backup-plex` onto a
+# freshly enabled Plex install (run 'just enable plex && just rebuild' on the
+# new server first). Destructive — overwrites /var/lib/plex after a typed
+# confirmation; the previous contents are preserved as a timestamped .bak
+# directory rather than deleted. Usage: just restore-plex <tarball>
+restore-plex tarball: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    TARBALL="{{tarball}}"
+    if [ ! -f "$TARBALL" ]; then
+        echo "error: '$TARBALL' not found." >&2
+        exit 1
+    fi
+
+    if ! systemctl list-unit-files plex.service &>/dev/null; then
+        echo "error: plex.service not found — enable it first with 'just enable plex && just rebuild'." >&2
+        exit 1
+    fi
+
+    echo "This will stop Plex and replace /var/lib/plex with the contents of:"
+    echo "  $TARBALL"
+    read -r -p "Type 'yes' to continue: " CONFIRM
+    if [ "$CONFIRM" != "yes" ]; then
+        echo "Aborted — no changes made."
+        exit 1
+    fi
+
+    echo "Stopping plex.service..."
+    sudo systemctl stop plex.service
+    trap 'echo "Restarting plex.service..."; sudo systemctl start plex.service' EXIT
+
+    if [ -d /var/lib/plex ]; then
+        BAK="/var/lib/plex.bak-$(date +%Y%m%d-%H%M%S)"
+        echo "Preserving existing data at $BAK ..."
+        sudo mv /var/lib/plex "$BAK"
+    fi
+
+    echo "Extracting $TARBALL -> /var/lib/plex ..."
+    sudo mkdir -p /var/lib/plex
+    sudo tar xzf "$TARBALL" -C /var/lib plex
+    sudo chown -R plex:plex /var/lib/plex
+
+    echo ""
+    echo "✓ Restore complete."
+    echo "  Restarting Plex now — check status with: systemctl status plex"
+    echo "  Web UI: http://<server-ip>:32400/web"
+
 # Interactively create a ZFS pool for use as Proxmox VM/container backing storage.
 # Server roles only.  Requires modules/zfs-server.nix in the active build.
 # All work runs as root via sudo. The recipe:
