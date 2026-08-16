@@ -14,7 +14,7 @@
 #
 # Impermanence note: if running on the stateless role, add /var/lib/pve-cluster
 # to your persistence directories to survive reboots with the cluster config intact.
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.proxmox;
 in
@@ -66,6 +66,15 @@ in
         message   = "vexos.server.proxmox.bridgeInterface must be set to the physical NIC name (e.g. \"enp2s0\") when vexos.server.proxmox.enable = true.";
       }
     ];
+
+    # proxmox-ve is built against proxmox-nixos's own (older) nixpkgs-stable pin and
+    # bundles that pin's util-linux (older glibc) into environment.systemPackages via
+    # its own module. That older util-linux otherwise wins the /bin/login priority
+    # conflict against this system's util-linux, so `login` ends up linked against a
+    # glibc too old to dlopen this system's (newer) PAM modules — breaking the web
+    # UI's Shell/Console button with a PAM "Module is unknown" error. Force our
+    # util-linux to win the priority conflict instead.
+    environment.systemPackages = [ (lib.hiPrio pkgs.util-linux) ];
 
     services.proxmox-ve = {
       enable       = true;
