@@ -61,16 +61,21 @@ jobs:
             exit 1
           fi
 
-  # ── Parallel config evaluation (6 groups × ~5 min each) ────────────────────
+  # ── Parallel config evaluation (6 groups, 5 configs each) ───────────────────
   # Each group runs on its own runner in parallel instead of all 30 configs
   # running sequentially on one runner for 20+ minutes.
   # nix eval ... .drvPath forces full evaluation (including all NixOS assertions)
   # without building any packages — equivalent to nix flake check --no-build.
+  # timeout-minutes gives headroom for the worst case already budgeted below
+  # (5 configs × 12m per-config timeout = up to 60m); 35m comfortably covers
+  # the colder-than-usual evals seen right after the daily flake-input bump
+  # invalidates the Nix store cache's primary key, without masking a true hang
+  # — a genuinely stuck config still fails fast via its own 12m timeout.
   evaluate:
     name: Evaluate ${{ matrix.group }} configs
     needs: lint
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     strategy:
       fail-fast: false   # Run all groups even if one fails
       matrix:
