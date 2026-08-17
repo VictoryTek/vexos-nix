@@ -5,6 +5,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.plex;
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
 in
 {
   options.vexos.server.plex = {
@@ -20,6 +21,8 @@ in
         under Settings → Transcoder → Use hardware acceleration when available.
       '';
     };
+
+    mediaMounts = storageMounts.mediaMountsOption;
   };
 
   config = lib.mkIf cfg.enable {
@@ -51,5 +54,9 @@ in
     # since our own mkForce below produces "" regardless of upstream behavior.
     systemd.services.plex.environment.LD_LIBRARY_PATH =
       lib.mkIf (!cfg.plexPass) (lib.mkForce "");
+
+    # Order Plex after its media storage is ready — local (mergerfs/ZFS) or
+    # remote (storage-remote.nix, automount-based). See mediaMounts above.
+    systemd.services.plex.unitConfig = storageMounts.requiresMountsFor cfg.mediaMounts;
   };
 }

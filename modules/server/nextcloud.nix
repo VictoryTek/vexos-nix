@@ -29,10 +29,13 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.nextcloud;
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
 in
 {
   options.vexos.server.nextcloud = {
     enable = lib.mkEnableOption "Nextcloud file sync and collaboration";
+
+    mediaMounts = storageMounts.mediaMountsOption;
 
     hostName = lib.mkOption {
       type = lib.types.str;
@@ -102,5 +105,15 @@ in
     networking.firewall.allowedTCPPorts =
       lib.optional (cfg.openFirewall && (cfg.https || cfg.allowInsecureHttp)) 80
       ++ lib.optional (cfg.openFirewall && cfg.https) 443;
+
+    # Order every unit that actually reads/writes the data directory after
+    # storage — local (mergerfs/ZFS) or remote (storage-remote.nix,
+    # automount-based): the web-facing pool (phpfpm-nextcloud), first-run
+    # install (nextcloud-setup), and the periodic background job runner
+    # (nextcloud-cron). nextcloud-update-db only touches the database, not
+    # the data directory, so it's intentionally not ordered here.
+    systemd.services."phpfpm-nextcloud".unitConfig = storageMounts.requiresMountsFor cfg.mediaMounts;
+    systemd.services.nextcloud-setup.unitConfig = storageMounts.requiresMountsFor cfg.mediaMounts;
+    systemd.services.nextcloud-cron.unitConfig = storageMounts.requiresMountsFor cfg.mediaMounts;
   };
 }

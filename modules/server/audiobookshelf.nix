@@ -3,6 +3,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.audiobookshelf;
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
 in
 {
   options.vexos.server.audiobookshelf = {
@@ -13,6 +14,8 @@ in
       default = 8234;
       description = "Port for the Audiobookshelf web interface.";
     };
+
+    mediaMounts = storageMounts.mediaMountsOption;
   };
 
   config = lib.mkIf cfg.enable {
@@ -21,5 +24,10 @@ in
       port = cfg.port;
       openFirewall = true;
     };
+
+    # Order Audiobookshelf after its library storage is ready — local
+    # (mergerfs/ZFS) or remote (storage-remote.nix, automount-based). See
+    # mediaMounts above.
+    systemd.services.audiobookshelf.unitConfig = storageMounts.requiresMountsFor cfg.mediaMounts;
   };
 }

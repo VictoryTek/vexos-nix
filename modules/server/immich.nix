@@ -3,6 +3,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.immich;
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
 in
 {
   options.vexos.server.immich = {
@@ -13,6 +14,8 @@ in
       default = 2283;
       description = "Port for the Immich web interface.";
     };
+
+    mediaMounts = storageMounts.mediaMountsOption;
   };
 
   config = lib.mkIf cfg.enable {
@@ -21,5 +24,12 @@ in
       port = cfg.port;
       openFirewall = true;
     };
+
+    # Order immich-server (the unit that actually reads/writes the photo
+    # library) after its storage — local (mergerfs/ZFS) or remote
+    # (storage-remote.nix, automount-based). immich-machine-learning is a
+    # pure HTTP inference worker and never touches the library path itself,
+    # so it's intentionally not ordered here.
+    systemd.services.immich-server.unitConfig = storageMounts.requiresMountsFor cfg.mediaMounts;
   };
 }

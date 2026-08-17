@@ -4,6 +4,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.kavita;
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
 in
 {
   options.vexos.server.kavita = {
@@ -20,6 +21,8 @@ in
       default = true;
       description = "Open the firewall for Kavita's port.";
     };
+
+    mediaMounts = storageMounts.mediaMountsOption;
   };
 
   config = lib.mkIf cfg.enable {
@@ -43,5 +46,9 @@ in
     '';
 
     networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
+
+    # Order Kavita after its library storage is ready — local (mergerfs/ZFS)
+    # or remote (storage-remote.nix, automount-based). See mediaMounts above.
+    systemd.services.kavita.unitConfig = storageMounts.requiresMountsFor cfg.mediaMounts;
   };
 }

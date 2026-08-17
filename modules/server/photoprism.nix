@@ -9,10 +9,13 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.photoprism;
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
 in
 {
   options.vexos.server.photoprism = {
     enable = lib.mkEnableOption "PhotoPrism photo management";
+
+    mediaMounts = storageMounts.mediaMountsOption;
 
     port = lib.mkOption {
       type = lib.types.port;
@@ -46,5 +49,10 @@ in
     };
 
     networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
+
+    # Order PhotoPrism after its photo library storage is ready — local
+    # (mergerfs/ZFS) or remote (storage-remote.nix, automount-based). See
+    # mediaMounts above.
+    systemd.services.photoprism.unitConfig = storageMounts.requiresMountsFor cfg.mediaMounts;
   };
 }

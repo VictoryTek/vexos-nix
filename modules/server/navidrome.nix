@@ -5,10 +5,13 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.navidrome;
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
 in
 {
   options.vexos.server.navidrome = {
     enable = lib.mkEnableOption "Navidrome music streaming server";
+
+    mediaMounts = storageMounts.mediaMountsOption;
 
     port = lib.mkOption {
       type = lib.types.port;
@@ -40,5 +43,9 @@ in
     };
 
     networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
+
+    # Order Navidrome after its music storage is ready — local (mergerfs/ZFS)
+    # or remote (storage-remote.nix, automount-based). See mediaMounts above.
+    systemd.services.navidrome.unitConfig = storageMounts.requiresMountsFor cfg.mediaMounts;
   };
 }
