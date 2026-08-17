@@ -1,8 +1,9 @@
 name: Container Image Pins — Weekly Wednesday
 
-# Checks the 8 OCI-container services in modules/server/*.nix (portainer, homepage,
-# stirling-pdf, authelia, nginx-proxy-manager, dockhand, dozzle, arcane) for a newer
-# version tag and rewrites the pin in place. These services are pinned (not :latest)
+# Checks the 14 OCI-container services in modules/server/*.nix (portainer, homepage,
+# stirling-pdf, authelia, nginx-proxy-manager, dockhand, dozzle, arcane, maintainerr,
+# joplin-db, joplin-server, grimmory-db, grimmory, uptime-kuma) for a newer version tag
+# and rewrites the pin in place. These services are pinned (not :latest)
 # so nixos-rebuild stays reproducible between runs of this workflow — see MASTER_PLAN
 # M-22/M-35. Mirrors update-flake-lock-daily.yml's direct-commit-to-main style (no PR).
 # No separate "pull and restart" recipe exists or is needed — the next
@@ -43,11 +44,21 @@ jobs:
             "modules/server/homepage.nix:gethomepage/homepage:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/dockhand.nix:finsys/dockhand:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/arcane.nix:getarcaneapp/manager:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/arr.nix:maintainerr/maintainerr:ghcr:^[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/joplin.nix:joplin/server:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/joplin.nix:postgres:dockerhub:^16\.[0-9]+\$"
+            "modules/server/grimmory.nix:linuxserver/mariadb:dockerhub:^11\.4\.[0-9]+\$"
+            "modules/server/grimmory.nix:grimmory/grimmory:dockerhub:^v[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/uptime-kuma.nix:louislam/uptime-kuma:dockerhub:^1\.[0-9]+\.[0-9]+\$"
           )
 
           latest_dockerhub_tag() {
             local repo="$1" pattern="$2"
-            curl -fsS "https://hub.docker.com/v2/repositories/${repo}/tags?page_size=100&ordering=last_updated" \
+            # Official images (e.g. "postgres") have no namespace in the pull string,
+            # but Docker Hub's API requires the "library/" prefix to look them up.
+            local api_repo="$repo"
+            [[ "$repo" != */* ]] && api_repo="library/$repo"
+            curl -fsS "https://hub.docker.com/v2/repositories/${api_repo}/tags?page_size=100&ordering=last_updated" \
               | jq -r '.results[].name' \
               | grep -E "$pattern" \
               | sort -V | tail -1
@@ -66,7 +77,10 @@ jobs:
           CHANGED_FILES=""
           for entry in "${SERVICES[@]}"; do
             IFS=':' read -r file repo registry pattern <<< "$entry"
-            current=$(grep -oP 'image\s*=\s*"[^"]+:\K[^"]+' "$file")
+            # Scoped to the specific repo (not just the file) because joplin.nix and
+            # grimmory.nix each declare two tracked images — a file-wide grep would
+            # match both "image = ..." lines and garble the extracted tag.
+            current=$(grep -oP "image\s*=\s*\"[^\"]*${repo}:\K[^\"]+" "$file")
             if [ "$registry" = "dockerhub" ]; then
               latest=$(latest_dockerhub_tag "$repo" "$pattern" || true)
             else
