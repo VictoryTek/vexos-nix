@@ -2,23 +2,23 @@
 # Virtual machine guest: QEMU/KVM guest agent, VirtualBox guest additions,
 # SPICE clipboard/auto-resize, virtio-gpu + QXL driver.
 # Import this in hosts/vm.nix.
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 {
-  # Pin to Linux 6.12 LTS — VirtualBox Guest Additions 7.2.4 is incompatible with Linux 6.19+
-  # (drm_fb_helper_alloc_info was removed); linuxPackages_latest is currently 7.1.
-  # 6.12 LTS is maintained until Dec 2026.
-  # lib.mkForce overrides the default set by modules/system-latest-kernel.nix.
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_6_12;
-
   # QEMU/KVM guest agent — graceful shutdown, memory ballooning, clock sync, file copy
   services.qemuGuest.enable = true;
 
   # SPICE vdagent — clipboard sync and automatic display resize in SPICE sessions
   services.spice-vdagentd.enable = true;
 
-  # VirtualBox guest additions — shared folders, clipboard, auto-resize, drag & drop
+  # VirtualBox guest additions — shared folders, clipboard, auto-resize, drag & drop.
+  # use3rdPartyModules = false uses the vboxguest/vboxvideo drivers already mainlined
+  # into the kernel instead of compiling VirtualBox's own out-of-tree copy, which lags
+  # upstream DRM API changes and fails to build on current kernels (e.g.
+  # drm_fb_helper_alloc_info was removed). The in-tree driver only binds when real
+  # VirtualBox hardware is present, so this is safe on QEMU/KVM/Proxmox guests too.
   virtualisation.virtualbox.guest.enable = true;
   virtualisation.virtualbox.guest.dragAndDrop = true;
+  virtualisation.virtualbox.guest.use3rdPartyModules = false;
 
   # Load virtio-gpu, QXL display drivers, and VirtIO block device driver early.
   # virtio_blk must be forced into the initrd: the NixOS live ISO has it built-in

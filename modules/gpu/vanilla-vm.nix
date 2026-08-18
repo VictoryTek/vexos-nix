@@ -4,22 +4,23 @@
 # without vexos.btrfs.enable and vexos.swap.enable — those options are
 # declared in modules/system.nix which the vanilla role intentionally does
 # not import (vanilla is a stock NixOS baseline with no custom modules).
-{ lib, pkgs, ... }:
+{ lib, ... }:
 {
-  # Pin to Linux 6.6 LTS — VirtualBox Guest Additions 7.2.4 is incompatible with Linux 6.19+
-  # (drm_fb_helper_alloc_info was removed); linuxPackages_latest is currently 7.0.
-  # 6.6 LTS is maintained until Dec 2026.
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_6_12;
-
   # QEMU/KVM guest agent — graceful shutdown, memory ballooning, clock sync, file copy
   services.qemuGuest.enable = true;
 
   # SPICE vdagent — clipboard sync and automatic display resize in SPICE sessions
   services.spice-vdagentd.enable = true;
 
-  # VirtualBox guest additions — shared folders, clipboard, auto-resize, drag & drop
+  # VirtualBox guest additions — shared folders, clipboard, auto-resize, drag & drop.
+  # use3rdPartyModules = false uses the vboxguest/vboxvideo drivers already mainlined
+  # into the kernel instead of compiling VirtualBox's own out-of-tree copy, which lags
+  # upstream DRM API changes and fails to build on current kernels (e.g.
+  # drm_fb_helper_alloc_info was removed). The in-tree driver only binds when real
+  # VirtualBox hardware is present, so this is safe on QEMU/KVM/Proxmox guests too.
   virtualisation.virtualbox.guest.enable = true;
   virtualisation.virtualbox.guest.dragAndDrop = true;
+  virtualisation.virtualbox.guest.use3rdPartyModules = false;
 
   # Load virtio-gpu and QXL display drivers early
   boot.initrd.kernelModules = [ "virtio_gpu" ];
