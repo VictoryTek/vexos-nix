@@ -4,6 +4,9 @@
 # Import this in hosts/vm.nix.
 { config, lib, ... }:
 {
+  # Kernel pin (6.12 LTS) + VirtualBox Guest Additions build fix.
+  imports = [ ./vm-guest-additions.nix ];
+
   # QEMU/KVM guest agent — graceful shutdown, memory ballooning, clock sync, file copy
   services.qemuGuest.enable = true;
 
@@ -11,11 +14,11 @@
   services.spice-vdagentd.enable = true;
 
   # VirtualBox guest additions — shared folders, clipboard, auto-resize, drag & drop.
-  # use3rdPartyModules = false uses the vboxguest/vboxvideo drivers already mainlined
-  # into the kernel instead of compiling VirtualBox's own out-of-tree copy, which lags
-  # upstream DRM API changes and fails to build on current kernels (e.g.
-  # drm_fb_helper_alloc_info was removed). The in-tree driver only binds when real
-  # VirtualBox hardware is present, so this is safe on QEMU/KVM/Proxmox guests too.
+  # use3rdPartyModules = false loads the vboxguest/vboxsf/vboxvideo drivers already
+  # mainlined into the kernel rather than VirtualBox's out-of-tree copies. It selects
+  # which modules are LOADED; it does not stop the guest-additions package from being
+  # BUILT — see ./vm-guest-additions.nix for that. The in-tree drivers only bind when
+  # real VirtualBox hardware is present, so this is safe on QEMU/KVM/Proxmox guests.
   virtualisation.virtualbox.guest.enable = true;
   virtualisation.virtualbox.guest.dragAndDrop = true;
   virtualisation.virtualbox.guest.use3rdPartyModules = false;
