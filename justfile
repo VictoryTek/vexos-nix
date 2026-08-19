@@ -1957,6 +1957,7 @@ services: _require-server-role
         local svc="$1"
         local nix_name
         nix_name=$(echo "$svc" | sed 's/-/_/g')
+        [ "$svc" = "kernel-builder" ] && nix_name="kernelBuilder"
         if grep -qP "vexos\.server\.(${svc}|${nix_name})\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
             printf "    \033[32m✓\033[0m %s\n" "$svc"
         elif [ "$svc" = "arr" ] && grep -qP '^\s*vexos\.server\.arr\.\w+\.enable\s*=\s*true' "$SVC_FILE" 2>/dev/null; then
@@ -3135,10 +3136,13 @@ harmonia-info:
     KEY_PUB="/var/lib/harmonia/cache-priv-key.pem.pub"
     PORT=5000
 
-    if ! systemctl is-active --quiet harmonia; then
-        echo "error: harmonia.service is not running." >&2
+    # harmonia.service is socket-activated (harmonia.socket) — it is
+    # legitimately "inactive (dead)" whenever idle. Check the socket, since
+    # that's what determines whether the cache is actually ready to serve.
+    if ! systemctl is-active --quiet harmonia.socket; then
+        echo "error: harmonia.socket is not running." >&2
         echo "  Run 'just enable harmonia && just rebuild' first." >&2
-        echo "  Then check: systemctl status harmonia" >&2
+        echo "  Then check: systemctl status harmonia.socket" >&2
         exit 1
     fi
 

@@ -19,6 +19,38 @@ via grep across `modules/server/*.nix` that `kernelBuilder` is the only
 camelCase exception among all `options.vexos.server.<name>` declarations —
 no other service needs the same translation.
 
+### Follow-up: `services` status display (found live, in production)
+
+After the `enable`/`disable` fix landed and the user hand-repaired their
+host's stale `/etc/nixos/server-services.nix` line, `just services` kept
+showing `kernel-builder` as `✗` even though `just enable kernel-builder`
+correctly reported "already enabled." Root cause: `services`'s own `_check`
+helper ([justfile:1956-1967](justfile#L1956-L1967)) independently derives its
+expected option name via `sed 's/-/_/g'` (kebab → snake_case), never
+camelCase — a third, separate spot with the same class of bug, not covered
+by the original spec. Fixed the same way: an explicit override for
+`kernel-builder` → `kernelBuilder` before the `grep -qP` status check, one
+line, mirroring the existing `arr` special-case already in the same
+function. Purely cosmetic (status display only) — did not affect the actual
+enable/disable state written to the file.
+
+### Follow-up: `harmonia-info` false negative (unrelated root cause, found live)
+
+Separately (not a `kernel-builder` name-mismatch case, but found in the same
+debugging session): `just harmonia-info` reported "harmonia.service is not
+running" even though the cache was verified live via direct
+`curl http://localhost:5000/nix-cache-info` and `systemctl status
+harmonia.socket` showing `Active: active (running)`. Root cause:
+`services.harmonia.cache` (nixpkgs upstream module) is socket-activated —
+`harmonia.socket` listens and only starts `harmonia.service` on demand, so
+the `.service` unit is legitimately `inactive (dead)` while idle. The
+recipe's guard at [justfile:3139](justfile#L3139) checked
+`systemctl is-active harmonia` (the service), which is the wrong predicate
+for a socket-activated unit and always fails when idle. Fixed by checking
+`harmonia.socket` instead — that unit reflects whether the cache is
+actually ready to accept connections, independent of whether the on-demand
+service has been triggered yet.
+
 ## Security
 No secrets, no permission changes.
 
