@@ -8,7 +8,8 @@
 # regardless of how the user triggers an update.
 { config, pkgs, lib, ... }:
 let
-  cfg = config.vexos.attic;
+  cfg  = config.vexos.attic;
+  hcfg = config.vexos.harmonia;
 in
 {
   # ── Attic client options ──────────────────────────────────────────────────
@@ -45,16 +46,60 @@ in
     };
   };
 
+  # ── Harmonia client options ───────────────────────────────────────────────
+  # Same purpose as vexos.attic above, for a Harmonia cache host
+  # (modules/server/harmonia.nix). Kept as a separate option pair rather than
+  # generalised into one list because vexos.attic.* is already referenced by
+  # deployed /etc/nixos files — renaming it would be a breaking change.
+  #
+  # Unlike Attic, a Harmonia URL has no cache-name path segment: Harmonia
+  # serves the host's store at the root.
+  #
+  # Usage in a host or features.nix:
+  #   vexos.harmonia.cacheUrl  = "http://vexos-vmc:5000";
+  #   vexos.harmonia.publicKey = "vexos-vmc-1:AbCdEf...=";
+  #
+  # Both values are printed by `just harmonia-info` on the cache host.
+  options.vexos.harmonia = {
+    cacheUrl = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "http://vexos-vmc:5000";
+      description = ''
+        URL of the Harmonia binary cache (no path segment).
+        When set, every host uses it as an additional substituter.
+        Leave null to disable (default).
+      '';
+    };
+
+    publicKey = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      example = "vexos-vmc-1:AbCdEf1234567890AAAAAAA==";
+      description = ''
+        Ed25519 public key for the Harmonia cache, as printed by
+        `just harmonia-info` (or read from <signKeyPath>.pub on the server).
+        Required when vexos.harmonia.cacheUrl is set.
+      '';
+    };
+  };
+
   config = {
-    assertions = lib.mkIf (cfg.cacheUrl != null) [
-      {
+    assertions =
+      lib.optional (cfg.cacheUrl != null) {
         assertion = cfg.publicKey != "";
         message = ''
           vexos.attic.publicKey must be set when vexos.attic.cacheUrl is configured.
           Retrieve it from the server with: attic cache info vexos
         '';
       }
-    ];
+      ++ lib.optional (hcfg.cacheUrl != null) {
+        assertion = hcfg.publicKey != "";
+        message = ''
+          vexos.harmonia.publicKey must be set when vexos.harmonia.cacheUrl is configured.
+          Retrieve it from the server with: just harmonia-info
+        '';
+      };
 
     nix.settings = {
       experimental-features = [ "nix-command" "flakes" ];
@@ -74,10 +119,12 @@ in
       # Binary caches — fetch pre-built derivations instead of compiling locally.
       substituters = [
         "https://cache.nixos.org"
-      ] ++ lib.optional (cfg.cacheUrl != null) cfg.cacheUrl;
+      ] ++ lib.optional (cfg.cacheUrl != null) cfg.cacheUrl
+        ++ lib.optional (hcfg.cacheUrl != null) hcfg.cacheUrl;
       trusted-public-keys = [
         "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-      ] ++ lib.optional (cfg.publicKey != "") cfg.publicKey;
+      ] ++ lib.optional (cfg.publicKey != "") cfg.publicKey
+        ++ lib.optional (hcfg.publicKey != "") hcfg.publicKey;
 
       # Build concurrency — 1 job at a time, each using all available cores.
       # Prevents OOM on low-RAM machines; raise max-jobs on beefy hardware.

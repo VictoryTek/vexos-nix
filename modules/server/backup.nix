@@ -32,6 +32,7 @@ let
     forgejo          = [ "/var/lib/forgejo" ];
     grafana          = [ "/var/lib/grafana" ];
     grimmory         = [ "${config.vexos.server.grimmory.dataDir}/dump" config.vexos.server.grimmory.libraryDir ]; # not mariadb-config/ — live db files aren't file-backup-safe
+    harmonia         = [ "/var/lib/harmonia" ]; # signing key only — losing it invalidates every client's trusted-public-keys
     headscale        = [ "/var/lib/headscale" ];
     home-assistant   = [ "/var/lib/hass" ];
     homepage         = [ "/var/lib/homepage" ];

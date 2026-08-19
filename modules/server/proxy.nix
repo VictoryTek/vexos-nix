@@ -49,6 +49,7 @@ let
     { name = "arcane"; enable = config.vexos.server.arcane.enable; port = config.vexos.server.arcane.port; }
     { name = "dozzle"; enable = config.vexos.server.dozzle.enable; port = config.vexos.server.dozzle.port; }
     { name = "attic"; enable = config.vexos.server.attic.enable; port = config.vexos.server.attic.port; }
+    { name = "harmonia"; enable = config.vexos.server.harmonia.enable; port = config.vexos.server.harmonia.port; }
     { name = "paperless"; enable = config.vexos.server.paperless.enable; port = config.vexos.server.paperless.port; }
     { name = "grafana"; enable = config.vexos.server.grafana.enable; port = config.vexos.server.grafana.port; }
     { name = "dockhand"; enable = config.vexos.server.dockhand.enable; port = config.vexos.server.dockhand.port; }

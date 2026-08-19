@@ -38,6 +38,7 @@
     ./forgejo.nix
     ./code-server.nix
     ./attic.nix
+    ./harmonia.nix
     # ── Dashboards ───────────────────────────────────────────────────────────
     ./vexboard.nix
     # ── AI & Privacy ─────────────────────────────────────────────────────────

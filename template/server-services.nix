@@ -110,6 +110,8 @@
   # vexos.server.code-server.hashedPassword = "";       # Set to argon2 hash: echo -n 'pass' | nix run nixpkgs#libargon2 -- "$(head -c 20 /dev/random | base64)" -e
   # vexos.server.attic.enable = false;                  # Port 8400 — Nix binary cache server
   # vexos.server.attic.port = 8400;                     # Change if needed
+  # vexos.server.harmonia.enable = false;               # Port 5000 — serves THIS host's /nix/store as a cache (no upload API)
+  # vexos.server.harmonia.port = 5000;                  # Change if needed
 
   # ── Security ─────────────────────────────────────────────────────────────
   # vexos.server.vaultwarden.enable = false;

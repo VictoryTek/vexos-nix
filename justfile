@@ -1149,7 +1149,7 @@ disable-feature feature: _require-desktop-role
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana grimmory headscale home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana grimmory harmonia headscale home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -1436,6 +1436,7 @@ available-services:
     _svc caddy               "Automatic HTTPS web server & reverse proxy"
     _svc docker              "Container runtime (Docker Engine)"
     _svc dockhand            "Web UI for managing Docker/Podman containers"
+    _svc harmonia            "Nix binary cache serving this host's store"
     _svc nginx               "High-performance HTTP server & reverse proxy"
     _svc nginx-proxy-manager "Web UI for Nginx reverse proxy & SSL certs"
     _svc podman              "Rootless OCI container runtime"
@@ -1540,6 +1541,7 @@ service-info service="":
         dockhand)        printf "  %-18s  Web UI  http://<server-ip>:8073   (Docker/Podman container manager)\n"      "$1" ;;
         forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000\n"                                           "$1" ;;
         grafana)         printf "  %-18s  Web UI  http://<server-ip>:3030\n"                                           "$1" ;;
+        harmonia)        printf "  %-18s  HTTP    http://<server-ip>:5000   (Nix binary cache)\n"                      "$1" ;;
         grimmory)        printf "  %-18s  Web UI  http://<server-ip>:6060\n"                                           "$1" ;;
         headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
         home-assistant)  printf "  %-18s  Web UI  http://<server-ip>:8123\n"                                           "$1" ;;
@@ -1664,6 +1666,7 @@ _service-units service:
       dockhand)       echo "docker-dockhand podman-dockhand" ;;
       forgejo)        echo "forgejo" ;;
       grafana)        echo "grafana" ;;
+      harmonia)       echo "harmonia" ;;
       grimmory)       echo "docker-grimmory docker-grimmory-db" ;;
       headscale)      echo "headscale" ;;
       home-assistant) echo "home-assistant" ;;
@@ -1747,6 +1750,7 @@ status service: _require-server-role
       dockhand)       URLS="http://localhost:8073" ;;
       forgejo)        URLS="http://localhost:3000" ;;
       grafana)        URLS="http://localhost:3030" ;;
+      harmonia)       URLS="http://localhost:5000" ;;
       grimmory)       URLS="http://localhost:6060" ;;
       headscale)      URLS="http://localhost:8085" ;;
       home-assistant) URLS="http://localhost:8123" ;;
@@ -1891,7 +1895,7 @@ services: _require-server-role
     _hdr "Communications";             _check matrix-conduit
     _hdr "Files & Storage";            _check immich;         _check nextcloud;     _check syncthing;     _check minio;         _check photoprism
     _hdr "Gaming";                     _check papermc
-    _hdr "Infrastructure";             _check arcane;         _check attic;          _check backup;         _check caddy;          _check docker;        _check dockhand;      _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
+    _hdr "Infrastructure";             _check arcane;         _check attic;          _check backup;         _check caddy;          _check docker;        _check dockhand;      _check harmonia;      _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
     _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
     _hdr "Media Requests & Automation";_check arr;            _check seerr
     _hdr "Monitoring & Admin";         _check nas;            _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma;  _check portbook;  _check vexboard
@@ -2359,6 +2363,17 @@ enable service: _require-server-role
         echo "  Web UI:   http://<server-ip>:3030"
         echo "  About:    Metrics and observability dashboard. Pair with Prometheus to graph system and application metrics."
         echo "  Login:    Default admin / admin — change on first login."
+        ;;
+      harmonia)
+        echo "  Service:  harmonia.service"
+        echo "  HTTP:     http://<server-ip>:5000"
+        echo "  About:    Serves THIS host's /nix/store as a binary cache. Read-only —"
+        echo "            there is no upload API. Paths appear by being built here, or"
+        echo "            copied in with: nix copy --to ssh-ng://<this-host> <path>"
+        echo "  Note:     The signing key is generated automatically on rebuild."
+        echo "  Next:     Run 'just harmonia-info' to verify it is live and print"
+        echo "            the client settings for your other machines."
+        echo "  Warning:  Serves every store path on this host. Keep it on the LAN."
         ;;
       grimmory)
         echo "  Services: docker-grimmory.service  docker-grimmory-db.service"
@@ -3014,4 +3029,58 @@ attic-bootstrap cache="vexos":
     echo "CI push token (secret — add as a GitHub Actions repo secret,"
     echo "e.g. ATTIC_PUSH_TOKEN):"
     echo "  $PUSH_TOKEN"
+    echo ""
+
+# Verify the Harmonia binary cache is live and print client configuration.
+# Harmonia has no bootstrap step — the signing key is generated automatically
+# on rebuild and there are no tokens or logins — so this recipe exists purely
+# to answer "is it ready?" and "what do I paste on the other machines?".
+# Usage: just harmonia-info
+harmonia-info:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    KEY_PUB="/var/lib/harmonia/cache-priv-key.pem.pub"
+    PORT=5000
+
+    if ! systemctl is-active --quiet harmonia; then
+        echo "error: harmonia.service is not running." >&2
+        echo "  Run 'just enable harmonia && just rebuild' first." >&2
+        echo "  Then check: systemctl status harmonia" >&2
+        exit 1
+    fi
+
+    # /nix-cache-info is the first document any Nix client fetches. If this
+    # returns, the cache is genuinely serving — not merely "the unit started".
+    echo "Probing http://localhost:${PORT}/nix-cache-info ..."
+    if ! CACHE_INFO=$(curl -fsS --max-time 5 "http://localhost:${PORT}/nix-cache-info"); then
+        echo "error: harmonia.service is active but not answering on port ${PORT}." >&2
+        echo "  Check: journalctl -u harmonia -n 50" >&2
+        exit 1
+    fi
+
+    if [ ! -r "$KEY_PUB" ]; then
+        echo "error: public key not found at $KEY_PUB" >&2
+        echo "  It is generated on activation — try 'just rebuild'." >&2
+        exit 1
+    fi
+    PUBLIC_KEY=$(cat "$KEY_PUB")
+    HOST=$(hostname)
+
+    echo ""
+    echo "=========================================================="
+    echo " Harmonia is live"
+    echo "=========================================================="
+    echo ""
+    echo "$CACHE_INFO" | sed 's/^/  /'
+    echo ""
+    echo "Client config (safe to commit — paste into /etc/nixos/features.nix,"
+    echo "a host file, or configuration-desktop.nix on your other machines):"
+    echo "  vexos.harmonia.cacheUrl  = \"http://${HOST}:${PORT}\";"
+    echo "  vexos.harmonia.publicKey = \"${PUBLIC_KEY}\";"
+    echo ""
+    echo "Note: Harmonia serves only what is currently in THIS host's"
+    echo "      /nix/store, and nix.settings min-free/max-free will garbage-"
+    echo "      collect unreferenced paths. Pin anything that must stay served:"
+    echo "        nix-store --add-root /var/lib/harmonia/roots/<name> -r <store-path>"
     echo ""
