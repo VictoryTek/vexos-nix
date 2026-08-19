@@ -67,8 +67,9 @@ in
     #
     # The private key stays root-owned 0600: the upstream NixOS module passes it
     # to the service via systemd LoadCredential, which systemd reads as root
-    # before dropping to the unit's DynamicUser. The public half is 0644 so
-    # `just harmonia-info` can print it without sudo.
+    # before dropping to the unit's DynamicUser. The public half is 0644, and
+    # the directory is 0711 (traverse, no listing) so `just harmonia-info` can
+    # read it without sudo while the private key stays unreadable.
     #
     # Under the sops backend, modules/secrets-sops.nix supplies the key file
     # instead and forces signKeyPath at it — a sops-managed key is portable, so
@@ -77,9 +78,11 @@ in
     # default publicKey rather than every host pasting one in.
     system.activationScripts.harmoniaKey =
       lib.mkIf (config.vexos.secrets.backend != "sops") ''
+      mkdir -p "$(dirname "${cfg.signKeyPath}")"
+      # Applied on every activation, not just first key generation, so hosts
+      # created before the 0711 change also become readable.
+      chmod 0711 "$(dirname "${cfg.signKeyPath}")"
       if [ ! -e "${cfg.signKeyPath}" ]; then
-        mkdir -p "$(dirname "${cfg.signKeyPath}")"
-        chmod 0700 "$(dirname "${cfg.signKeyPath}")"
         ${config.nix.package}/bin/nix-store --generate-binary-cache-key \
           "${config.networking.hostName}-1" \
           "${cfg.signKeyPath}" \

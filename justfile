@@ -3133,8 +3133,21 @@ harmonia-info:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    KEY_PUB="/var/lib/harmonia/cache-priv-key.pem.pub"
     PORT=5000
+
+    # The signing key path is configurable, and the sops backend forces it into
+    # /run/secrets (modules/secrets-sops.nix) — so resolve it from the running
+    # configuration rather than assuming the default location.
+    KEY="/var/lib/harmonia/cache-priv-key.pem"
+    target=$(cat /etc/nixos/vexos-variant 2>/dev/null || true)
+    if [ -n "$target" ]; then
+        RESOLVED=$(nix eval --impure --raw \
+            "path:/etc/nixos#nixosConfigurations.${target}.config.vexos.server.harmonia.signKeyPath" \
+            2>/dev/null || true)
+        if [ -n "$RESOLVED" ]; then
+            KEY="$RESOLVED"
+        fi
+    fi
 
     # harmonia.service is socket-activated (harmonia.socket) — it is
     # legitimately "inactive (dead)" whenever idle. Check the socket, since
@@ -3155,12 +3168,24 @@ harmonia-info:
         exit 1
     fi
 
-    if [ ! -r "$KEY_PUB" ]; then
-        echo "error: public key not found at $KEY_PUB" >&2
-        echo "  It is generated on activation — try 'just rebuild'." >&2
-        exit 1
+    # Prefer the .pub written next to the key by the activation script. Under
+    # the sops backend no .pub exists (the secret is the private half only, 0400
+    # root), so fall back to deriving the public half from the private key —
+    # which needs root, hence sudo.
+    if [ -r "${KEY}.pub" ]; then
+        PUBLIC_KEY=$(cat "${KEY}.pub")
+    else
+        # `sudo nix ... < "$KEY"` would not work: the redirect is opened by the
+        # calling (unprivileged) shell. Read the key as root, convert as user.
+        echo "No readable ${KEY}.pub — deriving the public key from $KEY (needs sudo)."
+        if ! PUBLIC_KEY=$(sudo cat "$KEY" | nix --extra-experimental-features nix-command \
+                key convert-secret-to-public); then
+            echo "error: could not read or convert the signing key at $KEY." >&2
+            echo "  Confirm it exists:  sudo ls -l $KEY" >&2
+            echo "  If it is missing, it is generated on activation — try 'just rebuild'." >&2
+            exit 1
+        fi
     fi
-    PUBLIC_KEY=$(cat "$KEY_PUB")
     HOST=$(hostname)
 
     echo ""
