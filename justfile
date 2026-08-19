@@ -253,9 +253,66 @@ build role variant flake="":
     _flake_dir=$(just _resolve-flake-dir "${TARGET}" "${FLAKE_OVERRIDE}")
     sudo nixos-rebuild build --flake "path:${_flake_dir}#${TARGET}"
 
+# Guard: refuse to rebuild when a custom kernel is enabled but the pinned
+# version is not yet in the binary cache.
+#
+# Without this, Nix silently falls back to compiling the kernel locally when
+# the builder host has not caught up with a pin bump — hours of CPU on a
+# machine that was only supposed to download it. Checking the cache first turns
+# a silent multi-hour surprise into an immediate, explanatory stop.
+#
+# Non-fatal by design in ambiguous cases: if the kernel feature is off, or the
+# cache URL/key are unset, or the store path cannot be evaluated, this exits 0
+# and lets the rebuild proceed normally.
+[private]
+_kernel-cache-guard:
+    #!/usr/bin/env bash
+    set -uo pipefail
+
+    FEAT="/etc/nixos/features.nix"
+    grep -qP '^\s*vexos\.features\.kernel\.enable\s*=\s*true' "$FEAT" 2>/dev/null || exit 0
+
+    target=$(cat /etc/nixos/vexos-variant 2>/dev/null) || exit 0
+
+    OUT=$(nix eval --impure --raw \
+        "path:/etc/nixos#nixosConfigurations.${target}.config.boot.kernelPackages.kernel.outPath" \
+        2>/dev/null) || exit 0
+    [ -n "$OUT" ] || exit 0
+
+    # Already in this machine's store — nothing to download.
+    [ -e "$OUT" ] && exit 0
+
+    URL=$(nix eval --impure --raw \
+        "path:/etc/nixos#nixosConfigurations.${target}.config.vexos.harmonia.cacheUrl" \
+        2>/dev/null) || exit 0
+    [ -n "$URL" ] && [ "$URL" != "null" ] || exit 0
+
+    HASH=$(basename "$OUT" | cut -c1-32)
+
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${URL}/${HASH}.narinfo" 2>/dev/null) || exit 0
+    [ "$code" = "200" ] && exit 0
+
+    KVER=$(nix eval --impure --raw \
+        "path:/etc/nixos#nixosConfigurations.${target}.config.boot.kernelPackages.kernel.version" \
+        2>/dev/null || echo "?")
+
+    echo "" >&2
+    echo "  ✗ Custom kernel ${KVER} is NOT in the cache at ${URL}" >&2
+    echo "" >&2
+    echo "  Rebuilding now would COMPILE THE KERNEL ON THIS MACHINE (hours)." >&2
+    echo "" >&2
+    echo "  The build host has not produced this version yet. Either:" >&2
+    echo "    - wait for its nightly build, or" >&2
+    echo "    - run 'just kernel-build-now' on the build host, or" >&2
+    echo "    - disable the custom kernel: just disable-feature kernel" >&2
+    echo "" >&2
+    echo "  To compile locally anyway, run nixos-rebuild directly." >&2
+    echo "" >&2
+    exit 1
+
 # Rebuild the system using the current variant.
 [group('System Build & Deploy')]
-rebuild:
+rebuild: _kernel-cache-guard
     #!/usr/bin/env bash
     set -euo pipefail
     target=$(cat /etc/nixos/vexos-variant 2>/dev/null) || { echo "error: /etc/nixos/vexos-variant not found — run a build first"; exit 1; }
@@ -266,7 +323,7 @@ rebuild:
 
 # Update all flake inputs, then rebuild and switch using the current variant.
 [group('System Build & Deploy')]
-update:
+update: _kernel-cache-guard
     #!/usr/bin/env bash
     set -euo pipefail
     target=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
@@ -945,7 +1002,7 @@ fix-flake:
 
 
 # Available optional feature names (desktop, server, htpc, and vanilla roles).
-_feature_names := "gaming development print3d virtualization sunshine"
+_feature_names := "gaming development print3d virtualization sunshine kernel"
 
 # Guard: abort if the current host is stateless or headless-server (features not
 # supported there — neither role wires /etc/nixos/features.nix into its module set).
@@ -1088,6 +1145,22 @@ enable-feature feature: _require-desktop-role
             echo "    2. In Moonlight, add this host by IP ($TS_IP), then enter the PIN"
             echo "       shown under the WebUI's PIN tab to pair the client."
             ;;
+        kernel)
+            echo "  What this adds:"
+            echo "    Kernel     Custom kernel from pkgs/kernels/ (default: ogc)"
+            echo "               OGC = Open Gaming Collective — the unified kernel behind"
+            echo "               Bazzite, ChimeraOS, Nobara, PikaOS and ASUS Linux."
+            echo "               Ships NTSYNC, sched_ext, and handheld/ASUS enablement."
+            echo ""
+            echo "  Pick a different kernel by editing /etc/nixos/features.nix:"
+            echo "    vexos.features.kernel.name = \"ogc\";"
+            echo ""
+            echo "  IMPORTANT: these kernels are not on cache.nixos.org. They are built"
+            echo "  by a host running 'vexos.server.kernelBuilder' and served over"
+            echo "  Harmonia. If that host has not built the current pin yet, this"
+            echo "  machine would compile the kernel locally (hours) — 'just update'"
+            echo "  checks the cache first and stops you before that happens."
+            ;;
     esac
     echo ""
     echo "  Run 'just rebuild' to apply."
@@ -1149,7 +1222,7 @@ disable-feature feature: _require-desktop-role
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
-_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana grimmory harmonia headscale home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana grimmory harmonia headscale kernel-builder home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -1437,6 +1510,7 @@ available-services:
     _svc docker              "Container runtime (Docker Engine)"
     _svc dockhand            "Web UI for managing Docker/Podman containers"
     _svc harmonia            "Nix binary cache serving this host's store"
+    _svc kernel-builder      "Builds custom kernels for Harmonia to serve"
     _svc nginx               "High-performance HTTP server & reverse proxy"
     _svc nginx-proxy-manager "Web UI for Nginx reverse proxy & SSL certs"
     _svc podman              "Rootless OCI container runtime"
@@ -1542,6 +1616,7 @@ service-info service="":
         forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000\n"                                           "$1" ;;
         grafana)         printf "  %-18s  Web UI  http://<server-ip>:3030\n"                                           "$1" ;;
         harmonia)        printf "  %-18s  HTTP    http://<server-ip>:5000   (Nix binary cache)\n"                      "$1" ;;
+        kernel-builder)  printf "  %-18s  No web UI — nightly timer; see 'just kernel-build-status'\n"            "$1" ;;
         grimmory)        printf "  %-18s  Web UI  http://<server-ip>:6060\n"                                           "$1" ;;
         headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
         home-assistant)  printf "  %-18s  Web UI  http://<server-ip>:8123\n"                                           "$1" ;;
@@ -1667,6 +1742,7 @@ _service-units service:
       forgejo)        echo "forgejo" ;;
       grafana)        echo "grafana" ;;
       harmonia)       echo "harmonia" ;;
+      kernel-builder) echo "kernel-build-ogc" ;;
       grimmory)       echo "docker-grimmory docker-grimmory-db" ;;
       headscale)      echo "headscale" ;;
       home-assistant) echo "home-assistant" ;;
@@ -1751,6 +1827,7 @@ status service: _require-server-role
       forgejo)        URLS="http://localhost:3000" ;;
       grafana)        URLS="http://localhost:3030" ;;
       harmonia)       URLS="http://localhost:5000" ;;
+      kernel-builder) URLS="" ;;
       grimmory)       URLS="http://localhost:6060" ;;
       headscale)      URLS="http://localhost:8085" ;;
       home-assistant) URLS="http://localhost:8123" ;;
@@ -1895,7 +1972,7 @@ services: _require-server-role
     _hdr "Communications";             _check matrix-conduit
     _hdr "Files & Storage";            _check immich;         _check nextcloud;     _check syncthing;     _check minio;         _check photoprism
     _hdr "Gaming";                     _check papermc
-    _hdr "Infrastructure";             _check arcane;         _check attic;          _check backup;         _check caddy;          _check docker;        _check dockhand;      _check harmonia;      _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
+    _hdr "Infrastructure";             _check arcane;         _check attic;          _check backup;         _check caddy;          _check docker;        _check dockhand;      _check harmonia;      _check kernel-builder;  _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
     _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
     _hdr "Media Requests & Automation";_check arr;            _check seerr
     _hdr "Monitoring & Admin";         _check nas;            _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma;  _check portbook;  _check vexboard
@@ -2374,6 +2451,16 @@ enable service: _require-server-role
         echo "  Next:     Run 'just harmonia-info' to verify it is live and print"
         echo "            the client settings for your other machines."
         echo "  Warning:  Serves every store path on this host. Keep it on the LAN."
+        ;;
+      kernel-builder)
+        echo "  Service:  kernel-build-<name>.service (one per configured kernel)"
+        echo "  Timer:    nightly at 01:00 by default"
+        echo "  About:    Builds the custom kernels in pkgs/kernels/ so other machines"
+        echo "            can download them from this host instead of compiling."
+        echo "  Requires: Harmonia — building without serving accomplishes nothing."
+        echo "  First run: just kernel-build-now      (takes hours; safe to leave)"
+        echo "  Watch:     just kernel-build-log"
+        echo "  Status:    just kernel-build-status"
         ;;
       grimmory)
         echo "  Services: docker-grimmory.service  docker-grimmory-db.service"
@@ -3084,3 +3171,87 @@ harmonia-info:
     echo "      collect unreferenced paths. Pin anything that must stay served:"
     echo "        nix-store --add-root /var/lib/harmonia/roots/<name> -r <store-path>"
     echo ""
+
+# ── Custom kernel pipeline ───────────────────────────────────────────────────
+# These recipes drive modules/server/kernel-builder.nix. Run them on the host
+# that builds kernels (the one running Harmonia), not on a desktop.
+
+# Build a custom kernel now instead of waiting for the nightly timer.
+# Takes hours and runs in the background — safe to disconnect.
+# Usage: just kernel-build-now [name]
+kernel-build-now name="ogc":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    UNIT="kernel-build-{{name}}"
+
+    if ! systemctl list-unit-files "${UNIT}.service" &>/dev/null \
+       || ! systemctl cat "${UNIT}.service" &>/dev/null; then
+        echo "error: ${UNIT}.service does not exist." >&2
+        echo "  Enable the builder first: just enable kernel-builder && just rebuild" >&2
+        exit 1
+    fi
+
+    if systemctl is-active --quiet "$UNIT"; then
+        echo "A build is already running. Watch it with: just kernel-build-log {{name}}"
+        exit 0
+    fi
+
+    echo "Starting ${UNIT}..."
+    sudo systemctl start --no-block "$UNIT"
+    echo ""
+    echo "Build started in the background. It takes hours on modest hardware."
+    echo "  Watch:  just kernel-build-log {{name}}"
+    echo "  Status: just kernel-build-status"
+
+# Show custom kernel build status: running or not, how long, last result,
+# and which version is currently pinned and served.
+kernel-build-status:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    shopt -s nullglob
+
+    found=0
+    for unit in /etc/systemd/system/kernel-build-*.service \
+                /run/systemd/system/kernel-build-*.service \
+                /etc/systemd/system/*.wants/kernel-build-*.service; do
+        name=$(basename "$unit" .service)
+        [ -n "$name" ] || continue
+        found=1
+        printf "\n\033[1m%s\033[0m\n" "$name"
+
+        if systemctl is-active --quiet "$name"; then
+            since=$(systemctl show -p ActiveEnterTimestamp --value "$name" 2>/dev/null || echo "")
+            printf "  State:    \033[33mBUILDING\033[0m (since %s)\n" "${since:-unknown}"
+        else
+            result=$(systemctl show -p Result --value "$name" 2>/dev/null || echo "unknown")
+            last=$(systemctl show -p ExecMainExitTimestamp --value "$name" 2>/dev/null || echo "")
+            if [ "$result" = "success" ]; then
+                printf "  State:    \033[32midle\033[0m (last run: success%s)\n" \
+                    "${last:+, $last}"
+            else
+                printf "  State:    \033[31midle (last run: %s)\033[0m\n" "$result"
+                echo   "  Logs:     just kernel-build-log ${name#kernel-build-}"
+            fi
+        fi
+
+        next=$(systemctl show -p NextElapseUSecRealtime --value "${name}.timer" 2>/dev/null || echo "")
+        [ -n "$next" ] && [ "$next" != "0" ] && printf "  Next run: %s\n" "$next"
+    done
+
+    if [ "$found" = "0" ]; then
+        echo "No kernel build units found."
+        echo "  Enable the builder: just enable kernel-builder && just rebuild"
+        exit 0
+    fi
+
+    echo ""
+    echo "Pinned kernel versions (pkgs/kernels/*/version.json):"
+    for f in {{justfile_directory()}}/pkgs/kernels/*/version.json; do
+        k=$(basename "$(dirname "$f")")
+        printf "  %-10s %s\n" "$k" "$(grep -oP '\"tag\"\s*:\s*\"\K[^\"]+' "$f" 2>/dev/null || echo '?')"
+    done
+
+# Follow a custom kernel build's log output live.
+# Usage: just kernel-build-log [name]
+kernel-build-log name="ogc":
+    journalctl -fu kernel-build-{{name}}

@@ -55,31 +55,47 @@ in
   # Unlike Attic, a Harmonia URL has no cache-name path segment: Harmonia
   # serves the host's store at the root.
   #
-  # Usage in a host or features.nix:
-  #   vexos.harmonia.cacheUrl  = "http://vexos-vmc:5000";
-  #   vexos.harmonia.publicKey = "vexos-vmc-1:AbCdEf...=";
+  # These default to the project's own cache so that NO host ever needs to be
+  # configured by hand — the whole point of using a stable Tailscale MagicDNS
+  # name plus a sops-managed (therefore portable) signing key. The cache is
+  # reachable only over the tailnet, and "cache" follows whichever machine
+  # currently runs Harmonia, so moving the service needs no repo edits.
+  #
+  # Setup on the cache host is two Tailscale admin-console actions, not repo
+  # changes: enable MagicDNS, and name that host "cache".
+  #
+  # Override per-host only if you run a different cache:
+  #   vexos.harmonia.cacheUrl  = "http://other-host:5000";
+  #   vexos.harmonia.publicKey = "other-host-1:AbCdEf...=";
   #
   # Both values are printed by `just harmonia-info` on the cache host.
+  # Set cacheUrl = null to opt out entirely.
   options.vexos.harmonia = {
     cacheUrl = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
-      default = null;
-      example = "http://vexos-vmc:5000";
+      default = "http://cache:5000";
+      example = "http://cache:5000";
       description = ''
-        URL of the Harmonia binary cache (no path segment).
-        When set, every host uses it as an additional substituter.
-        Leave null to disable (default).
+        URL of the Harmonia binary cache (no path segment — Harmonia serves the
+        host's store at the root). Resolved over Tailscale MagicDNS, so it works
+        from any machine on the tailnet regardless of physical network.
+        Set to null to disable.
       '';
     };
 
     publicKey = lib.mkOption {
       type = lib.types.str;
       default = "";
-      example = "vexos-vmc-1:AbCdEf1234567890AAAAAAA==";
+      example = "cache-1:AbCdEf1234567890AAAAAAA==";
       description = ''
         Ed25519 public key for the Harmonia cache, as printed by
-        `just harmonia-info` (or read from <signKeyPath>.pub on the server).
+        `just harmonia-info` (or read from <signKeyPath>.pub on the cache host).
         Required when vexos.harmonia.cacheUrl is set.
+
+        Left empty by default: fill this in once, here, after running
+        `just harmonia-info` on the cache host for the first time. It is not a
+        secret and is safe to commit — doing so is what makes every present and
+        future host pick the cache up automatically.
       '';
     };
   };
@@ -93,13 +109,22 @@ in
           Retrieve it from the server with: attic cache info vexos
         '';
       }
-      ++ lib.optional (hcfg.cacheUrl != null) {
-        assertion = hcfg.publicKey != "";
-        message = ''
-          vexos.harmonia.publicKey must be set when vexos.harmonia.cacheUrl is configured.
-          Retrieve it from the server with: just harmonia-info
-        '';
-      };
+      ;
+
+    # Harmonia deliberately does NOT assert here. cacheUrl ships with a working
+    # default so no host needs configuring, but publicKey can only be filled in
+    # after the cache host has generated its key — an assertion would make a
+    # fresh checkout unbuildable until then. Instead the substituter is simply
+    # not added until the key is present (an unverifiable cache is useless), and
+    # the situation is surfaced as a warning.
+    warnings = lib.optional (hcfg.cacheUrl != null && hcfg.publicKey == "") ''
+      vexos.harmonia.cacheUrl is set to "${hcfg.cacheUrl}" but
+      vexos.harmonia.publicKey is empty, so the cache is being ignored.
+      Custom kernels and other locally-built packages will be compiled from
+      source instead of downloaded.
+      Fix: run `just harmonia-info` on the cache host and commit the printed
+      publicKey into modules/nix.nix.
+    '';
 
     nix.settings = {
       experimental-features = [ "nix-command" "flakes" ];
@@ -120,7 +145,8 @@ in
       substituters = [
         "https://cache.nixos.org"
       ] ++ lib.optional (cfg.cacheUrl != null) cfg.cacheUrl
-        ++ lib.optional (hcfg.cacheUrl != null) hcfg.cacheUrl;
+        # Only trust Harmonia once its public key is known — see warnings above.
+        ++ lib.optional (hcfg.cacheUrl != null && hcfg.publicKey != "") hcfg.cacheUrl;
       trusted-public-keys = [
         "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
       ] ++ lib.optional (cfg.publicKey != "") cfg.publicKey

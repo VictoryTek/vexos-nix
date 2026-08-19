@@ -97,6 +97,20 @@ in
           mode = "0400";
         };
 
+        # Harmonia binary cache signing key (the private half of the keypair
+        # produced by `nix-store --generate-binary-cache-key`).
+        #
+        # Managed here rather than generated per-host so the cache's PUBLIC key
+        # is stable across machines — that is what allows modules/nix.nix to
+        # ship a working default and every client to need zero configuration.
+        # Read by systemd LoadCredential as root before the unit drops to its
+        # DynamicUser, so 0400 root-owned is correct.
+        harmonia-cache-priv-key = {
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        };
+
         vexboard-auth-secret = {
           owner = "root";
           group = "root";
@@ -211,6 +225,7 @@ in
     vexos.server.photoprism.passwordFile = lib.mkForce config.sops.secrets."photoprism-password".path;
     vexos.server.minio.rootCredentialsFile = lib.mkForce config.sops.templates."minio-credentials".path;
     vexos.server.attic.environmentFile = lib.mkForce config.sops.templates."attic-credentials".path;
+    vexos.server.harmonia.signKeyPath = lib.mkForce config.sops.secrets."harmonia-cache-priv-key".path;
     vexos.server.vexboard.secretFile = lib.mkForce config.sops.templates."vexboard-credentials".path;
     vexos.server.kiji-proxy.environmentFile = lib.mkForce config.sops.templates."kiji-proxy-env".path;
     services.listmonk.secretFile = lib.mkForce config.sops.templates."listmonk-env".path;

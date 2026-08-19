@@ -380,6 +380,25 @@
       };
     }) hostList);
 
+    # ── Custom kernel package outputs ────────────────────────────────────────
+    # Exposes every entry of pkgs/kernels/ as packages.<system>.kernel-<name>,
+    # so the kernel-builder service can build one by name:
+    #   nix build path:/etc/nixos#kernel-ogc
+    #
+    # Built from the same overlay set (commonBase) that every nixosConfiguration
+    # uses, so the derivation is identical to the one a desktop asks for — which
+    # is what makes the Harmonia cache hit instead of the client compiling
+    # locally. modules/server/kernel-builder.nix consumes these.
+    packages.${system} =
+      let
+        kernelPkgs = import nixpkgs {
+          inherit system;
+          overlays = [ (import ./pkgs) ];
+          config.allowUnfree = true;
+        };
+      in
+      lib.mapAttrs' (n: v: lib.nameValuePair "kernel-${n}" v) kernelPkgs.vexos.kernels;
+
     # ── NixOS modules (consumed by /etc/nixos/flake.nix on the host) ─────────
     # The thin wrapper at /etc/nixos/flake.nix imports these instead of
     # building directly from the repo, so hardware-configuration.nix never

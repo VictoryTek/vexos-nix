@@ -1,0 +1,128 @@
+name: Custom Kernel Pins — Nightly
+
+# Bumps the version pins in pkgs/kernels/<name>/version.json when upstream cuts
+# a new release, and commits the result so every host converges on the same
+# derivation.
+#
+# Why the pin bump lives in CI rather than on the builder host: this job only
+# needs an HTTP query, a source prefetch, and a flake *evaluation* — seconds of
+# work. That keeps the machine that actually compiles kernels free of GitHub
+# push credentials and any new secrets. It cannot build a kernel here (6-hour
+# job cap, ~14 GiB of runner disk) and does not need to: the builder host picks
+# the new pin up on its next scheduled run.
+#
+# Mirrors update-brave-origin-weekly-thursday.yml's check → verify → commit
+# shape. The difference is that Brave *builds* to verify; a kernel can only be
+# evaluated here. Evaluation still catches a wrong hash, a bad tag, or a config
+# regression, so a broken pin never reaches main.
+#
+# Offset to 03:00 UTC so it lands before the 04:00 flake-lock jobs.
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # One job per kernel in the registry. Adding a kernel means adding it
+      # here alongside its pkgs/kernels/<name>/ directory.
+      matrix:
+        kernel:
+          - name: ogc
+            repo: OpenGamingCollective/linux
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for a newer upstream release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KERNEL: ${{ matrix.kernel.name }}
+          UPSTREAM: ${{ matrix.kernel.repo }}
+        run: |
+          set -euo pipefail
+
+          PIN="pkgs/kernels/${KERNEL}/version.json"
+          current=$(jq -r '.tag' "$PIN")
+          echo "Current pin: $current"
+
+          # Stable stream only. Upstream also tags -rc (release candidates,
+          # cut several times a day) and -lts. Both are deliberately excluded:
+          # -rc is unstable, and -lts is a separate track that would silently
+          # downgrade the kernel version.
+          latest=$(
+            curl -fsS -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/${UPSTREAM}/tags?per_page=100" \
+              | jq -r '.[].name' \
+              | grep -E '^v[0-9]+\.[0-9]+(\.[0-9]+)?-ogc[0-9]+$' \
+              | sort -V | tail -1
+          ) || true
+
+          if [ -z "$latest" ]; then
+            echo "warning: could not determine the latest stable tag (API limit,"
+            echo "warning: or upstream changed its tag scheme) — pin untouched."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Latest upstream: $latest"
+
+          if [ "$latest" = "$current" ]; then
+            echo "${KERNEL} already at latest ($current)"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Base kernel version, e.g. v7.2-ogc3 -> 7.2 ; modDirVersion needs
+          # three components (7.2 -> 7.2.0) to match the kernel's own
+          # $(VERSION).$(PATCHLEVEL).$(SUBLEVEL).
+          version=$(echo "$latest" | sed -E 's/^v([0-9.]+)-ogc[0-9]+$/\1/')
+          moddir=$(echo "$version" | awk -F. '{printf "%s.%s.%s", $1, ($2==""?0:$2), ($3==""?0:$3)}')
+
+          raw=$(nix-prefetch-url --unpack --type sha256 \
+            "https://github.com/${UPSTREAM}/archive/refs/tags/${latest}.tar.gz")
+          hash=$(nix hash convert --hash-algo sha256 --to sri "$raw")
+          echo "New hash: $hash"
+
+          jq -n --arg tag "$latest" --arg v "$version" --arg m "$moddir" --arg h "$hash" \
+            '{tag:$tag, version:$v, modDirVersion:$m, hash:$h}' > "$PIN"
+
+          echo "Bumping ${KERNEL}: $current -> $latest"
+          echo "changed=true"      >> "$GITHUB_OUTPUT"
+          echo "tag=$latest"       >> "$GITHUB_OUTPUT"
+
+      # Evaluation is the gate. It resolves the source hash and the full
+      # structuredExtraConfig merge, so a bad hash or a config key that now
+      # collides with nixpkgs' common-config fails here rather than on the
+      # builder hours later.
+      - name: Evaluate the bumped kernel derivation
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          nix --extra-experimental-features 'nix-command flakes' \
+            eval --impure --raw ".#packages.x86_64-linux.kernel-${{ matrix.kernel.name }}.drvPath"
+
+      - name: Commit updated pin
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pkgs/kernels/${{ matrix.kernel.name }}/version.json
+          git commit -m "chore(kernel): bump ${{ matrix.kernel.name }} to ${{ steps.check.outputs.tag }}"
+          git push

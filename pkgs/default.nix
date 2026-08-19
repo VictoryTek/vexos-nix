@@ -16,5 +16,10 @@ final: prev: {
     portbook             = final.callPackage ./portbook { };
     # ── System ──────────────────────────────────────────────────────────────
     vexos-update         = final.callPackage ./vexos-update { };
+    # ── Kernels ─────────────────────────────────────────────────────────────
+    # Registry of custom kernels (pkgs.vexos.kernels.<name>). Built by the
+    # opt-in kernel-builder service and served over Harmonia; see
+    # pkgs/kernels/default.nix for how to add another.
+    kernels              = final.callPackage ./kernels { };
   };
 }

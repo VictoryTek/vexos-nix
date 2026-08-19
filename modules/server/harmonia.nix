@@ -49,7 +49,13 @@ in
     openFirewall = lib.mkOption {
       type    = lib.types.bool;
       default = true;
-      description = "Open the firewall for Harmonia's port.";
+      description = ''
+        Open Harmonia's port on the tailscale0 interface only (not the LAN).
+        Harmonia serves this host's ENTIRE /nix/store, so it is deliberately
+        restricted to the authenticated Tailscale mesh rather than to anything
+        that happens to share the local network. Same approach as
+        modules/server/joplin.nix.
+      '';
     };
   };
 
@@ -63,7 +69,14 @@ in
     # to the service via systemd LoadCredential, which systemd reads as root
     # before dropping to the unit's DynamicUser. The public half is 0644 so
     # `just harmonia-info` can print it without sudo.
-    system.activationScripts.harmoniaKey = ''
+    #
+    # Under the sops backend, modules/secrets-sops.nix supplies the key file
+    # instead and forces signKeyPath at it — a sops-managed key is portable, so
+    # the cache's public key stays stable even if Harmonia moves to a different
+    # machine. That stability is what lets modules/nix.nix ship a baked-in
+    # default publicKey rather than every host pasting one in.
+    system.activationScripts.harmoniaKey =
+      lib.mkIf (config.vexos.secrets.backend != "sops") ''
       if [ ! -e "${cfg.signKeyPath}" ]; then
         mkdir -p "$(dirname "${cfg.signKeyPath}")"
         chmod 0700 "$(dirname "${cfg.signKeyPath}")"
@@ -82,6 +95,7 @@ in
       settings.bind = "[::]:${toString cfg.port}";
     };
 
-    networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
+    networking.firewall.interfaces.tailscale0.allowedTCPPorts =
+      lib.optional cfg.openFirewall cfg.port;
   };
 }

@@ -22,6 +22,7 @@
     ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix
     ./modules/system-latest-kernel.nix  # Linux 7.x (linuxPackages_latest)
+    ./modules/system-custom-kernel.nix  # optional: `just enable-feature kernel` (overrides the above)
     ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on desktop
     ./modules/security.nix          # AppArmor MAC baseline (all roles)
     ./modules/security-desktop.nix  # fail2ban SSH brute-force protection

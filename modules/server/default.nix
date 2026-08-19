@@ -39,6 +39,7 @@
     ./code-server.nix
     ./attic.nix
     ./harmonia.nix
+    ./kernel-builder.nix
     # ── Dashboards ───────────────────────────────────────────────────────────
     ./vexboard.nix
     # ── AI & Privacy ─────────────────────────────────────────────────────────
