@@ -2083,8 +2083,11 @@ enable service: _require-server-role
         sudo sed -i 's/\r//' "$SVC_FILE"  # strip CRLF if template was checked out on Windows
     fi
 
-    # The option uses dots as-is (e.g. uptime-kuma stays uptime-kuma)
-    OPTION="vexos.server.${SERVICE}.enable"
+    # The option uses dots as-is (e.g. uptime-kuma stays uptime-kuma),
+    # except kernel-builder whose module declares camelCase kernelBuilder.
+    OPT_NAME="$SERVICE"
+    [ "$SERVICE" = "kernel-builder" ] && OPT_NAME="kernelBuilder"
+    OPTION="vexos.server.${OPT_NAME}.enable"
 
     # Insert-or-replace a "key = value;" line in $SVC_FILE.
     _set_flag() {
@@ -2972,7 +2975,9 @@ disable service: _require-server-role
         exit 0
     fi
 
-    OPTION="vexos.server.${SERVICE}.enable"
+    OPT_NAME="$SERVICE"
+    [ "$SERVICE" = "kernel-builder" ] && OPT_NAME="kernelBuilder"
+    OPTION="vexos.server.${OPT_NAME}.enable"
 
     # Arr stack may have been enabled as a whole (top-level flag) or as
     # individual components (per-component flags) — sweep both.
