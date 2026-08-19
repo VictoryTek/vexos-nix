@@ -42,7 +42,7 @@ jobs:
             "modules/server/nginx-proxy-manager.nix:jc21/nginx-proxy-manager:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/dozzle.nix:amir20/dozzle:dockerhub:^v[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/homepage.nix:gethomepage/homepage:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
-            "modules/server/dockhand.nix:finsys/dockhand:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/dockhand.nix:fnsys/dockhand:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/arcane.nix:getarcaneapp/manager:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/arr.nix:maintainerr/maintainerr:ghcr:^[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/joplin.nix:joplin/server:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
@@ -80,7 +80,11 @@ jobs:
             # Scoped to the specific repo (not just the file) because joplin.nix and
             # grimmory.nix each declare two tracked images — a file-wide grep would
             # match both "image = ..." lines and garble the extracted tag.
-            current=$(grep -oP "image\s*=\s*\"[^\"]*${repo}:\K[^\"]+" "$file")
+            current=$(grep -oP "image\s*=\s*\"[^\"]*${repo}:\K[^\"]+" "$file" || true)
+            if [ -z "$current" ]; then
+              echo "warning: could not find current tag for $repo in $file — skipping"
+              continue
+            fi
             if [ "$registry" = "dockerhub" ]; then
               latest=$(latest_dockerhub_tag "$repo" "$pattern" || true)
             else
