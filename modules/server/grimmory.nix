@@ -170,7 +170,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.grimmory-db = {
-      image = "lscr.io/linuxserver/mariadb:11.4.8";
+      image = "lscr.io/linuxserver/mariadb:11.4.12";
       environment = {
         PUID           = toString cfg.userId;
         PGID           = toString cfg.groupId;
@@ -186,7 +186,7 @@ in
     };
 
     virtualisation.oci-containers.containers.grimmory = {
-      image = "grimmory/grimmory:v0.38.2";
+      image = "grimmory/grimmory:v3.3.2";
       ports = [ "${toString cfg.port}:6060" ];
       environment = {
         USER_ID            = toString cfg.userId;

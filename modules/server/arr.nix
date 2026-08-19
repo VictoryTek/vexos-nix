@@ -100,7 +100,7 @@ in
       virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
       virtualisation.oci-containers.containers.maintainerr = {
-        image = "ghcr.io/maintainerr/maintainerr:3.17.1";
+        image = "ghcr.io/maintainerr/maintainerr:3.13.0";
         ports = [ "${toString cfg.maintainerr.port}:6246" ];
         volumes = [ "maintainerr-data:/opt/data" ];
         environment = { TZ = config.time.timeZone; };
