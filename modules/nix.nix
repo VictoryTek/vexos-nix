@@ -85,16 +85,15 @@ in
 
     publicKey = lib.mkOption {
       type = lib.types.str;
-      default = "";
+      default = "vexos-vmc-1:Nm4amMYYdvIlY7EZUHbDVI0GTY8orUpWRM89UpX1Vjs=";
       example = "cache-1:AbCdEf1234567890AAAAAAA==";
       description = ''
         Ed25519 public key for the Harmonia cache, as printed by
         `just harmonia-info` (or read from <signKeyPath>.pub on the cache host).
         Required when vexos.harmonia.cacheUrl is set.
 
-        Left empty by default: fill this in once, here, after running
-        `just harmonia-info` on the cache host for the first time. It is not a
-        secret and is safe to commit — doing so is what makes every present and
+        Filled in from `just harmonia-info` on the cache host (vexos-vmc). It is not
+        a secret and is safe to commit — doing so is what makes every present and
         future host pick the cache up automatically.
       '';
     };
