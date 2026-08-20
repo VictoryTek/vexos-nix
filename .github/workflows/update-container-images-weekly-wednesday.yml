@@ -49,7 +49,7 @@ jobs:
             "modules/server/joplin.nix:postgres:dockerhub:^16\.[0-9]+\$"
             "modules/server/grimmory.nix:linuxserver/mariadb:dockerhub:^11\.4\.[0-9]+\$"
             "modules/server/grimmory.nix:grimmory/grimmory:dockerhub:^v[0-9]+\.[0-9]+\.[0-9]+\$"
-            "modules/server/uptime-kuma.nix:louislam/uptime-kuma:dockerhub:^1\.[0-9]+\.[0-9]+\$"
+            "modules/server/uptime-kuma.nix:louislam/uptime-kuma:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
           )
 
           latest_dockerhub_tag() {
