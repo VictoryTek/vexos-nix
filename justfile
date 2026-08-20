@@ -221,12 +221,11 @@ switch role="" variant="" flake="":
     echo ""
     echo "Switch complete."
     echo ""
-    printf "Reboot now? [y/N]: "
-    read -r REBOOT_ANSWER || true
-    case "${REBOOT_ANSWER,,}" in
-        y|yes) echo "Rebooting..."; sudo systemctl reboot ;;
-        *)     echo "Skipped — reboot manually when ready." ;;
-    esac
+    if [ "$(just _confirm 'Reboot now? [y/N]: ')" = "true" ]; then
+        echo "Rebooting..."; sudo systemctl reboot
+    else
+        echo "Skipped — reboot manually when ready."
+    fi
 
 # Dry-run build without switching — useful for testing config changes.
 # Example: just build desktop amd
@@ -322,74 +321,80 @@ rebuild: _kernel-cache-guard
     sudo nixos-rebuild switch --impure --flake "path:/etc/nixos#${target}"
 
 # Update all flake inputs, then rebuild and switch using the current variant.
+# role/variant: only consulted when /etc/nixos/vexos-variant is absent (stateless
+# reboot case) — same accepted values as `switch`. Ignored otherwise.
 [group('System Build & Deploy')]
-update: _kernel-cache-guard
+update role="" variant="": _kernel-cache-guard
     #!/usr/bin/env bash
     set -euo pipefail
     target=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
 
     if [ -z "$target" ]; then
-        ROLE=""
-        VARIANT=""
+        ROLE="{{role}}"
+        VARIANT="{{variant}}"
 
-        echo ""
-        echo "vexos-variant not found (stateless reboot?) — select target manually."
-        echo ""
-        echo "Select role:"
-        echo "  1) desktop"
-        echo "  2) stateless"
-        echo "  3) htpc"
-        echo "  4) server"
-        echo "  5) headless-server"
-        echo ""
-        while [ -z "$ROLE" ]; do
-            printf "Choice [1-5] or name: "
-            read -r INPUT
-            case "${INPUT,,}" in
-                1|desktop)          ROLE="desktop"          ;;
-                2|stateless)        ROLE="stateless"        ;;
-                3|htpc)             ROLE="htpc"             ;;
-                4|server)           ROLE="server"           ;;
-                5|headless-server)  ROLE="headless-server"  ;;
-                *) echo "Invalid — enter 1-5 or desktop/stateless/htpc/server/headless-server" ;;
-            esac
-        done
-
-        echo ""
-        echo "Select GPU variant:"
-        echo "  1) amd"
-        echo "  2) nvidia"
-        echo "  3) intel"
-        echo "  4) vm"
-        echo ""
-        while [ -z "$VARIANT" ]; do
-            printf "Choice [1-4] or name: "
-            read -r INPUT
-            case "${INPUT,,}" in
-                1|amd)    VARIANT="amd"    ;;
-                2|nvidia) VARIANT="nvidia" ;;
-                3|intel)  VARIANT="intel"  ;;
-                4|vm)     VARIANT="vm"     ;;
-                *) echo "Invalid — enter 1-4 or amd/nvidia/intel/vm" ;;
-            esac
-        done
-
-        # NVIDIA driver branch sub-selection
-        if [ "$VARIANT" = "nvidia" ]; then
+        if [ -z "$ROLE" ]; then
             echo ""
-            echo "Select NVIDIA driver branch:"
-            echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
-            echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+            echo "vexos-variant not found (stateless reboot?) — select target manually."
             echo ""
-            while true; do
-                printf "Choice [1-2]: "
+            echo "Select role:"
+            echo "  1) desktop"
+            echo "  2) stateless"
+            echo "  3) htpc"
+            echo "  4) server"
+            echo "  5) headless-server"
+            echo ""
+            while [ -z "$ROLE" ]; do
+                printf "Choice [1-5] or name: "
                 read -r INPUT
-                case "${INPUT}" in
-                    1) break ;;
-                    2) VARIANT="nvidia-legacy535"; break ;;
-                    *) echo "Invalid — enter 1 or 2" ;;
+                case "${INPUT,,}" in
+                    1|desktop)          ROLE="desktop"          ;;
+                    2|stateless)        ROLE="stateless"        ;;
+                    3|htpc)             ROLE="htpc"             ;;
+                    4|server)           ROLE="server"           ;;
+                    5|headless-server)  ROLE="headless-server"  ;;
+                    *) echo "Invalid — enter 1-5 or desktop/stateless/htpc/server/headless-server" ;;
                 esac
             done
+        fi
+
+        if [ -z "$VARIANT" ]; then
+            echo ""
+            echo "Select GPU variant:"
+            echo "  1) amd"
+            echo "  2) nvidia"
+            echo "  3) intel"
+            echo "  4) vm"
+            echo ""
+            while [ -z "$VARIANT" ]; do
+                printf "Choice [1-4] or name: "
+                read -r INPUT
+                case "${INPUT,,}" in
+                    1|amd)    VARIANT="amd"    ;;
+                    2|nvidia) VARIANT="nvidia" ;;
+                    3|intel)  VARIANT="intel"  ;;
+                    4|vm)     VARIANT="vm"     ;;
+                    *) echo "Invalid — enter 1-4 or amd/nvidia/intel/vm" ;;
+                esac
+            done
+
+            # NVIDIA driver branch sub-selection
+            if [ "$VARIANT" = "nvidia" ]; then
+                echo ""
+                echo "Select NVIDIA driver branch:"
+                echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
+                echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+                echo ""
+                while true; do
+                    printf "Choice [1-2]: "
+                    read -r INPUT
+                    case "${INPUT}" in
+                        1) break ;;
+                        2) VARIANT="nvidia-legacy535"; break ;;
+                        *) echo "Invalid — enter 1 or 2" ;;
+                    esac
+                done
+            fi
         fi
 
         target="vexos-${ROLE}-${VARIANT}"
@@ -706,12 +711,10 @@ reset-defaults:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Resetting user dconf database — all GNOME customisations will be lost."
-    printf "Continue? [y/N]: "
-    read -r ANSWER
-    case "${ANSWER,,}" in
-        y|yes) ;;
-        *) echo "Aborted."; exit 0 ;;
-    esac
+    if [ "$(just _confirm 'Continue? [y/N]: ')" != "true" ]; then
+        echo "Aborted."
+        exit 0
+    fi
     dconf reset -f /
     rm -f "$HOME"/.local/share/vexos/.dconf-*-initialized*
     echo "Done. Log out and back in (or reboot) for all changes to take effect."
@@ -738,17 +741,23 @@ setup-rdp:
     echo "Permissions: root:root 0600 — not stored in the Nix store."
     echo ""
 
-    while true; do
-        IFS= read -rsp "RDP password: " password
-        echo ""
-        IFS= read -rsp "Confirm password: " password2
-        echo ""
-        if [ "$password" = "$password2" ]; then
-            break
-        fi
-        echo "Passwords do not match — try again."
-        echo ""
-    done
+    if [ -t 0 ]; then
+        while true; do
+            IFS= read -rsp "RDP password: " password
+            echo ""
+            IFS= read -rsp "Confirm password: " password2
+            echo ""
+            if [ "$password" = "$password2" ]; then
+                break
+            fi
+            echo "Passwords do not match — try again."
+            echo ""
+        done
+    else
+        # Non-interactive caller (VexPortal): a single line on stdin, no
+        # confirmation — there is nothing to typo when the value came from a form.
+        IFS= read -r password
+    fi
 
     sudo mkdir -p "$SECRET_DIR"
     sudo chmod 700 "$SECRET_DIR"
@@ -842,12 +851,11 @@ set-hostname name="":
     fi
 
     echo ""
-    printf "Rebuild now to apply fully via NixOS? [y/N]: "
-    read -r REBUILD_ANSWER || true
-    case "${REBUILD_ANSWER,,}" in
-        y|yes) just rebuild ;;
-        *) echo "Skipped — run 'just rebuild' when ready." ;;
-    esac
+    if [ "$(just _confirm 'Rebuild now to apply fully via NixOS? [y/N]: ')" = "true" ]; then
+        just rebuild
+    else
+        echo "Skipped — run 'just rebuild' when ready."
+    fi
 
 # Copy your SSH key to a remote machine so future connections need no password.
 # Usage:
@@ -993,12 +1001,11 @@ fix-flake:
     fi
 
     echo ""
-    printf "Rebuild now to apply? [y/N]: "
-    read -r ANSWER || true
-    case "${ANSWER,,}" in
-        y|yes) just rebuild ;;
-        *) echo "Run 'just rebuild' when ready." ;;
-    esac
+    if [ "$(just _confirm 'Rebuild now to apply? [y/N]: ')" = "true" ]; then
+        just rebuild
+    else
+        echo "Run 'just rebuild' when ready."
+    fi
 
 
 # Available optional feature names (desktop, server, htpc, and vanilla roles).
@@ -1224,6 +1231,26 @@ disable-feature feature: _require-desktop-role
 # Available server service module names.
 _server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana grimmory harmonia headscale kernel-builder home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
+# Prompt for a yes/no confirmation, printing `prompt` verbatim and reading a
+# response exactly as the inline call sites did before this helper existed.
+# When VEXOS_ASSUME_YES=1 (set by the VexPortal daemon, never by a human
+# session), skips the prompt and answers yes immediately.
+# Usage: if [ "$(just _confirm 'Continue? [y/N]: ')" = "true" ]; then ... fi
+[private]
+_confirm prompt:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "${VEXOS_ASSUME_YES:-}" = "1" ]; then
+        echo "true"
+        exit 0
+    fi
+    printf '%s' "{{prompt}}" >&2
+    read -r ANSWER || true
+    case "${ANSWER,,}" in
+        y|yes) echo "true" ;;
+        *)     echo "false" ;;
+    esac
+
 # Guard: abort if the current host is not running a server variant.
 [private]
 _require-server-role:
@@ -1347,7 +1374,14 @@ restore-plex tarball: _require-server-role
 
     echo "This will stop Plex and replace /var/lib/plex with the contents of:"
     echo "  $TARBALL"
-    read -r -p "Type 'yes' to continue: " CONFIRM
+    # Typed-keyword confirm, not the [y/N] shape _confirm handles. Treated as
+    # satisfied by VEXOS_ASSUME_YES=1 anyway: the VexPortal daemon only sets it
+    # after its own destructive-action confirmation dialog has already run.
+    if [ "${VEXOS_ASSUME_YES:-}" = "1" ]; then
+        CONFIRM="yes"
+    else
+        read -r -p "Type 'yes' to continue: " CONFIRM
+    fi
     if [ "$CONFIRM" != "yes" ]; then
         echo "Aborted — no changes made."
         exit 1

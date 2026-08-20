@@ -35,6 +35,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # VexPortal — GTK4 + libadwaita GUI front end for this repo's justfile
+    # (display-bearing roles only, same set as `up`).
+    vexportal = {
+      url = "github:VictoryTek/VexPortal";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # proxmox-nixos: Proxmox VE hypervisor on NixOS. Used by modules/server/proxmox.nix.
     # Do NOT add inputs.proxmox-nixos.inputs.nixpkgs.follows = "nixpkgs" — the upstream
     # flake manages its own nixpkgs-stable pin; overriding it breaks package builds.
@@ -81,6 +88,14 @@
 
     # GUI update app — only for roles with a display (desktop, htpc, GUI server, stateless).
     upModule = { environment.systemPackages = [ up.packages.x86_64-linux.default ]; };
+
+    # VexPortal GUI — same display-bearing roles as upModule. Installs the app,
+    # polkit actions, D-Bus policy, and systemd unit; justfile path stays at the
+    # module's default (/etc/nixos/justfile).
+    vexportalModule = {
+      imports = [ inputs.vexportal.nixosModules.default ];
+      programs.vexportal.enable = true;
+    };
 
     # Proxmox VE overlay — exposes pkgs.proxmox-ve (and related Proxmox packages).
     # Required by services.proxmox-ve.package (lazy default in the proxmox NixOS module).
@@ -180,19 +195,19 @@
     roles = {
       desktop = {
         homeFile         = ./home-desktop.nix;
-        baseModules      = commonBase ++ [ upModule ];
+        baseModules      = commonBase ++ [ upModule vexportalModule ];
         extraModules     = [];
         hostLocalModules = featuresModule;
       };
       htpc = {
         homeFile         = ./home-htpc.nix;
-        baseModules      = commonBase ++ [ upModule ];
+        baseModules      = commonBase ++ [ upModule vexportalModule ];
         extraModules     = [];
         hostLocalModules = featuresModule;
       };
       stateless = {
         homeFile         = ./home-stateless.nix;
-        baseModules      = commonBase ++ [ upModule ];
+        baseModules      = commonBase ++ [ upModule vexportalModule ];
         extraModules     = [ impermanence.nixosModules.impermanence ];
         hostLocalModules = statelessUserOverrideModule;
       };
@@ -203,7 +218,7 @@
         # modules/server/proxmox.nix) to avoid infinite recursion — `imports`
         # cannot safely reference _module.args.
         # vexboardBase: overlay + NixOS module for the default server dashboard.
-        baseModules      = commonBase ++ [ upModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
+        baseModules      = commonBase ++ [ upModule vexportalModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
         extraModules     = [];
         hostLocalModules = serverServicesModule ++ featuresModule ++ storagePoolModule;
       };
