@@ -66,7 +66,9 @@ let
     seerr            = [ "/var/lib/seerr" ];
     stirling-pdf     = [ ];
     tautulli         = [ "/var/lib/tautulli" ];
-    uptime-kuma      = [ "/var/lib/uptime-kuma" ];
+    uptime-kuma      = [ (if config.virtualisation.oci-containers.backend == "podman"
+                          then "/var/lib/containers/storage/volumes/uptime-kuma-data/_data"
+                          else "/var/lib/docker/volumes/uptime-kuma-data/_data") ]; # named Docker/Podman volume, not a /var/lib bind mount
     vaultwarden      = [ "/var/lib/vaultwarden" ];
     vexboard         = [ "/var/lib/vexboard" ];
     zigbee2mqtt      = [ "/var/lib/zigbee2mqtt" ];
