@@ -4,6 +4,13 @@
 # revision already in /etc/nixos/flake.lock, so a deploy never drags in a
 # nixpkgs bump (and therefore never triggers a heavy source build).
 #
+# Exception: `up`, `vexportal`, and `vexboard` (first-party GUI apps —
+# VictoryTek/Up, VictoryTek/VexPortal, VictoryTek/vexboard) are always let
+# through to whatever revision the new vexos-nix commit pins them to.  They
+# are small Rust/GTK packages that build in seconds and are never the source
+# of a cache block, so there is no reason to hold them back along with
+# nixpkgs — a deploy should still ship their latest releases.
+#
 # Why this needs a script rather than a one-liner in the justfile:
 # /etc/nixos/flake.nix declares `nixpkgs.follows = "vexos-nix/nixpkgs"` — there
 # is no independent nixpkgs pin on the host.  `nix flake update vexos-nix`
@@ -82,7 +89,9 @@ writeShellApplication {
       exit 1
     fi
 
-    # Put every node except vexos-nix itself back to its pre-update revision.
+    # Put every node except vexos-nix itself back to its pre-update revision —
+    # with the exception of up/vexportal/vexboard (see header comment), which
+    # are always left at whatever revision the new vexos-nix commit resolved.
     #
     # Nodes are paired between the two locks by their canonicalised `original`
     # (declared ref), never by node key: Nix renumbers keys when the input
@@ -97,6 +106,12 @@ writeShellApplication {
     TMP=$(mktemp "$LOCK.tmp.XXXXXX")
     if ! jq --slurpfile old "$BAK" '
           def canon: to_entries | sort_by(.key) | from_entries | tojson;
+
+          # First-party GUI apps that are always allowed to advance — never
+          # held back to their pre-update revision.
+          def is_first_party_app:
+            .type == "github" and .owner == "VictoryTek"
+            and (.repo == "Up" or .repo == "VexPortal" or .repo == "vexboard");
 
           .nodes[.root].inputs["vexos-nix"] as $vex
           | $old[0] as $o
@@ -113,6 +128,7 @@ writeShellApplication {
           | reduce (.nodes | keys[]) as $k (.;
               if $k == .root or $k == $vex then .
               elif .nodes[$k].original == null then .
+              elif (.nodes[$k].original | is_first_party_app) then .
               else ( .nodes[$k].original | canon ) as $orig
                 | if $byorig[$orig] != null
                   then .nodes[$k].locked = $byorig[$orig]

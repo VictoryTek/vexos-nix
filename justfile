@@ -323,6 +323,11 @@ rebuild: _kernel-cache-guard
 # Update all flake inputs, then rebuild and switch using the current variant.
 # role/variant: only consulted when /etc/nixos/vexos-variant is absent (stateless
 # reboot case) — same accepted values as `switch`. Ignored otherwise.
+#
+# On a VEXOS_CACHE_BLOCK (heavy kernel build), only nixpkgs is held back to
+# its previous revision — up, vexportal, and vexboard (first-party GUI apps)
+# still advance to whatever revision the update resolved, since they are
+# never the cause of the block. See pkgs/vexos-update/default.nix.
 [group('System Build & Deploy')]
 update role="" variant="": _kernel-cache-guard
     #!/usr/bin/env bash
@@ -443,15 +448,18 @@ update-all:
         --print-build-logs
 
 # Deploy config changes only — pulls the latest vexos-nix commit from GitHub
-# WITHOUT updating nixpkgs or any other flake input.
+# WITHOUT updating nixpkgs.
 #
 # Run this when just update reports a VEXOS_CACHE_BLOCK (nixpkgs has packages
 # not yet in the binary cache).  Your latest config changes land immediately
 # while nixpkgs stays pinned.  Run just update again in 1-2 days once the
 # cache has caught up.
 #
-# nixpkgs and all other inputs stay pinned at whatever version is
-# currently in /etc/nixos/flake.lock — no source builds triggered.
+# nixpkgs stays pinned at whatever version is currently in
+# /etc/nixos/flake.lock — no source builds triggered. up, vexportal, and
+# vexboard (first-party GUI apps) are the exception: they still advance to
+# whatever revision the new vexos-nix commit resolves, since they build in
+# seconds and are never the cause of a cache block.
 [group('System Build & Deploy')]
 deploy:
     #!/usr/bin/env bash

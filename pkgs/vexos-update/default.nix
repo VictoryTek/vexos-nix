@@ -4,10 +4,13 @@
 # shell application to live in) into a proper package so shellcheck runs on
 # it at build time via writeShellApplication.
 #
-# No runtimeInputs: the script already relies purely on ambient system PATH
-# (git, nix, nixos-rebuild, coreutils, vexos-notify) — writeShellApplication's
-# wrapper prepends to PATH rather than replacing it, so this is behaviorally
-# identical to the prior plain writeShellScriptBin.
+# runtimeInputs is used only for jq (selective flake.lock rewrite when a
+# heavy build is blocked — see hold_back_nixpkgs below), which is not present
+# on every role (modules/development.nix is feature-gated).  Otherwise the
+# script relies purely on ambient system PATH (git, nix, nixos-rebuild,
+# coreutils, vexos-notify) — writeShellApplication's wrapper prepends to PATH
+# rather than replacing it, so this is behaviorally identical to the prior
+# plain writeShellScriptBin.
 #
 # Exit codes:
 #   0  — update applied (some fast local builds may have occurred)
@@ -18,10 +21,11 @@
 #   Lines prefixed "VEXOS_CACHE_BLOCK:"  → hard blocker; lock restored.
 #   Lines prefixed "VEXOS_LOCAL_BUILD:"  → informational; non-heavy local build proceeding.
 #   All other lines are forwarded verbatim to the build log view.
-{ writeShellApplication }:
+{ writeShellApplication, jq }:
 
 writeShellApplication {
   name = "vexos-update";
+  runtimeInputs = [ jq ];
   text = ''
     VARIANT=$(cat /etc/nixos/vexos-variant 2>/dev/null || true)
     if [ -z "$VARIANT" ]; then
@@ -165,6 +169,62 @@ GITIGNORE
     # Back up current lock before touching anything.
     cp /etc/nixos/flake.lock /etc/nixos/flake.lock.bak
 
+    # ── Selective lock restore on a heavy-build block ─────────────────────
+    # Only nixpkgs (and nixpkgs-unstable, its sibling — the actual source of
+    # any heavy build) is held back to its pre-update revision.  up,
+    # vexportal, and vexboard — small first-party Rust/GTK apps that build in
+    # seconds and are never the cause of a cache block — keep whatever
+    # revision the preceding `nix flake update` just resolved for them, so a
+    # blocked `just update` still ships their latest releases.
+    #
+    # Nodes are paired between the old and new lock by their canonicalised
+    # `original` (declared ref), never by node key — Nix renumbers keys when
+    # the input graph changes shape (this repo's own lock resolves root input
+    # `nixpkgs` to node key `nixpkgs_2`), so pairing by key alone could pin
+    # the wrong revision onto the wrong input. Same approach used by
+    # vexos-deploy's default.nix. An `original` that appears in the old lock
+    # under two different `locked` revisions is ambiguous and is skipped
+    # rather than guessed at.
+    hold_back_nixpkgs() {
+      local tmp
+      tmp=$(mktemp /etc/nixos/flake.lock.tmp.XXXXXX)
+      if jq --slurpfile old /etc/nixos/flake.lock.bak '
+            def canon: to_entries | sort_by(.key) | from_entries | tojson;
+
+            # nixpkgs and nixpkgs-unstable both come from NixOS/nixpkgs —
+            # either one is "nixpkgs" for the purpose of a heavy build.
+            def is_nixpkgs_family:
+              .type == "github" and .owner == "NixOS" and .repo == "nixpkgs";
+
+            $old[0] as $o
+            | ( [ $o.nodes | to_entries[]
+                  | select(.value.original != null and .value.locked != null)
+                  | select(.value.original | is_nixpkgs_family)
+                  | { k: (.value.original | canon), v: .value.locked } ]
+                | group_by(.k)
+                | map(select((map(.v | canon) | unique | length) == 1))
+                | map({ key: .[0].k, value: .[0].v })
+                | from_entries
+              ) as $byorig
+            | reduce (.nodes | keys[]) as $k (.;
+                if .nodes[$k].original == null then .
+                else ( .nodes[$k].original | canon ) as $orig
+                  | if $byorig[$orig] != null
+                    then .nodes[$k].locked = $byorig[$orig]
+                    else . end
+                end)
+          ' /etc/nixos/flake.lock > "$tmp"
+      then
+        chmod 0644 "$tmp"
+        mv "$tmp" /etc/nixos/flake.lock
+      else
+        echo "warning: could not selectively hold back nixpkgs — restoring full flake.lock instead." >&2
+        rm -f "$tmp"
+        cp /etc/nixos/flake.lock.bak /etc/nixos/flake.lock
+      fi
+      rm -f /etc/nixos/flake.lock.bak
+    }
+
     echo "Updating flake inputs..."
     nix --extra-experimental-features "nix-command flakes" \
       flake update --flake git+file:///etc/nixos
@@ -228,13 +288,13 @@ GITIGNORE
       echo "VEXOS_CACHE_BLOCK: local source build (typically 1-3 days until Hydra caches it):"
       printf '%s\n' "$HEAVY_BUILDS" | grep '[^[:space:]]' | sed 's/^/VEXOS_CACHE_BLOCK:   /'
       echo "VEXOS_CACHE_BLOCK:"
-      echo "VEXOS_CACHE_BLOCK: flake.lock restored. No changes were applied."
+      echo "VEXOS_CACHE_BLOCK: nixpkgs held back at its previous revision. up, vexportal, and"
+      echo "VEXOS_CACHE_BLOCK: vexboard still advanced to their latest resolved revision."
       echo "VEXOS_CACHE_BLOCK: Options:"
       echo "VEXOS_CACHE_BLOCK:   just deploy     — apply config changes without bumping nixpkgs"
       echo "VEXOS_CACHE_BLOCK:   just update     — retry in 1-3 days once Hydra has built them"
       echo "VEXOS_CACHE_BLOCK:   just update-all — force local compile now (may take hours)"
-      cp /etc/nixos/flake.lock.bak /etc/nixos/flake.lock
-      rm -f /etc/nixos/flake.lock.bak
+      hold_back_nixpkgs
       exit 2
     fi
 
