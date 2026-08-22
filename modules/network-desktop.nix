@@ -60,4 +60,11 @@
   networking.firewall.extraCommands = ''
     iptables -t raw -A OUTPUT -p udp -m udp --dport 137 -j CT --helper netbios-ns
   '';
+
+  # ── LocalSend ────────────────────────────────────────────────────────────
+  # localsend (installed in modules/packages-desktop.nix) needs UDP 53317 for
+  # LAN multicast peer discovery and TCP 53317 for the HTTP file transfer.
+  # Without these the app installs fine but never sees peers on the network.
+  networking.firewall.allowedTCPPorts = [ 53317 ];
+  networking.firewall.allowedUDPPorts = [ 53317 ];
 }
