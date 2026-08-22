@@ -149,7 +149,7 @@ in
         probe = {
           default_interval_secs = 30;
           timeout_secs = 5;
-          max_history = 100;
+          history_retention_days = 30;
         };
         metrics.push_interval_ms = 2000;
       };
