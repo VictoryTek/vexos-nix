@@ -56,6 +56,53 @@ else
   RED='' GREEN='' YELLOW='' CYAN='' BOLD='' RESET=''
 fi
 
+# ---------- gum (nice interactive prompts, best-effort) ----------------------
+# Fetched at runtime from the nixpkgs binary cache, same pattern as the git
+# fallback below. If unavailable (offline, cache unreachable), $GUM stays empty
+# and every ui_* helper below falls back to the plain read-based prompt it wraps.
+GUM=""
+if command -v gum >/dev/null 2>&1; then
+  GUM="gum"
+else
+  _GUM_STORE="$(nix --extra-experimental-features 'nix-command flakes' \
+    build nixpkgs#gum --no-link --print-out-paths 2>/dev/null || true)"
+  if [ -n "$_GUM_STORE" ] && [ -x "$_GUM_STORE/bin/gum" ]; then
+    GUM="$_GUM_STORE/bin/gum"
+  fi
+fi
+
+# ui_choose "$title" "value1:label1" "value2:label2" ... — prints $title, lets the
+# user arrow-key through the labels, echoes the chosen value on stdout.
+ui_choose() {
+  local title="$1"; shift
+  local values=() labels=()
+  local pair
+  for pair in "$@"; do
+    values+=("${pair%%:*}")
+    labels+=("${pair#*:}")
+  done
+  local chosen
+  chosen="$("$GUM" choose --header "$title" "${labels[@]}" </dev/tty)"
+  local i
+  for i in "${!labels[@]}"; do
+    if [ "${labels[$i]}" = "$chosen" ]; then
+      echo "${values[$i]}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# ui_confirm "$prompt" — exit status 0 = yes, 1 = no (matches `if ui_confirm ...`).
+ui_confirm() {
+  "$GUM" confirm "$1" </dev/tty
+}
+
+# ui_input "$prompt" "$placeholder" — echoes the entered text on stdout.
+ui_input() {
+  "$GUM" input --header "$1" --placeholder "$2" </dev/tty
+}
+
 # ---------- Header -----------------------------------------------------------
 echo ""
 echo -e "${BOLD}${CYAN}============================================${RESET}"
@@ -67,50 +114,66 @@ echo -e "${YELLOW}Verify: https://github.com/VictoryTek/vexos-nix/blob/${VEXOS_R
 echo ""
 
 # ---------- Role selection ---------------------------------------------------
-echo -e "${BOLD}Select your role:${RESET}"
-echo "  1) Desktop  — Full gaming / workstation stack"
-echo "  2) Stateless — Minimal build (no gaming / dev / virt / ASUS)"
-echo "  3) HTPC    — Home theatre PC"
-echo "  4) Server  — Server (GUI or Headless)"
-echo "  5) Vanilla  — Stock NixOS baseline (system restore)"
-echo ""
-
 ROLE=""
-while [ -z "$ROLE" ]; do
-  printf "Enter choice [1-5] or name (desktop / stateless / htpc / server / vanilla): "
-  read -r INPUT </dev/tty
-  case "${INPUT,,}" in
-    1|desktop)  ROLE="desktop"  ;;
-    2|stateless) ROLE="stateless" ;;
-    3|htpc)     ROLE="htpc"     ;;
-    4|server)   ROLE="server"   ;;
-    5|vanilla)  ROLE="vanilla"  ;;
-    *)
-      echo -e "${RED}Invalid selection '${INPUT}'. Choose 1-5 or a role name.${RESET}"
-      ;;
-  esac
-done
-
-# ---------- Server sub-type selection ----------------------------------------
-if [ "$ROLE" = "server" ]; then
-  echo ""
-  echo -e "${BOLD}Select server type:${RESET}"
-  echo "  1) Headless Server — CLI only, no desktop environment"
-  echo "  2) GUI Server      — GNOME desktop environment"
+if [ -n "$GUM" ]; then
+  ROLE="$(ui_choose "Select your role" \
+    "desktop:Desktop  — Full gaming / workstation stack" \
+    "stateless:Stateless — Minimal build (no gaming / dev / virt / ASUS)" \
+    "htpc:HTPC    — Home theatre PC" \
+    "server:Server  — Server (GUI or Headless)" \
+    "vanilla:Vanilla  — Stock NixOS baseline (system restore)")"
+else
+  echo -e "${BOLD}Select your role:${RESET}"
+  echo "  1) Desktop  — Full gaming / workstation stack"
+  echo "  2) Stateless — Minimal build (no gaming / dev / virt / ASUS)"
+  echo "  3) HTPC    — Home theatre PC"
+  echo "  4) Server  — Server (GUI or Headless)"
+  echo "  5) Vanilla  — Stock NixOS baseline (system restore)"
   echo ""
 
-  SERVER_TYPE=""
-  while [ -z "$SERVER_TYPE" ]; do
-    printf "Enter choice [1-2] or name (headless / gui): "
+  while [ -z "$ROLE" ]; do
+    printf "Enter choice [1-5] or name (desktop / stateless / htpc / server / vanilla): "
     read -r INPUT </dev/tty
     case "${INPUT,,}" in
-      1|headless) SERVER_TYPE="headless" ;;
-      2|gui)      SERVER_TYPE="gui"     ;;
+      1|desktop)  ROLE="desktop"  ;;
+      2|stateless) ROLE="stateless" ;;
+      3|htpc)     ROLE="htpc"     ;;
+      4|server)   ROLE="server"   ;;
+      5|vanilla)  ROLE="vanilla"  ;;
       *)
-        echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
+        echo -e "${RED}Invalid selection '${INPUT}'. Choose 1-5 or a role name.${RESET}"
         ;;
     esac
   done
+fi
+
+# ---------- Server sub-type selection ----------------------------------------
+if [ "$ROLE" = "server" ]; then
+  SERVER_TYPE=""
+  if [ -n "$GUM" ]; then
+    echo ""
+    SERVER_TYPE="$(ui_choose "Select server type" \
+      "headless:Headless Server — CLI only, no desktop environment" \
+      "gui:GUI Server      — GNOME desktop environment")"
+  else
+    echo ""
+    echo -e "${BOLD}Select server type:${RESET}"
+    echo "  1) Headless Server — CLI only, no desktop environment"
+    echo "  2) GUI Server      — GNOME desktop environment"
+    echo ""
+
+    while [ -z "$SERVER_TYPE" ]; do
+      printf "Enter choice [1-2] or name (headless / gui): "
+      read -r INPUT </dev/tty
+      case "${INPUT,,}" in
+        1|headless) SERVER_TYPE="headless" ;;
+        2|gui)      SERVER_TYPE="gui"     ;;
+        *)
+          echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
+          ;;
+      esac
+    done
+  fi
 
   if [ "$SERVER_TYPE" = "headless" ]; then
     ROLE="headless-server"
@@ -150,27 +213,36 @@ fi
 # ---------- GPU variant selection --------------------------------------------
 VARIANT=""
 if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || [ "$ROLE" = "headless-server" ] || [ "$ROLE" = "stateless" ] || [ "$ROLE" = "vanilla" ]; then
-  echo ""
-  echo -e "${BOLD}Select your GPU variant:${RESET}"
-  echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
-  echo "  2) NVIDIA — NVIDIA GPU (proprietary, open kernel modules)"
-  echo "  3) Intel  — Intel iGPU or Arc dGPU"
-  echo "  4) VM     — QEMU/KVM or VirtualBox guest"
-  echo ""
+  if [ -n "$GUM" ]; then
+    echo ""
+    VARIANT="$(ui_choose "Select your GPU variant" \
+      "amd:AMD    — AMD GPU (RADV, ROCm, LACT)" \
+      "nvidia:NVIDIA — NVIDIA GPU (proprietary, open kernel modules)" \
+      "intel:Intel  — Intel iGPU or Arc dGPU" \
+      "vm:VM     — QEMU/KVM or VirtualBox guest")"
+  else
+    echo ""
+    echo -e "${BOLD}Select your GPU variant:${RESET}"
+    echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
+    echo "  2) NVIDIA — NVIDIA GPU (proprietary, open kernel modules)"
+    echo "  3) Intel  — Intel iGPU or Arc dGPU"
+    echo "  4) VM     — QEMU/KVM or VirtualBox guest"
+    echo ""
 
-  while [ -z "$VARIANT" ]; do
-    printf "Enter choice [1-4] or name (amd / nvidia / intel / vm): "
-    read -r INPUT </dev/tty
-    case "${INPUT,,}" in          # ${var,,} = lowercase (bash 4+)
-      1|amd)    VARIANT="amd"    ;;
-      2|nvidia) VARIANT="nvidia" ;;
-      3|intel)  VARIANT="intel"  ;;
-      4|vm)     VARIANT="vm"     ;;
-      *)
-        echo -e "${RED}Invalid selection '${INPUT}'. Please enter 1, 2, 3, 4, amd, nvidia, intel, or vm.${RESET}"
-        ;;
-    esac
-  done
+    while [ -z "$VARIANT" ]; do
+      printf "Enter choice [1-4] or name (amd / nvidia / intel / vm): "
+      read -r INPUT </dev/tty
+      case "${INPUT,,}" in          # ${var,,} = lowercase (bash 4+)
+        1|amd)    VARIANT="amd"    ;;
+        2|nvidia) VARIANT="nvidia" ;;
+        3|intel)  VARIANT="intel"  ;;
+        4|vm)     VARIANT="vm"     ;;
+        *)
+          echo -e "${RED}Invalid selection '${INPUT}'. Please enter 1, 2, 3, 4, amd, nvidia, intel, or vm.${RESET}"
+          ;;
+      esac
+    done
+  fi
 fi
 
 # ---------- NVIDIA driver branch selection -----------------------------------
@@ -178,25 +250,32 @@ fi
 NVIDIA_SUFFIX=""
 if [ "$VARIANT" = "nvidia" ]; then
   echo ""
-  echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
-  echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
-  echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
-  echo ""
   echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"
   echo -e "${YELLOW}Wrong choice? Run this installer again and switch.${RESET}"
   echo ""
 
-  while true; do
-    printf "Enter choice [1-2]: "
-    read -r INPUT </dev/tty
-    case "${INPUT}" in
-      1) NVIDIA_SUFFIX="";           break ;;
-      2) NVIDIA_SUFFIX="-legacy535"; break ;;
-      *)
-        echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
-        ;;
-    esac
-  done
+  if [ -n "$GUM" ]; then
+    NVIDIA_SUFFIX="$(ui_choose "Select NVIDIA driver branch" \
+      ":Latest     — RTX, GTX 16xx, GTX 750 and newer" \
+      "-legacy535:Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)")"
+  else
+    echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
+    echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
+    echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+    echo ""
+
+    while true; do
+      printf "Enter choice [1-2]: "
+      read -r INPUT </dev/tty
+      case "${INPUT}" in
+        1) NVIDIA_SUFFIX="";           break ;;
+        2) NVIDIA_SUFFIX="-legacy535"; break ;;
+        *)
+          echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
+          ;;
+      esac
+    done
+  fi
 fi
 
 # ---------- ASUS ROG/TUF hardware ------------------------------------------
@@ -208,21 +287,29 @@ if [ "$VARIANT" != "vm" ]; then
   echo "  Laptop: enables asusd (fan curves, charge limit), supergfxctl, power-profiles-daemon"
   echo "  Desktop: enables OpenRGB for ASUS Aura motherboard RGB control"
   echo ""
-  printf "ASUS ROG/TUF device? [y/N] "
-  read -r INPUT </dev/tty
-  case "${INPUT,,}" in
-    y|yes) ASUS_ENABLE=true ;;
-    *)     ASUS_ENABLE=false ;;
-  esac
+  if [ -n "$GUM" ]; then
+    if ui_confirm "ASUS ROG/TUF device?"; then ASUS_ENABLE=true; else ASUS_ENABLE=false; fi
+  else
+    printf "ASUS ROG/TUF device? [y/N] "
+    read -r INPUT </dev/tty
+    case "${INPUT,,}" in
+      y|yes) ASUS_ENABLE=true ;;
+      *)     ASUS_ENABLE=false ;;
+    esac
+  fi
 
   if [ "$ASUS_ENABLE" = "true" ]; then
     echo ""
-    printf "Is this device a laptop? [y/N] "
-    read -r INPUT </dev/tty
-    case "${INPUT,,}" in
-      y|yes) ASUS_LAPTOP=true ;;
-      *)     ASUS_LAPTOP=false ;;
-    esac
+    if [ -n "$GUM" ]; then
+      if ui_confirm "Is this device a laptop?"; then ASUS_LAPTOP=true; else ASUS_LAPTOP=false; fi
+    else
+      printf "Is this device a laptop? [y/N] "
+      read -r INPUT </dev/tty
+      case "${INPUT,,}" in
+        y|yes) ASUS_LAPTOP=true ;;
+        *)     ASUS_LAPTOP=false ;;
+      esac
+    fi
   fi
 fi
 
@@ -257,8 +344,12 @@ if [ ! -d /sys/firmware/efi ]; then
   echo ""
   GRUB_DEVICE=""
   while [ -z "$GRUB_DEVICE" ]; do
-    printf "  Enter disk device for GRUB (e.g. /dev/sda, /dev/nvme0n1): "
-    read -r GRUB_DEVICE </dev/tty
+    if [ -n "$GUM" ]; then
+      GRUB_DEVICE="$(ui_input "Enter disk device for GRUB" "/dev/sda, /dev/nvme0n1")"
+    else
+      printf "  Enter disk device for GRUB (e.g. /dev/sda, /dev/nvme0n1): "
+      read -r GRUB_DEVICE </dev/tty
+    fi
     if [ ! -b "$GRUB_DEVICE" ]; then
       echo -e "  ${RED}'${GRUB_DEVICE}' is not a block device. Try again.${RESET}"
       GRUB_DEVICE=""
@@ -309,8 +400,12 @@ else
     echo ""
     lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT 2>/dev/null || true
     echo ""
-    printf "  Enter EFI partition device (e.g. /dev/sda1, /dev/nvme0n1p1): "
-    read -r EFI_DEV </dev/tty
+    if [ -n "$GUM" ]; then
+      EFI_DEV="$(ui_input "Enter EFI partition device" "/dev/sda1, /dev/nvme0n1p1")"
+    else
+      printf "  Enter EFI partition device (e.g. /dev/sda1, /dev/nvme0n1p1): "
+      read -r EFI_DEV </dev/tty
+    fi
     if [ -b "$EFI_DEV" ]; then
       echo "  Mounting ${EFI_DEV} at /boot..."
       sudo mount "$EFI_DEV" /boot
@@ -424,9 +519,15 @@ done
 # otherwise pin the flake to an old revision, potentially pulling in packages
 # that have since been removed from the repo.
 echo ""
-echo -e "${CYAN}Refreshing flake inputs...${RESET}"
-sudo nix --extra-experimental-features "nix-command flakes" \
-  flake update --flake git+file:///etc/nixos
+if [ -n "$GUM" ]; then
+  "$GUM" spin --title "Refreshing flake inputs..." -- \
+    sudo nix --extra-experimental-features "nix-command flakes" \
+    flake update --flake git+file:///etc/nixos
+else
+  echo -e "${CYAN}Refreshing flake inputs...${RESET}"
+  sudo nix --extra-experimental-features "nix-command flakes" \
+    flake update --flake git+file:///etc/nixos
+fi
 
 # Stage the refreshed lock file so all subsequent git+file:// evaluations see it.
 sudo "$GIT" -C /etc/nixos add flake.lock
@@ -444,8 +545,16 @@ sudo "$GIT" -C /etc/nixos add flake.lock
 # Everything else is a transient Hydra lag and will typically be fast (binary
 # downloads for Electron apps, short Rust/Python crate builds, etc.).
 echo ""
-echo -e "${CYAN}Checking what will be fetched vs built locally...${RESET}"
-DRY_OUT=$(sudo nixos-rebuild dry-build --flake "git+file:///etc/nixos#${FLAKE_TARGET}" 2>&1 || true)
+_DRY_OUT_FILE="$(mktemp)"
+if [ -n "$GUM" ]; then
+  "$GUM" spin --title "Checking what will be fetched vs built locally..." -- \
+    bash -c "sudo nixos-rebuild dry-build --flake 'git+file:///etc/nixos#${FLAKE_TARGET}' >'${_DRY_OUT_FILE}' 2>&1 || true"
+else
+  echo -e "${CYAN}Checking what will be fetched vs built locally...${RESET}"
+  sudo nixos-rebuild dry-build --flake "git+file:///etc/nixos#${FLAKE_TARGET}" >"${_DRY_OUT_FILE}" 2>&1 || true
+fi
+DRY_OUT="$(cat "${_DRY_OUT_FILE}")"
+rm -f "${_DRY_OUT_FILE}"
 SOURCE_BUILDS=$(printf '%s\n' "$DRY_OUT" \
   | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
   | grep -E -- '-[0-9]+\.[0-9]+' \
@@ -499,18 +608,24 @@ if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE
     echo -e "target versions automatically once packages are cached (1-3 days).${RESET}"
   fi
   echo ""
-  printf "Reboot now? [Y/n] "
-  read -r REBOOT_CHOICE </dev/tty
-  REBOOT_CHOICE="${REBOOT_CHOICE%$'\r'}"
-  case "${REBOOT_CHOICE,,}" in
-    n|no)
-      echo -e "${YELLOW}Reboot skipped. Run 'systemctl reboot' when ready.${RESET}"
-      ;;
-    *)
-      echo "Rebooting..."
-      systemctl reboot
-      ;;
-  esac
+  REBOOT_NOW=true
+  if [ -n "$GUM" ]; then
+    ui_confirm "Reboot now?" || REBOOT_NOW=false
+  else
+    printf "Reboot now? [Y/n] "
+    read -r REBOOT_CHOICE </dev/tty
+    REBOOT_CHOICE="${REBOOT_CHOICE%$'\r'}"
+    case "${REBOOT_CHOICE,,}" in
+      n|no) REBOOT_NOW=false ;;
+      *)    REBOOT_NOW=true ;;
+    esac
+  fi
+  if [ "$REBOOT_NOW" = "true" ]; then
+    echo "Rebooting..."
+    systemctl reboot
+  else
+    echo -e "${YELLOW}Reboot skipped. Run 'systemctl reboot' when ready.${RESET}"
+  fi
 else
   echo ""
   echo -e "${RED}${BOLD}✗ nixos-rebuild ${REBUILD_ACTION} failed. Reboot skipped.${RESET}"
