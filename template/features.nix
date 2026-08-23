@@ -12,8 +12,8 @@
 #   sunshine      — Self-hosted Moonlight game-stream host (KMS capture)
 #
 # Desktop environment (desktop role only) — set via `just switch` or the
-# installer's desktop-environment prompt, default "gnome" when unset:
-#   vexos.desktop.environment = "gnome";  # "gnome" | "cosmic" | "hyprland"
+# installer's desktop-environment prompt. Values: gnome (default), cosmic,
+# hyprland. See vexos.desktop.environment below.
 {
   # vexos.features.gaming.enable         = false;
   # vexos.features.development.enable    = false;
