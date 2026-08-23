@@ -153,17 +153,34 @@ VEXOS_TIPS=(
 # with its real output captured to a temp log (not shown live: nixos-rebuild's
 # own output is too voluminous/low-signal to watch line by line), while a
 # cursor-addressed progress bar + rotating tip redraw in place below the
-# already-drawn logo (no full-screen clear per frame). Progress is a simple
-# time-based asymptotic curve, since there's no reliable step count to grep
-# for the way Omarchy counts completed pacman-hook scripts. Sets BUILD_LOG_PATH
-# so the caller can show the log on failure (the transparency this trades away
-# by not streaming output live).
+# already-drawn logo. Progress is a simple time-based asymptotic curve, since
+# there's no reliable step count to grep for the way Omarchy counts completed
+# pacman-hook scripts. Sets BUILD_LOG_PATH so the caller can show the log on
+# failure (the transparency this trades away by not streaming output live).
+#
+# Each frame clears only the 5 lines it's about to rewrite (\033[2K per line)
+# instead of \033[J (clear-to-end-of-screen) — the earlier version cleared the
+# whole region below the logo every 0.5s, which visibly flashed/blinked on
+# real terminals. Cols, the centered title, and every tip's centered text are
+# computed once before the loop (each is a handful of forked subprocesses —
+# tput, sed, a read loop) rather than every frame, which was the other source
+# of visible lag feeding the flicker.
 run_live_build() {
   local title="$1"; shift
   local build_log exit_code=0 dyn_row=10
   local bar_width=40 elapsed pct tip_idx tip_count=${#VEXOS_TIPS[@]}
+  local cols bar_pad centered_title i
+  local -a centered_tips=()
   build_log="$(mktemp /tmp/vexos-install-build.XXXXXX.log)"
   BUILD_LOG_PATH="$build_log"
+
+  cols=$(tput cols 2>/dev/null || echo 80)
+  bar_pad=$(( (cols - bar_width) / 2 ))
+  (( bar_pad < 0 )) && bar_pad=0
+  centered_title="$(center_block "$title")"
+  for i in "${!VEXOS_TIPS[@]}"; do
+    centered_tips[i]="$(center_block "Tip: ${VEXOS_TIPS[$i]}")"
+  done
 
   sudo -v  # refresh the sudo timestamp — a backgrounded job with redirected
            # stdio can't show a password prompt if it expires mid-build.
@@ -171,33 +188,36 @@ run_live_build() {
   "$@" >"$build_log" 2>&1 &
   local build_pid=$!
 
+  # redraw_frame <percent> <tip-index-or-empty> — <empty> tip index means the
+  # final (100% or blank) frame; still draws the title/bar, clears the tip line.
+  redraw_frame() {
+    local frame_pct="$1" frame_tip="$2"
+    printf '\033[%d;1H' "$dyn_row"
+    printf '\033[2K%b\n' "${BOLD}${centered_title}${RESET}"
+    printf '\033[2K\n'
+    printf '\033[2K%*s%b%b%b %s%%\n' "$bar_pad" '' "$VEXOS_TEAL" "$(progress_bar "$frame_pct" "$bar_width")" "$RESET" "$frame_pct"
+    printf '\033[2K\n'
+    printf '\033[2K%b\n' "${frame_tip:-}"
+  }
+
   printf '\033[?25l'
   local start_epoch=$EPOCHSECONDS
   while kill -0 "$build_pid" 2>/dev/null; do
     elapsed=$(( EPOCHSECONDS - start_epoch ))
     pct=$(( 92 * elapsed / (elapsed + 60) ))
     tip_idx=$(( (elapsed / 6) % tip_count ))
-    printf '\033[%d;1H\033[J' "$dyn_row"
-    echo -e "${BOLD}$(center_block "$title")${RESET}"
-    echo ""
-    printf '%*s' "$(( ($(tput cols 2>/dev/null || echo 80) - bar_width) / 2 ))" ''
-    echo -e "${VEXOS_TEAL}$(progress_bar "$pct" "$bar_width")${RESET} ${pct}%"
-    echo ""
-    echo -e "$(center_block "Tip: ${VEXOS_TIPS[$tip_idx]}")"
+    redraw_frame "$pct" "${centered_tips[$tip_idx]}"
     sleep 0.5
   done
   wait "$build_pid" || exit_code=$?
 
-  printf '\033[%d;1H\033[J' "$dyn_row"
   if (( exit_code == 0 )); then
-    echo -e "${BOLD}$(center_block "$title")${RESET}"
-    echo ""
-    printf '%*s' "$(( ($(tput cols 2>/dev/null || echo 80) - bar_width) / 2 ))" ''
-    echo -e "${VEXOS_TEAL}$(progress_bar 100 "$bar_width")${RESET} 100%"
-    echo ""
-    echo -e "$(center_block "Full build log: $build_log")"
+    redraw_frame 100 "$(center_block "Full build log: $build_log")"
+  else
+    printf '\033[%d;1H\033[J' "$dyn_row"  # failing — drop the animation entirely
   fi
   printf '\033[?25h'
+  unset -f redraw_frame
   return $exit_code
 }
 

@@ -97,6 +97,34 @@ usage already in this script (`_DRY_OUT_FILE`), not a new pattern.
 
 **Overall Grade: A (99.4%)**
 
+## Follow-up fix (post-PASS, user-reported)
+
+User reported visible screen blinking during the live build screen. Root
+cause: each 0.5s frame used `\033[J` (clear-to-end-of-screen) from the
+dynamic row down, plus recomputed `tput cols` and re-ran `center_block`
+(each forking `tput`/`sed`/a read loop) for the title and tip every single
+frame — the full-region erase plus the visible latency of that repeated
+subprocess work is what read as flicker.
+
+Fix: replaced the single `\033[J` with a per-line `\033[2K` (clear just that
+line) immediately before each line's content is written, so there's never a
+moment where the whole region is blank — only ever one line at a time, right
+before it's overwritten. Also moved `tput cols`, the centered title, and all
+centered tip strings out of the loop entirely (computed once up front into
+`cols`, `bar_pad`, `centered_title`, `centered_tips[]`), so the loop body now
+does effectively no subprocess forking except `progress_bar`'s own internal
+`seq` calls to build the bar string.
+
+Verified via the same pty-capture technique as the original review: the
+escape sequence stream now shows `\033[10;1H` once per frame followed by five
+`\033[2K<content>` lines, with no `\033[J` present in the animation loop
+(only used once, in the failure branch, to clear the dead animation before
+falling through to the log-tail message).
+
+Re-ran full Phase 3 validation after the fix: `nix flake show --impure`,
+full-eval equivalent for `vexos-desktop-{amd,nvidia,vm}`, and
+`bash scripts/preflight.sh` all pass (exit 0), no regressions.
+
 ## Result
 
 **PASS**
