@@ -10,10 +10,15 @@
 #   print3d       — Blender and OrcaSlicer (via Flatpak)
 #   virtualization — libvirtd/KVM, QEMU-KVM, GNOME Boxes / virt-manager support
 #   sunshine      — Self-hosted Moonlight game-stream host (KMS capture)
+#
+# Desktop environment (desktop role only) — set via `just switch` or the
+# installer's desktop-environment prompt, default "gnome" when unset:
+#   vexos.desktop.environment = "gnome";  # "gnome" | "cosmic" | "hyprland"
 {
   # vexos.features.gaming.enable         = false;
   # vexos.features.development.enable    = false;
   # vexos.features.print3d.enable        = false;
   # vexos.features.virtualization.enable = false;
   # vexos.features.sunshine.enable       = false;
+  # vexos.desktop.environment            = "gnome";
 }

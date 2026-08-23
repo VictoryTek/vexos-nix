@@ -108,11 +108,12 @@ _resolve-flake-dir target flake_override="":
 
 # Rebuild and switch interactively, or pass role + variant directly.
 # Examples:
-#   just switch                  — interactive prompt
-#   just switch desktop amd      — direct switch
-#   just switch desktop amd .    — explicit flake override
+#   just switch                        — interactive prompt
+#   just switch desktop amd            — direct switch
+#   just switch desktop amd . cosmic   — explicit flake override + desktop environment
+#   just switch desktop amd "" hyprland — desktop environment, default flake
 [group('System Build & Deploy')]
-switch role="" variant="" flake="":
+switch role="" variant="" flake="" de="":
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -132,6 +133,7 @@ switch role="" variant="" flake="":
     ROLE="{{role}}"
     VARIANT="{{variant}}"
     FLAKE_OVERRIDE="{{flake}}"
+    DESKTOP_ENV="{{de}}"
 
     if [ -z "$ROLE" ]; then
         echo ""
@@ -194,6 +196,63 @@ switch role="" variant="" flake="":
                     *) echo "Invalid — enter 1 or 2" ;;
                 esac
             done
+        fi
+    fi
+
+    # Desktop environment selection (desktop role only).
+    if [ "$ROLE" = "desktop" ]; then
+        if [ -z "$DESKTOP_ENV" ]; then
+            echo ""
+            echo "Select desktop environment:"
+            echo "  1) gnome    — Full-featured, most tested (default)"
+            echo "  2) cosmic   — System76's new Rust-based desktop"
+            echo "  3) hyprland — Tiling Wayland compositor + Quickshell shell"
+            echo ""
+            while [ -z "$DESKTOP_ENV" ]; do
+                printf "Choice [1-3] or name (default: gnome): "
+                read -r INPUT
+                case "${INPUT,,}" in
+                    ""|1|gnome) DESKTOP_ENV="gnome"    ;;
+                    2|cosmic)   DESKTOP_ENV="cosmic"   ;;
+                    3|hyprland) DESKTOP_ENV="hyprland" ;;
+                    *) echo "Invalid — enter 1-3 or gnome/cosmic/hyprland" ;;
+                esac
+            done
+        fi
+
+        case "$DESKTOP_ENV" in
+            gnome|cosmic|hyprland) ;;
+            *) echo "error: invalid desktop environment '${DESKTOP_ENV}' — must be gnome, cosmic, or hyprland" >&2; exit 1 ;;
+        esac
+
+        # Only touches features.nix for a non-default DE — gnome stays the
+        # implicit default with no file needed, matching
+        # vexos.desktop.environment's own NixOS default. Mirrors the
+        # replace-or-append sed pattern `just enable-feature` uses.
+        if [ "$DESKTOP_ENV" != "gnome" ] || [ -f /etc/nixos/features.nix ]; then
+            FEAT_FILE="/etc/nixos/features.nix"
+            if [ ! -f "$FEAT_FILE" ]; then
+                _jf_dir="{{justfile_directory()}}"
+                TEMPLATE_SRC=""
+                for _candidate in "$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
+                    if [ -f "$_candidate/template/features.nix" ]; then
+                        TEMPLATE_SRC="$_candidate/template/features.nix"
+                        break
+                    fi
+                done
+                if [ -n "$TEMPLATE_SRC" ]; then
+                    sudo cp "$TEMPLATE_SRC" "$FEAT_FILE"
+                    sudo sed -i 's/\r//' "$FEAT_FILE"
+                fi
+            fi
+            if [ -f "$FEAT_FILE" ]; then
+                if grep -qP '^\s*#?\s*vexos\.desktop\.environment\s*=' "$FEAT_FILE" 2>/dev/null; then
+                    sudo sed -i -E "s|^(\s*)#?\s*(vexos\.desktop\.environment)\s*=\s*\"[a-z]+\"\s*;|\1vexos.desktop.environment = \"${DESKTOP_ENV}\";|" "$FEAT_FILE"
+                else
+                    sudo sed -i "\$ s|^}|  vexos.desktop.environment = \"${DESKTOP_ENV}\";\n}|" "$FEAT_FILE"
+                fi
+                echo "✓ Desktop environment set to ${DESKTOP_ENV} in $FEAT_FILE"
+            fi
         fi
     fi
 

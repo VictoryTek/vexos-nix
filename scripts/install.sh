@@ -10,7 +10,8 @@
 #   bash scripts/install.sh
 #
 # Supported roles (expand this list as new roles are added to the flake):
-#   desktop         — Gaming/workstation (AMD, NVIDIA, Intel, VM)
+#   desktop         — Gaming/workstation (AMD, NVIDIA, Intel, VM); choice of
+#                     GNOME/COSMIC/Hyprland desktop environment
 #   stateless       — Minimal/clean build (no gaming/dev/virt/ASUS modules) (AMD, NVIDIA, Intel, VM)
 #   htpc            — Home theatre PC (AMD, NVIDIA, Intel, VM)
 #   server          — GUI server / self-hosted services (AMD, NVIDIA, Intel, VM)
@@ -344,6 +345,38 @@ if [ "$ROLE" = "server" ]; then
   fi
 fi
 
+# ---------- Desktop environment selection (desktop role only) ----------------
+DESKTOP_ENV="gnome"
+if [ "$ROLE" = "desktop" ]; then
+  render_header
+  if [ -n "$GUM" ]; then
+    DESKTOP_ENV="$(ui_choose "Select desktop environment" \
+      "gnome:GNOME    — Full-featured, most tested (default)" \
+      "cosmic:COSMIC   — System76's new Rust-based desktop" \
+      "hyprland:Hyprland — Tiling Wayland compositor + Quickshell shell")"
+  else
+    DESKTOP_ENV=""
+    while [ -z "$DESKTOP_ENV" ]; do
+      center_block "Select desktop environment:
+  1) GNOME    — Full-featured, most tested (default)
+  2) COSMIC   — System76's new Rust-based desktop
+  3) Hyprland — Tiling Wayland compositor + Quickshell shell"
+      echo ""
+      printf "Enter choice [1-3] or name (default: gnome): "
+      read -r INPUT </dev/tty
+      case "${INPUT,,}" in
+        ""|1|gnome)    DESKTOP_ENV="gnome"    ;;
+        2|cosmic)      DESKTOP_ENV="cosmic"   ;;
+        3|hyprland)    DESKTOP_ENV="hyprland" ;;
+        *)
+          render_header
+          echo -e "${RED}Invalid selection '${INPUT}'. Choose 1-3 or a name.${RESET}"
+          ;;
+      esac
+    done
+  fi
+fi
+
 # ---------- Stateless role: auto-detect context and invoke correct script ----
 if [ "$ROLE" = "stateless" ]; then
   ROOT_FSTYPE=$(findmnt -n -o FSTYPE / 2>/dev/null || true)
@@ -622,6 +655,31 @@ if [ -f /etc/nixos/flake.nix ] && grep -qF '"XXXXXXXX"' /etc/nixos/flake.nix 2>/
   HOST_ID="$(head -c 8 /etc/machine-id)"
   sudo sed -i "s/networking\.hostId = \"XXXXXXXX\"/networking.hostId = \"${HOST_ID}\"/" /etc/nixos/flake.nix
   echo -e "  ${GREEN}✓ hostId set to ${HOST_ID}.${RESET}"
+fi
+
+# ---------- Desktop environment: write choice to /etc/nixos/features.nix -----
+# Only touches features.nix when a non-default DE was chosen — GNOME stays the
+# implicit default with no file needed, matching vexos.desktop.environment's
+# own NixOS default. Mirrors the replace-or-append sed pattern `just
+# enable-feature` uses, so this file stays editable by both paths.
+if [ "$ROLE" = "desktop" ] && [ "$DESKTOP_ENV" != "gnome" ]; then
+  render_header
+  if [ ! -f /etc/nixos/features.nix ]; then
+    sudo tee /etc/nixos/features.nix > /dev/null << FEATURESNIX
+# /etc/nixos/features.nix
+# Optional feature toggles for this VexOS host.
+# Managed by \`just enable-feature <feature>\` / \`just disable-feature <feature>\`.
+# After editing, run \`just rebuild\` to apply.
+{
+  vexos.desktop.environment = "${DESKTOP_ENV}";
+}
+FEATURESNIX
+  elif grep -qP '^\s*#?\s*vexos\.desktop\.environment\s*=' /etc/nixos/features.nix 2>/dev/null; then
+    sudo sed -i -E "s|^(\s*)#?\s*(vexos\.desktop\.environment)\s*=\s*\"[a-z]+\"\s*;|\1vexos.desktop.environment = \"${DESKTOP_ENV}\";|" /etc/nixos/features.nix
+  else
+    sudo sed -i "\$ s|^}|  vexos.desktop.environment = \"${DESKTOP_ENV}\";\n}|" /etc/nixos/features.nix
+  fi
+  echo -e "  ${GREEN}✓ Desktop environment set to ${DESKTOP_ENV} in /etc/nixos/features.nix.${RESET}"
 fi
 
 # ---------- Ensure git is available -------------------------------------------
