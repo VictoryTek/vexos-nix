@@ -12,7 +12,7 @@ in
 
   options.vexos.gnome.variableRefreshRate.enable = lib.mkEnableOption "GNOME Mutter variable refresh rate (VRR / G-Sync compatible) experimental feature";
 
-  config = lib.mkMerge [
+  config = lib.mkIf (config.vexos.desktop.environment == "gnome") (lib.mkMerge [
     {
   # ── Role-specific dconf overlay ───────────────────────────────────────────
   # Adds accent-color, enabled-extensions, and favorite-apps to the
@@ -191,5 +191,5 @@ in
         }
       ];
     })
-  ];
+  ]);
 }

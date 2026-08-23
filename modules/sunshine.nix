@@ -1,6 +1,6 @@
 # modules/sunshine.nix
-# Self-hosted Moonlight game-stream host, alongside GNOME Remote Desktop
-# (modules/remote-desktop.nix) — not a replacement.
+# Self-hosted Moonlight game-stream host — the project's remote-access
+# solution (GNOME Remote Desktop/RDP has been removed; see modules/gnome.nix).
 #
 # Optional feature — enable on a per-host basis via /etc/nixos/features.nix:
 #   vexos.features.sunshine.enable = true;
@@ -10,8 +10,7 @@
 # configuration-htpc.nix (matching modules/gaming.nix's precedent — the import is
 # unconditional, the config below is gated by the feature option).
 # NOT imported by: configuration-stateless.nix (tmpfs home — Sunshine's paired-client
-# state does not persist across reboots without extra impermanence config, same
-# rationale as remote-desktop.nix)
+# state does not persist across reboots without extra impermanence config)
 #
 # Runs as a systemd --user service tied to graphical-session.target — starts
 # automatically with the auto-login session. No keyring dependency, no root

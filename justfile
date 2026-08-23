@@ -728,57 +728,6 @@ reset-defaults:
     echo "Done. Log out and back in (or reboot) for all changes to take effect."
     echo "App folders will be restored on the next graphical login."
 
-# Set up the Remote Desktop (RDP) password for this machine.
-# Writes the password to /etc/nixos/secrets/rdp-password (root:root 0600).
-# Not stored in the Nix store. After running this recipe, rebuild with
-# 'just rebuild' to activate — RDP credentials will then be configured
-# automatically on every GNOME session start.
-# Only needed on desktop, server, and htpc roles.
-[group('System Administration')]
-setup-rdp:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    SECRET_DIR="/etc/nixos/secrets"
-    SECRET_FILE="$SECRET_DIR/rdp-password"
-
-    echo ""
-    echo "VexOS Remote Desktop — Password Setup"
-    echo "──────────────────────────────────────"
-    echo "Password will be written to: $SECRET_FILE"
-    echo "Permissions: root:root 0600 — not stored in the Nix store."
-    echo ""
-
-    if [ -t 0 ]; then
-        while true; do
-            IFS= read -rsp "RDP password: " password
-            echo ""
-            IFS= read -rsp "Confirm password: " password2
-            echo ""
-            if [ "$password" = "$password2" ]; then
-                break
-            fi
-            echo "Passwords do not match — try again."
-            echo ""
-        done
-    else
-        # Non-interactive caller (VexPortal): a single line on stdin, no
-        # confirmation — there is nothing to typo when the value came from a form.
-        IFS= read -r password
-    fi
-
-    sudo mkdir -p "$SECRET_DIR"
-    sudo chmod 700 "$SECRET_DIR"
-    printf '%s' "$password" | sudo tee "$SECRET_FILE" > /dev/null
-    sudo chmod 600 "$SECRET_FILE"
-    sudo chown root:root "$SECRET_FILE"
-
-    echo "✓ Password written to $SECRET_FILE"
-    echo ""
-    echo "Run 'just rebuild' to apply. After rebuild, RDP credentials are"
-    echo "configured automatically on every login — no further action needed."
-    echo ""
-
 # Set the system hostname — applies immediately and persists across rebuilds.
 # Usage:
 #   just set-hostname mypc       — direct

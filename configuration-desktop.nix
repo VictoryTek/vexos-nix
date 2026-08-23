@@ -2,9 +2,11 @@
 
 {
   imports = [
+    ./modules/desktop-environment.nix  # declares vexos.desktop.environment (gnome/cosmic/hyprland), default gnome
     ./modules/gnome.nix
     ./modules/gnome-desktop.nix
-    ./modules/remote-desktop.nix    # auto-configures grdctl RDP credentials from /etc/nixos/secrets/rdp-password
+    ./modules/cosmic-desktop.nix    # active only when vexos.desktop.environment == "cosmic"
+    ./modules/hyprland-desktop.nix  # active only when vexos.desktop.environment == "hyprland"
     ./modules/sunshine.nix          # self-hosted Moonlight game-stream host
     ./modules/gaming.nix             # optional: vexos.features.gaming.enable (bundles gpu-gaming + system-gaming)
     ./modules/development.nix        # optional: vexos.features.development.enable
@@ -19,7 +21,7 @@
     ./modules/packages-common.nix
     ./modules/packages-desktop.nix
     ./modules/branding.nix
-    ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
+    ./modules/branding-display.nix  # wallpapers, GDM logo/dconf (GDM logo gated to gnome)
     ./modules/system.nix
     ./modules/system-latest-kernel.nix  # Linux 7.x (linuxPackages_latest)
     ./modules/system-custom-kernel.nix  # optional: `just enable-feature kernel` (overrides the above)

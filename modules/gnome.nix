@@ -1,6 +1,9 @@
 # modules/gnome.nix
-# Universal GNOME desktop base: GDM Wayland, XDG portals, fonts, Ozone env var,
-# printing, Bluetooth, GNOME tooling, and the role-agnostic GNOME Shell extensions.
+# Universal GNOME desktop base: GDM Wayland, XDG portal, dconf, GNOME tooling,
+# and the role-agnostic GNOME Shell extensions. Active only when
+# vexos.desktop.environment == "gnome" (see modules/desktop-environment.nix).
+# DE-agnostic content (fonts, printing, Bluetooth, VPN plugin, auto-login,
+# Moonlight) lives in modules/desktop-common.nix instead.
 #
 # Role-specific additions (accent colour, dock favourites, role-only extensions,
 # Flatpak install service, extra excludePackages) live in:
@@ -9,8 +12,11 @@
 #   modules/gnome-server.nix
 #   modules/gnome-stateless.nix
 { config, pkgs, lib, ... }:
+let
+  isGnome = config.vexos.desktop.environment == "gnome";
+in
 {
-  imports = [ ./gnome-flatpak-install.nix ];
+  imports = [ ./gnome-flatpak-install.nix ./desktop-environment.nix ./desktop-common.nix ];
 
   options.vexos.gnome.commonExtensions = lib.mkOption {
     type        = lib.types.listOf lib.types.str;
@@ -23,7 +29,6 @@
       "steal-my-focus-window@steal-my-focus-window"
       "tailscale-status@maxgallup.github.com"
       "caffeine@patapon.info"
-      "allowlockedremotedesktop@kamens.us"
       "blur-my-shell@aunetx"
       "background-logo@fedorahosted.org"
       "tiling-assistant@leleat-on-github"
@@ -39,7 +44,7 @@
     description = "Additional GNOME Shell extension UUIDs appended to commonExtensions. Set by feature modules (e.g. gaming) so their extensions are only active when the feature is enabled.";
   };
 
-  config = {
+  config = lib.mkIf isGnome {
 
   # ── GNOME desktop ─────────────────────────────────────────────────────────
   services.xserver.enable = lib.mkDefault true;
@@ -137,46 +142,21 @@
   # for normal GDM login (password unlocks the keyring); gdm-autologin bypasses
   # PAM password auth so this has no password material to unlock with and is a
   # no-op for auto-login sessions in practice. Kept for interactive re-logins
-  # (e.g. after loginctl terminate-session). Not required for RDP credential
-  # setup — modules/remote-desktop.nix self-heals the keyring independently of
-  # PAM via `gnome-keyring-daemon --unlock --replace`.
+  # (e.g. after loginctl terminate-session).
   security.pam.services.gdm-autologin.enableGnomeKeyring = true;
 
-  # ── GNOME Remote Desktop (RDP) ────────────────────────────────────────────
-  # Wayland-native remote desktop via PipeWire screen-cast portal.
-  # The NixOS GNOME module sets this to mkDefault true; we declare it
-  # explicitly to make the intent clear and guard against upstream changes.
-  # Port 3389 is opened on all display roles (desktop, server, htpc, stateless).
-  # headless-server does not import this module and is unaffected.
-  # After deployment: GNOME Settings → System → Remote Desktop to set credentials.
-  services.gnome.gnome-remote-desktop.enable = true;
-  networking.firewall.allowedTCPPorts = [ 3389 ];
-
-  # ── Auto-login ────────────────────────────────────────────────────────────
-  services.displayManager.autoLogin = {
-    enable = true;
-    user   = config.vexos.user.name;
-  };
+  # ── GNOME Remote Desktop (RDP) — disabled ─────────────────────────────────
+  # The upstream GNOME NixOS module sets this to mkDefault true. Force it off:
+  # this project uses Sunshine/Moonlight (modules/sunshine.nix) for remote
+  # access, not GNOME's built-in RDP server.
+  services.gnome.gnome-remote-desktop.enable = lib.mkForce false;
 
   # ── XDG Desktop Portal ────────────────────────────────────────────────────
-  # Required for screen sharing, file pickers, and other portal features.
-  xdg.portal = {
-    enable = true;
-    extraPortals = [
-      pkgs.xdg-desktop-portal-gnome
-    ];
-  };
-
-  # ── Ozone Wayland ─────────────────────────────────────────────────────────
-  # Makes Electron/Chromium-based apps use native Wayland rendering.
-  # NIXOS_OZONE_WL: nixpkgs wrapper adds --ozone-platform=wayland to Electron args.
-  # ELECTRON_OZONE_PLATFORM_HINT: Electron 28+ (VS Code 1.87+) requires this to
-  # auto-detect the Wayland backend inside the buildFHSEnvBubblewrap sandbox used
-  # by vscode-fhs; without it the app silently exits on Wayland sessions.
-  environment.sessionVariables = {
-    NIXOS_OZONE_WL             = "1";
-    ELECTRON_OZONE_PLATFORM_HINT = "auto";
-  };
+  # Base xdg.portal.enable comes from modules/desktop-common.nix; this adds
+  # the GNOME-specific portal backend.
+  xdg.portal.extraPortals = [
+    pkgs.xdg-desktop-portal-gnome
+  ];
 
   # ── GNOME bloat reduction ─────────────────────────────────────────────────
   # Common bloat list — applies to every role that imports this module.
@@ -231,45 +211,10 @@
     pkgs.gnomeExtensions.steal-my-focus-window      # Force window focus
     pkgs.gnomeExtensions.tailscale-status           # Tailscale tray indicator
     pkgs.gnomeExtensions.caffeine                   # Prevent screen sleep
-    pkgs.gnomeExtensions.allow-locked-remote-desktop # Allow RDP into a locked screen
     pkgs.gnomeExtensions.blur-my-shell              # Blur effects for shell UI
     pkgs.gnomeExtensions.background-logo            # Desktop background logo
     pkgs.gnomeExtensions.tiling-assistant           # Half- and quarter-tiling support
-
-    # Moonlight client — connect to other machines' Sunshine hosts (modules/sunshine.nix)
-    pkgs.moonlight-qt
   ];
-
-  # ── Fonts ─────────────────────────────────────────────────────────────────
-  fonts = {
-    enableDefaultPackages = true;
-    packages = [
-      pkgs.noto-fonts
-      pkgs.noto-fonts-cjk-sans
-      pkgs.noto-fonts-color-emoji  # renamed from noto-fonts-emoji
-      pkgs.liberation_ttf
-      pkgs.fira-code
-      pkgs.fira-code-symbols
-      pkgs.nerd-fonts.fira-code
-      pkgs.nerd-fonts.jetbrains-mono
-    ];
-    fontconfig.defaultFonts = {
-      serif     = [ "Noto Serif" ];
-      sansSerif = [ "Noto Sans" ];
-      monospace = [ "FiraCode Nerd Font Mono" ];
-    };
-  };
-
-  # ── Printing ──────────────────────────────────────────────────────────────
-  services.printing.enable = true;
-
-  # ── Bluetooth ─────────────────────────────────────────────────────────────
-  hardware.bluetooth.enable = true;
-  services.blueman.enable = true;
-
-  # ── NetworkManager VPN plugins ────────────────────────────────────────────
-  # Enables .ovpn import via GNOME Settings → VPN and nmcli connection import.
-  networking.networkmanager.plugins = [ pkgs.networkmanager-openvpn ];
 
   }; # end config
 }
