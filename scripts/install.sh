@@ -74,11 +74,131 @@ VEXOS_LOGO=' ▄▄    ▄▄  ▄▄▄▄▄▄▄▄  ▄▄▄  ▄▄▄   
    ████    ██▄▄▄▄▄▄   ██  ██    ██▄▄██   █▄▄▄▄▄█▀
    ▀▀▀▀    ▀▀▀▀▀▀▀▀  ▀▀▀  ▀▀▀    ▀▀▀▀     ▀▀▀▀▀'
 
+# center_block "$text" — pads every line of $text so the widest line lands in
+# the middle of the current terminal width. Pure bash (no gum dependency) so
+# the no-gum fallback prompts get the same centering as the gum ones. Strips
+# ANSI escapes only for the width measurement (colored lines would otherwise
+# measure wider than they render) — the printed line keeps its color codes.
+center_block() {
+  local cols line stripped maxlen=0 pad
+  cols=$(tput cols 2>/dev/null || echo 80)
+  while IFS= read -r line; do
+    stripped="$(printf '%s' "$line" | sed 's/\x1b\[[0-9;]*m//g')"
+    (( ${#stripped} > maxlen )) && maxlen=${#stripped}
+  done <<< "$1"
+  pad=$(( (cols - maxlen) / 2 ))
+  (( pad < 0 )) && pad=0
+  while IFS= read -r line; do
+    printf '%*s%s\n' "$pad" '' "$line"
+  done <<< "$1"
+}
+
+# HEADER_PAD approximates the logo's own centering offset, reused by the
+# ui_* helpers below to indent gum's (left-anchored) interactive widgets to
+# roughly the same left edge as the centered logo/text above them — gum has
+# no --align flag for choose/input/confirm, only --padding, so this is an
+# approximation, not true reflow-based centering.
 render_header() {
   clear 2>/dev/null || true
-  echo -e "${VEXOS_TEAL}${VEXOS_LOGO}${RESET}"
-  echo -e "${BOLD}${VEXOS_ORANGE}VexOS Interactive Installer${RESET}"
+  local cols; cols=$(tput cols 2>/dev/null || echo 80)
+  HEADER_PAD=$(( (cols - 50) / 2 ))
+  (( HEADER_PAD < 0 )) && HEADER_PAD=0
+  echo -e "${VEXOS_TEAL}$(center_block "$VEXOS_LOGO")${RESET}"
+  echo -e "${BOLD}${VEXOS_ORANGE}$(center_block "VexOS Interactive Installer")${RESET}"
   echo ""
+}
+
+# render_progress "<label>" <current> <total> — static (non-live-redrawing)
+# progress bar snapshot, appended once per build phase. Deliberately not a
+# live-updating bar: the build phase's own scrolling output (dry-build cache
+# report, live nixos-rebuild log) must stay visible, not be cleared/redrawn.
+# progress_bar <percent 0-100> <width> — echoes a filled/empty block-character
+# bar. tr operates byte-wise and mangles multi-byte UTF-8 fill characters, so
+# runs are built with printf's %.0s repeat trick instead; printf runs its
+# format at least once even with zero args, so the zero case is guarded.
+progress_bar() {
+  local pct="$1" width="$2" filled empty bar
+  (( pct < 0 )) && pct=0
+  (( pct > 100 )) && pct=100
+  filled=$(( width * pct / 100 ))
+  empty=$(( width - filled ))
+  bar=""
+  (( filled > 0 )) && bar+="$(printf '█%.0s' $(seq 1 "$filled"))"
+  (( empty > 0 )) && bar+="$(printf '░%.0s' $(seq 1 "$empty"))"
+  printf '%s' "$bar"
+}
+
+render_progress() {
+  local label="$1" current="$2" total="$3"
+  local cols bar_width=40 pad
+  cols=$(tput cols 2>/dev/null || echo 80)
+  pad=$(( (cols - bar_width) / 2 ))
+  (( pad < 0 )) && pad=0
+  echo ""
+  printf '%*s' "$pad" ''; echo -e "${VEXOS_TEAL}$(progress_bar $(( current * 100 / total )) "$bar_width")${RESET}"
+  printf '%*s' "$pad" ''; echo -e "${BOLD}[${current}/${total}] ${label}${RESET}"
+  echo ""
+}
+
+# ---------- Live build progress screen (logo stays put, only this redraws) ---
+VEXOS_TIPS=(
+  "Run 'just update' after reboot to pull the latest cached packages"
+  "The Up app checks for and applies system updates from the desktop"
+  "vexos-nix tracks /etc/nixos in git — 'sudo git -C /etc/nixos log' shows every change"
+  "Re-run this installer any time to switch role or GPU variant"
+  "Docs and updates: github.com/VictoryTek/vexos-nix"
+)
+
+# run_live_build "<title>" <command...> — runs <command...> in the background
+# with its real output captured to a temp log (not shown live: nixos-rebuild's
+# own output is too voluminous/low-signal to watch line by line), while a
+# cursor-addressed progress bar + rotating tip redraw in place below the
+# already-drawn logo (no full-screen clear per frame). Progress is a simple
+# time-based asymptotic curve, since there's no reliable step count to grep
+# for the way Omarchy counts completed pacman-hook scripts. Sets BUILD_LOG_PATH
+# so the caller can show the log on failure (the transparency this trades away
+# by not streaming output live).
+run_live_build() {
+  local title="$1"; shift
+  local build_log exit_code=0 dyn_row=10
+  local bar_width=40 elapsed pct tip_idx tip_count=${#VEXOS_TIPS[@]}
+  build_log="$(mktemp /tmp/vexos-install-build.XXXXXX.log)"
+  BUILD_LOG_PATH="$build_log"
+
+  sudo -v  # refresh the sudo timestamp — a backgrounded job with redirected
+           # stdio can't show a password prompt if it expires mid-build.
+
+  "$@" >"$build_log" 2>&1 &
+  local build_pid=$!
+
+  printf '\033[?25l'
+  local start_epoch=$EPOCHSECONDS
+  while kill -0 "$build_pid" 2>/dev/null; do
+    elapsed=$(( EPOCHSECONDS - start_epoch ))
+    pct=$(( 92 * elapsed / (elapsed + 60) ))
+    tip_idx=$(( (elapsed / 6) % tip_count ))
+    printf '\033[%d;1H\033[J' "$dyn_row"
+    echo -e "${BOLD}$(center_block "$title")${RESET}"
+    echo ""
+    printf '%*s' "$(( ($(tput cols 2>/dev/null || echo 80) - bar_width) / 2 ))" ''
+    echo -e "${VEXOS_TEAL}$(progress_bar "$pct" "$bar_width")${RESET} ${pct}%"
+    echo ""
+    echo -e "$(center_block "Tip: ${VEXOS_TIPS[$tip_idx]}")"
+    sleep 0.5
+  done
+  wait "$build_pid" || exit_code=$?
+
+  printf '\033[%d;1H\033[J' "$dyn_row"
+  if (( exit_code == 0 )); then
+    echo -e "${BOLD}$(center_block "$title")${RESET}"
+    echo ""
+    printf '%*s' "$(( ($(tput cols 2>/dev/null || echo 80) - bar_width) / 2 ))" ''
+    echo -e "${VEXOS_TEAL}$(progress_bar 100 "$bar_width")${RESET} 100%"
+    echo ""
+    echo -e "$(center_block "Full build log: $build_log")"
+  fi
+  printf '\033[?25h'
+  return $exit_code
 }
 
 # ---------- gum (nice interactive prompts, best-effort) ----------------------
@@ -98,6 +218,9 @@ fi
 
 # ui_choose "$title" "value1:label1" "value2:label2" ... — prints $title, lets the
 # user arrow-key through the labels, echoes the chosen value on stdout.
+# --padding indents the widget by $HEADER_PAD to roughly line up with the
+# centered logo above it — gum has no --align flag for interactive widgets,
+# only --padding, so this approximates centering rather than reflowing it.
 ui_choose() {
   local title="$1"; shift
   local values=() labels=()
@@ -107,7 +230,7 @@ ui_choose() {
     labels+=("${pair#*:}")
   done
   local chosen
-  chosen="$("$GUM" choose --header "$title" "${labels[@]}" </dev/tty)"
+  chosen="$("$GUM" choose --header "$title" --padding "0 0 0 ${HEADER_PAD:-0}" "${labels[@]}" </dev/tty)"
   local i
   for i in "${!labels[@]}"; do
     if [ "${labels[$i]}" = "$chosen" ]; then
@@ -120,12 +243,12 @@ ui_choose() {
 
 # ui_confirm "$prompt" — exit status 0 = yes, 1 = no (matches `if ui_confirm ...`).
 ui_confirm() {
-  "$GUM" confirm "$1" </dev/tty
+  "$GUM" confirm --padding "0 0 0 ${HEADER_PAD:-0}" "$1" </dev/tty
 }
 
 # ui_input "$prompt" "$placeholder" — echoes the entered text on stdout.
 ui_input() {
-  "$GUM" input --header "$1" --placeholder "$2" </dev/tty
+  "$GUM" input --header "$1" --placeholder "$2" --padding "0 0 0 ${HEADER_PAD:-0}" </dev/tty
 }
 
 # ---------- Header -----------------------------------------------------------
@@ -146,12 +269,12 @@ if [ -n "$GUM" ]; then
     "vanilla:Vanilla  — Stock NixOS baseline (system restore)")"
 else
   while [ -z "$ROLE" ]; do
-    echo -e "${BOLD}Select your role:${RESET}"
-    echo "  1) Desktop  — Full gaming / workstation stack"
-    echo "  2) Stateless — Minimal build (no gaming / dev / virt / ASUS)"
-    echo "  3) HTPC    — Home theatre PC"
-    echo "  4) Server  — Server (GUI or Headless)"
-    echo "  5) Vanilla  — Stock NixOS baseline (system restore)"
+    center_block "Select your role:
+  1) Desktop  — Full gaming / workstation stack
+  2) Stateless — Minimal build (no gaming / dev / virt / ASUS)
+  3) HTPC    — Home theatre PC
+  4) Server  — Server (GUI or Headless)
+  5) Vanilla  — Stock NixOS baseline (system restore)"
     echo ""
     printf "Enter choice [1-5] or name (desktop / stateless / htpc / server / vanilla): "
     read -r INPUT </dev/tty
@@ -179,9 +302,9 @@ if [ "$ROLE" = "server" ]; then
       "gui:GUI Server      — GNOME desktop environment")"
   else
     while [ -z "$SERVER_TYPE" ]; do
-      echo -e "${BOLD}Select server type:${RESET}"
-      echo "  1) Headless Server — CLI only, no desktop environment"
-      echo "  2) GUI Server      — GNOME desktop environment"
+      center_block "Select server type:
+  1) Headless Server — CLI only, no desktop environment
+  2) GUI Server      — GNOME desktop environment"
       echo ""
       printf "Enter choice [1-2] or name (headless / gui): "
       read -r INPUT </dev/tty
@@ -243,11 +366,11 @@ if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || 
       "vm:VM     — QEMU/KVM or VirtualBox guest")"
   else
     while [ -z "$VARIANT" ]; do
-      echo -e "${BOLD}Select your GPU variant:${RESET}"
-      echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
-      echo "  2) NVIDIA — NVIDIA GPU (proprietary, open kernel modules)"
-      echo "  3) Intel  — Intel iGPU or Arc dGPU"
-      echo "  4) VM     — QEMU/KVM or VirtualBox guest"
+      center_block "Select your GPU variant:
+  1) AMD    — AMD GPU (RADV, ROCm, LACT)
+  2) NVIDIA — NVIDIA GPU (proprietary, open kernel modules)
+  3) Intel  — Intel iGPU or Arc dGPU
+  4) VM     — QEMU/KVM or VirtualBox guest"
       echo ""
       printf "Enter choice [1-4] or name (amd / nvidia / intel / vm): "
       read -r INPUT </dev/tty
@@ -280,9 +403,9 @@ if [ "$VARIANT" = "nvidia" ]; then
       "-legacy535:Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)")"
   else
     while true; do
-      echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
-      echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
-      echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+      center_block "Select NVIDIA driver branch:
+  1) Latest     — RTX, GTX 16xx, GTX 750 and newer
+  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
       echo ""
       printf "Enter choice [1-2]: "
       read -r INPUT </dev/tty
@@ -348,7 +471,7 @@ REBUILD_ACTION="boot"
 render_header
 echo -e "${BOLD}Building ${CYAN}${FLAKE_TARGET}${RESET}${BOLD} (action: ${REBUILD_ACTION})...${RESET}"
 echo -e "${YELLOW}Using 'nixos-rebuild boot' to preserve the live session. The new system will not activate until you reboot.${RESET}"
-echo ""
+render_progress "Preparing system..." 1 4
 
 # ---------- UEFI / BIOS preflight check -------------------------------------
 # vexos-nix defaults to systemd-boot (UEFI). On Legacy BIOS machines we patch
@@ -541,7 +664,7 @@ done
 # A stale /etc/nixos/flake.lock from a previous (failed) install attempt would
 # otherwise pin the flake to an old revision, potentially pulling in packages
 # that have since been removed from the repo.
-echo ""
+render_progress "Refreshing flake inputs..." 2 4
 if [ -n "$GUM" ]; then
   "$GUM" spin --title "Refreshing flake inputs..." -- \
     sudo nix --extra-experimental-features "nix-command flakes" \
@@ -567,7 +690,7 @@ sudo "$GIT" -C /etc/nixos add flake.lock
 #     matches an upstream cached build.
 # Everything else is a transient Hydra lag and will typically be fast (binary
 # downloads for Electron apps, short Rust/Python crate builds, etc.).
-echo ""
+render_progress "Checking build cache..." 3 4
 _DRY_OUT_FILE="$(mktemp)"
 if [ -n "$GUM" ]; then
   "$GUM" spin --title "Checking what will be fetched vs built locally..." -- \
@@ -613,9 +736,9 @@ if [ -n "$SOURCE_BUILDS" ]; then
 else
   echo -e "${GREEN}✓ All packages available in binary cache.${RESET}"
 fi
-echo ""
-
-if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE_TARGET}"; then
+render_header
+if run_live_build "Building ${FLAKE_TARGET}..." \
+     sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE_TARGET}"; then
   echo ""
   echo -e "${GREEN}${BOLD}✓ Build complete. New generation registered as default.${RESET}"
   echo -e "${YELLOW}Reboot now to activate the new system. Your current session will remain active until you do.${RESET}"
@@ -651,8 +774,13 @@ if sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE
   fi
 else
   echo ""
-  echo -e "${RED}${BOLD}✗ nixos-rebuild ${REBUILD_ACTION} failed. Reboot skipped.${RESET}"
-  echo "  Review the output above for errors and retry:"
+  echo -e "${RED}${BOLD}✗ nixos-rebuild ${REBUILD_ACTION} failed.${RESET}"
+  echo "  Last 60 lines of the build log (${BUILD_LOG_PATH}):"
+  echo ""
+  tail -n 60 "${BUILD_LOG_PATH}" 2>/dev/null || true
+  echo ""
+  echo -e "${RED}${BOLD}Reboot skipped.${RESET}"
+  echo "  Review the full log above/at ${BUILD_LOG_PATH} and retry:"
   echo "    sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
   echo ""
   exit 1
