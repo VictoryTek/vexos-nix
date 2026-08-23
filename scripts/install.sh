@@ -52,9 +52,34 @@ if [ -t 1 ] && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
   CYAN='\033[0;36m'
   BOLD='\033[1m'
   RESET='\033[0m'
+  # Brand colors sampled from files/pixmaps/*/vex.png (teal wordmark, orange
+  # shield accent), brightened slightly for legibility on a terminal background.
+  VEXOS_TEAL='\033[38;2;20;166;184m'
+  VEXOS_ORANGE='\033[38;2;232;121;12m'
 else
-  RED='' GREEN='' YELLOW='' CYAN='' BOLD='' RESET=''
+  RED='' GREEN='' YELLOW='' CYAN='' BOLD='' RESET='' VEXOS_TEAL='' VEXOS_ORANGE=''
 fi
+
+# ---------- Brand logo + full-screen header ----------------------------------
+# Generated once via `toilet -f mono12 "VEXOS"` and hardcoded here — no runtime
+# dependency on toilet. render_header clears the screen and redraws the logo so
+# every prompt screen looks like a dedicated installer rather than scrolling
+# shell output (the long-running build/dry-build sections deliberately do NOT
+# call this — that output is meant to stay on screen and scroll, not flash away).
+VEXOS_LOGO=' ▄▄    ▄▄  ▄▄▄▄▄▄▄▄  ▄▄▄  ▄▄▄    ▄▄▄▄      ▄▄▄▄
+ ▀██  ██▀  ██▀▀▀▀▀▀   ██▄▄██    ██▀▀██   ▄█▀▀▀▀█
+  ██  ██   ██          ████    ██    ██  ██▄
+  ██  ██   ███████      ██     ██    ██   ▀████▄
+   ████    ██          ████    ██    ██       ▀██
+   ████    ██▄▄▄▄▄▄   ██  ██    ██▄▄██   █▄▄▄▄▄█▀
+   ▀▀▀▀    ▀▀▀▀▀▀▀▀  ▀▀▀  ▀▀▀    ▀▀▀▀     ▀▀▀▀▀'
+
+render_header() {
+  clear 2>/dev/null || true
+  echo -e "${VEXOS_TEAL}${VEXOS_LOGO}${RESET}"
+  echo -e "${BOLD}${VEXOS_ORANGE}VexOS Interactive Installer${RESET}"
+  echo ""
+}
 
 # ---------- gum (nice interactive prompts, best-effort) ----------------------
 # Fetched at runtime from the nixpkgs binary cache, same pattern as the git
@@ -104,16 +129,13 @@ ui_input() {
 }
 
 # ---------- Header -----------------------------------------------------------
-echo ""
-echo -e "${BOLD}${CYAN}============================================${RESET}"
-echo -e "${BOLD}${CYAN}   vexos-nix Interactive Installer${RESET}"
-echo -e "${BOLD}${CYAN}============================================${RESET}"
-echo ""
+render_header
 echo -e "${YELLOW}Source: ${SCRIPT_URL}${RESET}"
 echo -e "${YELLOW}Verify: https://github.com/VictoryTek/vexos-nix/blob/${VEXOS_REV}/scripts/install.sh${RESET}"
 echo ""
 
 # ---------- Role selection ---------------------------------------------------
+render_header
 ROLE=""
 if [ -n "$GUM" ]; then
   ROLE="$(ui_choose "Select your role" \
@@ -123,15 +145,14 @@ if [ -n "$GUM" ]; then
     "server:Server  — Server (GUI or Headless)" \
     "vanilla:Vanilla  — Stock NixOS baseline (system restore)")"
 else
-  echo -e "${BOLD}Select your role:${RESET}"
-  echo "  1) Desktop  — Full gaming / workstation stack"
-  echo "  2) Stateless — Minimal build (no gaming / dev / virt / ASUS)"
-  echo "  3) HTPC    — Home theatre PC"
-  echo "  4) Server  — Server (GUI or Headless)"
-  echo "  5) Vanilla  — Stock NixOS baseline (system restore)"
-  echo ""
-
   while [ -z "$ROLE" ]; do
+    echo -e "${BOLD}Select your role:${RESET}"
+    echo "  1) Desktop  — Full gaming / workstation stack"
+    echo "  2) Stateless — Minimal build (no gaming / dev / virt / ASUS)"
+    echo "  3) HTPC    — Home theatre PC"
+    echo "  4) Server  — Server (GUI or Headless)"
+    echo "  5) Vanilla  — Stock NixOS baseline (system restore)"
+    echo ""
     printf "Enter choice [1-5] or name (desktop / stateless / htpc / server / vanilla): "
     read -r INPUT </dev/tty
     case "${INPUT,,}" in
@@ -141,6 +162,7 @@ else
       4|server)   ROLE="server"   ;;
       5|vanilla)  ROLE="vanilla"  ;;
       *)
+        render_header
         echo -e "${RED}Invalid selection '${INPUT}'. Choose 1-5 or a role name.${RESET}"
         ;;
     esac
@@ -149,26 +171,25 @@ fi
 
 # ---------- Server sub-type selection ----------------------------------------
 if [ "$ROLE" = "server" ]; then
+  render_header
   SERVER_TYPE=""
   if [ -n "$GUM" ]; then
-    echo ""
     SERVER_TYPE="$(ui_choose "Select server type" \
       "headless:Headless Server — CLI only, no desktop environment" \
       "gui:GUI Server      — GNOME desktop environment")"
   else
-    echo ""
-    echo -e "${BOLD}Select server type:${RESET}"
-    echo "  1) Headless Server — CLI only, no desktop environment"
-    echo "  2) GUI Server      — GNOME desktop environment"
-    echo ""
-
     while [ -z "$SERVER_TYPE" ]; do
+      echo -e "${BOLD}Select server type:${RESET}"
+      echo "  1) Headless Server — CLI only, no desktop environment"
+      echo "  2) GUI Server      — GNOME desktop environment"
+      echo ""
       printf "Enter choice [1-2] or name (headless / gui): "
       read -r INPUT </dev/tty
       case "${INPUT,,}" in
         1|headless) SERVER_TYPE="headless" ;;
         2|gui)      SERVER_TYPE="gui"     ;;
         *)
+          render_header
           echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
           ;;
       esac
@@ -213,23 +234,21 @@ fi
 # ---------- GPU variant selection --------------------------------------------
 VARIANT=""
 if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || [ "$ROLE" = "headless-server" ] || [ "$ROLE" = "stateless" ] || [ "$ROLE" = "vanilla" ]; then
+  render_header
   if [ -n "$GUM" ]; then
-    echo ""
     VARIANT="$(ui_choose "Select your GPU variant" \
       "amd:AMD    — AMD GPU (RADV, ROCm, LACT)" \
       "nvidia:NVIDIA — NVIDIA GPU (proprietary, open kernel modules)" \
       "intel:Intel  — Intel iGPU or Arc dGPU" \
       "vm:VM     — QEMU/KVM or VirtualBox guest")"
   else
-    echo ""
-    echo -e "${BOLD}Select your GPU variant:${RESET}"
-    echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
-    echo "  2) NVIDIA — NVIDIA GPU (proprietary, open kernel modules)"
-    echo "  3) Intel  — Intel iGPU or Arc dGPU"
-    echo "  4) VM     — QEMU/KVM or VirtualBox guest"
-    echo ""
-
     while [ -z "$VARIANT" ]; do
+      echo -e "${BOLD}Select your GPU variant:${RESET}"
+      echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
+      echo "  2) NVIDIA — NVIDIA GPU (proprietary, open kernel modules)"
+      echo "  3) Intel  — Intel iGPU or Arc dGPU"
+      echo "  4) VM     — QEMU/KVM or VirtualBox guest"
+      echo ""
       printf "Enter choice [1-4] or name (amd / nvidia / intel / vm): "
       read -r INPUT </dev/tty
       case "${INPUT,,}" in          # ${var,,} = lowercase (bash 4+)
@@ -238,6 +257,7 @@ if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || 
         3|intel)  VARIANT="intel"  ;;
         4|vm)     VARIANT="vm"     ;;
         *)
+          render_header
           echo -e "${RED}Invalid selection '${INPUT}'. Please enter 1, 2, 3, 4, amd, nvidia, intel, or vm.${RESET}"
           ;;
       esac
@@ -249,7 +269,7 @@ fi
 # Vanilla always uses the kernel nouveau driver — no proprietary driver branches.
 NVIDIA_SUFFIX=""
 if [ "$VARIANT" = "nvidia" ]; then
-  echo ""
+  render_header
   echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"
   echo -e "${YELLOW}Wrong choice? Run this installer again and switch.${RESET}"
   echo ""
@@ -259,18 +279,21 @@ if [ "$VARIANT" = "nvidia" ]; then
       ":Latest     — RTX, GTX 16xx, GTX 750 and newer" \
       "-legacy535:Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)")"
   else
-    echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
-    echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
-    echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
-    echo ""
-
     while true; do
+      echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
+      echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
+      echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+      echo ""
       printf "Enter choice [1-2]: "
       read -r INPUT </dev/tty
       case "${INPUT}" in
         1) NVIDIA_SUFFIX="";           break ;;
         2) NVIDIA_SUFFIX="-legacy535"; break ;;
         *)
+          render_header
+          echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"
+          echo -e "${YELLOW}Wrong choice? Run this installer again and switch.${RESET}"
+          echo ""
           echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
           ;;
       esac
@@ -282,7 +305,7 @@ fi
 ASUS_ENABLE=false
 ASUS_LAPTOP=false
 if [ "$VARIANT" != "vm" ]; then
-  echo ""
+  render_header
   echo -e "${BOLD}Is this an ASUS ROG/TUF device?${RESET}"
   echo "  Laptop: enables asusd (fan curves, charge limit), supergfxctl, power-profiles-daemon"
   echo "  Desktop: enables OpenRGB for ASUS Aura motherboard RGB control"
@@ -299,7 +322,7 @@ if [ "$VARIANT" != "vm" ]; then
   fi
 
   if [ "$ASUS_ENABLE" = "true" ]; then
-    echo ""
+    render_header
     if [ -n "$GUM" ]; then
       if ui_confirm "Is this device a laptop?"; then ASUS_LAPTOP=true; else ASUS_LAPTOP=false; fi
     else
@@ -322,7 +345,7 @@ FLAKE_TARGET="vexos-${ROLE}-${VARIANT}${NVIDIA_SUFFIX}"
 REBUILD_ACTION="boot"
 
 # ---------- Build & switch ---------------------------------------------------
-echo ""
+render_header
 echo -e "${BOLD}Building ${CYAN}${FLAKE_TARGET}${RESET}${BOLD} (action: ${REBUILD_ACTION})...${RESET}"
 echo -e "${YELLOW}Using 'nixos-rebuild boot' to preserve the live session. The new system will not activate until you reboot.${RESET}"
 echo ""
