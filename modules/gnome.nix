@@ -138,6 +138,15 @@ in
   # ── GDM display manager ───────────────────────────────────────────────────
   services.displayManager.gdm.enable = true;
 
+  # ── Auto-login ────────────────────────────────────────────────────────────
+  # GDM-specific: services.displayManager.autoLogin is implemented per-display-
+  # manager, so it lives here rather than in modules/desktop-common.nix (greetd,
+  # used by the Hyprland DE, ignores it — see that module's header).
+  services.displayManager.autoLogin = {
+    enable = true;
+    user   = config.vexos.user.name;
+  };
+
   # Unlock the GNOME Keyring on auto-login. pam_gnome_keyring is already wired
   # for normal GDM login (password unlocks the keyring); gdm-autologin bypasses
   # PAM password auth so this has no password material to unlock with and is a

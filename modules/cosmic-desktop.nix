@@ -18,6 +18,16 @@ in
     services.desktopManager.cosmic.xwayland.enable = true;
     services.displayManager.cosmic-greeter.enable  = true;
 
+    # ── Auto-login ──────────────────────────────────────────────────────────
+    # cosmic-greeter-specific: services.displayManager.autoLogin is implemented
+    # per-display-manager, so it lives here rather than in
+    # modules/desktop-common.nix (greetd, used by the Hyprland DE, ignores it —
+    # see that module's header).
+    services.displayManager.autoLogin = {
+      enable = true;
+      user   = config.vexos.user.name;
+    };
+
     xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-cosmic ];
 
     # ── Wallpaper/branding ──────────────────────────────────────────────────

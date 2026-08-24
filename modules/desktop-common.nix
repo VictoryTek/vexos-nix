@@ -1,16 +1,20 @@
 # modules/desktop-common.nix
 # DE-agnostic desktop-role additions: fonts, printing, Bluetooth, VPN plugin,
-# Moonlight client, and auto-login. Applies regardless of
-# vexos.desktop.environment (gnome/cosmic/hyprland) — extracted from
-# modules/gnome.nix so COSMIC and Hyprland hosts get the same baseline.
-{ config, pkgs, ... }:
+# and Moonlight client. Applies regardless of vexos.desktop.environment
+# (gnome/cosmic/hyprland) — extracted from modules/gnome.nix so COSMIC and
+# Hyprland hosts get the same baseline.
+#
+# Auto-login is deliberately NOT here. services.displayManager.autoLogin is
+# implemented per-display-manager (GDM, cosmic-greeter, LightDM, SDDM); greetd
+# — which Hyprland uses — ignores it entirely and does autologin through its
+# own initial_session setting instead. Setting it unconditionally therefore
+# applied display-manager machinery to a greetd-only host. It now lives in the
+# DE modules whose display managers actually consume it:
+#   modules/gnome.nix          (GDM)
+#   modules/cosmic-desktop.nix (cosmic-greeter)
+#   modules/hyprland-desktop.nix uses greetd initial_session instead.
+{ pkgs, ... }:
 {
-  # ── Auto-login ────────────────────────────────────────────────────────────
-  services.displayManager.autoLogin = {
-    enable = true;
-    user   = config.vexos.user.name;
-  };
-
   # ── Moonlight client ──────────────────────────────────────────────────────
   # Connect to other machines' Sunshine hosts (modules/sunshine.nix).
   environment.systemPackages = [ pkgs.moonlight-qt ];
