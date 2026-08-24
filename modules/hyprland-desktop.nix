@@ -22,6 +22,15 @@ in
       withUWSM       = true;
     };
 
+    # Fall back to software (llvmpipe, via hardware.graphics.enable in
+    # modules/gpu.nix) rendering instead of hard-crashing when no working
+    # GBM/EGL hardware path is available — the exact symptom on GPUs/VM
+    # display devices without real 3D support (e.g. QEMU's default "-vga
+    # std"/bochs-drm, as opposed to virtio-gpu with 3D acceleration
+    # enabled). Matches upstream guidance for this failure mode:
+    # https://github.com/hyprwm/Hyprland/issues/3108
+    environment.sessionVariables.WLR_RENDERER_ALLOW_SOFTWARE = "1";
+
     programs.dms-shell.enable = true;
 
     services.displayManager.dms-greeter = {
