@@ -200,7 +200,19 @@ switch role="" variant="" flake="" de="":
     fi
 
     # Desktop environment selection (desktop role only).
+    DE_CHANGED="false"
     if [ "$ROLE" = "desktop" ]; then
+        # Capture the CURRENTLY ACTIVE desktop environment before anything
+        # below rewrites features.nix, so we can tell whether this switch is
+        # actually changing the DE. Only an uncommented line counts — a
+        # commented line has no effect on the running system, so the true
+        # active value in that case is still the NixOS default, "gnome".
+        OLD_DESKTOP_ENV="gnome"
+        if [ -f /etc/nixos/features.nix ]; then
+            _old="$(grep -oP '^\s*vexos\.desktop\.environment\s*=\s*"\K[a-z]+' /etc/nixos/features.nix 2>/dev/null || true)"
+            [ -n "$_old" ] && OLD_DESKTOP_ENV="$_old"
+        fi
+
         if [ -z "$DESKTOP_ENV" ]; then
             echo ""
             echo "Select desktop environment:"
@@ -224,6 +236,10 @@ switch role="" variant="" flake="" de="":
             gnome|cosmic|hyprland) ;;
             *) echo "error: invalid desktop environment '${DESKTOP_ENV}' — must be gnome, cosmic, or hyprland" >&2; exit 1 ;;
         esac
+
+        if [ "$DESKTOP_ENV" != "$OLD_DESKTOP_ENV" ]; then
+            DE_CHANGED="true"
+        fi
 
         # Only touches features.nix for a non-default DE — gnome stays the
         # implicit default with no file needed, matching
@@ -261,6 +277,31 @@ switch role="" variant="" flake="" de="":
     echo "Switching to: ${TARGET}"
     echo ""
     _flake_dir=$(just _resolve-flake-dir "${TARGET}" "${FLAKE_OVERRIDE}")
+
+    # A desktop-environment change is never applied live. nixos-rebuild switch
+    # restarts changed systemd units in the running session — for a DE change
+    # that means restarting the display manager (GDM <-> greetd) underneath
+    # the session you're currently sitting in. Confirmed on real hardware:
+    # the old display manager can survive under the newly-aliased unit name
+    # and crash, leaving a black screen with no way back in short of a reboot
+    # anyway. So for a DE change, build it, queue it for next boot via
+    # `nixos-rebuild boot` (which never restarts running services), and
+    # reboot straight into it — no live activation attempt, no [y/N] prompt,
+    # since the current session can't reach the new DE without a reboot
+    # regardless of the answer.
+    if [ "$DE_CHANGED" = "true" ]; then
+        echo "Desktop environment is changing: ${OLD_DESKTOP_ENV} -> ${DESKTOP_ENV}"
+        echo "Switching display managers live is not safe, so this will be built"
+        echo "and queued for the next boot instead of applied to this session."
+        echo ""
+        sudo nixos-rebuild boot --impure --flake "path:${_flake_dir}#${TARGET}"
+        echo ""
+        echo "✓ All set — ${DESKTOP_ENV} is queued as the next boot entry. Rebooting now..."
+        sleep 2
+        sudo systemctl reboot
+        exit 0
+    fi
+
     if ! sudo nixos-rebuild switch --impure --flake "path:${_flake_dir}#${TARGET}"; then
         _rc=$?
         if [ $_rc -eq 4 ]; then
