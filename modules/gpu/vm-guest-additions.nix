@@ -43,19 +43,32 @@ in
   # nixos/modules/tasks/filesystems/vboxsf.nix builds mount.vboxsf from
   # `pkgs.linuxPackages.virtualboxGuestAdditions` — the DEFAULT kernel package set,
   # ignoring boot.kernelPackages entirely. Both sets therefore need patching:
-  # linuxPackages for mount.vboxsf, linuxPackages_6_12 for everything the
-  # virtualbox-guest module pulls from boot.kernelPackages.
+  # linuxPackages for mount.vboxsf, linuxPackages_6_18 for everything the
+  # virtualbox-guest module pulls from boot.kernelPackages. The patch itself is
+  # kernel-version-agnostic (it just strips a broken out-of-tree build target),
+  # so it applies unchanged to whichever kernel is pinned below.
   nixpkgs.overlays = [
     (final: prev: {
       linuxPackages = withFixedGuestAdditions prev.linuxPackages;
-      linuxPackages_6_12 = withFixedGuestAdditions prev.linuxPackages_6_12;
+      linuxPackages_6_18 = withFixedGuestAdditions prev.linuxPackages_6_18;
     })
   ];
 
-  # Pin to Linux 6.12 LTS (maintained until Dec 2026).
+  # Pin to Linux 6.18 LTS (kernel.org extended LTS support to Dec 2028 for both
+  # 6.12 and 6.18 in Feb 2026 — 6.18 is the newer of the two, same support
+  # window). Previously pinned to 6.12; bumped because 6.12's bochs-drm driver
+  # (the display device Proxmox/QEMU presents by default, no 3D acceleration)
+  # does not expose a DRM render node (/dev/dri/renderD128) — confirmed on real
+  # hardware to break Hyprland (Aquamarine has no software-rendering fallback)
+  # and COSMIC (Smithay EGL/DRI2 init failure). A comparison VM running the
+  # same Aquamarine-based Hyprland version on kernel 7.1.9 worked correctly on
+  # the same Proxmox "Default" display setting, pointing at the kernel/driver
+  # version rather than the hypervisor config. 6.18 is the newest kernel still
+  # on the LTS track, kept in preference to the non-LTS linuxPackages_latest
+  # track the desktop/stateless roles otherwise use.
   # lib.mkForce (priority 50) is required, not decorative: modules/zfs-server.nix
   # sets boot.kernelPackages with lib.mkOverride 75, which outranks both
   # modules/system.nix (mkDefault) and modules/system-lts-kernel.nix (priority 100).
   # Without mkForce the server VM variant silently inherits pkgs.linuxPackages.
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_6_12;
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_6_18;
 }

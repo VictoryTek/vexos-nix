@@ -24,7 +24,7 @@
 #     50  mkForce        modules/gpu/vm-guest-additions.nix
 #
 # 90 outranks the role's normal kernel choice while still losing to the ZFS
-# server pin and the VM guest-additions pin — VM variants keep their 6.12
+# server pin and the VM guest-additions pin — VM variants keep their 6.18
 # kernel even if this option is enabled.
 { config, pkgs, lib, ... }:
 let
