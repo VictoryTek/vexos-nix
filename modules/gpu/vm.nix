@@ -2,7 +2,16 @@
 # Virtual machine guest: QEMU/KVM guest agent, VirtualBox guest additions,
 # SPICE clipboard/auto-resize, virtio-gpu + QXL driver.
 # Import this in hosts/vm.nix.
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
+let
+  # Real "will this compositor actually start" signal — not
+  # vexos.desktop.environment, which is declared even on roles that never
+  # import hyprland-desktop.nix/cosmic-desktop.nix and could produce a false
+  # positive. programs.hyprland.enable and services.desktopManager.cosmic.enable
+  # are core NixOS options (always declared, default false) that only flip
+  # true once the matching DE module has actually wired the compositor up.
+  needsRenderNode = config.programs.hyprland.enable || config.services.desktopManager.cosmic.enable;
+in
 {
   # Kernel pin (6.12 LTS) + VirtualBox Guest Additions build fix.
   imports = [ ./vm-guest-additions.nix ];
@@ -58,4 +67,39 @@
   # Sunshine auto-detects, falling back to software encoding. Live-test on
   # actual VM hardware before relying on this for unattended access.
 
+  # ── Runtime GPU render-node check (Hyprland/COSMIC only) ─────────────────
+  # Hyprland (wlroots) and COSMIC (Smithay/cosmic-comp) both require a working
+  # DRM render node for GBM/EGL buffer allocation; GNOME/Mutter is the outlier
+  # that tolerates its absence via a more permissive software fallback. On a
+  # VM display device with no render node (e.g. Proxmox's default Standard
+  # VGA / bochs-drm — /dev/dri/ shows only cardN, no renderD128), both
+  # compositors fail with a silent black screen and blinking cursor —
+  # confirmed directly via cosmic-session's own EGL errors on real hardware:
+  #   libEGL warning: failed to get driver name for fd -1
+  #   MESA: error: ZINK: failed to choose pdev
+  # This can't be caught at Nix eval time — render-node availability is a
+  # property of the hypervisor's runtime virtual hardware, not of anything
+  # declared in this config — so it's a systemd runtime check rather than a
+  # build-time assertion. It only fires when the render node is genuinely
+  # missing (ConditionPathExists) and the active compositor actually needs
+  # one; it warns rather than blocking, so it cannot make an otherwise-working
+  # boot worse.
+  systemd.services.vexos-vm-render-node-check = lib.mkIf needsRenderNode {
+    description = "Warn on console if no DRM render node is available for the active compositor";
+    wantedBy    = [ "graphical.target" ];
+    before      = [ "greetd.service" ];
+    unitConfig.ConditionPathExists = "!/dev/dri/renderD128";
+    serviceConfig = {
+      Type            = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      MSG="No GPU render node (/dev/dri/renderD128) found. The active desktop environment requires one and will fail to start (black screen, blinking cursor). On Proxmox: VM -> Hardware -> Display -> set to VirtIO-GPU (3D acceleration / VirGL), then reboot."
+      echo "vexos: $MSG" >&2
+      if ${pkgs.plymouth}/bin/plymouth --ping 2>/dev/null; then
+        ${pkgs.plymouth}/bin/plymouth display-message --text="$MSG"
+        ${pkgs.coreutils}/bin/sleep 15
+      fi
+    '';
+  };
 }
