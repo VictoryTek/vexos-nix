@@ -85,6 +85,16 @@
 #       };
 #     };
 #
+#   Limine (opt-in, UEFI only): an alternative to systemd-boot whose own
+#   menu can list OSes on other physical disks (see modules/boot-discovery.nix
+#   upstream). Do not switch an already-installed machine by hand-editing
+#   this block — use `just switch-bootloader limine` instead, which also
+#   handles the systemd-boot NVRAM entry and ESP file cleanup. This block
+#   only matters for a fresh install choosing Limine from the start:
+#     bootloaderModule = { ... }: {
+#       vexos.bootloader = "limine";
+#     };
+#
 {
   inputs = {
     vexos-nix.url = "github:VictoryTek/vexos-nix";

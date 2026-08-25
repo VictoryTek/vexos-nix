@@ -33,7 +33,7 @@
       '';
     };
     vexos.bootloader = lib.mkOption {
-      type = lib.types.enum [ "systemd-boot" "grub" ];
+      type = lib.types.enum [ "systemd-boot" "grub" "limine" ];
       default = "systemd-boot";
       description = ''
         Boot loader backend.
@@ -43,6 +43,13 @@
                           vexos.grub.device to the target disk.
                           Required for BIOS-only hardware where
                           systemd-boot would fail with "Cannot find ESP".
+        "limine"        — UEFI only; opt-in alternative to systemd-boot.
+                          Unlike systemd-boot, Limine's own menu can list
+                          OSes on other physical disks — see
+                          modules/boot-discovery.nix. Switch a host to
+                          this with `just switch-bootloader limine`
+                          rather than setting it directly; see that
+                          recipe for the required cleanup steps.
       '';
     };
 
@@ -77,6 +84,23 @@
         device     = config.vexos.grub.device;
         efiSupport = false;
       };
+    })
+
+    # ── Limine (UEFI, opt-in) ─────────────────────────────────────────────
+    (lib.mkIf (config.vexos.bootloader == "limine") {
+      boot.loader.systemd-boot.enable = false;
+      boot.loader.limine = {
+        enable         = true;
+        efiSupport     = true;
+        maxGenerations = 5;
+        # enrollConfig / panicOnChecksumMismatch intentionally left at
+        # their upstream defaults (both false): modules/boot-discovery.nix
+        # rewrites a block in /boot/limine.conf at runtime to add entries
+        # for OSes on other disks. Enabling either would turn that
+        # expected post-install edit into a fatal checksum failure at the
+        # next boot.
+      };
+      boot.loader.efi.canTouchEfiVariables = true;
     })
 
     # ── Unconditional: kernel, boot, performance ──────────────────────────

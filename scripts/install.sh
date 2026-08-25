@@ -615,6 +615,71 @@ else
       exit 1
     fi
   fi
+
+  # ---------- Bootloader choice (UEFI only) -----------------------------------
+  # systemd-boot remains the default in every case — Limine is opt-in only.
+  # Unlike systemd-boot, Limine's own menu can be made to list OSes on other
+  # physical disks (see modules/boot-discovery.nix upstream); it's newer and
+  # less battle-tested in nixpkgs, so it's presented as a deliberate choice,
+  # not a recommendation.
+  #
+  # Not offered on vanilla: configuration-vanilla.nix sets
+  # boot.loader.systemd-boot.enable directly and never imports
+  # modules/system.nix, so vexos.bootloader (which the patch below writes)
+  # isn't a declared option there — patching it in would break evaluation.
+  USE_LIMINE=false
+  if [ "$ROLE" = "vanilla" ]; then
+    :
+  else
+    echo ""
+    if [ -n "$GUM" ]; then
+      if ui_confirm "Use Limine instead of the default systemd-boot? (opt-in, dual-boot-friendly)"; then
+        USE_LIMINE=true
+      fi
+    else
+      printf "  Use Limine instead of the default systemd-boot? [y/N] "
+      read -r INPUT </dev/tty
+      case "${INPUT,,}" in
+        y|yes) USE_LIMINE=true ;;
+        *)     USE_LIMINE=false ;;
+      esac
+    fi
+
+    if [ "$USE_LIMINE" = "true" ]; then
+      echo "  Patching /etc/nixos/flake.nix to use Limine..."
+      # Same brace-depth block-replace as the GRUB patch above — keeps
+      # modules/system.nix as the single owner of the actual boot.loader.*
+      # assignments via vexos.bootloader.
+      awk '
+        /^    bootloaderModule = \{ \.\.\. \}: \{/ {
+          print "    bootloaderModule = { ... }: {"
+          print "      vexos.bootloader = \"limine\";"
+          print "    };"
+          in_block = 1
+          depth = 1
+          next
+        }
+        in_block {
+          for (i = 1; i <= length($0); i++) {
+            c = substr($0, i, 1)
+            if (c == "{") depth++
+            else if (c == "}") depth--
+          }
+          if (depth <= 0) in_block = 0
+          next
+        }
+        { print }
+      ' /etc/nixos/flake.nix > /tmp/vexos-flake.tmp
+      if ! grep -q 'limine' /tmp/vexos-flake.tmp; then
+        echo -e "  ${RED}✗ Patch failed — bootloaderModule block not found in flake.nix.${RESET}" >&2
+        rm -f /tmp/vexos-flake.tmp
+        exit 1
+      fi
+      sudo mv /tmp/vexos-flake.tmp /etc/nixos/flake.nix
+      echo -e "  ${GREEN}✓ flake.nix updated for Limine.${RESET}"
+    fi
+    echo ""
+  fi
 fi
 
 # ---------- ASUS hardware patch ---------------------------------------------

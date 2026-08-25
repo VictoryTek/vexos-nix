@@ -327,6 +327,211 @@ switch role="" variant="" flake="" de="":
         echo "Skipped — reboot manually when ready."
     fi
 
+# Migrate an already-installed host to Limine (opt-in, UEFI only).
+# Non-destructive: patches /etc/nixos/flake.nix, rebuilds, and reorders
+# BootOrder, but leaves the existing systemd-boot NVRAM entry and ESP files
+# in place as a fallback. Reboot and confirm Limine actually boots, THEN run
+# `just switch-bootloader-cleanup` to remove the old entry and files.
+# Example: just switch-bootloader limine
+[group('System Build & Deploy')]
+switch-bootloader target="limine":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ "$(uname -s 2>/dev/null || echo unknown)" != "Linux" ]; then
+        echo "error: just switch-bootloader must be run on the target NixOS host." >&2
+        exit 1
+    fi
+    if ! command -v efibootmgr >/dev/null 2>&1; then
+        echo "error: efibootmgr not found — is this a UEFI system?" >&2
+        exit 1
+    fi
+
+    TARGET_LOADER="{{target}}"
+    if [ "$TARGET_LOADER" != "limine" ]; then
+        echo "error: unsupported target '${TARGET_LOADER}' — only 'limine' is supported." >&2
+        exit 1
+    fi
+
+    if [ ! -f /etc/nixos/flake.nix ]; then
+        echo "error: /etc/nixos/flake.nix not found — run this on an installed vexos-nix host." >&2
+        exit 1
+    fi
+    if [ ! -d /sys/firmware/efi ]; then
+        echo "error: Limine migration is only supported on UEFI systems." >&2
+        exit 1
+    fi
+    if grep -qE 'vexos\.bootloader\s*=\s*"limine"' /etc/nixos/flake.nix; then
+        echo "Already configured for Limine — nothing to do."
+        exit 0
+    fi
+    if [ ! -f /etc/nixos/vexos-variant ]; then
+        echo "error: /etc/nixos/vexos-variant not found — cannot determine the active flake target." >&2
+        exit 1
+    fi
+    VARIANT="$(cat /etc/nixos/vexos-variant)"
+    case "$VARIANT" in
+        vexos-vanilla-*)
+            echo "error: the vanilla role does not support vexos.bootloader —" >&2
+            echo "       configuration-vanilla.nix sets boot.loader.systemd-boot" >&2
+            echo "       directly and never imports modules/system.nix, so this" >&2
+            echo "       patch would break evaluation. Not supported for vanilla." >&2
+            exit 1
+            ;;
+    esac
+
+    echo "This will:"
+    echo "  1. Patch /etc/nixos/flake.nix to use Limine (vexos.bootloader = \"limine\")"
+    echo "  2. Rebuild and switch live — Limine installs ALONGSIDE the current"
+    echo "     systemd-boot entry, which is left in place as a fallback"
+    echo "  3. Reorder the UEFI BootOrder to put Limine first"
+    echo ""
+    echo "Nothing is removed by this step. Once you've rebooted and confirmed"
+    echo "Limine boots correctly, run: just switch-bootloader-cleanup"
+    echo ""
+    if [ "$(just _confirm 'Continue? [y/N]: ')" != "true" ]; then
+        echo "Aborted."
+        exit 0
+    fi
+
+    # Record the pre-existing systemd-boot NVRAM entry number(s) now, before
+    # Limine's installer runs — once both entries exist side by side, "which
+    # one is old" is no longer obvious. switch-bootloader-cleanup reads this
+    # back rather than guessing by label.
+    #
+    # Match ONLY "Linux Boot Manager" — the exact label NixOS's systemd-boot
+    # installer registers for itself. Deliberately NOT a broader
+    # "systemd-boot" substring match: modules/boot-discovery.nix registers
+    # entries like "NixOS/systemd-boot [tag]" for OTHER disks it finds — a
+    # looser match here would capture and later delete those too, destroying
+    # the exact cross-disk dual-boot entries this feature exists to keep.
+    OLD_ENTRIES_FILE="/etc/nixos/.vexos-bootloader-migration-old-entries"
+    efibootmgr | grep -iP '^Boot[0-9A-Fa-f]{4}\*?\s+Linux Boot Manager\s*$' | grep -oP '^Boot\K[0-9A-Fa-f]{4}' \
+        | sudo tee "$OLD_ENTRIES_FILE" >/dev/null || true
+
+    echo "Patching /etc/nixos/flake.nix..."
+    sudo awk '
+      /^    bootloaderModule = \{ \.\.\. \}: \{/ {
+        print "    bootloaderModule = { ... }: {"
+        print "      vexos.bootloader = \"limine\";"
+        print "    };"
+        in_block = 1
+        depth = 1
+        next
+      }
+      in_block {
+        for (i = 1; i <= length($0); i++) {
+          c = substr($0, i, 1)
+          if (c == "{") depth++
+          else if (c == "}") depth--
+        }
+        if (depth <= 0) in_block = 0
+        next
+      }
+      { print }
+    ' /etc/nixos/flake.nix | sudo tee /tmp/vexos-flake-limine.tmp >/dev/null
+    if ! grep -q 'limine' /tmp/vexos-flake-limine.tmp; then
+        echo "error: patch failed — bootloaderModule block not found in flake.nix." >&2
+        sudo rm -f /tmp/vexos-flake-limine.tmp
+        exit 1
+    fi
+    sudo mv /tmp/vexos-flake-limine.tmp /etc/nixos/flake.nix
+    echo "✓ flake.nix updated for Limine."
+    echo ""
+
+    echo "Rebuilding and switching to Limine..."
+    sudo nixos-rebuild switch --impure --flake "path:/etc/nixos#${VARIANT}"
+
+    NEW_LIMINE_LINE="$(efibootmgr | grep -i limine || true)"
+    if [ -z "$NEW_LIMINE_LINE" ]; then
+        echo ""
+        echo "warning: config applied, but no Limine NVRAM entry was found." >&2
+        echo "         The old systemd-boot entry was NOT touched — do not run" >&2
+        echo "         switch-bootloader-cleanup. Investigate before rebooting." >&2
+        exit 1
+    fi
+    LIMINE_NUM="$(echo "$NEW_LIMINE_LINE" | grep -oP '^Boot\K[0-9A-Fa-f]{4}' | head -n1)"
+
+    # Put Limine first in BootOrder without dropping any other entry.
+    CURRENT_ORDER="$(efibootmgr | grep -oP '^BootOrder:\s*\K.*' || true)"
+    if [ -n "$CURRENT_ORDER" ] && [ -n "$LIMINE_NUM" ]; then
+        REST="$(echo "$CURRENT_ORDER" | tr ',' '\n' | grep -vi "^${LIMINE_NUM}$" | paste -sd, -)"
+        if [ -n "$REST" ]; then
+            sudo efibootmgr -o "${LIMINE_NUM},${REST}" >/dev/null
+        else
+            sudo efibootmgr -o "${LIMINE_NUM}" >/dev/null
+        fi
+        echo "✓ BootOrder updated — Limine (Boot${LIMINE_NUM}) is now first."
+    fi
+
+    echo ""
+    echo "✓ Limine installed. The old systemd-boot entry and /boot files are"
+    echo "  still in place as a fallback. Reboot now and confirm Limine boots"
+    echo "  correctly, THEN run: just switch-bootloader-cleanup"
+
+# Finish a Limine migration started with `just switch-bootloader limine`.
+# Destructive: removes the old systemd-boot NVRAM entry and orphaned ESP
+# files. Refuses to run unless the CURRENT boot session actually used the
+# Limine NVRAM entry — proof the machine really did boot into it — so it
+# cannot be run before a successful reboot has actually happened.
+[group('System Build & Deploy')]
+switch-bootloader-cleanup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v efibootmgr >/dev/null 2>&1; then
+        echo "error: efibootmgr not found — is this a UEFI system?" >&2
+        exit 1
+    fi
+
+    EFIBOOTMGR_OUT="$(efibootmgr)"
+    LIMINE_LINE="$(echo "$EFIBOOTMGR_OUT" | grep -i limine || true)"
+    if [ -z "$LIMINE_LINE" ]; then
+        echo "error: no Limine NVRAM entry found — nothing to clean up." >&2
+        exit 1
+    fi
+    LIMINE_NUM="$(echo "$LIMINE_LINE" | grep -oP '^Boot\K[0-9A-Fa-f]{4}' | head -n1)"
+    BOOT_CURRENT="$(echo "$EFIBOOTMGR_OUT" | grep -oP '^BootCurrent:\s*\K[0-9A-Fa-f]{4}' || true)"
+
+    if [ -z "$BOOT_CURRENT" ] || [ "${BOOT_CURRENT^^}" != "${LIMINE_NUM^^}" ]; then
+        echo "error: this session did not boot via the Limine NVRAM entry" >&2
+        echo "       (BootCurrent=${BOOT_CURRENT:-unknown}, Limine=${LIMINE_NUM:-unknown})." >&2
+        echo "       Reboot, pick Limine, and re-run this recipe once you've" >&2
+        echo "       confirmed it actually boots. Refusing to remove the" >&2
+        echo "       systemd-boot fallback until that's proven." >&2
+        exit 1
+    fi
+
+    echo "Confirmed: this session booted via Limine (Boot${LIMINE_NUM})."
+    echo ""
+    OLD_ENTRIES_FILE="/etc/nixos/.vexos-bootloader-migration-old-entries"
+    if [ -f "$OLD_ENTRIES_FILE" ]; then
+        echo "Removing old systemd-boot NVRAM entries:"
+        while read -r NUM; do
+            [ -n "$NUM" ] || continue
+            if efibootmgr | grep -qP "^Boot${NUM}\b"; then
+                echo "  - Boot${NUM}"
+                sudo efibootmgr -b "$NUM" -B >/dev/null
+            fi
+        done < "$OLD_ENTRIES_FILE"
+        sudo rm -f "$OLD_ENTRIES_FILE"
+    else
+        echo "note: no recorded old-entry list found (${OLD_ENTRIES_FILE})"
+        echo "      falling back to removing any 'Linux Boot Manager' entry."
+        # Same exact-label match as switch-bootloader's capture step — never
+        # broaden this to a bare "systemd-boot" substring match, or it will
+        # also delete boot-discovery.nix's cross-disk entries for other OSes.
+        efibootmgr | grep -iP '^Boot[0-9A-Fa-f]{4}\*?\s+Linux Boot Manager\s*$' | grep -oP '^Boot\K[0-9A-Fa-f]{4}' | while read -r NUM; do
+            echo "  - Boot${NUM}"
+            sudo efibootmgr -b "$NUM" -B >/dev/null
+        done
+    fi
+
+    echo ""
+    echo "Removing orphaned systemd-boot files from /boot..."
+    sudo rm -rf /boot/EFI/systemd /boot/loader
+    echo "✓ Cleanup complete."
+
 # Dry-run build without switching — useful for testing config changes.
 # Example: just build desktop amd
 [group('System Build & Deploy')]
