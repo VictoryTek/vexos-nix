@@ -28,7 +28,7 @@ in
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
     virtualisation.oci-containers.containers.dozzle = {
-      image = "amir20/dozzle:v10.7.3";
+      image = "amir20/dozzle:v10.7.4";
       ports = [ "${toString cfg.port}:8080" ];
       volumes = [
         "/var/run/docker.sock:/var/run/docker.sock:ro"

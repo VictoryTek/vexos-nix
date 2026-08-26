@@ -26,7 +26,7 @@ in
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
     virtualisation.oci-containers.containers.uptime-kuma = {
-      image = "louislam/uptime-kuma:2.5.0";
+      image = "louislam/uptime-kuma:2.5.3";
       ports = [ "${toString cfg.port}:3001" ];
       volumes = [ "uptime-kuma-data:/app/data" ];
     };
