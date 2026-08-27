@@ -414,11 +414,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1787184298,
-        "narHash": "sha256-KDqJUFAdBBjkmryWYN4shiNd1RWdfxdyl9+4C4SveOk=",
+        "lastModified": 1787602260,
+        "narHash": "sha256-jftIR/HC/4gLuq71tFX/WggNLs4sxhUt+gLawN1B7jA=",
         "owner": "VictoryTek",
         "repo": "VexPortal",
-        "rev": "6105f70d24336349000c7fca3eb01dc2fb722b44",
+        "rev": "83e447960e5a8789c27c42eb448c7904bb23030a",
         "type": "github"
       },
       "original": {
