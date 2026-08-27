@@ -98,7 +98,7 @@ Repository Notes:
   - `.github/docs/subagent_docs/` — subagent specification and review documents  
 - Architecture Pattern: **Thin Flake — `hardware-configuration.nix` is delegated to the host at `/etc/nixos/` and imported by reference; all tracked configuration lives in flat Nix modules at the repo root**  
 - Special Constraints:  
-  - The flake defines 30 outputs across five roles (`desktop`, `stateless`, `server`, `headless-server`, `htpc`) × six GPU variants (`amd`, `nvidia`, `nvidia-legacy535`, `nvidia-legacy470`, `intel`, `vm`)  
+  - The flake defines 30 outputs across five roles (`desktop`, `stateless`, `server`, `headless-server`, `htpc`) × six GPU variants (`amd`, `nvidia`, `nvidia-legacy580`, `nvidia-legacy470`, `intel`, `vm`)  
   - Host configs live in `hosts/` and import the role's `configuration-*.nix` + the appropriate `modules/gpu/` variant  
   - GPU-brand-specific configuration lives in `modules/gpu/` (`amd.nix`, `nvidia.nix`, `intel.nix`, `vm.nix`, plus `*-headless.nix` variants)  
   - `hardware-configuration.nix` MUST NOT be added to this repository; it is generated per-host by `nixos-generate-config`  

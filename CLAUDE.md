@@ -192,7 +192,7 @@ Package Manager(s): **Nix (nix CLI / nix flake)**
 - Special Constraints:
   - The flake defines 30 outputs across six roles (`desktop`, `stateless`, `server`,
     `headless-server`, `htpc`, `vanilla`) × GPU variants (`amd`, `nvidia`,
-    `nvidia-legacy535`, `intel`, `vm` — not all roles include all five variants; see
+    `nvidia-legacy580`, `intel`, `vm` — not all roles include all five variants; see
     `flake.nix` for the authoritative list)
   - Host configs in `hosts/` import the role's `configuration-*.nix` + the appropriate
     `modules/gpu/` variant

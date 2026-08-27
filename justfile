@@ -185,14 +185,14 @@ switch role="" variant="" flake="" de="":
             echo ""
             echo "Select NVIDIA driver branch:"
             echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
-            echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+            echo "  2) Legacy 580 — Maxwell/Pascal/Volta (580.x, required)"
             echo ""
             while true; do
                 printf "Choice [1-2]: "
                 read -r INPUT
                 case "${INPUT}" in
                     1) break ;;
-                    2) VARIANT="nvidia-legacy535"; break ;;
+                    2) VARIANT="nvidia-legacy580"; break ;;
                     *) echo "Invalid — enter 1 or 2" ;;
                 esac
             done
@@ -693,14 +693,14 @@ update role="" variant="": _kernel-cache-guard
                 echo ""
                 echo "Select NVIDIA driver branch:"
                 echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
-                echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+                echo "  2) Legacy 580 — Maxwell/Pascal/Volta (580.x, required)"
                 echo ""
                 while true; do
                     printf "Choice [1-2]: "
                     read -r INPUT
                     case "${INPUT}" in
                         1) break ;;
-                        2) VARIANT="nvidia-legacy535"; break ;;
+                        2) VARIANT="nvidia-legacy580"; break ;;
                         *) echo "Invalid — enter 1 or 2" ;;
                     esac
                 done

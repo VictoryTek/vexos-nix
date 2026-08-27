@@ -137,7 +137,7 @@ if [ "$VARIANT" = "nvidia" ]; then
   echo ""
   echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
   echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
-  echo "  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+  echo "  2) Legacy 580 — Maxwell/Pascal/Volta (580.x, required)"
   echo ""
   echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"
   echo -e "${YELLOW}Wrong choice? Run this script again and switch.${RESET}"
@@ -147,7 +147,7 @@ if [ "$VARIANT" = "nvidia" ]; then
     read -r INPUT </dev/tty
     case "${INPUT}" in
       1) NVIDIA_SUFFIX="";           break ;;
-      2) NVIDIA_SUFFIX="-legacy535"; break ;;
+      2) NVIDIA_SUFFIX="-legacy580"; break ;;
       *) echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}" ;;
     esac
   done

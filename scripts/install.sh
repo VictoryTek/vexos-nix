@@ -453,18 +453,18 @@ if [ "$VARIANT" = "nvidia" ]; then
   if [ -n "$GUM" ]; then
     NVIDIA_SUFFIX="$(ui_choose "Select NVIDIA driver branch" \
       ":Latest     — RTX, GTX 16xx, GTX 750 and newer" \
-      "-legacy535:Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)")"
+      "-legacy580:Legacy 580 — Maxwell/Pascal/Volta (580.x, required)")"
   else
     while true; do
       center_block "Select NVIDIA driver branch:
   1) Latest     — RTX, GTX 16xx, GTX 750 and newer
-  2) Legacy 535 — Maxwell/Pascal/Volta (LTS 535.x)"
+  2) Legacy 580 — Maxwell/Pascal/Volta (580.x, required)"
       echo ""
       printf "Enter choice [1-2]: "
       read -r INPUT </dev/tty
       case "${INPUT}" in
         1) NVIDIA_SUFFIX="";           break ;;
-        2) NVIDIA_SUFFIX="-legacy535"; break ;;
+        2) NVIDIA_SUFFIX="-legacy580"; break ;;
         *)
           render_header
           echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"

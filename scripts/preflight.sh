@@ -9,6 +9,7 @@
 # Stages:
 #   [0/8] Nix + jq availability
 #   [1/8] nix flake show (structure validation — safe, low RAM)
+#         + ci.yml matrix matches the flake's nixosConfigurations
 #   [2/8] Dry-build current machine variant only (full CI validation handled by GitHub Actions)
 #   [3/8] hardware-configuration.nix not tracked
 #   [4/8] system.stateVersion (all 6 configuration-*.nix files)
@@ -76,8 +77,10 @@ else
   warn "jq not found — flake.lock pinning and freshness checks will be skipped"
 fi
 echo ""
-# ---------- CHECK 1: nix flake show (structure validation — safe, low RAM) ----------
+# ---------- CHECK 1: flake structure + CI matrix coverage --------------------
 echo "[1/8] Validating flake structure..."
+
+echo "  --- 1a: nix flake show (structure validation — safe, low RAM) ---"
 # NOTE: nix flake check is FORBIDDEN in this project — it evaluates all 30+
 # nixosConfigurations in parallel and exhausts all 32GB of RAM.
 # nix flake show is the safe alternative: it lists outputs without evaluating them.
@@ -87,6 +90,64 @@ if FLAKE_SHOW_JSON=$(nix flake show --impure --json 2>/dev/null); then
 else
   fail "nix flake show failed — flake structure is invalid"
   EXIT_CODE=1
+  FLAKE_SHOW_JSON=""
+fi
+echo ""
+
+echo "  --- 1b: CI matrix matches flake outputs (HARD) ---"
+# .github/workflows/ci.yml hardcodes the list of nixosConfigurations it
+# evaluates. If an output is renamed in flake.nix and ci.yml is not updated in
+# the same commit, CI fails with "does not provide attribute ..." — a breakage
+# that only surfaces after a push. This stage catches it locally instead.
+#
+# Reuses FLAKE_SHOW_JSON from 1a; no extra nix invocation.
+#
+# Any vexos-* token in ci.yml that is NOT a nixosConfiguration name (e.g. the
+# repository name appearing in a path) must be added to CI_TOKEN_IGNORE, or it
+# will be reported as a missing config.
+CI_WORKFLOW=".github/workflows/ci.yml"
+CI_TOKEN_IGNORE='^vexos-nix$'
+if ! command -v jq &>/dev/null; then
+  warn "Skipping CI matrix check — jq not available"
+elif [ ! -f "$CI_WORKFLOW" ]; then
+  warn "Skipping CI matrix check — ${CI_WORKFLOW} not found"
+elif [ -z "${FLAKE_SHOW_JSON}" ]; then
+  warn "Skipping CI matrix check — nix flake show did not succeed"
+else
+  FLAKE_CONFIGS=$(echo "$FLAKE_SHOW_JSON" \
+    | jq -r '.nixosConfigurations // {} | keys[]' 2>/dev/null \
+    | LC_ALL=C sort -u)
+  CI_CONFIGS=$(grep -oE '\bvexos-[a-z0-9-]+\b' "$CI_WORKFLOW" 2>/dev/null \
+    | grep -Ev "$CI_TOKEN_IGNORE" \
+    | LC_ALL=C sort -u)
+
+  if [ -z "$FLAKE_CONFIGS" ]; then
+    warn "Skipping CI matrix check — could not read nixosConfigurations from flake"
+  elif [ -z "$CI_CONFIGS" ]; then
+    warn "Skipping CI matrix check — no vexos-* config references found in ${CI_WORKFLOW}"
+  else
+    # In ci.yml but absent from the flake ⇒ CI is guaranteed to fail.
+    CI_MISSING=$(LC_ALL=C comm -23 <(echo "$CI_CONFIGS") <(echo "$FLAKE_CONFIGS"))
+    # In the flake but absent from ci.yml ⇒ untested, may be deliberate.
+    CI_UNTESTED=$(LC_ALL=C comm -13 <(echo "$CI_CONFIGS") <(echo "$FLAKE_CONFIGS"))
+
+    if [ -n "$CI_MISSING" ]; then
+      fail "${CI_WORKFLOW} references nixosConfigurations that do not exist:"
+      echo "$CI_MISSING" | sed 's/^/         /'
+      echo "         CI will fail on these — update ${CI_WORKFLOW} or flake.nix."
+      EXIT_CODE=1
+    else
+      CI_COUNT=$(echo "$CI_CONFIGS" | wc -l | tr -d ' ')
+      pass "All ${CI_COUNT} configs referenced by ci.yml exist in the flake"
+    fi
+
+    if [ -n "$CI_UNTESTED" ]; then
+      warn "nixosConfigurations not evaluated by ci.yml:"
+      echo "$CI_UNTESTED" | sed 's/^/         /'
+    else
+      pass "Every nixosConfiguration is covered by ci.yml"
+    fi
+  fi
 fi
 echo ""
 
