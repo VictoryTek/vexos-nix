@@ -1,9 +1,13 @@
 # modules/gpu/vm.nix
-# Virtual machine guest: QEMU/KVM guest agent, VirtualBox guest additions,
-# SPICE clipboard/auto-resize, virtio-gpu + QXL driver.
-# Import this in hosts/vm.nix.
+# Virtual machine guest: QEMU/KVM guest agent, SPICE clipboard/auto-resize,
+# virtio-gpu + QXL driver. Import this in hosts/vm.nix.
+#
+# VirtualBox-specific content (guest additions and the kernel pin they need)
+# lives in ./vm-guest-additions.nix, gated on vexos.vm.platform — which that
+# file also declares. Default is "qemu".
 { config, lib, pkgs, ... }:
 let
+  isQemu = config.vexos.vm.platform == "qemu";
   # Real "will this compositor actually start" signal — not
   # vexos.desktop.environment, which is declared even on roles that never
   # import hyprland-desktop.nix/cosmic-desktop.nix and could produce a false
@@ -13,24 +17,15 @@ let
   needsRenderNode = config.programs.hyprland.enable || config.services.desktopManager.cosmic.enable;
 in
 {
-  # Kernel pin (6.12 LTS) + VirtualBox Guest Additions build fix.
+  # Declares vexos.vm.platform; carries the VirtualBox guest additions and the
+  # 6.18 kernel pin they require, both gated on platform == "virtualbox".
   imports = [ ./vm-guest-additions.nix ];
 
   # QEMU/KVM guest agent — graceful shutdown, memory ballooning, clock sync, file copy
-  services.qemuGuest.enable = true;
+  services.qemuGuest.enable = isQemu;
 
   # SPICE vdagent — clipboard sync and automatic display resize in SPICE sessions
-  services.spice-vdagentd.enable = true;
-
-  # VirtualBox guest additions — shared folders, clipboard, auto-resize, drag & drop.
-  # use3rdPartyModules = false loads the vboxguest/vboxsf/vboxvideo drivers already
-  # mainlined into the kernel rather than VirtualBox's out-of-tree copies. It selects
-  # which modules are LOADED; it does not stop the guest-additions package from being
-  # BUILT — see ./vm-guest-additions.nix for that. The in-tree drivers only bind when
-  # real VirtualBox hardware is present, so this is safe on QEMU/KVM/Proxmox guests.
-  virtualisation.virtualbox.guest.enable = true;
-  virtualisation.virtualbox.guest.dragAndDrop = true;
-  virtualisation.virtualbox.guest.use3rdPartyModules = false;
+  services.spice-vdagentd.enable = isQemu;
 
   # Load virtio-gpu, QXL display drivers, and VirtIO block device driver early.
   # virtio_blk must be forced into the initrd: the NixOS live ISO has it built-in
@@ -45,7 +40,11 @@ in
   # VM btrfs layout is not snapper-compatible — disable btrfs/snapper integration.
   vexos.btrfs.enable = false;
 
-  # scx requires kernel >= 6.12; VM is pinned to 6.6 LTS — disable SCX scheduler.
+  # SCX schedulers tune for physical CPU topology, which a guest does not see
+  # accurately — the hypervisor owns scheduling. Disabled on every VM guest
+  # regardless of kernel. (This previously read as a kernel-version constraint;
+  # with vexos.vm.platform = "qemu" the guest now follows its role's kernel, so
+  # the version is no longer the reason.)
   services.scx.enable = lib.mkForce false;
 
   # VMs rely on hypervisor memory management — no disk swap file needed.

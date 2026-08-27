@@ -1,29 +1,23 @@
 # modules/gpu/vanilla-vm.nix
 # Virtual machine guest for the vanilla role.
-# Same guest additions and kernel settings as modules/gpu/vm.nix, but
-# without vexos.btrfs.enable and vexos.swap.enable — those options are
-# declared in modules/system.nix which the vanilla role intentionally does
-# not import (vanilla is a stock NixOS baseline with no custom modules).
-{ lib, ... }:
+# Same guest settings as modules/gpu/vm.nix, but without vexos.btrfs.enable
+# and vexos.swap.enable — those options are declared in modules/system.nix
+# which the vanilla role intentionally does not import (vanilla is a stock
+# NixOS baseline with no custom modules).
+{ config, lib, ... }:
+let
+  isQemu = config.vexos.vm.platform == "qemu";
+in
 {
-  # Kernel pin (6.12 LTS) + VirtualBox Guest Additions build fix.
+  # Declares vexos.vm.platform; carries the VirtualBox guest additions and the
+  # 6.18 kernel pin they require, both gated on platform == "virtualbox".
   imports = [ ./vm-guest-additions.nix ];
 
   # QEMU/KVM guest agent — graceful shutdown, memory ballooning, clock sync, file copy
-  services.qemuGuest.enable = true;
+  services.qemuGuest.enable = isQemu;
 
   # SPICE vdagent — clipboard sync and automatic display resize in SPICE sessions
-  services.spice-vdagentd.enable = true;
-
-  # VirtualBox guest additions — shared folders, clipboard, auto-resize, drag & drop.
-  # use3rdPartyModules = false loads the vboxguest/vboxsf/vboxvideo drivers already
-  # mainlined into the kernel rather than VirtualBox's out-of-tree copies. It selects
-  # which modules are LOADED; it does not stop the guest-additions package from being
-  # BUILT — see ./vm-guest-additions.nix for that. The in-tree drivers only bind when
-  # real VirtualBox hardware is present, so this is safe on QEMU/KVM/Proxmox guests.
-  virtualisation.virtualbox.guest.enable = true;
-  virtualisation.virtualbox.guest.dragAndDrop = true;
-  virtualisation.virtualbox.guest.use3rdPartyModules = false;
+  services.spice-vdagentd.enable = isQemu;
 
   # Load virtio-gpu and QXL display drivers early
   boot.initrd.kernelModules = [ "virtio_gpu" ];

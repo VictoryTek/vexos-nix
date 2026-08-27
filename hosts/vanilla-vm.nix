@@ -1,26 +1,20 @@
 # hosts/vanilla-vm.nix
 # vexos — Vanilla VM guest build (stock NixOS baseline).
-# Includes minimal guest additions for VM usability (QEMU, SPICE, VirtualBox).
 # Rebuild: sudo nixos-rebuild switch --flake .#vexos-vanilla-vm
-{ lib, pkgs, ... }:
+#
+# Guest additions come from ../modules/gpu/vanilla-vm.nix, matching how every
+# other hosts/*-vm.nix imports its GPU module. This file previously inlined a
+# partial copy of those settings instead — which meant the in-repo
+# vexos-vanilla-vm output never used modules/gpu/vanilla-vm.nix at all (that
+# module reached only the /etc/nixos template consumers, via flake.nix's
+# nixosModules.gpuVanillaVm export), and pinned
+# virtualisation.virtualbox.guest.enable = true regardless of vexos.vm.platform.
+{ ... }:
 {
   imports = [
     ../configuration-vanilla.nix
+    ../modules/gpu/vanilla-vm.nix
   ];
-
-  # ── VM guest additions ─────────────────────────────────────────────────────
-  # These are infrastructure for the VM to be functional, not an opinion.
-  # Without them: no clipboard sync, no display resize, no graceful shutdown.
-
-  # QEMU/KVM guest agent — graceful shutdown, memory ballooning, clock sync
-  services.qemuGuest.enable = true;
-
-  # SPICE vdagent — clipboard sync and automatic display resize
-  services.spice-vdagentd.enable = true;
-
-  # VirtualBox guest additions — shared folders, clipboard, auto-resize
-  virtualisation.virtualbox.guest.enable = true;
-  virtualisation.virtualbox.guest.dragAndDrop = true;
 
   system.nixos.distroName = "VexOS Vanilla VM";
 }

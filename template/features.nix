@@ -14,6 +14,19 @@
 # Desktop environment (desktop role only) — set via `just switch` or the
 # installer's desktop-environment prompt. Values: gnome (default), cosmic,
 # hyprland. See vexos.desktop.environment below.
+#
+# VM guest platform (vm variants only) — set by the installer's hypervisor
+# prompt. Values:
+#   qemu       (default) — QEMU/KVM, Proxmox, libvirt. Enables the QEMU guest
+#                          agent and SPICE vdagent, and keeps the role's own
+#                          kernel (7.x on desktop/stateless).
+#   virtualbox           — VirtualBox Guest Additions (shared folders,
+#                          clipboard, auto-resize, drag & drop). Pins the
+#                          kernel to 6.18 LTS, which those additions need in
+#                          order to build.
+# NOTE for existing VirtualBox hosts: the default is "qemu". If this host runs
+# under VirtualBox and relies on shared folders or clipboard integration,
+# uncomment the line below — otherwise those stop working on the next rebuild.
 {
   # vexos.features.gaming.enable         = false;
   # vexos.features.development.enable    = false;
@@ -21,4 +34,5 @@
   # vexos.features.virtualization.enable = false;
   # vexos.features.sunshine.enable       = false;
   # vexos.desktop.environment            = "gnome";
+  # vexos.vm.platform                    = "qemu";
 }

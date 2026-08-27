@@ -441,6 +441,37 @@ if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || 
   fi
 fi
 
+# ---------- VM hypervisor selection ------------------------------------------
+# QEMU/KVM and VirtualBox need different guest packages, and VirtualBox pins the
+# kernel to 6.18 LTS to keep its guest additions building. Asking here means a
+# Proxmox/QEMU guest keeps its role's own kernel instead of inheriting that pin.
+VM_PLATFORM=""
+if [ "$VARIANT" = "vm" ]; then
+  render_header
+  if [ -n "$GUM" ]; then
+    VM_PLATFORM="$(ui_choose "Select your hypervisor" \
+      "qemu:QEMU/KVM  — Proxmox, libvirt, plain QEMU (guest agent + SPICE)" \
+      "virtualbox:VirtualBox — Guest Additions, shared folders (pins kernel 6.18 LTS)")"
+  else
+    while [ -z "$VM_PLATFORM" ]; do
+      center_block "Select your hypervisor:
+  1) QEMU/KVM  — Proxmox, libvirt, plain QEMU (guest agent + SPICE)
+  2) VirtualBox — Guest Additions, shared folders (pins kernel 6.18 LTS)"
+      echo ""
+      printf "Enter choice [1-2] or name (qemu / virtualbox): "
+      read -r INPUT </dev/tty
+      case "${INPUT,,}" in
+        1|qemu|kvm|proxmox) VM_PLATFORM="qemu"       ;;
+        2|virtualbox|vbox)  VM_PLATFORM="virtualbox" ;;
+        *)
+          render_header
+          echo -e "${RED}Invalid selection '${INPUT}'. Please enter 1, 2, qemu, or virtualbox.${RESET}"
+          ;;
+      esac
+    done
+  fi
+fi
+
 # ---------- NVIDIA driver branch selection -----------------------------------
 # Vanilla always uses the kernel nouveau driver — no proprietary driver branches.
 NVIDIA_SUFFIX=""
@@ -722,13 +753,18 @@ if [ -f /etc/nixos/flake.nix ] && grep -qF '"XXXXXXXX"' /etc/nixos/flake.nix 2>/
   echo -e "  ${GREEN}✓ hostId set to ${HOST_ID}.${RESET}"
 fi
 
-# ---------- Desktop environment: write choice to /etc/nixos/features.nix -----
-# Only touches features.nix when a non-default DE was chosen — GNOME stays the
-# implicit default with no file needed, matching vexos.desktop.environment's
-# own NixOS default. Mirrors the replace-or-append sed pattern `just
-# enable-feature` uses, so this file stays editable by both paths.
-if [ "$ROLE" = "desktop" ] && [ "$DESKTOP_ENV" != "gnome" ]; then
-  render_header
+# ---------- Write host choices to /etc/nixos/features.nix ---------------------
+# features_set <nix.option.path> <string-value>
+# Creates features.nix if absent, replaces the option if already present
+# (commented or not), appends it before the closing brace otherwise. Mirrors
+# the replace-or-append sed pattern `just enable-feature` uses, so the file
+# stays editable by both paths.
+features_set() {
+  _key="$1"
+  _val="$2"
+  # Escape dots for the grep/sed patterns that match the option path.
+  _key_re="$(printf '%s' "$_key" | sed 's/\./\\./g')"
+
   if [ ! -f /etc/nixos/features.nix ]; then
     sudo tee /etc/nixos/features.nix > /dev/null << FEATURESNIX
 # /etc/nixos/features.nix
@@ -736,15 +772,31 @@ if [ "$ROLE" = "desktop" ] && [ "$DESKTOP_ENV" != "gnome" ]; then
 # Managed by \`just enable-feature <feature>\` / \`just disable-feature <feature>\`.
 # After editing, run \`just rebuild\` to apply.
 {
-  vexos.desktop.environment = "${DESKTOP_ENV}";
+  ${_key} = "${_val}";
 }
 FEATURESNIX
-  elif grep -qP '^\s*#?\s*vexos\.desktop\.environment\s*=' /etc/nixos/features.nix 2>/dev/null; then
-    sudo sed -i -E "s|^(\s*)#?\s*(vexos\.desktop\.environment)\s*=\s*\"[a-z]+\"\s*;|\1vexos.desktop.environment = \"${DESKTOP_ENV}\";|" /etc/nixos/features.nix
+  elif grep -qP "^\s*#?\s*${_key_re}\s*=" /etc/nixos/features.nix 2>/dev/null; then
+    sudo sed -i -E "s|^(\s*)#?\s*${_key_re}\s*=\s*\"[a-z-]+\"\s*;|\1${_key} = \"${_val}\";|" /etc/nixos/features.nix
   else
-    sudo sed -i "\$ s|^}|  vexos.desktop.environment = \"${DESKTOP_ENV}\";\n}|" /etc/nixos/features.nix
+    sudo sed -i "\$ s|^}|  ${_key} = \"${_val}\";\n}|" /etc/nixos/features.nix
   fi
+}
+
+# Desktop environment — only written when a non-default DE was chosen. GNOME
+# stays the implicit default with no file needed, matching
+# vexos.desktop.environment's own NixOS default.
+if [ "$ROLE" = "desktop" ] && [ "$DESKTOP_ENV" != "gnome" ]; then
+  render_header
+  features_set "vexos.desktop.environment" "$DESKTOP_ENV"
   echo -e "  ${GREEN}✓ Desktop environment set to ${DESKTOP_ENV} in /etc/nixos/features.nix.${RESET}"
+fi
+
+# VM hypervisor — only written for VirtualBox. "qemu" is the option's own NixOS
+# default, so a QEMU/Proxmox guest needs no features.nix entry at all.
+if [ "$VM_PLATFORM" = "virtualbox" ]; then
+  render_header
+  features_set "vexos.vm.platform" "$VM_PLATFORM"
+  echo -e "  ${GREEN}✓ VM platform set to ${VM_PLATFORM} in /etc/nixos/features.nix.${RESET}"
 fi
 
 # ---------- Ensure git is available -------------------------------------------
