@@ -237,56 +237,6 @@ switch role="" variant="" flake="" de="" vmp="":
         fi
     fi
 
-    # Desktop environment selection (desktop role only).
-    DE_CHANGED="false"
-    if [ "$ROLE" = "desktop" ]; then
-        # Capture the CURRENTLY ACTIVE desktop environment before anything
-        # below rewrites features.nix, so we can tell whether this switch is
-        # actually changing the DE. Only an uncommented line counts — a
-        # commented line has no effect on the running system, so the true
-        # active value in that case is still the NixOS default, "gnome".
-        OLD_DESKTOP_ENV="gnome"
-        if [ -f /etc/nixos/features.nix ]; then
-            _old="$(grep -oP '^\s*vexos\.desktop\.environment\s*=\s*"\K[a-z]+' /etc/nixos/features.nix 2>/dev/null || true)"
-            [ -n "$_old" ] && OLD_DESKTOP_ENV="$_old"
-        fi
-
-        if [ -z "$DESKTOP_ENV" ]; then
-            echo ""
-            echo "Select desktop environment:"
-            echo "  1) gnome    — Full-featured, most tested (default)"
-            echo "  2) cosmic   — System76's new Rust-based desktop"
-            echo "  3) hyprland — Tiling Wayland compositor + Noctalia shell"
-            echo ""
-            while [ -z "$DESKTOP_ENV" ]; do
-                printf "Choice [1-3] or name (default: gnome): "
-                read -r INPUT
-                case "${INPUT,,}" in
-                    ""|1|gnome) DESKTOP_ENV="gnome"    ;;
-                    2|cosmic)   DESKTOP_ENV="cosmic"   ;;
-                    3|hyprland) DESKTOP_ENV="hyprland" ;;
-                    *) echo "Invalid — enter 1-3 or gnome/cosmic/hyprland" ;;
-                esac
-            done
-        fi
-
-        case "$DESKTOP_ENV" in
-            gnome|cosmic|hyprland) ;;
-            *) echo "error: invalid desktop environment '${DESKTOP_ENV}' — must be gnome, cosmic, or hyprland" >&2; exit 1 ;;
-        esac
-
-        if [ "$DESKTOP_ENV" != "$OLD_DESKTOP_ENV" ]; then
-            DE_CHANGED="true"
-        fi
-
-        # Only touches features.nix for a non-default DE — gnome stays the
-        # implicit default with no file needed, matching
-        # vexos.desktop.environment's own NixOS default.
-        if [ "$DESKTOP_ENV" != "gnome" ] || [ -f /etc/nixos/features.nix ]; then
-            _features_set "vexos.desktop.environment" "$DESKTOP_ENV"
-        fi
-    fi
-
     # VM hypervisor selection (vm variant only).
     # QEMU/KVM and VirtualBox need different guest packages, and VirtualBox pins
     # the kernel to 6.18 LTS to keep its guest additions building — so a
@@ -336,6 +286,56 @@ switch role="" variant="" flake="" de="" vmp="":
         # already exists.
         if [ "$VM_PLATFORM" != "qemu" ] || [ -f /etc/nixos/features.nix ]; then
             _features_set "vexos.vm.platform" "$VM_PLATFORM"
+        fi
+    fi
+
+    # Desktop environment selection (desktop role only).
+    DE_CHANGED="false"
+    if [ "$ROLE" = "desktop" ]; then
+        # Capture the CURRENTLY ACTIVE desktop environment before anything
+        # below rewrites features.nix, so we can tell whether this switch is
+        # actually changing the DE. Only an uncommented line counts — a
+        # commented line has no effect on the running system, so the true
+        # active value in that case is still the NixOS default, "gnome".
+        OLD_DESKTOP_ENV="gnome"
+        if [ -f /etc/nixos/features.nix ]; then
+            _old="$(grep -oP '^\s*vexos\.desktop\.environment\s*=\s*"\K[a-z]+' /etc/nixos/features.nix 2>/dev/null || true)"
+            [ -n "$_old" ] && OLD_DESKTOP_ENV="$_old"
+        fi
+
+        if [ -z "$DESKTOP_ENV" ]; then
+            echo ""
+            echo "Select desktop environment:"
+            echo "  1) gnome    — Full-featured, most tested (default)"
+            echo "  2) cosmic   — System76's new Rust-based desktop"
+            echo "  3) hyprland — Tiling Wayland compositor + Noctalia shell"
+            echo ""
+            while [ -z "$DESKTOP_ENV" ]; do
+                printf "Choice [1-3] or name (default: gnome): "
+                read -r INPUT
+                case "${INPUT,,}" in
+                    ""|1|gnome) DESKTOP_ENV="gnome"    ;;
+                    2|cosmic)   DESKTOP_ENV="cosmic"   ;;
+                    3|hyprland) DESKTOP_ENV="hyprland" ;;
+                    *) echo "Invalid — enter 1-3 or gnome/cosmic/hyprland" ;;
+                esac
+            done
+        fi
+
+        case "$DESKTOP_ENV" in
+            gnome|cosmic|hyprland) ;;
+            *) echo "error: invalid desktop environment '${DESKTOP_ENV}' — must be gnome, cosmic, or hyprland" >&2; exit 1 ;;
+        esac
+
+        if [ "$DESKTOP_ENV" != "$OLD_DESKTOP_ENV" ]; then
+            DE_CHANGED="true"
+        fi
+
+        # Only touches features.nix for a non-default DE — gnome stays the
+        # implicit default with no file needed, matching
+        # vexos.desktop.environment's own NixOS default.
+        if [ "$DESKTOP_ENV" != "gnome" ] || [ -f /etc/nixos/features.nix ]; then
+            _features_set "vexos.desktop.environment" "$DESKTOP_ENV"
         fi
     fi
 
