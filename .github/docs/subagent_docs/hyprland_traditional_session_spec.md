@@ -1,3 +1,8 @@
+> **SUPERSEDED — do not implement.** This spec proposed SDDM + sddm-astronaut as the
+> greeter. The user subsequently chose the Noctalia family (v5) instead. The live spec is
+> `hyprland_noctalia_session_spec.md`. Retained only for the research it records (GNOME
+> capability mapping, the dead `WLR_RENDERER_ALLOW_SOFTWARE` finding, portal redundancy).
+
 # Hyprland: traditional stock session + SDDM greeter — Specification
 
 ## 1. Current state analysis

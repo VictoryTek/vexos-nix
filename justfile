@@ -112,8 +112,9 @@ _resolve-flake-dir target flake_override="":
 #   just switch desktop amd            — direct switch
 #   just switch desktop amd . cosmic   — explicit flake override + desktop environment
 #   just switch desktop amd "" hyprland — desktop environment, default flake
+#   just switch desktop vm "" "" virtualbox — VM hypervisor (qemu / virtualbox)
 [group('System Build & Deploy')]
-switch role="" variant="" flake="" de="":
+switch role="" variant="" flake="" de="" vmp="":
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -134,6 +135,43 @@ switch role="" variant="" flake="" de="":
     VARIANT="{{variant}}"
     FLAKE_OVERRIDE="{{flake}}"
     DESKTOP_ENV="{{de}}"
+    VM_PLATFORM="{{vmp}}"
+
+    # _features_set <nix.option.path> <string-value>
+    # Ensures /etc/nixos/features.nix exists (seeded from template/features.nix),
+    # then replaces the option if already present (commented or not) or appends
+    # it before the closing brace. Mirrors the replace-or-append sed pattern
+    # `just enable-feature` uses, so the file stays editable by both paths.
+    # Shared by the desktop-environment and VM-platform blocks below.
+    _features_set() {
+        local _key="$1" _val="$2" _key_re
+        local FEAT_FILE="/etc/nixos/features.nix"
+        _key_re="$(printf '%s' "$_key" | sed 's/\./\\./g')"
+
+        if [ ! -f "$FEAT_FILE" ]; then
+            local _jf_dir="{{justfile_directory()}}"
+            local TEMPLATE_SRC=""
+            for _candidate in "$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
+                if [ -f "$_candidate/template/features.nix" ]; then
+                    TEMPLATE_SRC="$_candidate/template/features.nix"
+                    break
+                fi
+            done
+            if [ -n "$TEMPLATE_SRC" ]; then
+                sudo cp "$TEMPLATE_SRC" "$FEAT_FILE"
+                sudo sed -i 's/\r//' "$FEAT_FILE"
+            fi
+        fi
+
+        if [ -f "$FEAT_FILE" ]; then
+            if grep -qP "^\s*#?\s*${_key_re}\s*=" "$FEAT_FILE" 2>/dev/null; then
+                sudo sed -i -E "s|^(\s*)#?\s*${_key_re}\s*=\s*\"[a-z-]+\"\s*;|\1${_key} = \"${_val}\";|" "$FEAT_FILE"
+            else
+                sudo sed -i "\$ s|^}|  ${_key} = \"${_val}\";\n}|" "$FEAT_FILE"
+            fi
+            echo "✓ ${_key} set to ${_val} in $FEAT_FILE"
+        fi
+    }
 
     if [ -z "$ROLE" ]; then
         echo ""
@@ -218,7 +256,7 @@ switch role="" variant="" flake="" de="":
             echo "Select desktop environment:"
             echo "  1) gnome    — Full-featured, most tested (default)"
             echo "  2) cosmic   — System76's new Rust-based desktop"
-            echo "  3) hyprland — Tiling Wayland compositor + Quickshell shell"
+            echo "  3) hyprland — Tiling Wayland compositor + Noctalia shell"
             echo ""
             while [ -z "$DESKTOP_ENV" ]; do
                 printf "Choice [1-3] or name (default: gnome): "
@@ -243,32 +281,61 @@ switch role="" variant="" flake="" de="":
 
         # Only touches features.nix for a non-default DE — gnome stays the
         # implicit default with no file needed, matching
-        # vexos.desktop.environment's own NixOS default. Mirrors the
-        # replace-or-append sed pattern `just enable-feature` uses.
+        # vexos.desktop.environment's own NixOS default.
         if [ "$DESKTOP_ENV" != "gnome" ] || [ -f /etc/nixos/features.nix ]; then
-            FEAT_FILE="/etc/nixos/features.nix"
-            if [ ! -f "$FEAT_FILE" ]; then
-                _jf_dir="{{justfile_directory()}}"
-                TEMPLATE_SRC=""
-                for _candidate in "$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
-                    if [ -f "$_candidate/template/features.nix" ]; then
-                        TEMPLATE_SRC="$_candidate/template/features.nix"
-                        break
-                    fi
-                done
-                if [ -n "$TEMPLATE_SRC" ]; then
-                    sudo cp "$TEMPLATE_SRC" "$FEAT_FILE"
-                    sudo sed -i 's/\r//' "$FEAT_FILE"
-                fi
-            fi
-            if [ -f "$FEAT_FILE" ]; then
-                if grep -qP '^\s*#?\s*vexos\.desktop\.environment\s*=' "$FEAT_FILE" 2>/dev/null; then
-                    sudo sed -i -E "s|^(\s*)#?\s*(vexos\.desktop\.environment)\s*=\s*\"[a-z]+\"\s*;|\1vexos.desktop.environment = \"${DESKTOP_ENV}\";|" "$FEAT_FILE"
-                else
-                    sudo sed -i "\$ s|^}|  vexos.desktop.environment = \"${DESKTOP_ENV}\";\n}|" "$FEAT_FILE"
-                fi
-                echo "✓ Desktop environment set to ${DESKTOP_ENV} in $FEAT_FILE"
-            fi
+            _features_set "vexos.desktop.environment" "$DESKTOP_ENV"
+        fi
+    fi
+
+    # VM hypervisor selection (vm variant only).
+    # QEMU/KVM and VirtualBox need different guest packages, and VirtualBox pins
+    # the kernel to 6.18 LTS to keep its guest additions building — so a
+    # Proxmox/QEMU guest keeps its role's own kernel instead of inheriting that
+    # pin. Without this block, `just switch <role> vm` would silently leave an
+    # existing VirtualBox host on the "qemu" default and drop its guest
+    # additions on the next rebuild.
+    VM_PLATFORM_CHANGED="false"
+    if [ "$VARIANT" = "vm" ]; then
+        # Capture the currently active platform before rewriting features.nix.
+        # Only an uncommented line counts — a commented line has no effect on
+        # the running system, so the true active value is the NixOS default.
+        OLD_VM_PLATFORM="qemu"
+        if [ -f /etc/nixos/features.nix ]; then
+            _oldvm="$(grep -oP '^\s*vexos\.vm\.platform\s*=\s*"\K[a-z]+' /etc/nixos/features.nix 2>/dev/null || true)"
+            [ -n "$_oldvm" ] && OLD_VM_PLATFORM="$_oldvm"
+        fi
+
+        if [ -z "$VM_PLATFORM" ]; then
+            echo ""
+            echo "Select hypervisor:"
+            echo "  1) qemu       — QEMU/KVM, Proxmox, libvirt (guest agent + SPICE)"
+            echo "  2) virtualbox — VirtualBox Guest Additions (pins kernel 6.18 LTS)"
+            echo ""
+            while [ -z "$VM_PLATFORM" ]; do
+                printf "Choice [1-2] or name (default: qemu): "
+                read -r INPUT
+                case "${INPUT,,}" in
+                    ""|1|qemu|kvm|proxmox) VM_PLATFORM="qemu"       ;;
+                    2|virtualbox|vbox)     VM_PLATFORM="virtualbox" ;;
+                    *) echo "Invalid — enter 1-2 or qemu/virtualbox" ;;
+                esac
+            done
+        fi
+
+        case "$VM_PLATFORM" in
+            qemu|virtualbox) ;;
+            *) echo "error: invalid VM platform '${VM_PLATFORM}' — must be qemu or virtualbox" >&2; exit 1 ;;
+        esac
+
+        if [ "$VM_PLATFORM" != "$OLD_VM_PLATFORM" ]; then
+            VM_PLATFORM_CHANGED="true"
+        fi
+
+        # As with the DE, "qemu" is the option's own NixOS default, so a
+        # QEMU/Proxmox guest needs no features.nix entry unless the file
+        # already exists.
+        if [ "$VM_PLATFORM" != "qemu" ] || [ -f /etc/nixos/features.nix ]; then
+            _features_set "vexos.vm.platform" "$VM_PLATFORM"
         fi
     fi
 
@@ -289,14 +356,25 @@ switch role="" variant="" flake="" de="":
     # reboot straight into it — no live activation attempt, no [y/N] prompt,
     # since the current session can't reach the new DE without a reboot
     # regardless of the answer.
-    if [ "$DE_CHANGED" = "true" ]; then
-        echo "Desktop environment is changing: ${OLD_DESKTOP_ENV} -> ${DESKTOP_ENV}"
-        echo "Switching display managers live is not safe, so this will be built"
+    #
+    # A VM-platform change is queued the same way, for a different reason: it
+    # swaps boot.kernelPackages (VirtualBox pins 6.18 LTS, QEMU follows the
+    # role's own kernel) and swaps the guest-additions services. A live switch
+    # would leave the running kernel mismatched against the new generation's
+    # modules, so it needs a reboot regardless — queue it rather than half-apply.
+    if [ "$DE_CHANGED" = "true" ] || [ "$VM_PLATFORM_CHANGED" = "true" ]; then
+        if [ "$DE_CHANGED" = "true" ]; then
+            echo "Desktop environment is changing: ${OLD_DESKTOP_ENV} -> ${DESKTOP_ENV}"
+        fi
+        if [ "$VM_PLATFORM_CHANGED" = "true" ]; then
+            echo "VM platform is changing: ${OLD_VM_PLATFORM} -> ${VM_PLATFORM} (kernel change)"
+        fi
+        echo "This is not safe to apply live, so it will be built"
         echo "and queued for the next boot instead of applied to this session."
         echo ""
         sudo nixos-rebuild boot --impure --flake "path:${_flake_dir}#${TARGET}"
         echo ""
-        echo "✓ All set — ${DESKTOP_ENV} is queued as the next boot entry. Rebooting now..."
+        echo "✓ All set — ${TARGET} is queued as the next boot entry. Rebooting now..."
         sleep 2
         sudo systemctl reboot
         exit 0

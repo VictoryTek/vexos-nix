@@ -353,14 +353,14 @@ if [ "$ROLE" = "desktop" ]; then
     DESKTOP_ENV="$(ui_choose "Select desktop environment" \
       "gnome:GNOME    — Full-featured, most tested (default)" \
       "cosmic:COSMIC   — System76's new Rust-based desktop" \
-      "hyprland:Hyprland — Tiling Wayland compositor + Quickshell shell")"
+      "hyprland:Hyprland — Tiling Wayland compositor + Noctalia shell")"
   else
     DESKTOP_ENV=""
     while [ -z "$DESKTOP_ENV" ]; do
       center_block "Select desktop environment:
   1) GNOME    — Full-featured, most tested (default)
   2) COSMIC   — System76's new Rust-based desktop
-  3) Hyprland — Tiling Wayland compositor + Quickshell shell"
+  3) Hyprland — Tiling Wayland compositor + Noctalia shell"
       echo ""
       printf "Enter choice [1-3] or name (default: gnome): "
       read -r INPUT </dev/tty

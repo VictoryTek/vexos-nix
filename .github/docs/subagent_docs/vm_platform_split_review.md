@@ -10,6 +10,42 @@ Spec: `.github/docs/subagent_docs/vm_platform_split_spec.md`
 - `hosts/vanilla-vm.nix`
 - `template/features.nix`
 - `scripts/install.sh`
+- `justfile`
+
+## Second defect found — spec gap, reported by the user
+
+**`just switch` had no VM-platform handling at all.**
+
+The spec's §3.5 covered only `scripts/install.sh`. But `just switch` also selects
+the GPU variant post-install, so switching *to* a `vm` variant on a VirtualBox
+host would silently leave `vexos.vm.platform` unset — falling back to the
+`"qemu"` default and dropping guest additions on the next rebuild, with no
+interactive way to set it. A genuine incompleteness in the delivered change, not
+a deliberate omission.
+
+Fix, mirroring the existing desktop-environment prompt in the same recipe:
+
+- New optional 5th parameter — `switch role="" variant="" flake="" de="" vmp=""`
+  — so `just switch desktop vm "" "" virtualbox` works non-interactively, and
+  the interactive path prompts whenever `VARIANT = "vm"`.
+- Extracted `_features_set <key> <value>` inside the recipe and routed **both**
+  `vexos.desktop.environment` and `vexos.vm.platform` through it. Same refactor,
+  same justification as `install.sh`: a second consumer now exists. The DE block
+  drops from ~28 lines to 3.
+- Reads the currently-active platform from `features.nix` first, so a real
+  change can be distinguished from a no-op.
+- A platform change is routed through the existing `nixos-rebuild boot` +
+  reboot path, alongside a DE change but for a different reason: it swaps
+  `boot.kernelPackages` (VirtualBox pins 6.18, QEMU follows the role's own
+  kernel) and swaps the guest-additions services, so a live switch would leave
+  the running kernel mismatched against the new generation's modules.
+- Fixed the queued-boot success message, which printed `${DESKTOP_ENV}`
+  unconditionally and would have been blank for a non-desktop role. Now prints
+  `${TARGET}`.
+
+Validation: `just --list` parses; the `switch` recipe body extracted via
+`just --show switch` with `{{…}}` interpolations substituted passes `bash -n`;
+the new signature is confirmed present.
 
 ## Defect found and fixed during review
 

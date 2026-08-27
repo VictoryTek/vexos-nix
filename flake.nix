@@ -56,6 +56,30 @@
       url = "github:VictoryTek/vexboard";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
+
+    # Noctalia v5 — Wayland desktop shell (bar, dock, launcher, control center,
+    # notifications, wallpaper, lock screen, clipboard history, OSDs, tray).
+    # Used by modules/hyprland-desktop.nix + home/noctalia.nix, desktop role only.
+    # Not in nixpkgs. C++23 + Meson rendering directly to Wayland/OpenGL ES — the
+    # v5 rewrite has no Qt/GTK/Quickshell dependency (the v4 toolkit fork
+    # noctalia-qs is archived upstream).
+    # Tracks main deliberately: v5 is in beta and the daily flake-update job is
+    # expected to follow it. Pin to a release tag (e.g. .../noctalia/v5.0.0-beta.9)
+    # if an upstream change ever breaks the shell.
+    noctalia = {
+      url = "github:noctalia-dev/noctalia";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # noctalia-greeter — greetd greeter matching Noctalia's design, running in
+    # its own bundled wlroots compositor (noctalia-greeter-session).
+    # Not in nixpkgs. Its NixOS module configures services.greetd itself.
+    # Tracks main for the same reason as noctalia above; upstream's own README
+    # specifies inputs.nixpkgs.follows = "nixpkgs".
+    noctalia-greeter = {
+      url = "github:noctalia-dev/noctalia-greeter";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, impermanence, sops-nix, up, ... }@inputs:
@@ -177,6 +201,26 @@
     # sops-nix module shared by server and headless-server roles.
     sopsBase = [ sops-nix.nixosModules.sops ];
 
+    # Noctalia overlays + greeter NixOS module — desktop role only.
+    # The overlays expose pkgs.noctalia and pkgs.noctalia-greeter, which
+    # modules/hyprland-desktop.nix and home/noctalia.nix reference by name so
+    # that neither has to take `inputs` — no module in modules/ or home/ does,
+    # and this keeps that invariant. Same shape as vexboardBase above.
+    #
+    # Both are inert unless enabled: the greeter module does nothing until
+    # programs.noctalia-greeter.enable is set, which happens only inside
+    # modules/hyprland-desktop.nix's isHyprland guard. GNOME and COSMIC desktop
+    # hosts are therefore unaffected, and the packages are never built for them.
+    noctaliaBase = [
+      {
+        nixpkgs.overlays = [
+          inputs.noctalia.overlays.default
+          inputs.noctalia-greeter.overlays.default
+        ];
+      }
+      inputs.noctalia-greeter.nixosModules.default
+    ];
+
     # Single source of truth for per-role wiring. Consumed by `mkHost` (per-host
     # nixosConfigurations) AND by `mkBaseModule` (the nixosModules.*Base exports
     # that template/etc-nixos-flake.nix imports). Keeping both pathways derived
@@ -195,7 +239,7 @@
     roles = {
       desktop = {
         homeFile         = ./home-desktop.nix;
-        baseModules      = commonBase ++ [ upModule vexportalModule ];
+        baseModules      = commonBase ++ [ upModule vexportalModule ] ++ noctaliaBase;
         extraModules     = [];
         hostLocalModules = featuresModule;
       };

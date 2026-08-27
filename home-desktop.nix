@@ -9,6 +9,7 @@
     ./home/photogimp.nix
     ./home/gnome-common.nix
     ./home/gnome-common-browser.nix
+    ./home/noctalia.nix              # active only when vexos.desktop.environment == "hyprland"
   ];
 
   photogimp.enable = true;
