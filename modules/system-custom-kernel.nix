@@ -19,13 +19,16 @@
 #
 #   1000  mkDefault      modules/system.nix
 #    100  normal         modules/system-latest-kernel.nix, system-lts-kernel.nix
+#     95  mkOverride     modules/gpu/nvidia-legacy-kernel.nix (legacy_580 → 7.1)
 #     90  mkOverride     THIS MODULE — beats the role's default kernel track
 #     75  mkOverride     modules/zfs-server.nix
 #     50  mkForce        modules/gpu/vm-guest-additions.nix
 #
-# 90 outranks the role's normal kernel choice while still losing to the ZFS
-# server pin and the VM guest-additions pin — VM variants keep their 6.18
-# kernel even if this option is enabled.
+# 90 outranks the role's normal kernel choice and the legacy_580 NVIDIA pin,
+# while still losing to the ZFS server pin and the VM guest-additions pin — VM
+# variants keep their 6.18 kernel even if this option is enabled. Note that
+# enabling this feature on a legacy_580 host overrides the 7.1 pin that variant
+# needs; the 580 driver does not build against 7.2 or the OGC 7.2 tree.
 { config, pkgs, lib, ... }:
 let
   cfg = config.vexos.features.kernel;

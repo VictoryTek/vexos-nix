@@ -283,8 +283,17 @@
         # declares vexos.gpu.nvidiaDriverVariant and enables the proprietary driver.
         # For the other roles the host file already imports the same path; the
         # module system deduplicates path imports, so this is a no-op there.
+        # legacy_580 (Maxwell/Pascal/Volta) does not build against Linux 7.2, so
+        # roles whose default kernel track is linuxPackages_latest additionally
+        # import the 7.1 pin. Roles on the LTS track (server, headless-server,
+        # htpc) already sit at 6.12, where 580 builds fine — they must NOT get
+        # the pin, as it would move them off LTS.
+        latestKernelRoles = [ "desktop" "stateless" ];
         legacyExtra = lib.optional (nvidiaVariant != null) {
-          imports = [ ./modules/gpu/nvidia.nix ];
+          imports = [ ./modules/gpu/nvidia.nix ]
+            ++ lib.optional
+                 (nvidiaVariant == "legacy_580" && builtins.elem role latestKernelRoles)
+                 ./modules/gpu/nvidia-legacy-kernel.nix;
           vexos.gpu.nvidiaDriverVariant = nvidiaVariant;
         };
 
@@ -313,47 +322,47 @@
 
     # ── Host descriptor table — single source of truth for which systems exist ──
     # 30 outputs total: 25 role/GPU variants + 5 vanilla role variants.
-    # Output names use the no-underscore "legacy535" suffix; the option value
-    # uses the underscored form "legacy_535".
+    # Output names use the no-underscore "legacy580" suffix; the option value
+    # uses the underscored form "legacy_580".
     hostList = [
       # Desktop
       { name = "vexos-desktop-amd";              role = "desktop";         gpu = "amd"; }
       { name = "vexos-desktop-nvidia";           role = "desktop";         gpu = "nvidia"; }
-      { name = "vexos-desktop-nvidia-legacy535"; role = "desktop";         gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
+      { name = "vexos-desktop-nvidia-legacy580"; role = "desktop";         gpu = "nvidia"; nvidiaVariant = "legacy_580"; }
       { name = "vexos-desktop-intel";            role = "desktop";         gpu = "intel"; }
       { name = "vexos-desktop-vm";               role = "desktop";         gpu = "vm"; }
 
       # Stateless
       { name = "vexos-stateless-amd";              role = "stateless";     gpu = "amd"; }
       { name = "vexos-stateless-nvidia";           role = "stateless";     gpu = "nvidia"; }
-      { name = "vexos-stateless-nvidia-legacy535"; role = "stateless";     gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
+      { name = "vexos-stateless-nvidia-legacy580"; role = "stateless";     gpu = "nvidia"; nvidiaVariant = "legacy_580"; }
       { name = "vexos-stateless-intel";            role = "stateless";     gpu = "intel"; }
       { name = "vexos-stateless-vm";               role = "stateless";     gpu = "vm"; }
 
       # GUI Server
       { name = "vexos-server-amd";              role = "server";           gpu = "amd"; }
       { name = "vexos-server-nvidia";           role = "server";           gpu = "nvidia"; }
-      { name = "vexos-server-nvidia-legacy535"; role = "server";           gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
+      { name = "vexos-server-nvidia-legacy580"; role = "server";           gpu = "nvidia"; nvidiaVariant = "legacy_580"; }
       { name = "vexos-server-intel";            role = "server";           gpu = "intel"; }
       { name = "vexos-server-vm";               role = "server";           gpu = "vm"; }
 
       # Headless Server
       { name = "vexos-headless-server-amd";              role = "headless-server"; gpu = "amd"; }
       { name = "vexos-headless-server-nvidia";           role = "headless-server"; gpu = "nvidia"; }
-      { name = "vexos-headless-server-nvidia-legacy535"; role = "headless-server"; gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
+      { name = "vexos-headless-server-nvidia-legacy580"; role = "headless-server"; gpu = "nvidia"; nvidiaVariant = "legacy_580"; }
       { name = "vexos-headless-server-intel";            role = "headless-server"; gpu = "intel"; }
       { name = "vexos-headless-server-vm";               role = "headless-server"; gpu = "vm"; }
 
       # HTPC
       { name = "vexos-htpc-amd";              role = "htpc";               gpu = "amd"; }
       { name = "vexos-htpc-nvidia";           role = "htpc";               gpu = "nvidia"; }
-      { name = "vexos-htpc-nvidia-legacy535"; role = "htpc";               gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
+      { name = "vexos-htpc-nvidia-legacy580"; role = "htpc";               gpu = "nvidia"; nvidiaVariant = "legacy_580"; }
       { name = "vexos-htpc-intel";            role = "htpc";               gpu = "intel"; }
       { name = "vexos-htpc-vm";               role = "htpc";               gpu = "vm"; }
       # Vanilla (stock NixOS baseline)
       { name = "vexos-vanilla-amd";              role = "vanilla"; gpu = "amd"; }
       { name = "vexos-vanilla-nvidia";           role = "vanilla"; gpu = "nvidia"; }
-      { name = "vexos-vanilla-nvidia-legacy535"; role = "vanilla"; gpu = "nvidia"; nvidiaVariant = "legacy_535"; }
+      { name = "vexos-vanilla-nvidia-legacy580"; role = "vanilla"; gpu = "nvidia"; nvidiaVariant = "legacy_580"; }
       { name = "vexos-vanilla-intel";            role = "vanilla"; gpu = "intel"; }
       { name = "vexos-vanilla-vm";               role = "vanilla"; gpu = "vm"; }
     ];
