@@ -124,6 +124,29 @@ Fixed by pinning the flake output selector to `nixpkgs#chafa^bin`, which
 prints only the binary output's store path. Verified locally
 (`nix build nixpkgs#chafa^bin --no-link --print-out-paths` → single line).
 
+## Post-deploy fix #2 (visual quality)
+
+User feedback on a real VM: the rendered logo looked coarse/blocky at the
+original fixed `--size=50x16`. Two separate questions were resolved:
+
+- **Sixel/kitty graphics protocol**: already worked with no code change.
+  Verified directly: `TERM=xterm-kitty chafa --size=20x10 file.png` run
+  through a command-substitution pipe (not a live tty) correctly emitted
+  Kitty APC image escape sequences instead of symbol art — chafa's format
+  auto-detection reads `$TERM`/`$COLORTERM`/similar env vars, which survive
+  piping. The blocky result in the screenshot was chafa correctly falling
+  back to symbol mode because that particular terminal (VTE-based, as used
+  on the live ISO) doesn't advertise sixel/kitty support — not a detection
+  bug.
+- **Resolution**: the actual fixable issue. `--size=50x16` was a small
+  fixed box regardless of the real terminal's width, capping symbol-mode
+  detail well below what the terminal could actually display. Changed to
+  size the box to the live terminal width (`tput cols`, minus a 6-column
+  margin, capped at 110 to avoid an absurdly large render on ultrawide
+  terminals), height capped at 20 rows. Verified: at a realistic 84-column
+  width the rendered output grew from ~6.3K chars/~10 rows to ~16K
+  chars/~17 rows of block-symbol detail — over 2x the resolution.
+
 ## Risks and mitigations
 
 - **chafa unavailable / offline install:** falls back to existing hardcoded

@@ -108,4 +108,15 @@ files/pixmaps/desktop/vex.png` produces non-empty rendered output through
 the exact code path the script uses. `bash -n` and `shellcheck -x` both
 clean after the fix.
 
+## Post-deploy fix #2 (visual quality)
+
+Real-VM feedback: rendered logo looked coarse at the fixed `--size=50x16`.
+Confirmed via direct test that kitty/sixel auto-detection already worked
+through the command-substitution pipe (env-var based, not tty-dependent) —
+the blocky screenshot was VTE's genuine lack of sixel/kitty support, not a
+detection failure. Sized the render box to `tput cols` (margin + 110 cap,
+20-row height cap) instead of a fixed 50x16. Re-verified: comparable
+terminal width now produces ~2.5x the rendered detail (16K vs 6.3K chars,
+17 vs ~10 rows). `bash -n`/`shellcheck -x` both clean after the change.
+
 ## Result: PASS

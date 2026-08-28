@@ -292,7 +292,20 @@ if [ -n "$CHAFA" ]; then
   _LOGO_PNG="$(mktemp /tmp/vexos-install-logo.XXXXXX.png)"
   if curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/files/pixmaps/desktop/vex.png" \
        -o "$_LOGO_PNG" 2>/dev/null; then
-    VEXOS_LOGO_RENDERED="$("$CHAFA" --size=50x16 --animate=off "$_LOGO_PNG" 2>/dev/null || true)"
+    # Size the render box to the real terminal width instead of a fixed 50
+    # columns — chafa's symbol-mode resolution is bounded by this box, so a
+    # fixed small box looked coarse/blocky on any terminal wider than 50
+    # columns. Capped at 110 cols so an ultrawide terminal doesn't render an
+    # absurdly large logo; a 20-row height cap keeps it from crowding out
+    # the role-selection menu on shorter terminal windows. On terminals that
+    # support the kitty/sixel graphics protocols, chafa auto-detects that
+    # from $TERM/$COLORTERM (verified: this works even though stdout here
+    # is a command-substitution pipe, not a live tty) and renders actual
+    # pixel graphics instead of symbols — no --format flag needed.
+    _LOGO_COLS=$(tput cols 2>/dev/null || echo 80)
+    (( _LOGO_COLS > 110 )) && _LOGO_COLS=110
+    (( _LOGO_COLS > 6 )) && _LOGO_COLS=$(( _LOGO_COLS - 6 ))
+    VEXOS_LOGO_RENDERED="$("$CHAFA" --size="${_LOGO_COLS}x20" --animate=off "$_LOGO_PNG" 2>/dev/null || true)"
   fi
   rm -f "$_LOGO_PNG"
 fi
