@@ -104,13 +104,21 @@ render_header() {
   local cols; cols=$(tput cols 2>/dev/null || echo 80)
   HEADER_PAD=$(( (cols - 50) / 2 ))
   (( HEADER_PAD < 0 )) && HEADER_PAD=0
+  local logo_text
   if [ -n "$VEXOS_LOGO_RENDERED" ]; then
-    echo -e "$(center_block "$VEXOS_LOGO_RENDERED")${RESET}"
+    logo_text="$VEXOS_LOGO_RENDERED"
+    echo -e "$(center_block "$logo_text")${RESET}"
   else
-    echo -e "${VEXOS_TEAL}$(center_block "$VEXOS_LOGO")${RESET}"
+    logo_text="$VEXOS_LOGO"
+    echo -e "${VEXOS_TEAL}$(center_block "$logo_text")${RESET}"
   fi
   echo -e "${BOLD}${VEXOS_ORANGE}$(center_block "VexOS Interactive Installer")${RESET}"
   echo ""
+  # HEADER_LINES = lines just printed (logo + title + blank) — lets
+  # run_live_build's dyn_row track the logo's actual height (fixed 7 lines
+  # for VEXOS_LOGO, up to 16 for the chafa-rendered VEXOS_LOGO_RENDERED)
+  # instead of a hardcoded row number.
+  HEADER_LINES=$(( $(printf '%s\n' "$logo_text" | wc -l) + 2 ))
 }
 
 # render_progress "<label>" <current> <total> — static (non-live-redrawing)
@@ -166,26 +174,34 @@ VEXOS_TIPS=(
 # Each frame clears only the 5 lines it's about to rewrite (\033[2K per line)
 # instead of \033[J (clear-to-end-of-screen) — the earlier version cleared the
 # whole region below the logo every 0.5s, which visibly flashed/blinked on
-# real terminals. Cols, the centered title, and every tip's centered text are
-# computed once before the loop (each is a handful of forked subprocesses —
-# tput, sed, a read loop) rather than every frame, which was the other source
-# of visible lag feeding the flicker.
+# real terminals. Cols, the centered title, every tip's centered text, and
+# dyn_row (the row right after the logo/title/blank-line header) are all
+# recomputed by recompute_layout(), called once before the loop starts and
+# again — only — after a confirmed SIGWINCH (terminal resize). Without this,
+# a resize mid-build leaves the cursor-addressed redraw writing at a stale
+# row/width, which duplicates/garbles the on-screen block as the terminal's
+# own buffer reflows around it.
 run_live_build() {
   local title="$1"; shift
-  local build_log exit_code=0 dyn_row=10
+  local build_log exit_code=0 dyn_row
   local bar_width=40 elapsed pct tip_idx tip_count=${#VEXOS_TIPS[@]}
-  local cols bar_pad centered_title i
+  local cols bar_pad centered_title i resized=0
   local -a centered_tips=()
   build_log="$(mktemp /tmp/vexos-install-build.XXXXXX.log)"
   BUILD_LOG_PATH="$build_log"
 
-  cols=$(tput cols 2>/dev/null || echo 80)
-  bar_pad=$(( (cols - bar_width) / 2 ))
-  (( bar_pad < 0 )) && bar_pad=0
-  centered_title="$(center_block "$title")"
-  for i in "${!VEXOS_TIPS[@]}"; do
-    centered_tips[i]="$(center_block "Tip: ${VEXOS_TIPS[$i]}")"
-  done
+  recompute_layout() {
+    cols=$(tput cols 2>/dev/null || echo 80)
+    bar_pad=$(( (cols - bar_width) / 2 ))
+    (( bar_pad < 0 )) && bar_pad=0
+    centered_title="$(center_block "$title")"
+    centered_tips=()
+    for i in "${!VEXOS_TIPS[@]}"; do
+      centered_tips[i]="$(center_block "Tip: ${VEXOS_TIPS[$i]}")"
+    done
+    dyn_row=$(( ${HEADER_LINES:-9} + 1 ))
+  }
+  recompute_layout
 
   sudo -v  # refresh the sudo timestamp — a backgrounded job with redirected
            # stdio can't show a password prompt if it expires mid-build.
@@ -205,9 +221,16 @@ run_live_build() {
     printf '\033[2K%b\n' "${frame_tip:-}"
   }
 
+  trap 'resized=1' WINCH
+
   printf '\033[?25l'
   local start_epoch=$EPOCHSECONDS
   while kill -0 "$build_pid" 2>/dev/null; do
+    if (( resized )); then
+      resized=0
+      render_header
+      recompute_layout
+    fi
     elapsed=$(( EPOCHSECONDS - start_epoch ))
     pct=$(( 92 * elapsed / (elapsed + 60) ))
     tip_idx=$(( (elapsed / 6) % tip_count ))
@@ -222,7 +245,8 @@ run_live_build() {
     printf '\033[%d;1H\033[J' "$dyn_row"  # failing — drop the animation entirely
   fi
   printf '\033[?25h'
-  unset -f redraw_frame
+  trap - WINCH
+  unset -f redraw_frame recompute_layout
   return $exit_code
 }
 
