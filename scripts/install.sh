@@ -186,6 +186,22 @@ run_live_build() {
   build_log="$(mktemp /tmp/vexos-install-build.XXXXXX.log)"
   BUILD_LOG_PATH="$build_log"
 
+  # _truncate_to_width <text> <max> — returns <text> unchanged if it fits,
+  # else the first max-1 characters + an ellipsis. redraw_frame clears the
+  # tip line with a single \033[2K (one physical row); an untruncated tip
+  # that's wider than the terminal wraps onto a second physical row that
+  # never gets cleared, leaving a stale fragment behind once a shorter tip
+  # rotates in. Truncating in recompute_layout (below) guarantees every tip
+  # fits on one row, at any terminal width.
+  _truncate_to_width() {
+    local text="$1" max="$2"
+    if (( ${#text} > max )); then
+      printf '%s…' "${text:0:$(( max - 1 ))}"
+    else
+      printf '%s' "$text"
+    fi
+  }
+
   recompute_layout() {
     cols=$(tput cols 2>/dev/null || echo 80)
     bar_pad=$(( (cols - bar_width) / 2 ))
@@ -193,7 +209,7 @@ run_live_build() {
     centered_title="$(center_block "$title")"
     centered_tips=()
     for i in "${!VEXOS_TIPS[@]}"; do
-      centered_tips[i]="$(center_block "Tip: ${VEXOS_TIPS[$i]}")"
+      centered_tips[i]="$(center_block "$(_truncate_to_width "Tip: ${VEXOS_TIPS[$i]}" $(( cols - 2 )))")"
     done
     dyn_row=$(( ${HEADER_LINES:-9} + 1 ))
   }
@@ -242,7 +258,7 @@ run_live_build() {
   fi
   printf '\033[?25h'
   trap - WINCH
-  unset -f redraw_frame recompute_layout
+  unset -f redraw_frame recompute_layout _truncate_to_width
   return $exit_code
 }
 
