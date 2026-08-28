@@ -119,4 +119,13 @@ detection failure. Sized the render box to `tput cols` (margin + 110 cap,
 terminal width now produces ~2.5x the rendered detail (16K vs 6.3K chars,
 17 vs ~10 rows). `bash -n`/`shellcheck -x` both clean after the change.
 
+## Post-deploy fix #3 (too large)
+
+Real-VM feedback: the 110x20 box rendered a logo tall enough to crop at the
+top of the terminal window. Reduced the cap to 60 cols / 14 rows.
+Re-verified at a representative 54-column width: 11 rows / ~6.8K chars —
+comparable footprint to the original 50x16 fixed box, while still tracking
+the real terminal width for reasonably dense detail. `bash -n`/
+`shellcheck -x` both clean.
+
 ## Result: PASS

@@ -147,6 +147,16 @@ original fixed `--size=50x16`. Two separate questions were resolved:
   width the rendered output grew from ~6.3K chars/~10 rows to ~16K
   chars/~17 rows of block-symbol detail — over 2x the resolution.
 
+## Post-deploy fix #3 (too large)
+
+The 110x20 box from fix #2 rendered a logo tall enough to get cropped at
+the top of the terminal window on a real VM. Reduced the cap to 60 cols /
+14 rows (closer to, but still denser than, the original 50x16). Verified:
+at a representative 54-column width the render is 11 rows / ~6.8K chars —
+comparable footprint to the very first attempt, still notably denser than
+the original fixed 50x16 since width now tracks the real terminal instead
+of being hardcoded.
+
 ## Risks and mitigations
 
 - **chafa unavailable / offline install:** falls back to existing hardcoded

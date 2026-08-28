@@ -121,10 +121,6 @@ render_header() {
   HEADER_LINES=$(( $(printf '%s\n' "$logo_text" | wc -l) + 2 ))
 }
 
-# render_progress "<label>" <current> <total> — static (non-live-redrawing)
-# progress bar snapshot, appended once per build phase. Deliberately not a
-# live-updating bar: the build phase's own scrolling output (dry-build cache
-# report, live nixos-rebuild log) must stay visible, not be cleared/redrawn.
 # progress_bar <percent 0-100> <width> — echoes a filled/empty block-character
 # bar. tr operates byte-wise and mangles multi-byte UTF-8 fill characters, so
 # runs are built with printf's %.0s repeat trick instead; printf runs its
@@ -141,16 +137,16 @@ progress_bar() {
   printf '%s' "$bar"
 }
 
+# render_progress "<label>" <current> <total> — one compact status line per
+# build phase (e.g. "→ [2/4] Refreshing flake inputs..."), not a bar widget.
+# Each phase prints its own scrolling output in between calls (git init,
+# flake update, dry-build cache report) that's meant to stay visible, so a
+# single redrawn-in-place bar isn't compatible with this flow — a full bar
+# graphic repeated per phase just stacked duplicate widgets down the screen.
 render_progress() {
   local label="$1" current="$2" total="$3"
-  local cols bar_width=40 pad
-  cols=$(tput cols 2>/dev/null || echo 80)
-  pad=$(( (cols - bar_width) / 2 ))
-  (( pad < 0 )) && pad=0
   echo ""
-  printf '%*s' "$pad" ''; echo -e "${VEXOS_TEAL}$(progress_bar $(( current * 100 / total )) "$bar_width")${RESET}"
-  printf '%*s' "$pad" ''; echo -e "${BOLD}[${current}/${total}] ${label}${RESET}"
-  echo ""
+  echo -e "${VEXOS_TEAL}→ [${current}/${total}]${RESET} ${BOLD}${label}${RESET}"
 }
 
 # ---------- Live build progress screen (logo stays put, only this redraws) ---
@@ -295,17 +291,17 @@ if [ -n "$CHAFA" ]; then
     # Size the render box to the real terminal width instead of a fixed 50
     # columns — chafa's symbol-mode resolution is bounded by this box, so a
     # fixed small box looked coarse/blocky on any terminal wider than 50
-    # columns. Capped at 110 cols so an ultrawide terminal doesn't render an
-    # absurdly large logo; a 20-row height cap keeps it from crowding out
-    # the role-selection menu on shorter terminal windows. On terminals that
-    # support the kitty/sixel graphics protocols, chafa auto-detects that
-    # from $TERM/$COLORTERM (verified: this works even though stdout here
-    # is a command-substitution pipe, not a live tty) and renders actual
-    # pixel graphics instead of symbols — no --format flag needed.
+    # columns. Capped at 60 cols / 14 rows: a 110x20 box (the first attempt
+    # at this) rendered a logo so tall it got cropped at the top of the
+    # terminal window. On terminals that support the kitty/sixel graphics
+    # protocols, chafa auto-detects that from $TERM/$COLORTERM (verified:
+    # this works even though stdout here is a command-substitution pipe,
+    # not a live tty) and renders actual pixel graphics instead of symbols
+    # — no --format flag needed.
     _LOGO_COLS=$(tput cols 2>/dev/null || echo 80)
-    (( _LOGO_COLS > 110 )) && _LOGO_COLS=110
+    (( _LOGO_COLS > 60 )) && _LOGO_COLS=60
     (( _LOGO_COLS > 6 )) && _LOGO_COLS=$(( _LOGO_COLS - 6 ))
-    VEXOS_LOGO_RENDERED="$("$CHAFA" --size="${_LOGO_COLS}x20" --animate=off "$_LOGO_PNG" 2>/dev/null || true)"
+    VEXOS_LOGO_RENDERED="$("$CHAFA" --size="${_LOGO_COLS}x14" --animate=off "$_LOGO_PNG" 2>/dev/null || true)"
   fi
   rm -f "$_LOGO_PNG"
 fi
