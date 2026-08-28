@@ -277,8 +277,11 @@ CHAFA=""
 if command -v chafa >/dev/null 2>&1; then
   CHAFA="chafa"
 else
+  # chafa has separate bin/man outputs (unlike gum's single output), so
+  # --print-out-paths on plain "chafa" prints two lines; the ^bin selector
+  # pins it to just the binary output's store path.
   _CHAFA_STORE="$(nix --extra-experimental-features 'nix-command flakes' \
-    build nixpkgs#chafa --no-link --print-out-paths 2>/dev/null || true)"
+    build nixpkgs#chafa^bin --no-link --print-out-paths 2>/dev/null || true)"
   if [ -n "$_CHAFA_STORE" ] && [ -x "$_CHAFA_STORE/bin/chafa" ]; then
     CHAFA="$_CHAFA_STORE/bin/chafa"
   fi

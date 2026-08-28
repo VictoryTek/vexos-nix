@@ -95,4 +95,17 @@ verified pixel-for-pixel outside an actual terminal session — the fallback
 path guarantees no regression if fidelity is ever poor enough to be
 undesirable there.
 
+## Post-deploy fix
+
+A real fresh-VM run via `curl | bash` still showed the fallback ASCII logo.
+Cause: `nix build nixpkgs#chafa --no-link --print-out-paths` prints one
+line per output, and chafa has two outputs (`bin`, `man`); `_CHAFA_STORE`
+captured both, corrupting the `$_CHAFA_STORE/bin/chafa` path so the `-x`
+guard silently failed. Fixed by using the `nixpkgs#chafa^bin` output
+selector. Re-verified end-to-end on WSL: `_CHAFA_STORE` now resolves to a
+single valid path, and `chafa --size=50x16 --animate=off
+files/pixmaps/desktop/vex.png` produces non-empty rendered output through
+the exact code path the script uses. `bash -n` and `shellcheck -x` both
+clean after the fix.
+
 ## Result: PASS

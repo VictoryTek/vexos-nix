@@ -110,6 +110,20 @@ Architecture Pattern (Option B) does not apply. Steps:
 
 None. No NixOS module, no `configuration-*.nix`, no `flake.nix` changes.
 
+## Post-deploy fix (real-VM report)
+
+A fresh-VM run via the `curl | bash` README path still showed the old
+hardcoded ASCII logo. Root cause: `nix build nixpkgs#chafa --no-link
+--print-out-paths` prints **one line per derivation output**, and chafa's
+nixpkgs derivation has two outputs (`bin`, `man`) — unlike `gum`'s single
+output. `_CHAFA_STORE` therefore captured a two-line string, and
+`"$_CHAFA_STORE/bin/chafa"` became a garbled multi-line path, so the
+`[ -x ... ]` guard failed silently and the script always fell back to
+`VEXOS_LOGO`, indistinguishable from the intended offline fallback path.
+Fixed by pinning the flake output selector to `nixpkgs#chafa^bin`, which
+prints only the binary output's store path. Verified locally
+(`nix build nixpkgs#chafa^bin --no-link --print-out-paths` → single line).
+
 ## Risks and mitigations
 
 - **chafa unavailable / offline install:** falls back to existing hardcoded
