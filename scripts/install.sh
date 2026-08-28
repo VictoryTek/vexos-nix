@@ -104,7 +104,11 @@ render_header() {
   local cols; cols=$(tput cols 2>/dev/null || echo 80)
   HEADER_PAD=$(( (cols - 50) / 2 ))
   (( HEADER_PAD < 0 )) && HEADER_PAD=0
-  echo -e "${VEXOS_TEAL}$(center_block "$VEXOS_LOGO")${RESET}"
+  if [ -n "$VEXOS_LOGO_RENDERED" ]; then
+    echo -e "$(center_block "$VEXOS_LOGO_RENDERED")${RESET}"
+  else
+    echo -e "${VEXOS_TEAL}$(center_block "$VEXOS_LOGO")${RESET}"
+  fi
   echo -e "${BOLD}${VEXOS_ORANGE}$(center_block "VexOS Interactive Installer")${RESET}"
   echo ""
 }
@@ -235,6 +239,35 @@ else
   if [ -n "$_GUM_STORE" ] && [ -x "$_GUM_STORE/bin/gum" ]; then
     GUM="$_GUM_STORE/bin/gum"
   fi
+fi
+
+# ---------- Real brand logo via chafa (best-effort, falls back to VEXOS_LOGO) -
+# Renders the actual files/pixmaps/desktop/vex.png (shield+V icon, "VEX-OS"
+# wordmark) as terminal art instead of the generic toilet-font block text
+# above. Both chafa itself and the PNG fetch are best-effort: any failure
+# (offline, cache unreachable, GitHub unreachable) leaves VEXOS_LOGO_RENDERED
+# empty and render_header() falls back to the hardcoded VEXOS_LOGO string,
+# so this never blocks the install. Rendered once here (not per redraw) and
+# cached, since render_header() runs ~9 times per install run.
+CHAFA=""
+if command -v chafa >/dev/null 2>&1; then
+  CHAFA="chafa"
+else
+  _CHAFA_STORE="$(nix --extra-experimental-features 'nix-command flakes' \
+    build nixpkgs#chafa --no-link --print-out-paths 2>/dev/null || true)"
+  if [ -n "$_CHAFA_STORE" ] && [ -x "$_CHAFA_STORE/bin/chafa" ]; then
+    CHAFA="$_CHAFA_STORE/bin/chafa"
+  fi
+fi
+
+VEXOS_LOGO_RENDERED=""
+if [ -n "$CHAFA" ]; then
+  _LOGO_PNG="$(mktemp /tmp/vexos-install-logo.XXXXXX.png)"
+  if curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/files/pixmaps/desktop/vex.png" \
+       -o "$_LOGO_PNG" 2>/dev/null; then
+    VEXOS_LOGO_RENDERED="$("$CHAFA" --size=50x16 --animate=off "$_LOGO_PNG" 2>/dev/null || true)"
+  fi
+  rm -f "$_LOGO_PNG"
 fi
 
 # ui_choose "$title" "value1:label1" "value2:label2" ... — prints $title, lets the
