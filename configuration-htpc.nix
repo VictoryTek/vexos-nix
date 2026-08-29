@@ -10,6 +10,7 @@
     ./modules/flatpak.nix
     ./modules/network.nix
     ./modules/network-desktop.nix   # samba CLI
+    ./modules/storage-remote.nix    # attach a NAS share (NFS/CIFS) via `just attach-remote-storage`; inert until one is declared
     ./modules/packages-common.nix
     ./modules/packages-desktop.nix
     ./modules/packages-htpc.nix     # GStreamer codecs, VLC, mpv, libcec

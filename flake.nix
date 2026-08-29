@@ -159,13 +159,20 @@
     # Optional generated storage config, written by the storage recipes. Two
     # independently-owned files so local and remote configs never clobber each
     # other: storage-pool.nix (mergerfs branches + SnapRAID parity + backend,
-    # from `just create-mergerfs-pool`) and storage-remote.nix (remote NFS/CIFS
-    # mounts, from `just attach-remote-storage`). Absent files ⇒ empty list, so
-    # server outputs stay buildable on hosts that never created a pool — same
-    # pattern as serverServicesModule.
+    # from `just create-mergerfs-pool`, server-only) and storage-remote.nix
+    # (remote NFS/CIFS mounts, from `just attach-remote-storage`, universal —
+    # see storageRemoteModule below). Absent files ⇒ empty list, so outputs stay
+    # buildable on hosts that never created a pool — same pattern as
+    # serverServicesModule.
     storagePoolModule =
-      (let p = /etc/nixos/storage-pool.nix;   in if builtins.pathExists p then [ p ] else [])
-      ++ (let p = /etc/nixos/storage-remote.nix; in if builtins.pathExists p then [ p ] else []);
+      let p = /etc/nixos/storage-pool.nix; in if builtins.pathExists p then [ p ] else [];
+
+    # storage-remote.nix (remote NFS/CIFS mounts, from `just attach-remote-storage`).
+    # Split out from storagePoolModule because the remote-mount module is now
+    # universal (modules/storage-remote.nix) — attached to desktop/htpc as well
+    # as server/headless-server. Absent file ⇒ empty list.
+    storageRemoteModule =
+      let p = /etc/nixos/storage-remote.nix; in if builtins.pathExists p then [ p ] else [];
 
     # Optional per-host feature toggles for the desktop role.
     # Empty list when absent so desktop outputs stay buildable on machines that
@@ -241,13 +248,13 @@
         homeFile         = ./home-desktop.nix;
         baseModules      = commonBase ++ [ upModule vexportalModule ] ++ noctaliaBase;
         extraModules     = [];
-        hostLocalModules = featuresModule;
+        hostLocalModules = featuresModule ++ storageRemoteModule;
       };
       htpc = {
         homeFile         = ./home-htpc.nix;
         baseModules      = commonBase ++ [ upModule vexportalModule ];
         extraModules     = [];
-        hostLocalModules = featuresModule;
+        hostLocalModules = featuresModule ++ storageRemoteModule;
       };
       stateless = {
         homeFile         = ./home-stateless.nix;
@@ -264,7 +271,7 @@
         # vexboardBase: overlay + NixOS module for the default server dashboard.
         baseModules      = commonBase ++ [ upModule vexportalModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
         extraModules     = [];
-        hostLocalModules = serverServicesModule ++ featuresModule ++ storagePoolModule;
+        hostLocalModules = serverServicesModule ++ featuresModule ++ storagePoolModule ++ storageRemoteModule;
       };
       headless-server = {
         homeFile         = ./home-headless-server.nix;
@@ -279,7 +286,7 @@
         # configuration-headless-server.nix) — users can opt in via server-services.nix.
         baseModules      = commonBase ++ proxmoxBase ++ sopsBase ++ vexboardBase;
         extraModules     = [];
-        hostLocalModules = serverServicesModule ++ storagePoolModule;
+        hostLocalModules = serverServicesModule ++ storagePoolModule ++ storageRemoteModule;
       };
       vanilla = {
         homeFile         = ./home-vanilla.nix;

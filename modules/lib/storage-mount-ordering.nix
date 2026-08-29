@@ -2,7 +2,7 @@
 # Shared helper: lets a storage-consuming service module (Plex, Jellyfin,
 # Immich, Nextcloud, ...) order its systemd unit(s) after the mount(s)
 # backing its data/library — local (mergerfs/ZFS) or remote
-# (vexos.server.storage.remote, automount-based) — instead of racing a mount
+# (vexos.storage.remote, automount-based) — instead of racing a mount
 # that isn't ready yet and starting against an empty/missing path.
 #
 # Usage in a service module:
@@ -24,7 +24,7 @@
     description = ''
       Absolute mountpoint(s) this service's data/library lives under — a
       local pool (mergerfs/ZFS, e.g. "/storage") or a remote NAS mount from
-      vexos.server.storage.remote (e.g. "/mnt/nas-media").
+      vexos.storage.remote (e.g. "/mnt/nas-media").
 
       Orders the service's systemd unit(s) after that storage via
       RequiresMountsFor, so it waits for (and, for automount-based remote

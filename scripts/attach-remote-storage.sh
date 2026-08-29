@@ -157,7 +157,7 @@ fi
     echo "# /etc/nixos/secrets, referenced by path only)."
     echo "{ ... }:"
     echo "{"
-    echo "  vexos.server.storage.remote = ["
+    echo "  vexos.storage.remote = ["
     echo "    $BEGIN_MARK"
     [ -n "$EXISTING" ] && printf '%s\n' "$EXISTING"
     echo "$ENTRY"

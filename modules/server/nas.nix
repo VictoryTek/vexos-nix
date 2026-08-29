@@ -40,7 +40,7 @@ in
                          Enables vexos.server.storage.mergerfs; the actual disk
                          list and SnapRAID config are written to
                          /etc/nixos/storage-pool.nix by `just create-mergerfs-pool`.
-        This is orthogonal to vexos.server.storage.remote (attaching a pool
+        This is orthogonal to vexos.storage.remote (attaching a pool
         from another host), which can be used with either backend or on its own.
       '';
     };

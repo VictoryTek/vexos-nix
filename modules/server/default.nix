@@ -64,7 +64,7 @@
     # ── Storage Tiers (bulk mergerfs+SnapRAID, remote NFS/CIFS) ──────────────
     ./mergerfs.nix        # bulk union pool (mixed-capacity drives)
     ./snapraid.nix        # parity for the mergerfs bulk tier
-    ./storage-remote.nix  # attach a pool exported by another host (NFS/CIFS)
+    ../storage-remote.nix  # attach a pool exported by another host (NFS/CIFS) — universal module
     ./uptime-kuma.nix
     ./homepage.nix
     ./grafana.nix

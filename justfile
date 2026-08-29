@@ -1603,6 +1603,25 @@ _require-server-role:
         exit 1
     fi
 
+# Guard: abort on roles that don't import modules/storage-remote.nix. The
+# remote-mount module is wired on desktop, htpc, server and headless-server;
+# stateless and vanilla are not covered yet (writing the config there would
+# fail evaluation).
+[private]
+_require-remote-storage-role:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    case "$variant" in
+        *desktop*|*htpc*|*server*) ;;
+        *)
+            echo "error: attach-remote-storage is not available on this role yet."
+            echo "       current variant: ${variant:-unknown}"
+            echo "       supported: desktop, htpc, server, headless-server."
+            exit 1
+            ;;
+    esac
+
 # Guided one-time setup for the sops-nix encrypted secrets backend
 # (vexos.secrets.backend = "sops"). Generates the local age key used to
 # decrypt secrets on this host, then prints the public key and a .sops.yaml
@@ -1847,11 +1866,12 @@ _run-storage-script script:
 create-mergerfs-pool: _require-server-role
     @just _run-storage-script create-mergerfs-pool.sh
 
-# Attach a storage pool exported by ANOTHER host (NFS or CIFS/SMB) so local
-# services can consume it. Server roles only. Non-destructive — client mount
-# only. Writes/updates a declarative /etc/nixos/storage-remote.nix.
-[private]
-attach-remote-storage: _require-server-role
+# Attach a NAS share exported by ANOTHER host (NFS or CIFS/SMB) declaratively,
+# without hand-editing /etc/fstab. Available on desktop, htpc, server and
+# headless-server. Non-destructive — client mount only. Writes/updates a
+# declarative /etc/nixos/storage-remote.nix; apply with `just rebuild`.
+[group('System Administration')]
+attach-remote-storage: _require-remote-storage-role
     @just _run-storage-script attach-remote-storage.sh
 
 # List all available server service modules (catalog view, no role required).

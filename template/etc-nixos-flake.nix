@@ -148,9 +148,12 @@
     featuresFile = ./features.nix;
     hasFeatures  = builtins.pathExists featuresFile;
 
-    # ── Optional generated storage-pool config (server roles) ──────────────────
-    # Written by `just create-mergerfs-pool` / `just attach-remote-storage`:
-    # mergerfs branches, SnapRAID parity disks, and remote NFS/CIFS mounts.
+    # ── Optional generated storage config ─────────────────────────────────────
+    # storage-pool.nix — mergerfs branches + SnapRAID parity, server roles only,
+    #   written by `just create-mergerfs-pool`.
+    # storage-remote.nix — remote NFS/CIFS mounts, written by
+    #   `just attach-remote-storage`; wired on desktop, htpc, server and
+    #   headless-server (the remote-mount module is universal).
     storagePoolFile = ./storage-pool.nix;
     hasStoragePool  = builtins.pathExists storagePoolFile;
     storageRemoteFile = ./storage-remote.nix;
@@ -191,7 +194,8 @@
 
           # GPU-specific drivers and settings for this variant.
         ] ++ modules
-          ++ lib.optional hasFeatures      featuresFile
+          ++ lib.optional hasFeatures       featuresFile
+          ++ lib.optional hasStorageRemote  storageRemoteFile
           ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
@@ -245,7 +249,8 @@
           ./hardware-configuration.nix
           vexos-nix.nixosModules.htpcBase
         ] ++ modules
-          ++ lib.optional hasFeatures      featuresFile
+          ++ lib.optional hasFeatures       featuresFile
+          ++ lib.optional hasStorageRemote  storageRemoteFile
           ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
