@@ -18,6 +18,7 @@
     ./modules/nix.nix
     ./modules/notify.nix
     ./modules/nix-server.nix        # 30-day GC retention (production server standard)
+    ./modules/nix-proxmox-cache.nix # SaumonNet proxmox-nixos binary cache
     ./modules/locale.nix
     ./modules/users.nix
     ./modules/asus-opt.nix

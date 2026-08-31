@@ -2,9 +2,9 @@
 # Proxmox VE — open-source virtualisation platform (KVM VMs + LXC containers).
 # Source: https://github.com/SaumonNet/proxmox-nixos
 #
-# Binary cache (avoids rebuilding Proxmox packages from source):
-#   nix.settings.substituters       = [ "https://cache.saumon.network/proxmox-nixos" ];
-#   nix.settings.trusted-public-keys = [ "proxmox-nixos:D9RYSWpQQC/msZUWphOY2I5RLH5Dd6yQcaHIuug7dWM=" ];
+# Binary cache (avoids rebuilding Proxmox packages from source) is wired in via
+# modules/nix-proxmox-cache.nix (running system, server + headless-server roles)
+# and the nixConfig block in flake.nix (installer's first nixos-rebuild boot).
 #
 # ⚠ Experimental — not recommended for production machines.
 # ⚠ The proxmox-nixos overlay (`proxmoxOverlayModule`) and the proxmox-ve NixOS

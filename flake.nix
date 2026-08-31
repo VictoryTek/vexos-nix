@@ -1,6 +1,23 @@
 {
   description = "vexos-nix — Personal NixOS configuration";
 
+  # Additive binary-cache config for flake-build operations that run before any
+  # system config (and thus modules/nix-proxmox-cache.nix) has been applied —
+  # the install / recovery path for a first `nixos-rebuild boot`. Lets that build
+  # fetch prebuilt proxmox-ve closures instead of compiling the Perl tree from
+  # source. `extra-` keys are additive. Nix applies flake nixConfig only after an
+  # interactive y/N prompt, or when the caller passes --accept-flake-config (or
+  # nix.conf has accept-flake-config = true); a non-interactive caller without
+  # those ignores it with a warning and falls back to a source build — never a
+  # hard failure. Post-install, modules/nix-proxmox-cache.nix makes this
+  # unconditional on server + headless-server.
+  nixConfig = {
+    extra-substituters = [ "https://cache.saumon.network/proxmox-nixos" ];
+    extra-trusted-public-keys = [
+      "proxmox-nixos:D9RYSWpQQC/msZUWphOY2I5RLH5Dd6yQcaHIuug7dWM="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
