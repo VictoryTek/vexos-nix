@@ -13,7 +13,7 @@
 # restartIfChanged triggers. The NixOS module would install the shell binary
 # system-wide with no settings surface — see flake.nix dmsBase, which imports it
 # for its option declarations only and never sets `enable`.
-{ pkgs, lib, inputs, osConfig, ... }:
+{ config, pkgs, lib, inputs, osConfig, ... }:
 {
   # Imports cannot be conditional — they are resolved before option values
   # exist — so this sits outside the mkIf below. The upstream module is inert
@@ -27,9 +27,13 @@
     # resolves to graphical-session.target — activated by UWSM (see the comment
     # in modules/hyprland-desktop.nix; without UWSM this never starts).
     #
-    # `settings` / `clipboardSettings` / `session` are deliberately left unset:
-    # this is the stock shell, to establish a booting baseline. Theming, bar
-    # layout, widgets and plugins are the follow-up customisation phase.
+    # `clipboardSettings` is deliberately left unset — stock clipboard
+    # behaviour. `settings` and `session` below port the subset of GNOME's
+    # dconf defaults (modules/gnome.nix, modules/gnome-desktop.nix) that have
+    # a real DMS equivalent; see
+    # .github/docs/subagent_docs/hyprland_dms_gnome_parity_spec.md for the
+    # full key-by-key mapping and what was deliberately skipped. Bar/widget
+    # layout and plugins remain a later customisation phase.
     programs.dank-material-shell = {
       enable                 = true;
       systemd.enable         = true;
@@ -40,6 +44,53 @@
       enableDynamicTheming   = true;              # matugen — Material-You theming
       enableAudioWavelength  = true;              # cava  — audio visualiser
       enableVPN              = true;              # networkmanager (enabled system-side)
+
+      # ── settings.json — persistent preferences ─────────────────────────────
+      settings = {
+        # GNOME: org/gnome/desktop/interface clock-format=12h (default here is "auto")
+        clockFormat = "12h";
+
+        # GNOME: org/gnome/shell/extensions/dash-to-dock (position=LEFT, autohide, intellihide)
+        showDock         = true;
+        dockPosition      = 2;      # SettingsData.Position.Left (Top=0, Bottom=1, Left=2, Right=3)
+        dockAutoHide      = true;
+        dockSmartAutoHide = true;   # closest DMS equivalent to GNOME's intellihide
+      };
+
+      # ── session.json — wallpaper, mode, pinned apps ────────────────────────
+      session = {
+        # GNOME: org/gnome/desktop/interface color-scheme=prefer-dark
+        isLightMode = false;
+
+        # GNOME: org/gnome/desktop/background picture-uri(-dark) — same files
+        # home-desktop.nix already deploys to ~/Pictures/Wallpapers/.
+        perModeWallpaper   = true;
+        wallpaperPath      = "${config.home.homeDirectory}/Pictures/Wallpapers/vex-bb-dark.jxl";
+        wallpaperPathLight = "${config.home.homeDirectory}/Pictures/Wallpapers/vex-bb-light.jxl";
+        wallpaperPathDark  = "${config.home.homeDirectory}/Pictures/Wallpapers/vex-bb-dark.jxl";
+
+        # GNOME: org/gnome/shell favorite-apps — same app set as
+        # modules/gnome-desktop.nix, as bare desktop-file IDs (no .desktop
+        # suffix, per DMS's DesktopEntries/Paths.moddedAppId convention).
+        pinnedApps = [
+          "brave-origin"
+          "app.zen_browser.zen"
+          "org.gnome.Nautilus"
+          "com.mitchellh.ghostty"
+          "io.github.up"
+          "org.gnome.Boxes"
+          "codium"
+        ];
+        barPinnedApps = [
+          "brave-origin"
+          "app.zen_browser.zen"
+          "org.gnome.Nautilus"
+          "com.mitchellh.ghostty"
+          "io.github.up"
+          "org.gnome.Boxes"
+          "codium"
+        ];
+      };
     };
 
     # ── Polkit authentication agent ─────────────────────────────────────────
@@ -55,6 +106,23 @@
       enable    = true;
       automount = true;
       tray      = "auto";
+    };
+
+    # ── Mic mute on login ─────────────────────────────────────────────────────
+    # GNOME equivalent: modules/gnome-desktop.nix mute-mic-on-login. Ported
+    # verbatim (wpctl, not `dms ipc call mic mute`) so it works even before
+    # dms.service has finished starting.
+    systemd.user.services.mute-mic-on-login = {
+      Unit = {
+        Description = "Mute microphone at graphical session start";
+        After       = [ "graphical-session.target" ];
+        PartOf      = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type      = "oneshot";
+        ExecStart = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 1";
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
     };
 
     # ── Seed a minimal hyprland.conf, once ──────────────────────────────────

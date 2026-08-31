@@ -94,6 +94,43 @@ in
     services.gnome.gnome-keyring.enable = true;
     programs.seahorse.enable            = true;
 
+    # ── Auto-login ────────────────────────────────────────────────────────────
+    # GNOME-equivalent: modules/gnome.nix sets the same services.displayManager
+    # options for GDM. The DMS greeter module (inputs.dms.nixosModules.greeter)
+    # reads this standard option directly and wires it into greetd's
+    # initial_session, resolving the session command via
+    # services.displayManager.sessionData.autologinSession — which in turn
+    # comes from defaultSession. It must name the UWSM session (see the
+    # "SELECT THE UWSM ONE" comment on programs.uwsm.waylandCompositors.hyprland
+    # above) or autologin boots a bare compositor with no shell, same as
+    # picking the wrong entry manually in the greeter.
+    services.displayManager.autoLogin = {
+      enable = true;
+      user   = config.vexos.user.name;
+    };
+    services.displayManager.defaultSession = "hyprland-uwsm";
+
+    # Unlock the GNOME Keyring on auto-login. Mirrors
+    # security.pam.services.gdm-autologin.enableGnomeKeyring in modules/gnome.nix:
+    # a no-op for the actual autologin bypass (no password material to unlock
+    # with), kept for interactive re-logins (e.g. after loginctl
+    # terminate-session) through the "greetd" PAM service.
+    security.pam.services.greetd.enableGnomeKeyring = true;
+
+    # ── Network share discovery (Nautilus "Network" sidebar) ─────────────────
+    # Same key and rationale as modules/gnome.nix — GVfs (not GNOME Shell)
+    # reads this, and Nautilus is installed for Hyprland too (see
+    # environment.systemPackages below). Declared separately here since this
+    # module does not import modules/gnome.nix's system dconf profile.
+    programs.dconf.profiles.user = {
+      enableUserDb = true;
+      databases = [
+        {
+          settings."org/gnome/system/dns-sd".display-local = "merged";
+        }
+      ];
+    };
+
     # ── Services GNOME supplied implicitly ──────────────────────────────────
     # gvfs: network/trash/mtp backends Nautilus depends on.
     # udisks2: required by udiskie (home/dank-material-shell.nix) for removable media.
