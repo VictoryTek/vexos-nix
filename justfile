@@ -21,6 +21,7 @@ default:
         echo "    create-zfs-pool            Create a ZFS pool for Proxmox VM storage (interactive)"
         echo "    create-mergerfs-pool       Create a mergerfs+SnapRAID bulk pool from mixed drives (interactive)"
         echo "    attach-remote-storage      Attach a remote NFS/SMB storage pool from another host (interactive)"
+        echo "    detach-remote-storage      Remove a remote NFS/SMB storage pool attached earlier (interactive)"
     elif [[ "$variant" == *stateless* ]]; then
         echo ""
         echo "Active role: stateless (ephemeral / tmpfs root)"
@@ -1873,6 +1874,15 @@ create-mergerfs-pool: _require-server-role
 [group('System Administration')]
 attach-remote-storage: _require-remote-storage-role
     @just _run-storage-script attach-remote-storage.sh
+
+# Detach a NAS share attached earlier by `just attach-remote-storage`. Interactive:
+# lists the configured shares, removes the selected entry (or all) from the
+# declarative /etc/nixos/storage-remote.nix, unmounts it, removes the empty
+# mountpoint, and drops an orphaned CIFS credentials file. Applies nothing —
+# apply with `just rebuild`.
+[group('System Administration')]
+detach-remote-storage: _require-remote-storage-role
+    @just _run-storage-script detach-remote-storage.sh
 
 # List all available server service modules (catalog view, no role required).
 [private]

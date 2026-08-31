@@ -72,6 +72,16 @@ printf "Local mountpoint [%s]: " "$DEFAULT_MNT"
 read -r MNT
 MNT="${MNT:-$DEFAULT_MNT}"
 case "$MNT" in /*) ;; *) die "mountpoint must be an absolute path" ;; esac
+
+# Each mountpoint keys a fileSystems.<mountPoint> attribute in
+# modules/storage-remote.nix; a duplicate key is silently collapsed by
+# builtins.listToAttrs (first entry wins), so a second share on the same
+# mountpoint would never mount. Reject it here.
+if [ -f "$REMOTE_NIX" ] && grep -qF "mountPoint = \"${MNT}\";" "$REMOTE_NIX"; then
+    die "mountpoint $MNT is already claimed by an entry in $REMOTE_NIX.
+       Choose a different mountpoint, or drop the existing entry first with
+       'just detach-remote-storage'."
+fi
 ok "will mount ${SERVER}:${EXPORT} → $MNT"
 
 # ---------- [4/6] Credentials (cifs only) ------------------------------------
