@@ -34,7 +34,7 @@ in
   # built-in /share/dconf/profile/gdm. lib.mkDefault on enableUserDb prevents
   # an evaluation conflict if the GDM NixOS module sets this option in future.
   # GDM/dconf-specific — inert on non-GNOME desktop hosts (COSMIC uses
-  # cosmic-greeter, Hyprland uses noctalia-greeter; neither reads GDM's dconf
+  # cosmic-greeter, Hyprland uses the DankMaterialShell greeter; neither reads GDM's dconf
   # profile), so gated to avoid configuring a display manager that isn't
   # running.
   programs.dconf.profiles.gdm = lib.mkIf (config.vexos.desktop.environment == "gnome") {

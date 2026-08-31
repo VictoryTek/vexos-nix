@@ -1,22 +1,25 @@
 # modules/hyprland-desktop.nix
-# Hyprland compositor + Noctalia v5 desktop shell + noctalia-greeter, for the
-# desktop role. Active only when vexos.desktop.environment == "hyprland" (see
-# modules/desktop-environment.nix).
+# Hyprland compositor + DankMaterialShell (DMS) desktop shell + DMS greeter, for
+# the desktop role. Active only when vexos.desktop.environment == "hyprland"
+# (see modules/desktop-environment.nix).
 #
-# Hyprland itself is deliberately UNCONFIGURED: no hyprland.conf is written,
-# managed or seeded here. Hyprland autogenerates its own default at
-# ~/.config/hypr/hyprland.conf on first launch. Keybinds and compositor tuning
-# are a later customisation phase — the tools they will bind to (hyprshot,
-# brightnessctl, playerctl, hyprpicker) are installed and ready.
+# hyprland.conf is not written or managed HERE, but home/dank-material-shell.nix
+# seeds a minimal DMS-focused config to ~/.config/hypr/hyprland.conf ONCE on
+# first boot (DMS's launcher/lock/clipboard are `dms ipc call` targets with no
+# bar button, so an unconfigured Hyprland is unusable). After first boot the
+# file is user-owned. Compositor tuning and a fuller keybind set are a later
+# customisation phase — the tools they bind to (hyprshot, brightnessctl,
+# playerctl, hyprpicker) are installed and ready.
 #
 # Layer split:
 #   • system (this file) — compositor, greeter, and the services/apps GNOME
-#     supplied implicitly that Noctalia does not replace
-#   • user   (home/noctalia.nix) — the Noctalia shell itself, its systemd user
-#     service, settings and palettes, plus the polkit agent and automounter
-#   • flake  (flake.nix noctaliaBase) — the two upstream flake inputs, their
-#     overlays (pkgs.noctalia / pkgs.noctalia-greeter) and the greeter's NixOS
-#     module. Modules in this repo stay pure and never take `inputs`.
+#     supplied implicitly that DMS does not replace
+#   • user   (home/dank-material-shell.nix) — the DMS shell itself, its systemd
+#     user service and settings surface, the seeded hyprland.conf, plus the
+#     polkit agent and automounter
+#   • flake  (flake.nix dmsBase) — the single `dms` flake input and its two
+#     NixOS modules (dank-material-shell option tree + greeter). DMS ships no
+#     overlays. Modules in this repo stay pure and never take `inputs`.
 #
 # DE-agnostic content (fonts, printing, Bluetooth, Moonlight, base XDG portal
 # enable) comes from modules/desktop-common.nix, imported transitively via
@@ -39,11 +42,11 @@ in
     };
 
     # UWSM is load-bearing here, not cosmetic. It is what activates
-    # graphical-session.target, and Noctalia's Home Manager service binds to
-    # that target (via config.wayland.systemd.target). Launched from a display
-    # manager WITHOUT UWSM, Hyprland never activates the target and the shell
-    # silently never starts — you get a bare compositor with no bar, launcher
-    # or notifications. Same applies to hyprpolkitagent and udiskie.
+    # graphical-session.target, and DMS's Home Manager service (dms.service)
+    # binds to that target (via config.wayland.systemd.target). Launched from a
+    # display manager WITHOUT UWSM, Hyprland never activates the target and the
+    # shell silently never starts — you get a bare compositor with no bar,
+    # launcher or notifications. Same applies to hyprpolkitagent and udiskie.
     #
     # programs.hyprland.withUWSM = true only sets programs.uwsm.enable — it does
     # NOT register Hyprland with UWSM. Session entries are generated solely from
@@ -64,31 +67,38 @@ in
     };
 
     # ── Greeter ─────────────────────────────────────────────────────────────
-    # noctalia-greeter is a greetd greeter that runs inside its own bundled
-    # wlroots compositor (noctalia-greeter-session), independent of Hyprland.
-    # Its upstream NixOS module does the wiring itself: it sets services.greetd
-    # (command = noctalia-greeter-session), enables services.accounts-daemon,
-    # creates /var/lib/noctalia-greeter, and asserts the greetd user exists.
+    # The DMS greeter is a greetd greeter that runs Hyprland ITSELF as its
+    # compositor (compositor.name = "hyprland" resolves the package from
+    # config.programs.hyprland.package). Its greeter UI ships inside the
+    # dms-shell package. The upstream module (flake.nix dmsBase →
+    # inputs.dms.nixosModules.greeter) does the greetd wiring itself: it sets
+    # services.greetd.settings.default_session.command (mkDefault) to the
+    # generated greeter script and reads the greetd user for an assertion.
     # We therefore do NOT declare services.greetd ourselves — a second
-    # definition would collide. This replaces the previous Omarchy-style
-    # greeterless autologin.
-    programs.noctalia-greeter = {
-      enable  = true;
-      package = pkgs.noctalia-greeter;
+    # definition would collide.
+    programs.dank-material-shell.greeter = {
+      enable             = true;
+      compositor.name    = "hyprland";
+      quickshell.package = pkgs.quickshell;
     };
 
+    # accounts-daemon: the greeter reads the system user list through it. GNOME
+    # pulled this in implicitly. Set it here so the DMS greeter shows real
+    # accounts regardless of whether its own module happens to enable it.
+    services.accounts-daemon.enable = true;
+
     # ── Secret Service (hard dependency) ─────────────────────────────────────
-    # Noctalia v5 lists a Secret Service provider as a runtime requirement
-    # (BUILDING.md: GNOME Keyring, KWallet or KeePassXC). Under GNOME this came
-    # free with the desktop; on Hyprland it must be enabled explicitly.
+    # DMS relies on a Secret Service provider for stored credentials (VPN, some
+    # widgets). Under GNOME this came free with the desktop; on Hyprland it must
+    # be enabled explicitly.
     services.gnome.gnome-keyring.enable = true;
     programs.seahorse.enable            = true;
 
     # ── Services GNOME supplied implicitly ──────────────────────────────────
     # gvfs: network/trash/mtp backends Nautilus depends on.
-    # udisks2: required by udiskie (home/noctalia.nix) for removable media.
+    # udisks2: required by udiskie (home/dank-material-shell.nix) for removable media.
     # dconf: GTK apps and nwg-look read settings through it.
-    # upower: battery/power state, consumed by Noctalia's control center.
+    # upower: battery/power state, consumed by DMS's control center.
     services.gvfs.enable    = true;
     services.udisks2.enable = true;
     services.upower.enable  = true;
@@ -103,30 +113,42 @@ in
     xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
     xdg.portal.config.common.default = [ "hyprland" "gtk" ];
 
+    # ── Fonts DMS renders its UI with ──────────────────────────────────────
+    # DMS draws every bar/menu icon from Material Symbols Rounded and sets its
+    # UI text in Inter. Without these the shell shows tofu boxes for all icons.
+    # Kept here (not modules/desktop-common.nix) — that file is the DE-agnostic
+    # base and these are needed only for the DMS shell.
+    fonts.packages = [
+      pkgs.material-symbols
+      pkgs.inter
+    ];
+
     # ── Packages ────────────────────────────────────────────────────────────
-    # Noctalia v5 already provides: bar, widgets, dock, launcher, control
-    # center, notifications, wallpaper, lock screen, session actions, clipboard
-    # history, OSDs, tray and desktop widgets. waybar / fuzzel / swaync /
-    # hyprpaper / hyprlock / cliphist / nm-applet are therefore deliberately
-    # NOT installed — they would duplicate it.
+    # DankMaterialShell provides: top bar, control center, notification center,
+    # spotlight launcher, app drawer, clipboard viewer, process list, dank dash,
+    # notepad, lock screen, OSDs, dynamic Material-You theming, wallpaper, tray,
+    # calendar, audio visualiser, night mode. waybar / fuzzel / swaync /
+    # hyprpaper / hyprlock / nm-applet are therefore deliberately NOT installed —
+    # they would duplicate it.
     #
-    # hypridle is likewise omitted: Noctalia ships its own lock screen and
-    # session actions, and a second idle manager risks double-locking. Revisit
-    # only if idle-to-lock turns out not to work.
+    # hypridle is likewise omitted: DMS ships its own lock screen and idle
+    # handling, and a second idle manager risks double-locking. Revisit only if
+    # idle-to-lock turns out not to work.
     environment.systemPackages = with pkgs; [
-      # Screenshot / colour picking — Noctalia does not cover these
+      # Screenshot / colour picking — DMS does not cover these
       hyprshot
       grim
       slurp
       hyprpicker
-      wl-clipboard              # CLI copy/paste; Noctalia owns clipboard history
+      wl-clipboard              # CLI copy/paste
+      cliphist                  # clipboard-history store backend DMS's viewer reads
 
       # Settings panels that GNOME Settings used to provide
       nwg-look                  # GTK theme / icon / font / cursor
       nwg-displays              # monitor arrangement for Hyprland
       pavucontrol               # per-app audio routing
 
-      # Noctalia optional runtime integrations (named in its own dependency list)
+      # Hyprland runtime integrations used by the seeded keybinds / DMS widgets
       brightnessctl
       ddcutil
       playerctl

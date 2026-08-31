@@ -57,27 +57,20 @@
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
-    # Noctalia v5 — Wayland desktop shell (bar, dock, launcher, control center,
-    # notifications, wallpaper, lock screen, clipboard history, OSDs, tray).
-    # Used by modules/hyprland-desktop.nix + home/noctalia.nix, desktop role only.
-    # Not in nixpkgs. C++23 + Meson rendering directly to Wayland/OpenGL ES — the
-    # v5 rewrite has no Qt/GTK/Quickshell dependency (the v4 toolkit fork
-    # noctalia-qs is archived upstream).
-    # Tracks main deliberately: v5 is in beta and the daily flake-update job is
-    # expected to follow it. Pin to a release tag (e.g. .../noctalia/v5.0.0-beta.9)
-    # if an upstream change ever breaks the shell.
-    noctalia = {
-      url = "github:noctalia-dev/noctalia";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    # noctalia-greeter — greetd greeter matching Noctalia's design, running in
-    # its own bundled wlroots compositor (noctalia-greeter-session).
-    # Not in nixpkgs. Its NixOS module configures services.greetd itself.
-    # Tracks main for the same reason as noctalia above; upstream's own README
-    # specifies inputs.nixpkgs.follows = "nixpkgs".
-    noctalia-greeter = {
-      url = "github:noctalia-dev/noctalia-greeter";
+    # DankMaterialShell (DMS) — Quickshell + Go Wayland desktop shell (top bar,
+    # control center, notification center, spotlight launcher, clipboard viewer,
+    # process list, lock screen, OSDs, dynamic Material-You theming, tray).
+    # Used by modules/hyprland-desktop.nix + home/dank-material-shell.nix,
+    # desktop role only. Not in nixpkgs; the shell binary is built from source by
+    # the flake's home/nixos modules (quickshell, dgop, matugen, cava, khal all
+    # come from the nixpkgs 26.05 pin).
+    #
+    # Tracks the `stable` branch — the branch upstream designates for distro
+    # packaging. The daily flake-update job still bumps it; pin to a release tag
+    # (e.g. .../DankMaterialShell/v<x.y.z>) if an upstream change ever breaks the
+    # shell or the greeter.
+    dms = {
+      url = "github:AvengeMedia/DankMaterialShell/stable";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -208,24 +201,26 @@
     # sops-nix module shared by server and headless-server roles.
     sopsBase = [ sops-nix.nixosModules.sops ];
 
-    # Noctalia overlays + greeter NixOS module — desktop role only.
-    # The overlays expose pkgs.noctalia and pkgs.noctalia-greeter, which
-    # modules/hyprland-desktop.nix and home/noctalia.nix reference by name so
-    # that neither has to take `inputs` — no module in modules/ or home/ does,
-    # and this keeps that invariant. Same shape as vexboardBase above.
+    # DankMaterialShell NixOS modules — desktop role only. DMS ships no overlays,
+    # so (unlike vexboardBase) there is no nixpkgs.overlays entry;
+    # modules reference pkgs.quickshell / pkgs.dgop from nixpkgs directly and the
+    # shell binary comes from the flake module defaults (dmsPkgs specialArg,
+    # supplied by the module wrappers below).
     #
-    # Both are inert unless enabled: the greeter module does nothing until
-    # programs.noctalia-greeter.enable is set, which happens only inside
-    # modules/hyprland-desktop.nix's isHyprland guard. GNOME and COSMIC desktop
-    # hosts are therefore unaffected, and the packages are never built for them.
-    noctaliaBase = [
-      {
-        nixpkgs.overlays = [
-          inputs.noctalia.overlays.default
-          inputs.noctalia-greeter.overlays.default
-        ];
-      }
-      inputs.noctalia-greeter.nixosModules.default
+    #   • dank-material-shell — declares the NixOS-side programs.dank-material-shell
+    #     option tree that the greeter module reads. Installs nothing: its config
+    #     is guarded by programs.dank-material-shell.enable, which this repo sets
+    #     only via the Home Manager module (home/dank-material-shell.nix), itself
+    #     gated on vexos.desktop.environment == "hyprland".
+    #   • greeter — programs.dank-material-shell.greeter.*, and configures
+    #     services.greetd. Inert until greeter.enable is set, which happens only
+    #     inside modules/hyprland-desktop.nix's isHyprland guard.
+    #
+    # GNOME and COSMIC desktop hosts are therefore unaffected and nothing DMS is
+    # ever built for them.
+    dmsBase = [
+      inputs.dms.nixosModules.dank-material-shell
+      inputs.dms.nixosModules.greeter
     ];
 
     # Single source of truth for per-role wiring. Consumed by `mkHost` (per-host
@@ -246,7 +241,7 @@
     roles = {
       desktop = {
         homeFile         = ./home-desktop.nix;
-        baseModules      = commonBase ++ [ upModule vexportalModule ] ++ noctaliaBase;
+        baseModules      = commonBase ++ [ upModule vexportalModule ] ++ dmsBase;
         extraModules     = [];
         hostLocalModules = featuresModule ++ storageRemoteModule;
       };

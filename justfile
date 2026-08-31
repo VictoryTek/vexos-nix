@@ -309,7 +309,7 @@ switch role="" variant="" flake="" de="" vmp="":
             echo "Select desktop environment:"
             echo "  1) gnome    — Full-featured, most tested (default)"
             echo "  2) cosmic   — System76's new Rust-based desktop"
-            echo "  3) hyprland — Tiling Wayland compositor + Noctalia shell"
+            echo "  3) hyprland — Tiling Wayland compositor + DankMaterialShell"
             echo ""
             while [ -z "$DESKTOP_ENV" ]; do
                 printf "Choice [1-3] or name (default: gnome): "
