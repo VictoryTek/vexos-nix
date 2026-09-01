@@ -189,6 +189,8 @@ in
       brightnessctl
       ddcutil
       playerctl
+      jq                         # cursor-zoom keybind (hyprctl getoption -j | jq)
+      upower                     # battery-status keybind CLI (daemon alone doesn't guarantee $PATH)
 
       # File management
       nautilus
