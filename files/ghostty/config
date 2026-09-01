@@ -1,0 +1,45 @@
+# ~/.config/ghostty/config
+#
+# Deployed by VexOS (home/dank-material-shell.nix, Hyprland role only) — a
+# 16-color ANSI palette matching the VexOS Neo-Cyberpunk theme
+# (files/dms/vexos-neo-cyberpunk.json), derived from the same wallpaper
+# color extraction documented in
+# .github/docs/subagent_docs/hyprland_neo_cyberpunk_rice_spec.md.
+# Nix-managed — edits here are overwritten on the next rebuild.
+
+background = 050A14
+foreground = E7EEF5
+
+cursor-color = 05F4FA
+cursor-text = 00141A
+selection-background = 16233A
+selection-foreground = E7EEF5
+
+# Normal (0-7) — black/red/yellow/blue/cyan/white are wallpaper-extracted
+# hex values; green (2) and magenta (5) have no counterpart in the
+# wallpaper's cyan/amber duotone, so they're interpolated to stay in the
+# same saturation/lightness family (ANSI needs all 8 base hues for CLI
+# output — git diffs, etc. — to render sensibly).
+palette = 0=#0B1526
+palette = 1=#DD4014
+palette = 2=#2FBF8F
+palette = 3=#F9B62E
+palette = 4=#0298BA
+palette = 5=#9A6FB0
+palette = 6=#05F4FA
+palette = 7=#B9C8DA
+
+# Bright (8-15) — lightened versions of 0-7
+palette = 8=#5D7190
+palette = 9=#FF6A3D
+palette = 10=#4DDCAA
+palette = 11=#FFD166
+palette = 12=#3EC3E8
+palette = 13=#C08FE0
+palette = 14=#7FF9FC
+palette = 15=#E7EEF5
+
+background-opacity = 0.92
+background-blur = 20
+
+window-decoration = none

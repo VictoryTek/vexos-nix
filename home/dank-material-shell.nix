@@ -55,6 +55,15 @@
         dockPosition      = 2;      # SettingsData.Position.Left (Top=0, Bottom=1, Left=2, Right=3)
         dockAutoHide      = true;
         dockSmartAutoHide = true;   # closest DMS equivalent to GNOME's intellihide
+
+        # VexOS Neo-Cyberpunk theme — hand-built from the wallpaper's own
+        # extracted colors (see
+        # .github/docs/subagent_docs/hyprland_neo_cyberpunk_rice_spec.md),
+        # deployed below via xdg.configFile. enableDynamicTheming above only
+        # makes matugen available for per-app template export — it does not
+        # override this explicit theme selection.
+        currentThemeName = "custom";
+        customThemeFile  = "${config.home.homeDirectory}/.config/DankMaterialShell/themes/vexos-neo-cyberpunk.json";
       };
 
       # ── session.json — wallpaper, mode, pinned apps ────────────────────────
@@ -107,6 +116,14 @@
       #   sha256 = "...";
       # };
     };
+
+    # ── VexOS Neo-Cyberpunk theme + terminal palette ────────────────────────
+    # Deploys the custom DMS theme referenced by settings.customThemeFile
+    # above, plus a matching Ghostty color scheme (Hyprland role only — the
+    # GNOME/COSMIC roles' Ghostty, wherever installed, is untouched).
+    xdg.configFile."DankMaterialShell/themes/vexos-neo-cyberpunk.json".source =
+      ../files/dms/vexos-neo-cyberpunk.json;
+    xdg.configFile."ghostty/config".source = ../files/ghostty/config;
 
     # ── Polkit authentication agent ─────────────────────────────────────────
     # GNOME Shell provided this; DMS does not. Without it, any action needing
