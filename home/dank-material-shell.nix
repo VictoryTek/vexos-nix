@@ -91,6 +91,21 @@
           "codium"
         ];
       };
+
+      # ── Plugins ─────────────────────────────────────────────────────────────
+      # DMS has its own native plugin system (unrelated to, and incompatible
+      # with, Omarchy's own plugin system — different shell, different
+      # manifest format, no interop). Community plugins:
+      # https://plugins.danklinux.com/ · dev docs: search the dms flake input
+      # for .agents/skills/dms-plugin-dev/SKILL.md
+      #
+      # Uncomment and edit to add one (pin a rev + sha256, don't float):
+      # plugins.SomePlugin.src = pkgs.fetchFromGitHub {
+      #   owner  = "someone";
+      #   repo   = "SomePlugin";
+      #   rev    = "...";
+      #   sha256 = "...";
+      # };
     };
 
     # ── Polkit authentication agent ─────────────────────────────────────────
