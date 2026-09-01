@@ -14,6 +14,19 @@
 # system-wide with no settings surface — see flake.nix dmsBase, which imports it
 # for its option declarations only and never sets `enable`.
 { config, pkgs, lib, inputs, osConfig, ... }:
+let
+  # Codium is only actually installed when the development feature is on
+  # (modules/development.nix, per-host opt-in) — pinning it unconditionally
+  # left a dead placeholder icon on the dock that couldn't launch anything.
+  basePinnedApps = [
+    "brave-origin"
+    "app.zen_browser.zen"
+    "org.gnome.Nautilus"
+    "com.mitchellh.ghostty"
+    "io.github.up"
+    "org.gnome.Boxes"
+  ] ++ lib.optional osConfig.vexos.features.development.enable "codium";
+in
 {
   # Imports cannot be conditional — they are resolved before option values
   # exist — so this sits outside the mkIf below. The upstream module is inert
@@ -81,24 +94,8 @@
         # GNOME: org/gnome/shell favorite-apps — same app set as
         # modules/gnome-desktop.nix, as bare desktop-file IDs (no .desktop
         # suffix, per DMS's DesktopEntries/Paths.moddedAppId convention).
-        pinnedApps = [
-          "brave-origin"
-          "app.zen_browser.zen"
-          "org.gnome.Nautilus"
-          "com.mitchellh.ghostty"
-          "io.github.up"
-          "org.gnome.Boxes"
-          "codium"
-        ];
-        barPinnedApps = [
-          "brave-origin"
-          "app.zen_browser.zen"
-          "org.gnome.Nautilus"
-          "com.mitchellh.ghostty"
-          "io.github.up"
-          "org.gnome.Boxes"
-          "codium"
-        ];
+        pinnedApps    = basePinnedApps;
+        barPinnedApps = basePinnedApps;
       };
 
       # ── Plugins ─────────────────────────────────────────────────────────────
