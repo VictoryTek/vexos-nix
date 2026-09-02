@@ -180,23 +180,42 @@ switch role="" variant="" flake="" de="" vmp="":
         echo "  1) desktop"
         echo "  2) stateless"
         echo "  3) htpc"
-        echo "  4) server"
-        echo "  5) headless-server"
-        echo "  6) vanilla"
+        echo "  4) server  (GUI or Headless)"
+        echo "  5) vanilla"
         echo ""
         while [ -z "$ROLE" ]; do
-            printf "Choice [1-6] or name: "
+            printf "Choice [1-5] or name: "
             read -r INPUT
             case "${INPUT,,}" in
-                1|desktop)         ROLE="desktop"         ;;
-                2|stateless)       ROLE="stateless"       ;;
-                3|htpc)            ROLE="htpc"            ;;
-                4|server)          ROLE="server"          ;;
-                5|headless-server) ROLE="headless-server" ;;
-                6|vanilla)         ROLE="vanilla"         ;;
-                *) echo "Invalid — enter 1-6 or desktop/stateless/htpc/server/headless-server/vanilla" ;;
+                1|desktop)   ROLE="desktop"   ;;
+                2|stateless) ROLE="stateless" ;;
+                3|htpc)      ROLE="htpc"      ;;
+                4|server)    ROLE="server"    ;;
+                5|vanilla)   ROLE="vanilla"   ;;
+                *) echo "Invalid — enter 1-5 or desktop/stateless/htpc/server/vanilla" ;;
             esac
         done
+
+        if [ "$ROLE" = "server" ]; then
+            echo ""
+            echo "Select server type:"
+            echo "  1) Headless Server — CLI only, no desktop environment"
+            echo "  2) GUI Server      — GNOME desktop environment"
+            echo ""
+            SERVER_TYPE=""
+            while [ -z "$SERVER_TYPE" ]; do
+                printf "Choice [1-2] or name (headless / gui): "
+                read -r INPUT
+                case "${INPUT,,}" in
+                    1|headless) SERVER_TYPE="headless" ;;
+                    2|gui)      SERVER_TYPE="gui"       ;;
+                    *) echo "Invalid — enter 1-2 or headless/gui" ;;
+                esac
+            done
+            if [ "$SERVER_TYPE" = "headless" ]; then
+                ROLE="headless-server"
+            fi
+        fi
     fi
 
     if [ -z "$VARIANT" ]; then
@@ -730,21 +749,40 @@ update role="" variant="": _kernel-cache-guard
             echo "  1) desktop"
             echo "  2) stateless"
             echo "  3) htpc"
-            echo "  4) server"
-            echo "  5) headless-server"
+            echo "  4) server  (GUI or Headless)"
             echo ""
             while [ -z "$ROLE" ]; do
-                printf "Choice [1-5] or name: "
+                printf "Choice [1-4] or name: "
                 read -r INPUT
                 case "${INPUT,,}" in
-                    1|desktop)          ROLE="desktop"          ;;
-                    2|stateless)        ROLE="stateless"        ;;
-                    3|htpc)             ROLE="htpc"             ;;
-                    4|server)           ROLE="server"           ;;
-                    5|headless-server)  ROLE="headless-server"  ;;
-                    *) echo "Invalid — enter 1-5 or desktop/stateless/htpc/server/headless-server" ;;
+                    1|desktop)   ROLE="desktop"   ;;
+                    2|stateless) ROLE="stateless" ;;
+                    3|htpc)      ROLE="htpc"      ;;
+                    4|server)    ROLE="server"    ;;
+                    *) echo "Invalid — enter 1-4 or desktop/stateless/htpc/server" ;;
                 esac
             done
+
+            if [ "$ROLE" = "server" ]; then
+                echo ""
+                echo "Select server type:"
+                echo "  1) Headless Server — CLI only, no desktop environment"
+                echo "  2) GUI Server      — GNOME desktop environment"
+                echo ""
+                SERVER_TYPE=""
+                while [ -z "$SERVER_TYPE" ]; do
+                    printf "Choice [1-2] or name (headless / gui): "
+                    read -r INPUT
+                    case "${INPUT,,}" in
+                        1|headless) SERVER_TYPE="headless" ;;
+                        2|gui)      SERVER_TYPE="gui"       ;;
+                        *) echo "Invalid — enter 1-2 or headless/gui" ;;
+                    esac
+                done
+                if [ "$SERVER_TYPE" = "headless" ]; then
+                    ROLE="headless-server"
+                fi
+            fi
         fi
 
         if [ -z "$VARIANT" ]; then
