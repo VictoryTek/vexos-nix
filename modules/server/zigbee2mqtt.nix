@@ -40,6 +40,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.zigbee2mqtt = [ "/var/lib/zigbee2mqtt" ];
+
     services.zigbee2mqtt = {
       enable = true;
       settings = {

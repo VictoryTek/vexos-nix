@@ -11,6 +11,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.node-red = [ "/var/lib/node-red" ];
+
     services.node-red = {
       enable = true;
       openFirewall = true; # Port 1880

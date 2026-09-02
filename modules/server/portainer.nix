@@ -39,6 +39,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.portainer = [ "/var/lib/portainer" ];
+
     assertions = [
       {
         assertion = cfg.backend != "podman" || config.vexos.server.podman.enable;

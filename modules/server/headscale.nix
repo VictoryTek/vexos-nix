@@ -35,6 +35,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.headscale = [ "/var/lib/headscale" ];
+
     assertions = [
       {
         assertion = cfg.serverUrl != "https://headscale.example.com";

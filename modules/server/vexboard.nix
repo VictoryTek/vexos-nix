@@ -41,6 +41,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.vexboard = [ "/var/lib/vexboard" ];
+
     assertions = [
       {
         assertion = cfg.secretFile != null;

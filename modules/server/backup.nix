@@ -1,7 +1,15 @@
 # modules/server/backup.nix
 # Declarative restic backups — opt-in. Automatically backs up the data
-# directories of whichever vexos.server.<x> services are enabled, so adding
-# a new service doesn't require manually maintaining a separate backup list.
+# directories of whichever vexos.server.<x> services are enabled.
+#
+# Registration is decentralized: each service module declares its own backup
+# paths in its own file via
+#
+#   vexos.server.backup.servicePaths.<name> = [ "/var/lib/<name>" ];
+#
+# inside its `config = lib.mkIf cfg.enable { ... }` block. There is no central
+# table here to keep in sync, and the assertion below makes forgetting the line
+# a build failure rather than a service that silently has no backup coverage.
 #
 # Repository target (local disk, SFTP, B2, etc.) is entirely up to the user —
 # see vexos.server.backup.repository / repositoryFile.
@@ -9,82 +17,79 @@
 let
   cfg = config.vexos.server.backup;
 
-  # Default data directory per enabled service. Most NixOS services follow the
-  # StateDirectory convention of /var/lib/<service-name>; a few exceptions are
-  # called out below. Keep in sync with justfile's _server_service_names.
-  #
-  # Deliberately excluded:
-  #   syncthing — its dataDir (syncthing.nix) is the *entire* user home
-  #               directory, not a scoped data folder; auto-including it would
-  #               silently make "enable syncthing" imply "back up the whole
-  #               home directory". Add it via extraPaths if that's wanted.
-  servicePaths = {
-    adguard          = [ "/var/lib/adguardhome" ];
-    arr              = [ "/var/lib/sonarr" "/var/lib/radarr" "/var/lib/lidarr" "/var/lib/prowlarr" "/var/lib/sabnzbd" ];
-    attic            = [ config.vexos.server.attic.dataDir ];
-    audiobookshelf   = [ "/var/lib/audiobookshelf" ];
-    authelia         = [ "/var/lib/authelia" ];
-    caddy            = [ "/var/lib/caddy" ];
-    cockpit          = [ ];
-    code-server      = [ ];
-    dockhand         = [ config.vexos.server.dockhand.dataDir ];
-    dozzle           = [ ];
-    forgejo          = [ "/var/lib/forgejo" ];
-    grafana          = [ "/var/lib/grafana" ];
-    grimmory         = [ "${config.vexos.server.grimmory.dataDir}/dump" config.vexos.server.grimmory.libraryDir ]; # not mariadb-config/ — live db files aren't file-backup-safe
-    harmonia         = [ "/var/lib/harmonia" ]; # signing key only — losing it invalidates every client's trusted-public-keys
-    headscale        = [ "/var/lib/headscale" ];
-    home-assistant   = [ "/var/lib/hass" ];
-    homepage         = [ "/var/lib/homepage" ];
-    immich           = [ "/var/lib/immich" ];
-    jellyfin         = [ "/var/lib/jellyfin" ];
-    joplin           = [ "${config.vexos.server.joplin.dataDir}/dump" ]; # not postgres/ — live pgdata isn't file-backup-safe
-    kavita           = [ "/var/lib/kavita" ];
-    kiji-proxy       = [ ];
-    komga            = [ "/var/lib/komga" ];
-    listmonk         = [ "/var/lib/listmonk" ];
-    loki             = [ "/var/lib/loki" ];
-    matrix-conduit   = [ "/var/lib/matrix-conduit" ];
-    mealie           = [ "/var/lib/mealie" ];
-    minio            = [ "/var/lib/minio" ];
-    nas              = [ ];
-    navidrome        = [ "/var/lib/navidrome" ];
-    netdata          = [ ];
-    nextcloud        = [ "/var/lib/nextcloud" ];
-    node-red         = [ "/var/lib/node-red" ];
-    ntfy             = [ "/var/lib/ntfy-sh" ];
-    paperless        = [ "/var/lib/paperless" ];
-    papermc          = [ "/var/lib/minecraft" ];
-    photoprism       = [ "/var/lib/photoprism" ];
-    plex             = [ "/var/lib/plex" ];
-    portainer        = [ "/var/lib/portainer" ];
-    portbook         = [ "/var/lib/portbook" ];
-    prometheus       = [ "/var/lib/prometheus2" ];
-    proxmox          = [ "/var/lib/pve-cluster" "/etc/pve" ];
-    rustdesk         = [ "/var/lib/rustdesk-server" ];
-    scrutiny         = [ "/var/lib/scrutiny" ];
-    seerr            = [ "/var/lib/seerr" ];
-    stirling-pdf     = [ ];
-    tautulli         = [ "/var/lib/tautulli" ];
-    uptime-kuma      = [ (if config.virtualisation.oci-containers.backend == "podman"
-                          then "/var/lib/containers/storage/volumes/uptime-kuma-data/_data"
-                          else "/var/lib/docker/volumes/uptime-kuma-data/_data") ]; # named Docker/Podman volume, not a /var/lib bind mount
-    vaultwarden      = [ "/var/lib/vaultwarden" ];
-    vexboard         = [ "/var/lib/vexboard" ];
-    zigbee2mqtt      = [ "/var/lib/zigbee2mqtt" ];
-  };
+  # Services that correctly have no backup paths. Membership here is the
+  # explicit "this service has nothing worth backing up" statement that
+  # satisfies the assertion below. Every entry needs a reason.
+  noBackupNeeded = [
+    # ── Not a data service ───────────────────────────────────────────────
+    "backup"          # this module itself
+    "docker"          # container runtime
+    "podman"          # container runtime
+    "proxy"           # generates Caddy virtualHosts; holds no state of its own
+    "nas"             # umbrella toggle over cockpit + plugins + backend selector
+
+    # ── Stateless, or derived state only ─────────────────────────────────
+    "alertmanager"    # silences/nflog are transient operational state
+    "cloudflare-ddns" # polls public IP and writes to Cloudflare's API; no local state
+    "cockpit"         # web UI over the host; no state of its own
+    "code-server"     # workspace lives in the user's home, backed up separately
+    "dozzle"          # log viewer over the container socket; stateless
+    "fluent-bit"      # /var/lib/fluent-bit holds only a systemd log cursor
+    "kernelBuilder"   # GC roots for derived build artifacts; rebuildable
+    "kiji-proxy"      # stateless proxy
+    "netdata"         # metrics; Prometheus/Loki are the durable stores
+    "nginx"           # config is declarative; certs live in /var/lib/acme
+    "searxng"         # config is declarative; no persistent user data
+    "stirling-pdf"    # documents are processed in-flight, not stored
+    "unbound"         # cache + regenerable DNSSEC trust anchor
+
+    # ── Deliberately excluded ────────────────────────────────────────────
+    # syncthing's dataDir (syncthing.nix) is the *entire* user home
+    # directory, not a scoped data folder; auto-including it would silently
+    # make "enable syncthing" imply "back up the whole home directory".
+    # Add it via vexos.server.backup.extraPaths if that's actually wanted.
+    "syncthing"
+  ];
 
   enabledServicePaths = lib.flatten (
     lib.mapAttrsToList
       (name: paths: lib.optionals (config.vexos.server.${name}.enable or false) paths)
-      servicePaths
+      cfg.servicePaths
   );
+
+  # Enabled services that neither registered backup paths nor declared
+  # themselves stateless. See the assertion below.
+  unregisteredServices = lib.filter
+    (name:
+      (config.vexos.server.${name}.enable or false)
+      && !(lib.hasAttr name cfg.servicePaths)
+      && !(lib.elem name noBackupNeeded))
+    (builtins.attrNames config.vexos.server);
 
   postgresDumpFile = "/var/backup/postgresql-dump.sql";
 in
 {
   options.vexos.server.backup = {
     enable = lib.mkEnableOption "Declarative restic backups of enabled server services";
+
+    servicePaths = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.listOf lib.types.str);
+      default = { };
+      example = lib.literalExpression ''{ mealie = [ "/var/lib/mealie" ]; }'';
+      description = ''
+        Per-service backup paths, keyed by the service's vexos.server.<name>
+        attribute. Set by each service module in its own file rather than
+        centrally here, so backup coverage lives next to the service
+        definition it describes.
+
+        A service's paths are only included in the backup when
+        vexos.server.<name>.enable is true, so registering unconditionally
+        inside the module's own enable guard is correct.
+
+        Every enabled vexos.server.<name> must either appear here or be listed
+        in backup.nix's noBackupNeeded list — otherwise the build fails.
+      '';
+    };
 
     repository = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
@@ -112,8 +117,8 @@ in
       default = [ ];
       description = ''
         Additional paths to back up beyond the automatic per-service defaults.
-        Use this for services excluded from the automatic table (e.g. syncthing)
-        or any other data not covered above.
+        Use this for services excluded from automatic registration (e.g.
+        syncthing) or any other data not covered above.
       '';
     };
 
@@ -130,34 +135,59 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
-    assertions = [
-      {
-        assertion = cfg.repository != null || cfg.repositoryFile != null;
-        message = "vexos.server.backup.repository or repositoryFile must be set.";
-      }
-      {
-        assertion = cfg.passwordFile != null;
-        message = "vexos.server.backup.passwordFile must be set.";
-      }
-    ];
+  config = lib.mkMerge [
+    # Deliberately NOT gated on cfg.enable: the guarantee is "every service
+    # module declares its backup intent", which has to hold on hosts that
+    # haven't turned restic on too — otherwise the check is only active where
+    # it is least needed, and a new module's missing registration is found
+    # long after it was written.
+    {
+      assertions = [
+        {
+          assertion = unregisteredServices == [ ];
+          message = ''
+            These enabled services have not registered backup paths:
+              ${lib.concatStringsSep ", " unregisteredServices}
 
-    services.restic.backups.main = {
-      inherit (cfg) repository repositoryFile pruneOpts timerConfig;
-      # Upstream passwordFile is typed `nullOr str`, not `path` — convert so our
-      # nicer path-typed option (catches typos at eval time) still fits.
-      passwordFile = lib.mkIf (cfg.passwordFile != null) (toString cfg.passwordFile);
-      paths = enabledServicePaths ++ cfg.extraPaths
-        ++ lib.optional config.services.postgresql.enable postgresDumpFile;
-      backupPrepareCommand = lib.mkIf config.services.postgresql.enable ''
-        install -d -m 0700 -o postgres -g postgres "$(dirname "${postgresDumpFile}")"
-        sudo -u postgres pg_dumpall > "${postgresDumpFile}"
-      '';
-      backupCleanupCommand = lib.mkIf config.services.postgresql.enable ''
-        rm -f "${postgresDumpFile}"
-      '';
-    };
+            Add to the service's own module, inside its config = lib.mkIf cfg.enable block:
+              vexos.server.backup.servicePaths.<name> = [ "/var/lib/<name>" ];
 
-    systemd.services."restic-backups-main".onFailure = [ "notify-failure@backup.service" ];
-  };
+            If the service genuinely has no state worth backing up, add its
+            name (with a reason) to noBackupNeeded in modules/server/backup.nix.
+          '';
+        }
+      ];
+    }
+
+    (lib.mkIf cfg.enable {
+      assertions = [
+        {
+          assertion = cfg.repository != null || cfg.repositoryFile != null;
+          message = "vexos.server.backup.repository or repositoryFile must be set.";
+        }
+        {
+          assertion = cfg.passwordFile != null;
+          message = "vexos.server.backup.passwordFile must be set.";
+        }
+      ];
+
+      services.restic.backups.main = {
+        inherit (cfg) repository repositoryFile pruneOpts timerConfig;
+        # Upstream passwordFile is typed `nullOr str`, not `path` — convert so our
+        # nicer path-typed option (catches typos at eval time) still fits.
+        passwordFile = lib.mkIf (cfg.passwordFile != null) (toString cfg.passwordFile);
+        paths = enabledServicePaths ++ cfg.extraPaths
+          ++ lib.optional config.services.postgresql.enable postgresDumpFile;
+        backupPrepareCommand = lib.mkIf config.services.postgresql.enable ''
+          install -d -m 0700 -o postgres -g postgres "$(dirname "${postgresDumpFile}")"
+          sudo -u postgres pg_dumpall > "${postgresDumpFile}"
+        '';
+        backupCleanupCommand = lib.mkIf config.services.postgresql.enable ''
+          rm -f "${postgresDumpFile}"
+        '';
+      };
+
+      systemd.services."restic-backups-main".onFailure = [ "notify-failure@backup.service" ];
+    })
+  ];
 }

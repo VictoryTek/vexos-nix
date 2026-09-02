@@ -19,6 +19,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.immich = [ "/var/lib/immich" ];
+
     services.immich = {
       enable = true;
       port = cfg.port;

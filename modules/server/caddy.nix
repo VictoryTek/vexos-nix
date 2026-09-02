@@ -28,6 +28,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.caddy = [ "/var/lib/caddy" ];
+
     services.caddy = {
       enable = true;
       globalConfig = ''

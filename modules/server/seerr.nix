@@ -30,6 +30,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.seerr = [ "/var/lib/seerr" ];
+
     systemd.services.seerr = {
       description = "Seerr, a media request manager for Jellyfin, Plex, and Emby";
       wants = [ "network-online.target" ];

@@ -21,6 +21,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.grimmory;
+  dumpTimer = import ../lib/dump-timer.nix { inherit lib pkgs; };
   effectiveEnvFile =
     if cfg.environmentFile != null
     then cfg.environmentFile
@@ -105,7 +106,12 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkMerge [
+  (lib.mkIf cfg.enable {
+    # Not mariadb-config/ — live db files are not file-backup-safe; the
+    # nightly dump below is what actually captures the database.
+    vexos.server.backup.servicePaths.grimmory = [ "${cfg.dataDir}/dump" cfg.libraryDir ];
+
     virtualisation.docker.enable = lib.mkDefault true;
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
@@ -212,31 +218,25 @@ in
     systemd.services."docker-grimmory".after       = [ "grimmory-network.service" ] ++ lib.optional (cfg.environmentFile == null) "grimmory-secrets-init.service";
     systemd.services."docker-grimmory".requires     = [ "grimmory-network.service" ] ++ lib.optional (cfg.environmentFile == null) "grimmory-secrets-init.service";
 
-    # Nightly SQL dump — the live mariadb-config/ data directory is not safe
-    # to file-backup directly, so backup.nix's servicePaths entry only backs
-    # up dump/ (plus libraryDir, the irreplaceable user media). Scheduled at
-    # 23:15 (offset from joplin's 23:30 purely to avoid both dump jobs
-    # landing on the exact same wall-clock second) so a fresh dump exists
-    # before restic's default "daily" (~00:00) run reads it.
-    systemd.services."grimmory-mariadb-dump" = {
-      description = "Dump Grimmory MariaDB database for backup";
-      after    = [ "docker-grimmory-db.service" ];
-      requires = [ "docker-grimmory-db.service" ];
-      serviceConfig.Type = "oneshot";
-      script = ''
-        source "${effectiveEnvFile}"
-        ${pkgs.docker}/bin/docker exec grimmory-db mariadb-dump -u root -p"$MYSQL_ROOT_PASSWORD" grimmory > "${cfg.dataDir}/dump/grimmory.sql"
-      '';
-    };
-
-    systemd.timers."grimmory-mariadb-dump" = {
-      wantedBy = [ "timers.target" ];
-      timerConfig = {
-        OnCalendar = "*-*-* 23:15:00";
-        Persistent = true;
-      };
-    };
-
     networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
-  };
+  })
+
+  # Nightly SQL dump — the live mariadb-config/ data directory is not safe to
+  # file-backup directly, so the servicePaths entry above only backs up dump/
+  # (plus libraryDir, the irreplaceable user media).
+  #
+  # offsetMinute/unitName are pinned to the values this service used before it
+  # moved to the shared helper, so the schedule and unit name are unchanged.
+  # New dump-timer modules should omit both and take the hashed offset.
+  (lib.mkIf cfg.enable (dumpTimer.mkDumpTimer {
+    name         = "grimmory";
+    container    = "grimmory-db";
+    command      = ''mariadb-dump -u root -p"$MYSQL_ROOT_PASSWORD" grimmory'';
+    outputPath   = "${cfg.dataDir}/dump/grimmory.sql";
+    envFile      = effectiveEnvFile;
+    offsetMinute = 15;
+    unitName     = "grimmory-mariadb-dump";
+    description  = "Dump Grimmory MariaDB database for backup";
+  }))
+  ];
 }

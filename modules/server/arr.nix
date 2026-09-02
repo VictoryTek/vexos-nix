@@ -30,6 +30,11 @@ in
 
   config = lib.mkMerge [
     (lib.mkIf cfg.enable {
+      vexos.server.backup.servicePaths.arr = [
+        "/var/lib/sonarr" "/var/lib/radarr" "/var/lib/lidarr"
+        "/var/lib/prowlarr" "/var/lib/sabnzbd"
+      ];
+
       vexos.server.arr.sabnzbd.enable = lib.mkDefault true;
       vexos.server.arr.sonarr.enable = lib.mkDefault true;
       vexos.server.arr.radarr.enable = lib.mkDefault true;

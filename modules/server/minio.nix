@@ -47,6 +47,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.minio = [ "/var/lib/minio" ];
+
     services.minio = {
       enable = true;
       listenAddress = ":${toString cfg.apiPort}";

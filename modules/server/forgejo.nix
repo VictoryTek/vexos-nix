@@ -22,6 +22,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.forgejo = [ "/var/lib/forgejo" ];
+
     services.forgejo = {
       enable = true;
       settings = {

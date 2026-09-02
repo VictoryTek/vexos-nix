@@ -45,6 +45,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.grafana = [ "/var/lib/grafana" ];
+
     services.grafana = {
       enable = true;
       settings.server = {

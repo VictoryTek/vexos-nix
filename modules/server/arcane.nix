@@ -73,6 +73,14 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # Named Docker/Podman volume, not a /var/lib bind mount. Holds the
+    # environment/credential store encrypted with ENCRYPTION_KEY.
+    vexos.server.backup.servicePaths.arcane = [
+      (if cfg.backend == "podman"
+       then "/var/lib/containers/storage/volumes/arcane-data/_data"
+       else "/var/lib/docker/volumes/arcane-data/_data")
+    ];
+
     assertions = [
       {
         assertion = cfg.appUrl != "http://arcane.example.com";

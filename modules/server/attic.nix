@@ -51,6 +51,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.attic = [ cfg.dataDir ];
+
     # Auto-generate the RS256 signing key on first activation when using the
     # plaintext backend, so enabling Attic doesn't require a manual openssl
     # step. Under the sops backend, secrets-sops.nix forces environmentFile to

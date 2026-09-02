@@ -14,6 +14,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.komga = [ "/var/lib/komga" ];
+
     services.komga = {
       enable = true;
       port = 8090; # Using 8090 to avoid common 8080 conflicts

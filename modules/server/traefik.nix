@@ -55,6 +55,9 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # services.traefik.dataDir default — holds acme.json (issued certificates).
+    vexos.server.backup.servicePaths.traefik = [ "/var/lib/traefik" ];
+
     services.traefik = {
       enable = true;
       staticConfigOptions = {

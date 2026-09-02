@@ -1608,7 +1608,80 @@ disable-feature feature: _require-desktop-role
 # Run `just services` to see available modules and their status.
 
 # Available server service module names.
+# Keep in sync with _service_catalog below, modules/server/default.nix, and
+# template/server-services.nix.
 _server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana grimmory harmonia headscale kernel-builder home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+
+# Server service catalog — single source of truth for both `just
+# available-services` (catalog view) and `just services` (per-host status).
+# One line per module: group|name|description. Groups and order are rendered
+# verbatim by both recipes. Descriptions must not contain a '|'.
+# Keep in sync with _server_service_names above, modules/server/default.nix,
+# and template/server-services.nix.
+_service_catalog := '''
+    Books & Reading|grimmory|Self-hosted ebook/comic/audiobook library
+    Books & Reading|kavita|Self-hosted manga, comics & book library
+    Books & Reading|komga|Comic book & manga media server
+    Communications|matrix-conduit|Lightweight Matrix homeserver (chat protocol)
+    Files & Storage|immich|Self-hosted photo & video backup
+    Files & Storage|minio|S3-compatible object storage server
+    Files & Storage|nextcloud|File sync, sharing & collaboration suite
+    Files & Storage|photoprism|AI-powered photo management & sharing
+    Files & Storage|syncthing|Continuous peer-to-peer file synchronisation
+    Gaming|papermc|High-performance Minecraft Java server
+    Infrastructure|arcane|Web UI for managing Docker/Podman containers
+    Infrastructure|attic|Self-hosted Nix binary cache server
+    Infrastructure|backup|Declarative restic backups of enabled services
+    Infrastructure|caddy|Automatic HTTPS web server & reverse proxy
+    Infrastructure|docker|Container runtime (Docker Engine)
+    Infrastructure|dockhand|Web UI for managing Docker/Podman containers
+    Infrastructure|harmonia|Nix binary cache serving this host's store
+    Infrastructure|kernel-builder|Builds custom kernels for Harmonia to serve
+    Infrastructure|nginx|High-performance HTTP server & reverse proxy
+    Infrastructure|nginx-proxy-manager|Web UI for Nginx reverse proxy & SSL certs
+    Infrastructure|podman|Rootless OCI container runtime
+    Infrastructure|portainer|Web UI for managing Docker/Podman stacks
+    Infrastructure|traefik|Cloud-native edge router & reverse proxy
+    Media|audiobookshelf|Self-hosted audiobook & podcast server
+    Media|jellyfin|Open-source media streaming server
+    Media|navidrome|Music streaming server (Subsonic-compatible)
+    Media|plex|Personal media library & streaming server
+    Media|tautulli|Monitoring & analytics for Plex Media Server
+    Media Requests & Automation|arr|*arr suite — Sonarr, Radarr, Lidarr, Prowlarr, SABnzbd, Maintainerr
+    Media Requests & Automation|seerr|Media request manager (Jellyfin, Plex, Emby)
+    Monitoring & Admin|cockpit|Web-based Linux server management console
+    Monitoring & Admin|dozzle|Real-time container log viewer
+    Monitoring & Admin|grafana|Metrics visualisation & dashboards
+    Monitoring & Admin|loki|Log aggregation system (pairs with Grafana)
+    Monitoring & Admin|nas|Cockpit + NAS plugins (Samba, NFS, ZFS)
+    Monitoring & Admin|netdata|Real-time performance & health monitoring
+    Monitoring & Admin|portbook|Quick-access bookmark panel for services
+    Monitoring & Admin|prometheus|Metrics collection & alerting toolkit
+    Monitoring & Admin|scrutiny|S.M.A.R.T. disk health monitoring dashboard
+    Monitoring & Admin|uptime-kuma|Self-hosted uptime & status page monitoring
+    Monitoring & Admin|vexboard|VexOS Server dashboard (auto-enabled with first service)
+    Networking & Security|adguard|DNS-based ad & tracker blocker
+    Networking & Security|authelia|Single sign-on & two-factor auth gateway
+    Networking & Security|headscale|Self-hosted Tailscale-compatible VPN (WireGuard)
+    Networking & Security|unbound|Validating, recursive, caching DNS resolver
+    Networking & Security|vaultwarden|Lightweight Bitwarden-compatible password manager
+    Productivity|code-server|VS Code running in the browser
+    Productivity|forgejo|Self-hosted Git & code collaboration (Gitea fork)
+    Productivity|homepage|Customisable server dashboard & start page
+    Productivity|joplin|Self-hosted Joplin Server note sync backend
+    Productivity|listmonk|Self-hosted newsletter & mailing list manager
+    Productivity|mealie|Self-hosted recipe manager & meal planner
+    Productivity|paperless|Document scanning, OCR, tagging & archival
+    Productivity|stirling-pdf|Web-based PDF editing & conversion tools
+    Remote Access|rustdesk|Open-source self-hosted remote desktop server
+    Smart Home & Notifications|home-assistant|Open-source home automation platform
+    Smart Home & Notifications|node-red|Low-code flow-based automation editor
+    Smart Home & Notifications|ntfy|Simple HTTP-based push notification server
+    Smart Home & Notifications|zigbee2mqtt|Zigbee → MQTT bridge (no proprietary hub needed)
+    AI & Privacy|kiji-proxy|Privacy-first OpenAI-compatible AI API proxy
+    AI & Privacy|searxng|Privacy-respecting metasearch engine (no tracking, no query logging)
+    Experimental|proxmox|Proxmox VE integration (experimental)
+'''
 
 # Prompt for a yes/no confirmation, printing `prompt` verbatim and reading a
 # response exactly as the inline call sites did before this helper existed.
@@ -1926,86 +1999,17 @@ detach-remote-storage: _require-remote-storage-role
 [private]
 available-services:
     #!/usr/bin/env bash
-    _hdr() { printf "\n  \033[1m%s\033[0m\n" "$1"; }
-    _svc() { printf "    \033[36m%-22s\033[0m  %s\n" "$1" "$2"; }
     echo ""
     echo "Available server service modules:"
-    _hdr "Books & Reading"
-    _svc grimmory            "Self-hosted ebook/comic/audiobook library"
-    _svc kavita              "Self-hosted manga, comics & book library"
-    _svc komga               "Comic book & manga media server"
-    _hdr "Communications"
-    _svc matrix-conduit      "Lightweight Matrix homeserver (chat protocol)"
-    _hdr "Files & Storage"
-    _svc immich              "Self-hosted photo & video backup"
-    _svc minio               "S3-compatible object storage server"
-    _svc nextcloud           "File sync, sharing & collaboration suite"
-    _svc photoprism          "AI-powered photo management & sharing"
-    _svc syncthing           "Continuous peer-to-peer file synchronisation"
-    _hdr "Gaming"
-    _svc papermc             "High-performance Minecraft Java server"
-    _hdr "Infrastructure"
-    _svc arcane              "Web UI for managing Docker/Podman containers"
-    _svc attic               "Self-hosted Nix binary cache server"
-    _svc backup              "Declarative restic backups of enabled services"
-    _svc caddy               "Automatic HTTPS web server & reverse proxy"
-    _svc docker              "Container runtime (Docker Engine)"
-    _svc dockhand            "Web UI for managing Docker/Podman containers"
-    _svc harmonia            "Nix binary cache serving this host's store"
-    _svc kernel-builder      "Builds custom kernels for Harmonia to serve"
-    _svc nginx               "High-performance HTTP server & reverse proxy"
-    _svc nginx-proxy-manager "Web UI for Nginx reverse proxy & SSL certs"
-    _svc podman              "Rootless OCI container runtime"
-    _svc portainer           "Web UI for managing Docker/Podman stacks"
-    _svc traefik             "Cloud-native edge router & reverse proxy"
-    _hdr "Media"
-    _svc audiobookshelf      "Self-hosted audiobook & podcast server"
-    _svc jellyfin            "Open-source media streaming server"
-    _svc navidrome           "Music streaming server (Subsonic-compatible)"
-    _svc plex                "Personal media library & streaming server"
-    _svc tautulli            "Monitoring & analytics for Plex Media Server"
-    _hdr "Media Requests & Automation"
-    _svc arr                 "*arr suite — Sonarr, Radarr, Lidarr, Prowlarr, SABnzbd, Maintainerr"
-    _svc seerr               "Media request manager (Jellyfin, Plex, Emby)"
-    _hdr "Monitoring & Admin"
-    _svc cockpit             "Web-based Linux server management console"
-    _svc dozzle              "Real-time container log viewer"
-    _svc grafana             "Metrics visualisation & dashboards"
-    _svc loki                "Log aggregation system (pairs with Grafana)"
-    _svc nas                 "Cockpit + NAS plugins (Samba, NFS, ZFS)"
-    _svc netdata             "Real-time performance & health monitoring"
-    _svc portbook            "Quick-access bookmark panel for services"
-    _svc prometheus          "Metrics collection & alerting toolkit"
-    _svc scrutiny            "S.M.A.R.T. disk health monitoring dashboard"
-    _svc uptime-kuma         "Self-hosted uptime & status page monitoring"
-    _svc vexboard            "VexOS Server dashboard (auto-enabled with first service)"
-    _hdr "Networking & Security"
-    _svc adguard             "DNS-based ad & tracker blocker"
-    _svc authelia            "Single sign-on & two-factor auth gateway"
-    _svc headscale           "Self-hosted Tailscale-compatible VPN (WireGuard)"
-    _svc unbound             "Validating, recursive, caching DNS resolver"
-    _svc vaultwarden         "Lightweight Bitwarden-compatible password manager"
-    _hdr "Productivity"
-    _svc code-server         "VS Code running in the browser"
-    _svc forgejo             "Self-hosted Git & code collaboration (Gitea fork)"
-    _svc homepage            "Customisable server dashboard & start page"
-    _svc joplin              "Self-hosted Joplin Server note sync backend"
-    _svc listmonk            "Self-hosted newsletter & mailing list manager"
-    _svc mealie              "Self-hosted recipe manager & meal planner"
-    _svc paperless           "Document scanning, OCR, tagging & archival"
-    _svc stirling-pdf        "Web-based PDF editing & conversion tools"
-    _hdr "Remote Access"
-    _svc rustdesk            "Open-source self-hosted remote desktop server"
-    _hdr "Smart Home & Notifications"
-    _svc home-assistant      "Open-source home automation platform"
-    _svc node-red            "Low-code flow-based automation editor"
-    _svc ntfy                "Simple HTTP-based push notification server"
-    _svc zigbee2mqtt         "Zigbee → MQTT bridge (no proprietary hub needed)"
-    _hdr "AI & Privacy"
-    _svc kiji-proxy          "Privacy-first OpenAI-compatible AI API proxy"
-    _svc searxng             "Privacy-respecting metasearch engine (no tracking, no query logging)"
-    _hdr "Experimental"
-    _svc proxmox             "Proxmox VE integration (experimental)"
+    prev_group=""
+    while IFS='|' read -r group name desc; do
+        [ -z "$group" ] && continue
+        if [ "$group" != "$prev_group" ]; then
+            printf "\n  \033[1m%s\033[0m\n" "$group"
+            prev_group="$group"
+        fi
+        printf "    \033[36m%-22s\033[0m  %s\n" "$name" "$desc"
+    done <<< '{{ replace(_service_catalog, "'", "'\\''") }}'
     echo ""
     echo "Use 'just enable <service>' to enable a module on a server host."
     echo ""
@@ -2408,23 +2412,17 @@ services: _require-server-role
             printf "    \033[90m✗\033[0m %s\n" "$svc"
         fi
     }
-    _hdr() { printf "\n  \033[1m%s\033[0m\n" "$1"; }
     echo ""
     echo "Server services (/etc/nixos/server-services.nix):"
-    _hdr "Books & Reading";            _check kavita;         _check komga
-    _hdr "Communications";             _check matrix-conduit
-    _hdr "Files & Storage";            _check immich;         _check nextcloud;     _check syncthing;     _check minio;         _check photoprism
-    _hdr "Gaming";                     _check papermc
-    _hdr "Infrastructure";             _check arcane;         _check attic;          _check backup;         _check caddy;          _check docker;        _check dockhand;      _check harmonia;      _check kernel-builder;  _check podman;        _check nginx;         _check nginx-proxy-manager;  _check portainer;  _check traefik
-    _hdr "Media";                      _check audiobookshelf; _check jellyfin;      _check navidrome;     _check plex;          _check tautulli
-    _hdr "Media Requests & Automation";_check arr;            _check seerr
-    _hdr "Monitoring & Admin";         _check nas;            _check cockpit;        _check dozzle;        _check grafana;       _check loki;          _check netdata;   _check prometheus;  _check scrutiny;  _check uptime-kuma;  _check portbook;  _check vexboard
-    _hdr "Networking & Security";      _check adguard;        _check authelia;      _check headscale;     _check unbound;       _check vaultwarden
-    _hdr "Productivity";               _check code-server;    _check forgejo;       _check homepage;      _check listmonk;      _check mealie;    _check paperless;   _check stirling-pdf
-    _hdr "Remote Access";              _check rustdesk
-    _hdr "Smart Home & Notifications"; _check home-assistant; _check node-red;      _check ntfy;          _check zigbee2mqtt
-    _hdr "AI & Privacy";               _check kiji-proxy
-    _hdr "Experimental";               _check proxmox
+    prev_group=""
+    while IFS='|' read -r group name desc; do
+        [ -z "$group" ] && continue
+        if [ "$group" != "$prev_group" ]; then
+            printf "\n  \033[1m%s\033[0m\n" "$group"
+            prev_group="$group"
+        fi
+        _check "$name"
+    done <<< '{{ replace(_service_catalog, "'", "'\\''") }}'
     echo ""
 
 # Enable a server service module.  Usage: just enable docker

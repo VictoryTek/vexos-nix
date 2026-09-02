@@ -56,6 +56,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.proxmox = [ "/var/lib/pve-cluster" "/etc/pve" ];
+
     assertions = [
       {
         assertion = cfg.ipAddress != "";

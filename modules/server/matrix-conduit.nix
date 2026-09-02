@@ -47,6 +47,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.matrix-conduit = [ "/var/lib/matrix-conduit" ];
+
     services.matrix-conduit = {
       enable = true;
       settings.global = {

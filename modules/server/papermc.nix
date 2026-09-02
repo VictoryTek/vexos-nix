@@ -22,6 +22,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.papermc = [ "/var/lib/minecraft" ];
+
     assertions = [
       {
         assertion = cfg.acceptEula;

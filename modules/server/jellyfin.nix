@@ -19,6 +19,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.jellyfin = [ "/var/lib/jellyfin" ];
+
     services.jellyfin = {
       enable = true;
       openFirewall = true;

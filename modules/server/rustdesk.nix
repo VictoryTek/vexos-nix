@@ -17,6 +17,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.rustdesk = [ "/var/lib/rustdesk-server" ];
+
     services.rustdesk-server = {
       enable = true;
       openFirewall = true;

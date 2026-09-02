@@ -18,6 +18,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.prometheus = [ "/var/lib/prometheus2" ];
+
     services.prometheus = {
       enable = true;
       port = cfg.port;

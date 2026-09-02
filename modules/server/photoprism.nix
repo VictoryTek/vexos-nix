@@ -41,6 +41,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.photoprism = [ "/var/lib/photoprism" ];
+
     services.photoprism = {
       enable = true;
       port = cfg.port;

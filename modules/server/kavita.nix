@@ -26,6 +26,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.kavita = [ "/var/lib/kavita" ];
+
     services.kavita = {
       enable = true;
       settings.Port = cfg.port;

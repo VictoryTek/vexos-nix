@@ -36,6 +36,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.homepage = [ "/var/lib/homepage" ];
+
     virtualisation.docker.enable = lib.mkDefault true;
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 

@@ -22,6 +22,13 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # Named Docker/Podman volume, not a /var/lib bind mount.
+    vexos.server.backup.servicePaths.uptime-kuma = [
+      (if config.virtualisation.oci-containers.backend == "podman"
+       then "/var/lib/containers/storage/volumes/uptime-kuma-data/_data"
+       else "/var/lib/docker/volumes/uptime-kuma-data/_data")
+    ];
+
     virtualisation.docker.enable = lib.mkDefault true;
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 

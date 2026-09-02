@@ -26,6 +26,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.loki = [ "/var/lib/loki" ];
+
     services.loki = {
       enable = true;
       configuration = {

@@ -10,6 +10,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.tautulli = [ "/var/lib/tautulli" ];
+
     services.tautulli = {
       enable = true;
       openFirewall = true; # Default port: 8181

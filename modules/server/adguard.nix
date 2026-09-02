@@ -49,6 +49,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.adguard = [ "/var/lib/adguardhome" ];
+
     services.adguardhome = {
       enable = true;
       openFirewall = true;

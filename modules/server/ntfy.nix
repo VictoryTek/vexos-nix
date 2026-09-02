@@ -24,6 +24,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.ntfy = [ "/var/lib/ntfy-sh" ];
+
     services.ntfy-sh = {
       enable = true;
       settings = {

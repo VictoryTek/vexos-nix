@@ -63,6 +63,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.dockhand = [ cfg.dataDir ];
+
     assertions = [
       {
         assertion = cfg.backend != "podman" || config.vexos.server.podman.enable;

@@ -19,6 +19,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.audiobookshelf = [ "/var/lib/audiobookshelf" ];
+
     services.audiobookshelf = {
       enable = true;
       port = cfg.port;

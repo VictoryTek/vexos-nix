@@ -45,6 +45,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.portbook = [ "/var/lib/portbook" ];
+
 
     systemd.services.portbook = {
       description = "Portbook localhost port discovery dashboard";

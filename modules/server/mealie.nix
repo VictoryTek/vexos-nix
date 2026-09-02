@@ -22,6 +22,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.mealie = [ "/var/lib/mealie" ];
+
     services.mealie = {
       enable = true;
       listenAddress = "0.0.0.0";

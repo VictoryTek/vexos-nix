@@ -23,6 +23,7 @@
     ./komga.nix
     ./kavita.nix
     ./grimmory.nix
+    ./bookshelf.nix
     # ── Game Servers ─────────────────────────────────────────────────────────
     ./papermc.nix
     # ── Cloud & Files ────────────────────────────────────────────────────────
@@ -58,6 +59,7 @@
     ./headscale.nix
     ./unbound.nix
     ./nginx-proxy-manager.nix
+    ./cloudflare-ddns.nix
     # ── Monitoring & Management ──────────────────────────────────────────────
     ./cockpit.nix
     ./nas.nix          # Phase D: NAS stack umbrella (cockpit + plugins) + backend selector
@@ -80,6 +82,7 @@
     ./ntfy.nix
     # ── Food & Home ──────────────────────────────────────────────────────────
     ./mealie.nix
+    ./wishlist.nix
     ./listmonk.nix
     # ── Remote Access ────────────────────────────────────────────────────────
     ./rustdesk.nix

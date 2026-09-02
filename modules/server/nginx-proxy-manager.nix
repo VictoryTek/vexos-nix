@@ -37,6 +37,15 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # Named Docker/Podman volumes, not /var/lib bind mounts: npm-data holds
+    # the proxy-host database and npm-letsencrypt the issued certificates.
+    vexos.server.backup.servicePaths.nginx-proxy-manager =
+      let
+        volumeRoot = if config.virtualisation.oci-containers.backend == "podman"
+                     then "/var/lib/containers/storage/volumes"
+                     else "/var/lib/docker/volumes";
+      in [ "${volumeRoot}/npm-data/_data" "${volumeRoot}/npm-letsencrypt/_data" ];
+
     virtualisation.docker.enable = lib.mkDefault true;
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 

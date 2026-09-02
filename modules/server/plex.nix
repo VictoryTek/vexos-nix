@@ -26,6 +26,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.plex = [ "/var/lib/plex" ];
+
     services.plex = {
       enable = true;
       openFirewall = true;

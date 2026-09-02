@@ -10,6 +10,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.home-assistant = [ "/var/lib/hass" ];
+
     services.home-assistant = {
       enable = true;
       openFirewall = true; # Port 8123

@@ -32,10 +32,11 @@
 #
 # Backup: the live Postgres data directory is not file-backup-safe, so a
 # nightly `pg_dump` writes a plain SQL dump to dataDir/dump, which is what
-# modules/server/backup.nix's servicePaths entry actually backs up.
+# this module registers in vexos.server.backup.servicePaths.
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.joplin;
+  dumpTimer = import ../lib/dump-timer.nix { inherit lib pkgs; };
   # If the operator doesn't supply their own secret backend, generate one
   # locally on first activation (see the joplin-secrets-init unit below).
   effectiveEnvFile =
@@ -99,7 +100,12 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkMerge [
+  (lib.mkIf cfg.enable {
+    # Not postgres/ — live pgdata is not file-backup-safe; the nightly
+    # dump below is what actually captures the database.
+    vexos.server.backup.servicePaths.joplin = [ "${cfg.dataDir}/dump" ];
+
     virtualisation.docker.enable = lib.mkDefault true;
     virtualisation.oci-containers.backend = "docker";
 
@@ -187,30 +193,24 @@ in
     systemd.services."docker-joplin-server".after    = [ "joplin-network.service" ] ++ lib.optional (cfg.environmentFile == null) "joplin-secrets-init.service";
     systemd.services."docker-joplin-server".requires = [ "joplin-network.service" ] ++ lib.optional (cfg.environmentFile == null) "joplin-secrets-init.service";
 
-    # Nightly SQL dump — the live postgres/ data directory is not safe to
-    # file-backup directly, so backup.nix's servicePaths only backs up dump/.
-    # Scheduled at 23:30 so a fresh dump exists before restic's default
-    # "daily" (~00:00) run reads it; if vexos.server.backup.timerConfig is
-    # customized to run earlier than 23:30, the dump may be one cycle stale.
-    systemd.services."joplin-postgres-dump" = {
-      description = "Dump Joplin PostgreSQL database for backup";
-      after    = [ "docker-joplin-db.service" ];
-      requires = [ "docker-joplin-db.service" ];
-      serviceConfig.Type = "oneshot";
-      script = ''
-        ${pkgs.docker}/bin/docker exec joplin-db pg_dump -U joplin joplin > "${cfg.dataDir}/dump/joplin.sql"
-      '';
-    };
-
-    systemd.timers."joplin-postgres-dump" = {
-      wantedBy = [ "timers.target" ];
-      timerConfig = {
-        OnCalendar = "*-*-* 23:30:00";
-        Persistent = true;
-      };
-    };
-
     networking.firewall.interfaces.tailscale0.allowedTCPPorts =
       lib.optional cfg.openFirewall cfg.port;
-  };
+  })
+
+  # Nightly SQL dump — the live postgres/ data directory is not safe to
+  # file-backup directly, so the servicePaths entry above only backs up dump/.
+  #
+  # offsetMinute/unitName are pinned to the values this service used before it
+  # moved to the shared helper, so the schedule and unit name are unchanged.
+  # New dump-timer modules should omit both and take the hashed offset.
+  (lib.mkIf cfg.enable (dumpTimer.mkDumpTimer {
+    name         = "joplin";
+    container    = "joplin-db";
+    command      = "pg_dump -U joplin joplin";
+    outputPath   = "${cfg.dataDir}/dump/joplin.sql";
+    offsetMinute = 30;
+    unitName     = "joplin-postgres-dump";
+    description  = "Dump Joplin PostgreSQL database for backup";
+  }))
+  ];
 }

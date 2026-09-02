@@ -24,6 +24,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.listmonk = [ "/var/lib/listmonk" ];
+
     services.listmonk = {
       enable = true;
       settings.app.address = "0.0.0.0:${toString cfg.port}";

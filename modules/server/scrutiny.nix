@@ -34,6 +34,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.scrutiny = [ "/var/lib/scrutiny" ];
+
     services.scrutiny = {
       enable = true;
       openFirewall = true;

@@ -84,6 +84,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.nextcloud = [ "/var/lib/nextcloud" ];
+
     services.nextcloud = {
       enable = true;
       package = pkgs.nextcloud30;

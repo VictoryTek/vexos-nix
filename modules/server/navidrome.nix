@@ -33,6 +33,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.navidrome = [ "/var/lib/navidrome" ];
+
     services.navidrome = {
       enable = true;
       settings = {

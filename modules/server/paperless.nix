@@ -25,6 +25,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.paperless = [ "/var/lib/paperless" ];
+
     services.paperless = {
       enable = true;
       port = cfg.port;

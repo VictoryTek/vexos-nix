@@ -60,6 +60,9 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # Signing key only — losing it invalidates every client's trusted-public-keys.
+    vexos.server.backup.servicePaths.harmonia = [ "/var/lib/harmonia" ];
+
     # Generate the signing keypair on first activation so enabling Harmonia
     # doesn't require a manual key step (same approach as attic.nix's
     # atticSecret script). The key name is derived from the hostname so that

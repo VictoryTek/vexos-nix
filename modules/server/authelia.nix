@@ -55,6 +55,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.authelia = [ "/var/lib/authelia" ];
+
     virtualisation.docker.enable = lib.mkDefault true;
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 

@@ -66,6 +66,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    vexos.server.backup.servicePaths.vaultwarden = [ "/var/lib/vaultwarden" ];
+
     assertions = [
       {
         assertion = cfg.domain != "https://vault.example.com";
