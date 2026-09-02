@@ -2605,7 +2605,12 @@ enable service: _require-server-role
         exit 0
     fi
 
-    if grep -q "${OPTION}\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+    # `backup` is exempt from the "already enabled" early-exit: it may have been
+    # auto-enabled with local defaults alongside another service (see the
+    # auto-enable block below), and running `just enable backup` explicitly must
+    # still let the user re-point the repository / passwordFile via the
+    # interactive prompt block rather than silently no-op.
+    if [ "$SERVICE" != "backup" ] && grep -q "${OPTION}\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
         echo "$SERVICE is already enabled."
         exit 0
     fi
@@ -2806,6 +2811,57 @@ enable service: _require-server-role
         # Always ensure secretFile is set — runs even if VexBoard was already enabled
         # on a pre-existing VM where a prior session left enable=true but no secretFile.
         _ensure_vexboard_secret "$SVC_FILE"
+    fi
+
+    # Ensure declarative backups have sane local defaults — repository and
+    # passwordFile. Fully non-interactive, mirrors _ensure_vexboard_secret:
+    # generates the restic password with the same command the interactive backup
+    # block uses (openssl rand -base64 48), and every write is idempotent.
+    _ensure_backup_defaults() {
+        local svc_file="$1"
+        local repo_default="/var/lib/vexos-backup/restic-repo"
+        local pw_default="/etc/nixos/secrets/backup-password"
+        local repo_opt="vexos.server.backup.repository"
+        local pw_opt="vexos.server.backup.passwordFile"
+
+        if ! grep -qP "^\s*${repo_opt//./\\.}\s*=\s*\"[^\"]+\"\s*;" "$svc_file" 2>/dev/null; then
+            if grep -qP "^\s*#?\s*${repo_opt//./\\.}\s*=" "$svc_file" 2>/dev/null; then
+                sudo sed -i -E "s|^(\s*)#?\s*(${repo_opt//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${repo_opt} = \"${repo_default}\";|" "$svc_file"
+            else
+                sudo sed -i "\$ s|^}|  ${repo_opt} = \"${repo_default}\";\n}|" "$svc_file"
+            fi
+        fi
+
+        if ! grep -qP "^\s*${pw_opt//./\\.}\s*=" "$svc_file" 2>/dev/null; then
+            if [ ! -f "$pw_default" ]; then
+                sudo mkdir -p /etc/nixos/secrets
+                sudo chmod 700 /etc/nixos/secrets
+                openssl rand -base64 48 | sudo tee "$pw_default" > /dev/null
+                sudo chmod 600 "$pw_default"
+            fi
+            if grep -qP "^\s*#\s*${pw_opt//./\\.}" "$svc_file" 2>/dev/null; then
+                sudo sed -i -E "s|^(\s*)#\s*(${pw_opt//./\\.}\s*=\s*\"[^\"]*\")\s*;|\1\2;|" "$svc_file"
+            else
+                sudo sed -i "\$ s|^}|  ${pw_opt} = \"${pw_default}\";\n}|" "$svc_file"
+            fi
+        fi
+    }
+
+    # Auto-enable declarative backups alongside the first service enabled on this
+    # host, with non-interactive local defaults. The interactive
+    # `just enable backup` path (above) still owns custom repository / passwordFile
+    # configuration for anyone pointing backups at a NAS or remote target.
+    if [ "$SERVICE" != "backup" ]; then
+        BK_OPTION="vexos.server.backup.enable"
+        if ! grep -qP "^\s*vexos\.server\.backup\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+            if grep -qP "^\s*#?\s*${BK_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
+                sudo sed -i -E "s/^(\s*)#?\s*(${BK_OPTION//./\\.})\s*=\s*(true|false)\s*;/\1${BK_OPTION} = true;/" "$SVC_FILE"
+            else
+                sudo sed -i "\$ s|^}|  ${BK_OPTION} = true;\n}|" "$SVC_FILE"
+            fi
+            _ensure_backup_defaults "$SVC_FILE"
+            echo "  + Backups also enabled (restic → /var/lib/vexos-backup/restic-repo)"
+        fi
     fi
 
     echo "  → Run 'just rebuild' to apply."
