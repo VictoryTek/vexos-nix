@@ -2696,7 +2696,7 @@ enable service: _require-server-role
         done
         if [ ! -f "$_backup_pw_file" ]; then
             sudo mkdir -p "$(dirname "$_backup_pw_file")"
-            openssl rand -base64 48 | sudo tee "$_backup_pw_file" > /dev/null
+            sudo nix shell nixpkgs#openssl -c openssl rand -base64 48 | sudo tee "$_backup_pw_file" > /dev/null
             sudo chmod 0600 "$_backup_pw_file"
             echo "  Generated a new random password at $_backup_pw_file"
         fi
@@ -2737,8 +2737,8 @@ enable service: _require-server-role
                 sudo mkdir -p /etc/nixos/secrets
                 sudo chmod 700 /etc/nixos/secrets
                 {
-                    printf 'ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)"
-                    printf 'JWT_SECRET=%s\n' "$(openssl rand -hex 32)"
+                    printf 'ENCRYPTION_KEY=%s\n' "$(sudo nix shell nixpkgs#openssl -c openssl rand -hex 32)"
+                    printf 'JWT_SECRET=%s\n' "$(sudo nix shell nixpkgs#openssl -c openssl rand -hex 32)"
                 } | sudo tee "$ARCANE_SECRET_PATH" > /dev/null
                 sudo chmod 600 "$ARCANE_SECRET_PATH"
             fi
@@ -2836,7 +2836,7 @@ enable service: _require-server-role
             if [ ! -f "$pw_default" ]; then
                 sudo mkdir -p /etc/nixos/secrets
                 sudo chmod 700 /etc/nixos/secrets
-                openssl rand -base64 48 | sudo tee "$pw_default" > /dev/null
+                sudo nix shell nixpkgs#openssl -c openssl rand -base64 48 | sudo tee "$pw_default" > /dev/null
                 sudo chmod 600 "$pw_default"
             fi
             if grep -qP "^\s*#\s*${pw_opt//./\\.}" "$svc_file" 2>/dev/null; then
