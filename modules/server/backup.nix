@@ -173,6 +173,11 @@ in
 
       services.restic.backups.main = {
         inherit (cfg) repository repositoryFile pruneOpts timerConfig;
+        # Upstream defaults this to false; without it, a fresh repository is
+        # never created and every backup run fails with "repository does not
+        # exist". `restic cat config || restic init` is a no-op once the repo
+        # already exists, so this is safe to leave on unconditionally.
+        initialize = true;
         # Upstream passwordFile is typed `nullOr str`, not `path` — convert so our
         # nicer path-typed option (catches typos at eval time) still fits.
         passwordFile = lib.mkIf (cfg.passwordFile != null) (toString cfg.passwordFile);
