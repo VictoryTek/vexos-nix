@@ -55,46 +55,40 @@ in
   # Unlike Attic, a Harmonia URL has no cache-name path segment: Harmonia
   # serves the host's store at the root.
   #
-  # These default to the project's own cache so that NO host ever needs to be
-  # configured by hand — the whole point of using a stable Tailscale MagicDNS
-  # name plus a sops-managed (therefore portable) signing key. The cache is
-  # reachable only over the tailnet, and "cache" follows whichever machine
-  # currently runs Harmonia, so moving the service needs no repo edits.
+  # Opt-in, like vexos.attic: both default to off. A Harmonia cache is only
+  # useful once a host actually runs the server (vexos.server.harmonia.enable)
+  # and is reachable — enabling it fleet-wide by default just makes every
+  # rebuild retry an unresolvable substituter.
   #
-  # Setup on the cache host is two Tailscale admin-console actions, not repo
-  # changes: enable MagicDNS, and name that host "cache".
+  # To consume a cache, set BOTH values on the hosts that should use it
+  # (host config or server-services.nix):
+  #   vexos.harmonia.cacheUrl  = "http://cache:5000";
+  #   vexos.harmonia.publicKey = "cache-1:AbCdEf...=";
   #
-  # Override per-host only if you run a different cache:
-  #   vexos.harmonia.cacheUrl  = "http://other-host:5000";
-  #   vexos.harmonia.publicKey = "other-host-1:AbCdEf...=";
-  #
-  # Both values are printed by `just harmonia-info` on the cache host.
-  # Set cacheUrl = null to opt out entirely.
+  # "cache" is a Tailscale MagicDNS name pointed at whichever host currently
+  # runs Harmonia; both values are printed by `just harmonia-info` on that host.
   options.vexos.harmonia = {
     cacheUrl = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
-      default = "http://cache:5000";
+      default = null;
       example = "http://cache:5000";
       description = ''
         URL of the Harmonia binary cache (no path segment — Harmonia serves the
         host's store at the root). Resolved over Tailscale MagicDNS, so it works
         from any machine on the tailnet regardless of physical network.
-        Set to null to disable.
+        Leave null to disable (default).
       '';
     };
 
     publicKey = lib.mkOption {
       type = lib.types.str;
-      default = "vexos-vmc-1:Nm4amMYYdvIlY7EZUHbDVI0GTY8orUpWRM89UpX1Vjs=";
+      default = "";
       example = "cache-1:AbCdEf1234567890AAAAAAA==";
       description = ''
         Ed25519 public key for the Harmonia cache, as printed by
         `just harmonia-info` (or read from <signKeyPath>.pub on the cache host).
-        Required when vexos.harmonia.cacheUrl is set.
-
-        Filled in from `just harmonia-info` on the cache host (vexos-vmc). It is not
-        a secret and is safe to commit — doing so is what makes every present and
-        future host pick the cache up automatically.
+        Required when vexos.harmonia.cacheUrl is set. Not a secret — safe to
+        commit alongside the matching cacheUrl on the hosts that opt in.
       '';
     };
   };
