@@ -13,7 +13,7 @@
 #
 # Repository target (local disk, SFTP, B2, etc.) is entirely up to the user —
 # see vexos.server.backup.repository / repositoryFile.
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.backup;
 
@@ -56,6 +56,19 @@ let
       (name: paths: lib.optionals (config.vexos.server.${name}.enable or false) paths)
       cfg.servicePaths
   );
+
+  # Enabled services that have registered backup paths, sorted (lib.attrNames is
+  # lexicographic — keeps the tag argument list stable across rebuilds).
+  enabledBackupServices = lib.filter
+    (name: config.vexos.server.${name}.enable or false)
+    (lib.attrNames cfg.servicePaths);
+
+  # Service -> paths for the services actually present in each snapshot. Consumed
+  # by `just restore-service <name>`. extraPaths and the postgres dump are
+  # deliberately excluded: they are not service-scoped.
+  backupPathsManifest = lib.filterAttrs
+    (name: _: config.vexos.server.${name}.enable or false)
+    cfg.servicePaths;
 
   # Enabled services that neither registered backup paths nor declared
   # themselves stateless. See the assertion below.
@@ -171,8 +184,23 @@ in
         }
       ];
 
+      # jq parses /etc/vexos/backup-paths.json in the restore-service recipe.
+      environment.systemPackages = [ pkgs.jq ];
+
+      # Records which data paths belong to which service, so a per-service
+      # restore does not have to re-derive them. Only enabled services appear —
+      # matching exactly what each snapshot contains.
+      environment.etc."vexos/backup-paths.json".text =
+        builtins.toJSON backupPathsManifest;
+
       services.restic.backups.main = {
         inherit (cfg) repository repositoryFile pruneOpts timerConfig;
+        # Tag every snapshot with "vexos" plus one tag per service it covers, so
+        # `restic-main snapshots --tag <service>` and `restic-main restore
+        # latest --tag <service>` can select by service. The nixpkgs restic
+        # module has no `tags` option — tags go through extraBackupArgs.
+        extraBackupArgs =
+          lib.concatMap (t: [ "--tag" t ]) ([ "vexos" ] ++ enabledBackupServices);
         # Upstream defaults this to false; without it, a fresh repository is
         # never created and every backup run fails with "repository does not
         # exist". `restic cat config || restic init` is a no-op once the repo

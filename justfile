@@ -1878,6 +1878,85 @@ restore-plex tarball: _require-server-role
     echo "  Restarting Plex now — check status with: systemctl status plex"
     echo "  Web UI: http://<server-ip>:32400/web"
 
+# Restore a single service's data from the declarative restic backup repository.
+# Requires vexos.server.backup.enable = true. Reads the service's data paths from
+# /etc/vexos/backup-paths.json and restores them in place from the newest snapshot
+# tagged with the service name (or an explicit snapshot ID passed as the second
+# argument — see `restic-main snapshots`). Destructive: files are overwritten in
+# place after a typed confirmation. Usage: just restore-service <name> [snapshot]
+restore-service name snapshot="latest": _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    NAME="{{name}}"
+    SNAP="{{snapshot}}"
+    MANIFEST=/etc/vexos/backup-paths.json
+
+    RESTIC="$(command -v restic-main || true)"
+    if [ -z "$RESTIC" ]; then
+        echo "error: restic-main wrapper not found — enable backups with 'just enable backup && just rebuild'." >&2
+        exit 1
+    fi
+    if [ ! -f "$MANIFEST" ]; then
+        echo "error: $MANIFEST not found — rebuild after enabling backups." >&2
+        exit 1
+    fi
+    if ! command -v jq &>/dev/null; then
+        echo "error: jq not found — rebuild after enabling backups." >&2
+        exit 1
+    fi
+
+    mapfile -t PATHS < <(jq -r --arg n "$NAME" '.[$n][]?' "$MANIFEST")
+    if [ "${#PATHS[@]}" -eq 0 ]; then
+        echo "error: '$NAME' has no backup paths registered. Known services:" >&2
+        jq -r 'keys[]' "$MANIFEST" | sed 's/^/  /' >&2
+        exit 1
+    fi
+
+    echo "Restore '$NAME' from snapshot '$SNAP' (tag: $NAME) into:"
+    printf '  %s\n' "${PATHS[@]}"
+    echo "Existing files at those paths will be overwritten in place."
+    if [ "${VEXOS_ASSUME_YES:-}" = "1" ]; then
+        CONFIRM="yes"
+    else
+        read -r -p "Type 'yes' to continue: " CONFIRM
+    fi
+    if [ "$CONFIRM" != "yes" ]; then
+        echo "Aborted — no changes made."
+        exit 1
+    fi
+
+    # The managing unit is <name>.service for native services, or
+    # docker-/podman-<name>.service for oci-containers services.
+    UNIT=""
+    for candidate in "${NAME}.service" "docker-${NAME}.service" "podman-${NAME}.service"; do
+        if systemctl list-unit-files "$candidate" &>/dev/null && systemctl is-active --quiet "$candidate"; then
+            UNIT="$candidate"
+            break
+        fi
+    done
+    if [ -n "$UNIT" ]; then
+        echo "Stopping $UNIT ..."
+        sudo systemctl stop "$UNIT"
+        trap 'echo "Restarting $UNIT ..."; sudo systemctl start "$UNIT"' EXIT
+    else
+        echo "warning: no active unit found for '$NAME' — restoring without stopping it." >&2
+    fi
+
+    INCLUDES=()
+    for p in "${PATHS[@]}"; do
+        INCLUDES+=(--include "$p")
+    done
+
+    echo "Restoring ..."
+    sudo "$RESTIC" restore "$SNAP" --tag "$NAME" --target / "${INCLUDES[@]}"
+
+    echo ""
+    echo "✓ Restore complete for '$NAME'."
+    if [ -n "$UNIT" ]; then
+        echo "  Check status with: systemctl status $UNIT"
+    fi
+
 # Interactively create a ZFS pool for use as Proxmox VM/container backing storage.
 # Server roles only.  Requires modules/zfs-server.nix in the active build.
 # All work runs as root via sudo. The recipe:
@@ -2891,6 +2970,8 @@ enable service: _require-server-role
         echo "  About:    Daily restic backup of every enabled service's data directory"
         echo "            (plus a PostgreSQL dump if services.postgresql is enabled)."
         echo "  Run now:  just backup-now"
+        echo "  Restore:  just restore-service <name>   (per-service, in place)"
+        echo "  Inspect:  restic-main snapshots --tag <service>"
         ;;
       audiobookshelf)
         echo "  Service:  audiobookshelf.service"
