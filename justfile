@@ -1,5 +1,11 @@
 # vexos-nix justfile
 
+# Disable the systemd pager for every recipe. systemctl spawns a pager when it
+# thinks it has a terminal; if the pager cannot start (e.g. the host lacks a
+# terminfo entry for the client's TERM), systemctl dies of SIGPIPE and exits
+# 141. That made `if ! systemctl ...` guards report healthy units as missing.
+export SYSTEMD_PAGER := ""
+
 # List all available recipes (default when running `just` with no arguments).
 [private]
 default:
@@ -1789,7 +1795,7 @@ backup-now: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
     if ! systemctl list-unit-files restic-backups-main.service &>/dev/null; then
-        echo "error: restic-backups-main.service not found — enable it first with 'just enable backup'."
+        echo "error: restic-backups-main.service not found — enable it first with 'just enable backup && just rebuild'."
         exit 1
     fi
     sudo systemctl start restic-backups-main.service --wait

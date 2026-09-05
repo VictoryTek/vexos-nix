@@ -19,5 +19,9 @@
     curl    # HTTP / transfer CLI
     wget    # File downloader
     rsync   # File/directory sync and transfer
+    # terminfo database only (not the terminal emulator) — lets SSH sessions
+    # from a Ghostty client resolve TERM=xterm-ghostty. Without it, pagers and
+    # curses programs fail on roles that do not install ghostty themselves.
+    ghostty.terminfo
   ];
 }
