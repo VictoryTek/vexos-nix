@@ -148,6 +148,14 @@
     featuresFile = ./features.nix;
     hasFeatures  = builtins.pathExists featuresFile;
 
+    # ── Optional VM guest platform selector (stateless role) ──────────────────
+    # Written by stateless-setup.sh / migrate-to-stateless.sh for VirtualBox
+    # guests (QEMU is the vexos.vm.platform default and needs no file). Kept
+    # separate from features.nix so the stateless role stays isolated from the
+    # desktop feature-toggle options it does not declare.
+    vmPlatformFile = ./vm-platform.nix;
+    hasVmPlatform  = builtins.pathExists vmPlatformFile;
+
     # ── Optional generated storage config ─────────────────────────────────────
     # storage-pool.nix — mergerfs branches + SnapRAID parity, server roles only,
     #   written by `just create-mergerfs-pool`.
@@ -229,6 +237,7 @@
         ]
         ++ modules
         ++ lib.optional hasUserOverride userOverrideFile
+        ++ lib.optional hasVmPlatform vmPlatformFile
         ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 

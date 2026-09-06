@@ -191,6 +191,15 @@
       let path = /etc/nixos/features.nix;
       in if builtins.pathExists path then [ path ] else [];
 
+    # Optional VM guest platform selector for the stateless role.
+    # Written by stateless-setup.sh / migrate-to-stateless.sh for VirtualBox
+    # guests (QEMU is the vexos.vm.platform default and needs no file). A
+    # dedicated file rather than features.nix keeps the stateless role isolated
+    # from the desktop feature-toggle options, which it does not declare.
+    statelessVmPlatformModule =
+      let path = /etc/nixos/vm-platform.nix;
+      in if builtins.pathExists path then [ path ] else [];
+
     # Optional per-machine user override for the stateless role.
     # Written by stateless-setup.sh / migrate-to-stateless.sh at install time.
     # Without this file the compiled-in default is a locked account
@@ -272,7 +281,7 @@
         homeFile         = ./home-stateless.nix;
         baseModules      = commonBase ++ [ upModule vexportalModule ];
         extraModules     = [ impermanence.nixosModules.impermanence ];
-        hostLocalModules = statelessUserOverrideModule;
+        hostLocalModules = statelessUserOverrideModule ++ statelessVmPlatformModule;
       };
       server = {
         homeFile         = ./home-server.nix;

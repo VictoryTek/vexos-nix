@@ -153,6 +153,30 @@ if [ "$VARIANT" = "nvidia" ]; then
   done
 fi
 
+# ---------- VM hypervisor selection --------------------------------------
+# QEMU/KVM and VirtualBox need different guest packages, and VirtualBox pins
+# the kernel to 6.18 LTS to keep its guest additions building. "qemu" is the
+# vexos.vm.platform default, so only VirtualBox writes /etc/nixos/features.nix.
+VM_PLATFORM=""
+if [ "$VARIANT" = "vm" ]; then
+  echo ""
+  echo -e "${BOLD}Select your hypervisor:${RESET}"
+  echo "  1) QEMU/KVM  — Proxmox, libvirt, plain QEMU (guest agent + SPICE)"
+  echo "  2) VirtualBox — Guest Additions, shared folders (pins kernel 6.18 LTS)"
+  echo ""
+  while [ -z "$VM_PLATFORM" ]; do
+    printf "Enter choice [1-2] or name (qemu / virtualbox): "
+    read -r INPUT </dev/tty
+    case "${INPUT,,}" in
+      1|qemu|kvm|proxmox) VM_PLATFORM="qemu"       ;;
+      2|virtualbox|vbox)  VM_PLATFORM="virtualbox" ;;
+      *)
+        echo -e "${RED}Invalid selection '${INPUT}'. Please enter 1, 2, qemu, or virtualbox.${RESET}"
+        ;;
+    esac
+  done
+fi
+
 # ---------- ASUS ROG/TUF hardware ------------------------------------------
 ASUS_ENABLE=false
 ASUS_LAPTOP=false
@@ -235,6 +259,7 @@ echo ""
 echo -e "${BOLD}Installation summary:${RESET}"
 echo "  Disk:       ${DISK}"
 echo "  GPU variant: ${VARIANT}${NVIDIA_SUFFIX}"
+[ "$VARIANT" = "vm" ] && echo "  Hypervisor: ${VM_PLATFORM}"
 echo "  Hostname:   ${HOSTNAME}"
 echo "  LUKS:       disabled (no encryption)"
 echo "  Flake target: vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}"
@@ -392,6 +417,25 @@ NIXEOF
 sudo chmod 0600 /mnt/etc/nixos/stateless-user-override.nix
 echo -e "${GREEN}  ✓ /mnt/etc/nixos/stateless-user-override.nix written.${RESET}"
 
+# ---------- Write vm-platform.nix (VirtualBox guests only) ----------------
+# "qemu" is the vexos.vm.platform default, so a QEMU/Proxmox guest needs no
+# file. Must be written before `git add .` below so git+file:// picks it up.
+# Kept separate from features.nix — the stateless role does not declare the
+# desktop feature-toggle options.
+if [ "$VM_PLATFORM" = "virtualbox" ]; then
+  echo ""
+  echo -e "${BOLD}Writing vm-platform.nix (vexos.vm.platform = virtualbox)...${RESET}"
+  sudo tee /mnt/etc/nixos/vm-platform.nix > /dev/null << 'VMPLATFORMEOF'
+# /etc/nixos/vm-platform.nix
+# Hypervisor selector for this stateless VM guest. Written by
+# stateless-setup.sh when VirtualBox is chosen.
+{
+  vexos.vm.platform = "virtualbox";
+}
+VMPLATFORMEOF
+  echo -e "${GREEN}  ✓ /mnt/etc/nixos/vm-platform.nix written.${RESET}"
+fi
+
 # ---------- Git-track the flake so Nix uses git+file: not path:+narHash ------
 # Without git tracking, `nixos-install` locks /mnt/etc/nixos as a path: flake
 # with a narHash.  Writing the lock file then changes the directory content,
@@ -448,6 +492,7 @@ sudo cp /mnt/etc/nixos/flake.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/flake.lock /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/.gitignore /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp -p /mnt/etc/nixos/stateless-user-override.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
+sudo cp /mnt/etc/nixos/vm-platform.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 printf '%s' "vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}" | sudo tee /mnt/persistent/etc/nixos/vexos-variant > /dev/null
 # Persist the git repo so post-boot git+file:///etc/nixos URIs work and secrets stay out of the Nix store.
 sudo cp -r /mnt/etc/nixos/.git /mnt/persistent/etc/nixos/
