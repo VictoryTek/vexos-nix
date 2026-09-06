@@ -138,6 +138,14 @@ in
   # ── GDM display manager ───────────────────────────────────────────────────
   services.displayManager.gdm.enable = true;
 
+  # Do not restart GDM during `nixos-rebuild switch`. Otherwise, whenever the
+  # display-manager unit or one of its dependencies changes in the new closure,
+  # switch-to-configuration tears down the running graphical session mid-rebuild
+  # and drops the user to a black VT with a blinking cursor until GDM comes back.
+  # The new GDM configuration takes effect on the next reboot instead — which the
+  # `just switch` flow already prompts for on completion.
+  systemd.services.display-manager.restartIfChanged = false;
+
   # ── Auto-login ────────────────────────────────────────────────────────────
   # GDM-specific: services.displayManager.autoLogin is implemented per-display-
   # manager, so it lives here rather than in modules/desktop-common.nix (greetd,

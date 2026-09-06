@@ -82,6 +82,13 @@ in
       quickshell.package = pkgs.quickshell;
     };
 
+    # Do not restart greetd during `nixos-rebuild switch` — same rationale as
+    # systemd.services.display-manager.restartIfChanged in modules/gnome.nix.
+    # A switch that changes the greetd unit would otherwise kill the running
+    # Hyprland session mid-rebuild (black screen, blinking cursor). The new
+    # greeter configuration applies on the next reboot.
+    systemd.services.greetd.restartIfChanged = false;
+
     # accounts-daemon: the greeter reads the system user list through it. GNOME
     # pulled this in implicitly. Set it here so the DMS greeter shows real
     # accounts regardless of whether its own module happens to enable it.
