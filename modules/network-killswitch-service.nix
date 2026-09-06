@@ -28,6 +28,13 @@ let
     ${ipt} -A vpn-kill-switch -o lo -j ACCEPT
     ${ipt} -A vpn-kill-switch -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
     ${ipt} -A vpn-kill-switch -p udp --sport 68 --dport 67 -j ACCEPT
+    # Local network (LAN) — reachable regardless of VPN state. See
+    # network-killswitch-stateless.nix header for the rationale and DNS trade-off.
+    ${ipt} -A vpn-kill-switch -d 10.0.0.0/8     -j ACCEPT
+    ${ipt} -A vpn-kill-switch -d 172.16.0.0/12  -j ACCEPT
+    ${ipt} -A vpn-kill-switch -d 192.168.0.0/16 -j ACCEPT
+    ${ipt} -A vpn-kill-switch -d 169.254.0.0/16 -j ACCEPT
+    ${ipt} -A vpn-kill-switch -d 224.0.0.0/4    -j ACCEPT
     ${ipt} -A vpn-kill-switch -p udp --dport 1194  -j ACCEPT
     ${ipt} -A vpn-kill-switch -p tcp --dport 443   -j ACCEPT
     ${ipt} -A vpn-kill-switch -p udp --dport 1198  -j ACCEPT

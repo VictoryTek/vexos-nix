@@ -25,10 +25,14 @@
 # UDP mode (the default for all providers above) is not affected — UDP 443 is
 # not opened. Use UDP mode unless on a network that blocks UDP.
 #
-# DNS leaks: none introduced. DNS is port 53 — not on any allow list. When the
-# VPN is up, DNS resolves through the tunnel interface (tun+/wg+/nordlynx).
-# When the VPN is down, DNS to external servers hits the DROP rule and fails,
-# which is correct kill switch behaviour.
+# LAN carve-out: RFC1918, link-local, and multicast destinations are always
+# allowed so LAN devices (NAS, printers, etc.) stay reachable regardless of VPN
+# state. Only local-scope destinations are permitted — never routable public IPs.
+#
+# DNS leaks: no clearnet DNS leak. DNS is port 53 — not on any port allow list,
+# so DNS to routable servers hits the DROP rule when the VPN is down. DNS to a
+# LAN resolver (matched by the RFC1918 carve-out) does succeed while the VPN is
+# down; this is the accepted trade-off of "allow LAN" mode.
 #
 # IPv6: disabled entirely. No major commercial VPN provider tunnels IPv6 over
 # OpenVPN, so an active IPv6 stack would bypass the tunnel entirely.
@@ -53,6 +57,21 @@
 
     # Allow DHCP so the machine obtains an IP before the VPN daemon starts.
     iptables -A vpn-kill-switch -p udp --sport 68 --dport 67 -j ACCEPT
+
+    # ── Local network (LAN) — reachable regardless of VPN state ────────────────
+    # NAS boxes and other RFC1918 hosts live on the physical LAN and are never
+    # routed through the tunnel, so without these rules the terminal DROP blocks
+    # every new connection to them (SMB, NFS, web UIs, mDNS discovery).
+    # Trade-off: DNS to a LAN resolver (e.g. router at 192.168.1.1) also succeeds
+    # when the VPN is down. This is inherent to "allow LAN" mode; public DNS
+    # (port 53 to routable addresses) stays blocked by the terminal DROP.
+    iptables -A vpn-kill-switch -d 10.0.0.0/8     -j ACCEPT
+    iptables -A vpn-kill-switch -d 172.16.0.0/12  -j ACCEPT
+    iptables -A vpn-kill-switch -d 192.168.0.0/16 -j ACCEPT
+    # Link-local + multicast (mDNS 224.0.0.251, SSDP 239.255.255.250) for Avahi
+    # _smb._tcp service discovery.
+    iptables -A vpn-kill-switch -d 169.254.0.0/16 -j ACCEPT
+    iptables -A vpn-kill-switch -d 224.0.0.0/4    -j ACCEPT
 
     # ── VPN bootstrap ports (any destination — required for region switching) ──
     # Standard OpenVPN (NordVPN, Mullvad, ProtonVPN, ExpressVPN, Surfshark, IPVanish).
