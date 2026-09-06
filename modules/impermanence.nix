@@ -136,10 +136,25 @@ in
       }
     ];
 
-    # ── Disable disk-backed swap (incompatible with tmpfs root) ────────────
-    # /var/lib/swapfile lives on the ephemeral / and cannot survive a reboot.
-    # ZRAM provides in-RAM compressed swap instead (see zramSwap below).
+    # ── Disable the generic swapfile, add a real one on persistent storage ──
+    # /var/lib/swapfile (modules/system.nix) lives on the ephemeral / and
+    # cannot survive a reboot, so the generic option is disabled. ZRAM alone
+    # (see zramSwap in modules/system.nix) is RAM-backed compressed swap, not
+    # real overflow capacity — under memory pressure (e.g. building with the
+    # unstable overlay) there is otherwise nowhere left to go but the OOM
+    # killer. cfg.persistentPath is a real disk-backed Btrfs subvolume
+    # (modules/stateless-disk.nix, neededForBoot = true), so a swapfile there
+    # gives genuine disk overflow. NixOS's swap module detects the Btrfs
+    # filesystem automatically and creates the file via
+    # `btrfs filesystem mkswapfile`, which handles NOCOW/no-compression
+    # itself — no extra chattr handling needed here.
     vexos.swap.enable = lib.mkForce false;
+    swapDevices = [
+      {
+        device = "${cfg.persistentPath}/swapfile";
+        size   = 8192; # 8 GiB — matches the repo-wide swapfile size convention
+      }
+    ];
 
     # ── Declarative user management ─────────────────────────────────────────
     # With tmpfs /, /etc/shadow is recreated from the Nix configuration on
