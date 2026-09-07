@@ -28,6 +28,10 @@ set -euo pipefail
 # Clean up temp files on exit (including on error)
 cleanup() {
   rm -f /tmp/disk-password
+  # Release the install-time swapfile (see activation below) so a re-run of
+  # this script in the same live session can disko-reformat the same disk
+  # without it being held busy by an active swap device.
+  sudo swapoff /mnt/persistent/swapfile 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -372,6 +376,24 @@ sudo nix \
 
 echo ""
 echo -e "${GREEN}${BOLD}✓ Disk formatted and mounted at /mnt.${RESET}"
+
+# ---------- Activate temporary install-time swap -----------------------------
+# nixos-install (below) builds the entire target closure while running from
+# the live ISO, which has no swap of its own — a from-source build under
+# memory pressure can OOM the installer regardless of how much RAM the target
+# machine/VM has. modules/impermanence.nix declares a persistent swapfile at
+# /persistent/swapfile for the *installed* system, but that only activates on
+# first boot of the new generation; it does nothing during this install.
+# Create and swap on that same file now (same path/size the module expects),
+# using the same Btrfs-aware creation NixOS's own swap module uses, so the
+# live ISO has real overflow capacity for the build. First boot's swap
+# activation will find a correctly-sized file already in place and reuse it
+# rather than recreating it.
+echo ""
+echo -e "${BOLD}Activating temporary swap for the install (8 GiB on /mnt/persistent)...${RESET}"
+sudo btrfs filesystem mkswapfile --size 8192M --uuid clear /mnt/persistent/swapfile
+sudo swapon /mnt/persistent/swapfile
+echo -e "${GREEN}  ✓ Temporary install-time swap active.${RESET}"
 
 # ---------- Generate hardware configuration ---------------------------------
 echo ""

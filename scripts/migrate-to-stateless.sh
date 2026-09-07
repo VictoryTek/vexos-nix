@@ -28,6 +28,16 @@
 
 set -euo pipefail
 
+# Clean up the install-time swap mount on exit (including on error) — see
+# activation right before the nixos-rebuild boot section below. Best-effort:
+# guards against a failed/interrupted run leaving swap active or the mount
+# busy for a re-run.
+cleanup() {
+  swapoff "${BTRFS_MOUNT}/@persist/swapfile" 2>/dev/null || true
+  umount "${BTRFS_MOUNT}" 2>/dev/null || true
+}
+trap cleanup EXIT
+
 # ---------- Color helpers (only if TTY with color support) -------------------
 if [ -t 1 ] && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
   RED='\033[0;31m'
@@ -526,6 +536,24 @@ VMPLATFORMEOF
   echo -e "${GREEN}  ✓ /etc/nixos/vm-platform.nix written.${RESET}"
 fi
 
+# ---------- Activate temporary install-time swap -----------------------------
+# nixos-rebuild boot (below) builds the entire target closure on whatever swap
+# the currently-running system already has — which may be none on a fresh
+# test VM, and a from-source build under memory pressure can OOM regardless of
+# the VM's RAM. @persist was just created above, so mount it again and swap on
+# a file there (same path/size modules/impermanence.nix expects for the
+# installed system), using the same Btrfs-aware creation NixOS's own swap
+# module uses. Released by the cleanup() trap and again explicitly below,
+# before the later independent re-mount of this volume for the /nix sync step.
+echo ""
+echo -e "${BOLD}Activating temporary swap for the build (8 GiB on @persist)...${RESET}"
+mkdir -p "${BTRFS_MOUNT}"
+mount -o subvolid=5 "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}" 2>/dev/null || \
+  mount "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}"
+btrfs filesystem mkswapfile --size 8192M --uuid clear "${BTRFS_MOUNT}/@persist/swapfile"
+swapon "${BTRFS_MOUNT}/@persist/swapfile"
+echo -e "${GREEN}  ✓ Temporary build-time swap active.${RESET}"
+
 # ---------- nixos-rebuild boot -----------------------------------------------
 # CRITICAL: Use 'boot' instead of 'switch'.
 # 'switch' would activate the stateless config immediately, restarting the
@@ -539,6 +567,10 @@ echo ""
 if run_build_progress "Building vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}" \
      nixos-rebuild boot --flake "/etc/nixos#vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}"; then
   echo -e "${GREEN}  ✓ Build complete — new generation registered for next boot.${RESET}"
+  # Release the build-time swap/mount now — the /nix sync section below
+  # re-mounts this same volume independently and must not find it busy.
+  swapoff "${BTRFS_MOUNT}/@persist/swapfile" 2>/dev/null || true
+  umount "${BTRFS_MOUNT}"
 else
   echo ""
   echo -e "${RED}${BOLD}✗ nixos-rebuild boot failed.${RESET}"

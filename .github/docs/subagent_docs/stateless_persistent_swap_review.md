@@ -65,3 +65,110 @@ rewritten to explain both halves of the story.
 **Overall Grade: A (99%)**
 
 ## Result: **PASS**
+
+---
+
+## Addendum review: install-time swap fix (scripts/stateless-setup.sh)
+
+Triggered by user report that OOM persisted after the module-level fix — root cause
+was distinct (install-time, not runtime; see spec addendum).
+
+1. **Spec compliance** — matches addendum spec exactly: temp swapfile created via
+   `btrfs filesystem mkswapfile` right after disko mounts `/mnt`, before
+   `nixos-install`; `cleanup()` trap extended to `swapoff` it. PASS.
+2. **Best practices** — reuses the exact same creation mechanism NixOS's own swap
+   module uses (verified against nixpkgs source in Phase 1), same path/size as the
+   installed system's config so first boot doesn't recreate it. PASS.
+3. **Consistency** — follows the script's existing patterns exactly: extends the
+   pre-existing `cleanup()`/`trap ... EXIT` pattern rather than adding a new mechanism;
+   matches the script's existing `echo -e "${BOLD}..."` / `${GREEN}  ✓ ...` step-banner
+   style. PASS.
+4. **Maintainability** — comment explains why this is needed (install runs from a
+   swapless live ISO) and why the size/path match the module (so first boot reuses
+   rather than recreates). PASS.
+5. **Completeness** — this was the actual gap; the module-level fix alone was
+   insufficient because `swapDevices` only activates at boot of the *installed*
+   system, never during the live-ISO `nixos-install` invocation itself. PASS.
+6. **Security** — no secrets, no permission changes beyond a root-owned swapfile
+   (mode is whatever `btrfs filesystem mkswapfile` sets, matching upstream behavior).
+   PASS.
+7. **Shellcheck** — ran `shellcheck scripts/stateless-setup.sh` directly (this script
+   is not covered by preflight's own shellcheck step, which only covers
+   `pkgs.vexos.vexos-update`). Only pre-existing warning at line 348 (SC2059, unrelated
+   to this change, present before it). No new findings introduced. PASS.
+8. **Build validation** — `bash scripts/preflight.sh` re-run in full, exit code 0,
+   "Preflight PASSED — safe to push." No `configuration-*.nix`/`stateVersion` touched;
+   `hardware-configuration.nix` still untracked; no new flake inputs. PASS.
+
+### Updated Score Table
+
+| Category | Score | Grade |
+|----------|-------|-------|
+| Specification Compliance | 100% | A |
+| Best Practices | 100% | A |
+| Functionality | 100% | A |
+| Code Quality | 100% | A |
+| Security | 100% | A |
+| Performance | 100% | A |
+| Consistency | 100% | A |
+| Build Success | 100% | A (`scripts/preflight.sh` exit 0; shellcheck clean) |
+
+**Overall Grade: A (100%)**
+
+### Result: **PASS**
+
+---
+
+## Addendum 2 review: migrate-to-stateless.sh (in-place migration path)
+
+Triggered by user clarifying they're testing via the in-place migration path
+(existing NixOS VM + README installer), a third distinct code path with the same
+gap. User confirmed no swap on the VM; exact OOM'ing step unconfirmed but consistent
+with the same class of bug.
+
+1. **Spec compliance** — matches addendum 2 spec: mounts the raw Btrfs volume again
+   right before `nixos-rebuild boot`, activates a swapfile on the just-created
+   `@persist` subvolume, releases it immediately after (both on success and via the
+   new `cleanup()` trap on failure/interrupt) before the script's independent later
+   re-mount for the `/nix` sync step. PASS.
+2. **Best practices** — same upstream-verified `btrfs filesystem mkswapfile` mechanism
+   as the other two fixes; reuses this script's own existing
+   `mount -o subvolid=5 ... || mount ...` idiom verbatim (already used twice
+   elsewhere in the file) rather than inventing a new mounting approach. PASS.
+3. **Consistency** — `cleanup()`/`trap ... EXIT` added here matches the pattern used
+   in `scripts/stateless-setup.sh` (Addendum 1); comment density and step-banner style
+   (`echo -e "${BOLD}..."` / `${GREEN}  ✓ ...`) match the rest of the script. PASS.
+4. **Maintainability** — comments explain why (build runs on the current system's
+   pre-existing, possibly absent swap) and the mount lifecycle (activated/released
+   twice — trap and explicit — to avoid colliding with the later independent
+   re-mount). PASS.
+5. **Completeness** — closes the third and last of the three independent stateless
+   install/runtime code paths identified across this conversation
+   (`modules/impermanence.nix`, `scripts/stateless-setup.sh`,
+   `scripts/migrate-to-stateless.sh`); none share code, so each needed its own fix.
+   PASS.
+6. **Security** — no secrets; swapfile permissions match upstream
+   `mkswapfile` defaults, same as the other two fixes. PASS.
+7. **Shellcheck** — clean; only pre-existing SC2001 style note at line 194 (unrelated,
+   predates this change). PASS.
+8. **Build validation** — `bash scripts/preflight.sh` re-run in full after this
+   change, exit code 0, "Preflight PASSED — safe to push." No `configuration-*.nix`/
+   `stateVersion` touched; `hardware-configuration.nix` still untracked; no new flake
+   inputs. PASS.
+
+### Final Score Table (all three fixes)
+
+| Category | Score | Grade |
+|----------|-------|-------|
+| Specification Compliance | 100% | A |
+| Best Practices | 100% | A |
+| Functionality | 100% | A |
+| Code Quality | 100% | A |
+| Security | 100% | A |
+| Performance | 100% | A |
+| Consistency | 100% | A |
+| Build Success | 100% | A |
+
+**Overall Grade: A (100%)**
+
+### Result: **PASS**
