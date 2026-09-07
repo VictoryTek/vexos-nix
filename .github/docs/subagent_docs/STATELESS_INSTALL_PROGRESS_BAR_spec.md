@@ -1,5 +1,41 @@
 # STATELESS_INSTALL_PROGRESS_BAR — Specification
 
+## REVISION 2 (post-feedback)
+
+The first implementation (committed `f7d1a75`) shipped a **trimmed single-line**
+progress bar. User feedback: it must be the **full-screen brand-logo + centered
+bar + centered rotating tip** screen, pixel-identical to `install.sh`. Decisions
+taken (confirmed with user):
+
+- **Shared `scripts/lib/progress.sh`** is now the single source of truth for the
+  full-screen UI. Reverses REV-1's "self-contained port" and the
+  `install.sh:991` "no sourced fragment" note — justified because all three
+  installer scripts already `curl`-fetch pinned content, and a 3-way-duplicated
+  180-line logo/header/animation block is unmaintainable.
+- `install.sh` is refactored to source the lib (local checkout when present,
+  else `curl` pinned to `$VEXOS_REV`), removing its inline copies.
+- `stateless-setup.sh` and `migrate-to-stateless.sh` source the same lib and
+  call `render_header` + `run_live_build` at their build sites. Each carries a
+  small `_load_progress_lib` loader with a plain-output fallback (kept in sync,
+  like the existing `UNAVOIDABLE_REGEX` convention).
+- Logo: chafa PNG render with hardcoded-ASCII fallback (same as `install.sh`).
+- `migrate-to-stateless.sh` gains the standard `VEXOS_REV` bootstrap block (it
+  had none — a pre-existing gap for direct `curl | bash` runs).
+
+Files (REV-2):
+- `scripts/lib/progress.sh` — NEW, the shared UI
+- `scripts/install.sh` — source the lib; delete ~210 inline lines
+- `scripts/stateless-setup.sh` — swap trimmed block → loader + `run_live_build`
+- `scripts/migrate-to-stateless.sh` — same, plus `VEXOS_REV` bootstrap
+
+**Deployment note:** `scripts/lib/progress.sh` must be committed AND pushed to
+`main` before the `curl`-path installers can fetch it (pinned by `$VEXOS_REV`).
+Local `bash scripts/install.sh` runs use the checked-out file immediately.
+
+Everything below is the original REV-1 spec, retained for context.
+
+---
+
 ## Phase 1: Research & Specification
 
 ### Current state analysis

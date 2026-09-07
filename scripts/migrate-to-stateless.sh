@@ -46,86 +46,54 @@ if [ -t 1 ] && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
   CYAN='\033[0;36m'
   BOLD='\033[1m'
   RESET='\033[0m'
-  # Brand teal, sampled from files/pixmaps/*/vex.png (matches install.sh).
-  VEXOS_TEAL='\033[38;2;20;166;184m'
 else
-  RED='' GREEN='' YELLOW='' CYAN='' BOLD='' RESET='' VEXOS_TEAL=''
+  RED='' GREEN='' YELLOW='' CYAN='' BOLD='' RESET=''
 fi
 
-# ---------- Live build progress (single redrawn line) -----------------------
-# Trimmed port of scripts/install.sh's run_live_build (install.sh:124-263).
-# That version is cursor-addressed to a fixed row under the persistent
-# full-screen logo; this script scrolls its output, so this variant redraws a
-# single line in place with \r. Kept self-contained (not a sourced lib) because
-# this script runs via `curl | bash` with no local repo checked out — same
-# rationale as the manually-duplicated UNAVOIDABLE_REGEX in install.sh.
-VEXOS_TIPS=(
-  "Run 'just update' after reboot to pull the latest cached packages"
-  "The Up app checks for and applies system updates from the desktop"
-  "vexos-nix tracks /etc/nixos in git — 'sudo git -C /etc/nixos log' shows changes"
-  "Re-run this installer any time to switch role or GPU variant"
-  "Docs and updates: github.com/VictoryTek/vexos-nix"
-)
+# ---------- Resolve one commit for this run (for the shared progress lib) ----
+# Normally inherited from install.sh, which resolves and exports VEXOS_REV
+# before handing off here. Resolve it ourselves for a direct `curl | bash` run
+# so the lib fetch below is pinned to one commit rather than a moving main.
+if [ -z "${VEXOS_REV:-}" ]; then
+  if command -v git >/dev/null 2>&1; then
+    _REV_GIT="git"
+  else
+    _REV_GIT="$(nix --extra-experimental-features 'nix-command flakes' \
+      build nixpkgs#git --no-link --print-out-paths)/bin/git"
+  fi
+  VEXOS_REV="$("$_REV_GIT" ls-remote https://github.com/VictoryTek/vexos-nix main | cut -f1)"
+fi
 
-# progress_bar <pct 0-100> <width> — filled/empty block-character bar string.
-# printf's %.0s repeat trick is used instead of tr (which mangles multi-byte
-# UTF-8 fill characters); printf runs its format once even with no args, so the
-# zero cases are guarded.
-progress_bar() {
-  local pct="$1" width="$2" filled empty bar=""
-  (( pct < 0 )) && pct=0
-  (( pct > 100 )) && pct=100
-  filled=$(( width * pct / 100 ))
-  empty=$(( width - filled ))
-  (( filled > 0 )) && bar+="$(printf '█%.0s' $(seq 1 "$filled"))"
-  (( empty > 0 )) && bar+="$(printf '░%.0s' $(seq 1 "$empty"))"
-  printf '%s' "$bar"
+# ---------- Shared full-screen build-progress UI ----------------------------
+# render_header / run_live_build + the brand-logo progress screen live in
+# scripts/lib/progress.sh (shared with install.sh and stateless-setup.sh) so
+# all three installers draw the identical screen. Fetched pinned to this run's
+# commit; on any load failure the fallbacks below run the build with plain
+# streaming output. Keep this loader block in sync across the three scripts.
+# shellcheck disable=SC2034  # read by render_header in the sourced lib/progress.sh
+VEXOS_INSTALLER_TITLE="VexOS Stateless Migration"
+_load_progress_lib() {
+  local local_lib src
+  local_lib="$(dirname "$0")/lib/progress.sh"
+  if [ -f "$local_lib" ]; then
+    src="$(cat "$local_lib")"
+  else
+    src="$(curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/lib/progress.sh" 2>/dev/null || true)"
+  fi
+  [ -n "$src" ] && printf '%s' "$src" | grep -q 'run_live_build()' || return 1
+  source /dev/stdin <<<"$src"
 }
-
-# run_build_progress "<label>" <command...> — runs <command...> in the
-# background with all output captured to a temp log (exported as
-# BUILD_LOG_PATH) while a one-line progress bar + rotating tip redraw in place.
-# Progress is a time-based asymptotic curve (no reliable step count to grep, as
-# in install.sh). Returns the command's exit code; the caller shows the log
-# tail on failure.
-run_build_progress() {
-  local label="$1"; shift
-  local build_log exit_code=0 bar_width=28 elapsed pct tip_idx tip
-  local tip_count=${#VEXOS_TIPS[@]} cols tip_budget start_epoch build_pid
-  build_log="$(mktemp "${TMPDIR:-/tmp}/vexos-build.XXXXXX.log")"
-  BUILD_LOG_PATH="$build_log"
-  echo -e "${CYAN}  ${label} — live output: ${build_log}${RESET}"
-
-  # Refresh the sudo timestamp so a backgrounded job with redirected stdio does
-  # not stall on an expired-sudo password prompt it cannot display.
-  sudo -v 2>/dev/null || true
-
-  "$@" >"$build_log" 2>&1 &
-  build_pid=$!
-
-  printf '\033[?25l'  # hide cursor
-  start_epoch=$EPOCHSECONDS
-  while kill -0 "$build_pid" 2>/dev/null; do
-    cols=$(tput cols 2>/dev/null || echo 80)
-    elapsed=$(( EPOCHSECONDS - start_epoch ))
-    pct=$(( 92 * elapsed / (elapsed + 60) ))
-    tip_idx=$(( (elapsed / 6) % tip_count ))
-    # Budget the tip so the whole line fits one physical row at any width (a
-    # wrapped line leaves a stale fragment when a shorter tip rotates in).
-    tip_budget=$(( cols - bar_width - 20 ))
-    (( tip_budget < 10 )) && tip_budget=10
-    tip="Tip: ${VEXOS_TIPS[$tip_idx]}"
-    (( ${#tip} > tip_budget )) && tip="${tip:0:$(( tip_budget - 1 ))}…"
-    printf '\r\033[2K%b[%s]%b %3d%%  %dm%02ds  %s' \
-      "${VEXOS_TEAL}" "$(progress_bar "$pct" "$bar_width")" "${RESET}" \
-      "$pct" "$(( elapsed / 60 ))" "$(( elapsed % 60 ))" "$tip"
-    sleep 0.5
-  done
-  wait "$build_pid" || exit_code=$?
-
-  printf '\r\033[2K\033[?25h'  # clear line, show cursor
-  return "$exit_code"
-}
+if ! _load_progress_lib; then
+  echo -e "${YELLOW}Warning: could not load lib/progress.sh — falling back to plain output.${RESET}" >&2
+  render_header() { :; }
+  run_live_build() {
+    local t="$1"; shift
+    echo -e "${BOLD}${t}${RESET}"
+    BUILD_LOG_PATH="$(mktemp "${TMPDIR:-/tmp}/vexos-build.XXXXXX.log")"
+    "$@" 2>&1 | tee "$BUILD_LOG_PATH"
+    return "${PIPESTATUS[0]}"
+  }
+fi
 
 BTRFS_MOUNT="/mnt/vexos-migrate-btrfs"
 HW_CONFIG="/etc/nixos/hardware-configuration.nix"
@@ -564,7 +532,8 @@ echo ""
 echo -e "${BOLD}Running nixos-rebuild boot (activates on next reboot)...${RESET}"
 echo -e "${YELLOW}This may take a while on first run.${RESET}"
 echo ""
-if run_build_progress "Building vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}" \
+render_header
+if run_live_build "Building vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}..." \
      nixos-rebuild boot --flake "/etc/nixos#vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}"; then
   echo -e "${GREEN}  ✓ Build complete — new generation registered for next boot.${RESET}"
   # Release the build-time swap/mount now — the /nix sync section below
