@@ -28,25 +28,31 @@ let
     ${ipt} -A vpn-kill-switch -o lo -j ACCEPT
     ${ipt} -A vpn-kill-switch -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
     ${ipt} -A vpn-kill-switch -p udp --sport 68 --dport 67 -j ACCEPT
-    # Local network (LAN) — reachable regardless of VPN state. See
-    # network-killswitch-stateless.nix header for the rationale and DNS trade-off.
+    # Tunnel interfaces MUST precede the DNS guard — a VPN-pushed resolver is
+    # often RFC1918, so tunnelled DNS has to match here first.
+    ${ipt} -A vpn-kill-switch -o tun+       -j ACCEPT
+    ${ipt} -A vpn-kill-switch -o wg+        -j ACCEPT
+    ${ipt} -A vpn-kill-switch -o nordlynx   -j ACCEPT
+    ${ipt} -A vpn-kill-switch -o tailscale0 -j ACCEPT
+    # DNS guard MUST precede the LAN carve-out, or the LAN rules would cover the
+    # router's resolver and re-open clearnet browsing with no VPN up.
+    ${ipt} -A vpn-kill-switch -p udp --dport 53 -j DROP
+    ${ipt} -A vpn-kill-switch -p tcp --dport 53 -j DROP
+    # Local network (LAN) — reachable regardless of VPN state.
     ${ipt} -A vpn-kill-switch -d 10.0.0.0/8     -j ACCEPT
     ${ipt} -A vpn-kill-switch -d 172.16.0.0/12  -j ACCEPT
     ${ipt} -A vpn-kill-switch -d 192.168.0.0/16 -j ACCEPT
     ${ipt} -A vpn-kill-switch -d 169.254.0.0/16 -j ACCEPT
     ${ipt} -A vpn-kill-switch -d 224.0.0.0/4    -j ACCEPT
+    # VPN bootstrap ports. TCP 443 is deliberately absent — see
+    # network-killswitch-stateless.nix header.
     ${ipt} -A vpn-kill-switch -p udp --dport 1194  -j ACCEPT
-    ${ipt} -A vpn-kill-switch -p tcp --dport 443   -j ACCEPT
     ${ipt} -A vpn-kill-switch -p udp --dport 1198  -j ACCEPT
     ${ipt} -A vpn-kill-switch -p udp --dport 1197  -j ACCEPT
     ${ipt} -A vpn-kill-switch -p tcp --dport 502   -j ACCEPT
     ${ipt} -A vpn-kill-switch -p tcp --dport 501   -j ACCEPT
     ${ipt} -A vpn-kill-switch -p udp --dport 51820 -j ACCEPT
     ${ipt} -A vpn-kill-switch -p udp --dport 41641 -j ACCEPT
-    ${ipt} -A vpn-kill-switch -o tun+       -j ACCEPT
-    ${ipt} -A vpn-kill-switch -o wg+        -j ACCEPT
-    ${ipt} -A vpn-kill-switch -o nordlynx   -j ACCEPT
-    ${ipt} -A vpn-kill-switch -o tailscale0 -j ACCEPT
     ${ipt} -A vpn-kill-switch -j DROP
     ${ipt} -C OUTPUT -j vpn-kill-switch 2>/dev/null \
       || ${ipt} -A OUTPUT -j vpn-kill-switch

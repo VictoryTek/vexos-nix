@@ -14,25 +14,39 @@
 #   - tailscale0 Tailscale — enabled system-wide in network.nix
 #
 # Bootstrap ports (allowed to any destination — required for region switching):
-#   - UDP 1194 / TCP 443  Standard OpenVPN ports (NordVPN, Mullvad, ProtonVPN, etc.)
+#   - UDP 1194            Standard OpenVPN (NordVPN, Mullvad, ProtonVPN, etc.)
 #   - UDP 1197 / UDP 1198 / TCP 501 / TCP 502  PIA-specific OpenVPN ports
-#   - UDP 51820           Standard WireGuard port (NordLynx, ProtonVPN, Surfshark)
+#   - UDP 51820           Standard WireGuard (NordLynx, ProtonVPN, Surfshark)
 #   - UDP 41641           Tailscale WireGuard data plane
 #
-# TCP 443 trade-off: allowing TCP 443 as a bootstrap port also permits outbound
-# HTTPS connections when the VPN is down. This is an inherent limitation of any
-# kill switch that supports TCP-mode VPNs without pinning specific server IPs.
-# UDP mode (the default for all providers above) is not affected — UDP 443 is
-# not opened. Use UDP mode unless on a network that blocks UDP.
+# TCP 443 is deliberately NOT a bootstrap port. Allowing it to any destination
+# would permit outbound HTTPS with no VPN up, and a browser using DNS-over-HTTPS
+# (which talks to its resolver on port 443) could then both resolve and browse —
+# defeating the kill switch even with port 53 blocked. The cost is that OpenVPN
+# in TCP-443 mode cannot connect; use UDP mode (the default for every provider
+# listed above) or one of the PIA TCP ports.
 #
-# LAN carve-out: RFC1918, link-local, and multicast destinations are always
-# allowed so LAN devices (NAS, printers, etc.) stay reachable regardless of VPN
-# state. Only local-scope destinations are permitted — never routable public IPs.
+# ── RULE ORDER IS LOAD-BEARING ─────────────────────────────────────────────
+# The chain is first-match-wins, and two orderings below are deliberate:
 #
-# DNS leaks: no clearnet DNS leak. DNS is port 53 — not on any port allow list,
-# so DNS to routable servers hits the DROP rule when the VPN is down. DNS to a
-# LAN resolver (matched by the RFC1918 carve-out) does succeed while the VPN is
-# down; this is the accepted trade-off of "allow LAN" mode.
+#   1. Tunnel-interface ACCEPTs come BEFORE the DNS guard. VPN providers
+#      commonly push an RFC1918 resolver (PIA uses 10.0.0.242), so tunnelled
+#      DNS must match the tunnel rule before the guard can drop it.
+#   2. The DNS guard comes BEFORE the LAN carve-out. Without it the LAN
+#      ACCEPT for 192.168.0.0/16 would cover the router's resolver, turning
+#      the carve-out into a general-purpose public-name resolver and
+#      re-opening clearnet browsing with no VPN up.
+#
+# LAN carve-out: RFC1918, link-local, and multicast destinations are allowed so
+# LAN devices (NAS, printers) stay reachable regardless of VPN state. Only
+# local-scope destinations are permitted — never routable public IPs. LAN hosts
+# are reachable by IP, and by .local name via mDNS (UDP 5353, inside 224.0.0.0/4);
+# resolving a LAN hostname through the router's DNS does not work while the VPN
+# is down, which is the intended consequence of the DNS guard.
+#
+# DNS: port 53 is allowed only out of a tunnel interface. With no VPN up there is
+# no name resolution at all — the correct kill switch behaviour, and what stops
+# the LAN carve-out from being an escape hatch.
 #
 # IPv6: disabled entirely. No major commercial VPN provider tunnels IPv6 over
 # OpenVPN, so an active IPv6 stack would bypass the tunnel entirely.
@@ -58,13 +72,25 @@
     # Allow DHCP so the machine obtains an IP before the VPN daemon starts.
     iptables -A vpn-kill-switch -p udp --sport 68 --dport 67 -j ACCEPT
 
+    # ── VPN tunnel interfaces ──────────────────────────────────────────────────
+    # MUST precede the DNS guard below — see "RULE ORDER IS LOAD-BEARING".
+    iptables -A vpn-kill-switch -o tun+        -j ACCEPT
+    iptables -A vpn-kill-switch -o wg+         -j ACCEPT
+    iptables -A vpn-kill-switch -o nordlynx    -j ACCEPT
+    iptables -A vpn-kill-switch -o tailscale0  -j ACCEPT
+
+    # ── DNS guard ──────────────────────────────────────────────────────────────
+    # Any DNS query reaching this point is not leaving via a tunnel, so it is a
+    # leak. Dropping it here also stops the LAN carve-out below from covering the
+    # router's resolver and acting as a general-purpose public-name resolver.
+    # mDNS (UDP 5353) is a different port and is unaffected.
+    iptables -A vpn-kill-switch -p udp --dport 53 -j DROP
+    iptables -A vpn-kill-switch -p tcp --dport 53 -j DROP
+
     # ── Local network (LAN) — reachable regardless of VPN state ────────────────
     # NAS boxes and other RFC1918 hosts live on the physical LAN and are never
     # routed through the tunnel, so without these rules the terminal DROP blocks
     # every new connection to them (SMB, NFS, web UIs, mDNS discovery).
-    # Trade-off: DNS to a LAN resolver (e.g. router at 192.168.1.1) also succeeds
-    # when the VPN is down. This is inherent to "allow LAN" mode; public DNS
-    # (port 53 to routable addresses) stays blocked by the terminal DROP.
     iptables -A vpn-kill-switch -d 10.0.0.0/8     -j ACCEPT
     iptables -A vpn-kill-switch -d 172.16.0.0/12  -j ACCEPT
     iptables -A vpn-kill-switch -d 192.168.0.0/16 -j ACCEPT
@@ -76,8 +102,6 @@
     # ── VPN bootstrap ports (any destination — required for region switching) ──
     # Standard OpenVPN (NordVPN, Mullvad, ProtonVPN, ExpressVPN, Surfshark, IPVanish).
     iptables -A vpn-kill-switch -p udp --dport 1194 -j ACCEPT
-    # TCP fallback for OpenVPN. See TCP 443 trade-off note in file header.
-    iptables -A vpn-kill-switch -p tcp --dport 443  -j ACCEPT
     # PIA-specific OpenVPN ports (strong and standard variants).
     iptables -A vpn-kill-switch -p udp --dport 1198 -j ACCEPT
     iptables -A vpn-kill-switch -p udp --dport 1197 -j ACCEPT
@@ -87,12 +111,6 @@
     iptables -A vpn-kill-switch -p udp --dport 51820 -j ACCEPT
     # Tailscale bootstrap (Tailscale is enabled system-wide in network.nix).
     iptables -A vpn-kill-switch -p udp --dport 41641 -j ACCEPT
-
-    # ── VPN tunnel interfaces ──────────────────────────────────────────────────
-    iptables -A vpn-kill-switch -o tun+        -j ACCEPT
-    iptables -A vpn-kill-switch -o wg+         -j ACCEPT
-    iptables -A vpn-kill-switch -o nordlynx    -j ACCEPT
-    iptables -A vpn-kill-switch -o tailscale0  -j ACCEPT
 
     # Kill switch: drop all remaining clearnet egress.
     iptables -A vpn-kill-switch -j DROP
