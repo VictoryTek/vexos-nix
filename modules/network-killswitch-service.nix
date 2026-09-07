@@ -34,6 +34,20 @@ let
     ${ipt} -A vpn-kill-switch -o wg+        -j ACCEPT
     ${ipt} -A vpn-kill-switch -o nordlynx   -j ACCEPT
     ${ipt} -A vpn-kill-switch -o tailscale0 -j ACCEPT
+    # DNS bootstrap (fixed resolvers only): narrow exception so NM-openvpn can
+    # resolve a hostname-based VPN server before any tunnel interface exists.
+    # Unlike the stateless variant, this role does NOT force the wired
+    # connection's DNS to these IPs (see network.nix's forceFixedDns) — doing so
+    # unconditionally here would silently change default DNS behaviour on every
+    # desktop/htpc host that has this toggleable capability, even if the kill
+    # switch is never started. So this firewall hole alone does not guarantee
+    # bootstrap succeeds: it only helps if the host's active connection is
+    # already configured to query 1.1.1.1/9.9.9.9 (e.g. via
+    # vexos.network.staticWired.dns, or a manual nmcli DNS override).
+    ${ipt} -A vpn-kill-switch -p udp --dport 53 -d 1.1.1.1 -j ACCEPT
+    ${ipt} -A vpn-kill-switch -p udp --dport 53 -d 9.9.9.9 -j ACCEPT
+    ${ipt} -A vpn-kill-switch -p tcp --dport 53 -d 1.1.1.1 -j ACCEPT
+    ${ipt} -A vpn-kill-switch -p tcp --dport 53 -d 9.9.9.9 -j ACCEPT
     # DNS guard MUST precede the LAN carve-out, or the LAN rules would cover the
     # router's resolver and re-open clearnet browsing with no VPN up.
     ${ipt} -A vpn-kill-switch -p udp --dport 53 -j DROP

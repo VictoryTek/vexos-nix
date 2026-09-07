@@ -40,6 +40,18 @@
     '';
   };
 
+  options.vexos.network.forceFixedDns = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = ''
+      Forces the wired-fallback NetworkManager profile to use fixed DNS resolvers
+      (1.1.1.1, 9.9.9.9) instead of the DHCP/router-provided resolver. Enabled by
+      the stateless-role VPN kill switch, whose DNS guard blocks queries to any
+      LAN resolver — only these two fixed IPs are firewall-permitted for VPN
+      hostname bootstrap, so the system must actually be configured to query them.
+    '';
+  };
+
   config = {
     # NetworkManager (primary network management daemon)
     networking.networkmanager.enable = true;
@@ -122,6 +134,15 @@
             method        = "auto";
             addr-gen-mode = "stable-privacy";
           };
+        };
+      })
+      # VPN kill switch DNS bootstrap: adds DNS keys to the wired-fallback profile
+      # declared above. Does not collide with its ipv4.method key — ensureProfiles
+      # sections merge per-key across modules. See vexos.network.forceFixedDns.
+      (lib.mkIf config.vexos.network.forceFixedDns {
+        "wired-fallback".ipv4 = {
+          ignore-auto-dns = "true";
+          dns             = "1.1.1.1;9.9.9.9";
         };
       })
     ];

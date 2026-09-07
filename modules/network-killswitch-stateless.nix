@@ -44,9 +44,13 @@
 # resolving a LAN hostname through the router's DNS does not work while the VPN
 # is down, which is the intended consequence of the DNS guard.
 #
-# DNS: port 53 is allowed only out of a tunnel interface. With no VPN up there is
-# no name resolution at all — the correct kill switch behaviour, and what stops
-# the LAN carve-out from being an escape hatch.
+# DNS: port 53 is allowed out of a tunnel interface, or to exactly two fixed
+# resolvers (1.1.1.1, 9.9.9.9) — the narrow exception needed so NM-openvpn can
+# resolve a hostname-based VPN server (e.g. PIA) before any tunnel exists. The
+# wired-fallback NetworkManager profile is pointed at these same two IPs via
+# vexos.network.forceFixedDns (modules/network.nix), so the allowance is actually
+# exercised rather than sitting inert. No other DNS reaches the LAN/router
+# resolver — that is what stops the LAN carve-out from being an escape hatch.
 #
 # IPv6: disabled entirely. No major commercial VPN provider tunnels IPv6 over
 # OpenVPN, so an active IPv6 stack would bypass the tunnel entirely.
@@ -56,6 +60,10 @@
   # PIA's OpenVPN tunnels IPv4 only. An active IPv6 stack would send traffic
   # directly over the physical interface, bypassing the VPN entirely.
   networking.enableIPv6 = false;
+
+  # Point the wired-fallback NM profile's DNS at the two fixed resolvers the
+  # DNS-bootstrap firewall rules below allow. See modules/network.nix.
+  vexos.network.forceFixedDns = true;
 
   # ── Kill switch ────────────────────────────────────────────────────────────
   networking.firewall.extraCommands = ''
@@ -79,9 +87,23 @@
     iptables -A vpn-kill-switch -o nordlynx    -j ACCEPT
     iptables -A vpn-kill-switch -o tailscale0  -j ACCEPT
 
+    # ── DNS bootstrap (fixed resolvers only) ────────────────────────────────────
+    # Narrow exception to the DNS guard below: NM-openvpn must resolve the VPN
+    # server hostname before any tunnel interface exists, so the tunnel-ACCEPT
+    # rules above cannot yet match. Only these two fixed, non-LAN IPs are
+    # allowed — never the LAN/router resolver, which is exactly the leak
+    # 0a21f82 closed. vexos.network.forceFixedDns (set above) points the
+    # wired-fallback profile's DNS at these same two IPs, so this allowance is
+    # actually exercised rather than sitting inert.
+    iptables -A vpn-kill-switch -p udp --dport 53 -d 1.1.1.1 -j ACCEPT
+    iptables -A vpn-kill-switch -p udp --dport 53 -d 9.9.9.9 -j ACCEPT
+    iptables -A vpn-kill-switch -p tcp --dport 53 -d 1.1.1.1 -j ACCEPT
+    iptables -A vpn-kill-switch -p tcp --dport 53 -d 9.9.9.9 -j ACCEPT
+
     # ── DNS guard ──────────────────────────────────────────────────────────────
-    # Any DNS query reaching this point is not leaving via a tunnel, so it is a
-    # leak. Dropping it here also stops the LAN carve-out below from covering the
+    # Any other DNS query reaching this point is not leaving via a tunnel and is
+    # not one of the two fixed bootstrap resolvers above, so it is a leak.
+    # Dropping it here also stops the LAN carve-out below from covering the
     # router's resolver and acting as a general-purpose public-name resolver.
     # mDNS (UDP 5353) is a different port and is unaffected.
     iptables -A vpn-kill-switch -p udp --dport 53 -j DROP
