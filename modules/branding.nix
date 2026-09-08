@@ -15,6 +15,7 @@ let
   pixmapsDir    = ../files/pixmaps + "/${assetRole}";
   bgLogosDir    = ../files/background_logos + "/${assetRole}";
   plymouthDir   = ../files/plymouth + "/${assetRole}";
+  limineDir     = ../files/limine + "/${assetRole}";
 
   vexosLogos = pkgs.runCommand "vexos-logos" {} ''
     mkdir -p $out/share/pixmaps
@@ -84,6 +85,40 @@ in
   #   boot.plymouth.theme = lib.mkForce "text";
   boot.plymouth.theme = lib.mkDefault "spinner";
   boot.plymouth.logo  = plymouthDir + "/watermark.png";
+
+  # ── Limine bootloader styling ─────────────────────────────────────────────
+  # Applies only when this host opts into Limine (vexos.bootloader = "limine",
+  # the enum declared and enabled in modules/system.nix). Mirrors the Plymouth
+  # split above: system.nix owns bootloader enablement, this module owns its
+  # look. The lib.mkIf guard is the Option-B carve-out — gating on an option a
+  # sibling module declares, exactly like the systemd-boot.extraInstallCommands
+  # block further down.
+  #
+  # Without this, nixpkgs' limine.nix ships the NixOS-logo wallpaper and an
+  # opaque black terminal slab (term_background defaults to 00000000). Here the
+  # slab becomes an ~80%-transparent navy scrim, and the colours follow the
+  # VexOS Neo-Cyberpunk palette (documented in files/ghostty/config).
+  boot.loader.limine.style = lib.mkIf (config.vexos.bootloader == "limine") {
+    wallpapers     = [ (limineDir + "/wallpaper.png") ];
+    wallpaperStyle = "stretched";
+    # Fallback fill, only consulted if the style is ever forced to "centered";
+    # matches the wallpaper's own background so letterboxing stays seamless.
+    backdrop       = "0B1526";
+
+    interface = {
+      branding        = "VexOS";
+      brandingColor   = "05F4FA";  # brand cyan
+      helpColor       = "0298BA";  # brand teal
+      helpColorBright = "05F4FA";  # brand cyan — auto-boot countdown digit
+    };
+
+    graphicalTerminal = {
+      # TTRRGGBB: TT=CC → ~80% transparent, so the wallpaper shows through
+      # while menu text keeps a faint navy backing for legibility.
+      background = "CC0B1526";
+      foreground = "E7EEF5";  # brand foreground
+    };
+  };
 
   # ── OS identity (os-release, GRUB/systemd-boot labels, hostnamectl) ────────
   # distroName: overrides NAME= and PRETTY_NAME= in /etc/os-release AND the
