@@ -78,18 +78,9 @@
     '';
   };
 
-  # Keep the justfile in sync with the flake on every rebuild.
-  # /etc/nixos is bind-mounted from /persistent/etc/nixos (impermanence), so
-  # writing here makes `just` work from /etc/nixos — the natural working
-  # directory on a stateless machine.  ~/justfile (home-manager) is kept for
-  # consistency, but this copy is the one users will actually hit.
-  system.activationScripts.statelessJustfile = {
-    deps = [ "etc" ];
-    text = ''
-      ${pkgs.coreutils}/bin/cp ${./justfile} /persistent/etc/nixos/justfile
-      ${pkgs.coreutils}/bin/chmod 644 /persistent/etc/nixos/justfile
-    '';
-  };
+  # The justfile at /etc/nixos/justfile is provided for all roles by
+  # modules/packages-common.nix via environment.etc."nixos/justfile". No
+  # stateless-specific handling is needed.
 
   # ---------- System packages ----------
   # tor-browser: installed system-wide (not via Home Manager) so torbrowser.desktop
