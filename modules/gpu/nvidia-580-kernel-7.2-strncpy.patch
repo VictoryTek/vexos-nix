@@ -1,0 +1,74 @@
+Replace strncpy() with strscpy() for Linux 7.2 compatibility.
+
+Linux 7.2 removed strncpy() from the kernel-space string API (see the Phoronix
+"Linux 7.2 Drops strncpy" coverage; 360+ upstream commits). NVIDIA 580.173.02 —
+the last driver branch supporting Maxwell/Pascal/Volta — still calls strncpy()
+in five places in its OS-glue layer, so its kernel modules fail to compile on
+7.2 with an implicit-declaration error.
+
+strscpy() is the kernel's drop-in replacement for the bounded-copy-with-
+NUL-termination use case and has existed since Linux 4.3, so the patched driver
+still builds on every older kernel this repository ships. The two wrapper
+functions that returned strncpy()'s value (the destination pointer) are rewritten
+to return dest explicitly, since strscpy() returns a length, not a pointer.
+
+Call sites and context verified against the NVIDIA-Linux-x86_64-580.173.02 source
+tree. Mirrors the community fix (babiulep/my-kernel-patches, CachyOS
+kernel-patches 7.2/misc/nvidia). Applied to the shared driver source, so it
+covers both the closed ("legacy_580") and open module builds.
+
+--- a/kernel/nvidia/os-interface.c
++++ b/kernel/nvidia/os-interface.c
+@@ -759,7 +759,7 @@ void NV_API_CALL os_get_current_process_name(char *buf, NvU32 len)
+ void NV_API_CALL os_get_current_process_name(char *buf, NvU32 len)
+ {
+     task_lock(current);
+-    strncpy(buf, current->comm, len - 1);
++    strscpy(buf, current->comm, len - 1);
+     buf[len - 1] = '\0';
+     task_unlock(current);
+ }
+--- a/kernel/nvidia/linux_nvswitch.c
++++ b/kernel/nvidia/linux_nvswitch.c
+@@ -2058,7 +2058,7 @@
+         return -NVL_ERR_GENERIC;
+     }
+
+-    strncpy(regkey_val, regkey_val_start, regkey_val_len);
++    strscpy(regkey_val, regkey_val_start, regkey_val_len);
+     regkey_val[regkey_val_len] = '\0';
+
+     if (nvswitch_os_strtouint(regkey_val, data) != 0)
+@@ -2413,7 +2413,8 @@ nvswitch_os_strncpy
+     NvLength length
+ )
+ {
+-    return strncpy(dest, src, length);
++    strscpy(dest, src, length);
++    return dest;
+ }
+
+ int
+--- a/kernel/nvidia-modeset/nvidia-modeset-linux.c
++++ b/kernel/nvidia-modeset/nvidia-modeset-linux.c
+@@ -643,7 +643,8 @@ int nvkms_strcmp(const char *s1, const char *s2)
+
+ char* nvkms_strncpy(char *dest, const char *src, size_t n)
+ {
+-    return strncpy(dest, src, n);
++    strscpy(dest, src, n);
++    return dest;
+ }
+
+ void nvkms_usleep(NvU64 usec)
+--- a/kernel/nvidia-uvm/uvm_pmm_gpu.c
++++ b/kernel/nvidia-uvm/uvm_pmm_gpu.c
+@@ -2799,7 +2799,7 @@ static NV_STATUS init_chunk_split_cache_level(uvm_pmm_gpu_t *pmm, size_t level)
+             size_t size;
+             size_t align;
+             if (level == 0) {
+-                strncpy(chunk_split_cache[level].name, "uvm_gpu_chunk_t", sizeof(chunk_split_cache[level].name) - 1);
++                strscpy(chunk_split_cache[level].name, "uvm_gpu_chunk_t", sizeof(chunk_split_cache[level].name) - 1);
+                 size = sizeof(uvm_gpu_chunk_t);
+                 align = __alignof__(uvm_gpu_chunk_t);
+             } else {

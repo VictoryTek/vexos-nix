@@ -43,7 +43,24 @@ let
     hash = "sha256-K5T7xBWxl2I5Pw/GyHumi4Iq/i6M2jcshI80nSXf/AE=";
   };
 
+  # Kernel 7.2 compatibility patch for the legacy_580 closed kernel modules.
+  #
+  # 580.173.02 is the last NVIDIA branch supporting Maxwell/Pascal/Volta, and it
+  # still calls strncpy() — which 7.2 removed from the kernel string API — in
+  # five places in its OS-glue layer. Vendored patch (call sites verified against
+  # the 580.173.02 source tree); replaces strncpy() with strscpy(), which has
+  # existed since 4.3, so the patched driver still builds on older kernels too.
+  # Attached to the driver's `patches` list, so it reaches the closed module
+  # build (generic.nix applies `patches` to the shared source before the module
+  # derivation consumes it).
+  #
+  # REMOVE THIS once nixpkgs ships a 580.x build that works on 7.2, or once the
+  # legacy_580 variant is dropped. Fails loudly at patch time if the driver
+  # version moves underneath it.
+  kernel_7_2_strncpy_patch = ./nvidia-580-kernel-7.2-strncpy.patch;
+
   stable = config.boot.kernelPackages.nvidiaPackages.stable;
+  legacy580 = config.boot.kernelPackages.nvidiaPackages.legacy_580;
 
   # Map variant string to the correct driver package.
   #
@@ -59,7 +76,9 @@ let
         });
       }
     else
-      config.boot.kernelPackages.nvidiaPackages.legacy_580;
+      legacy580.overrideAttrs (old: {
+        patches = (old.patches or [ ]) ++ [ kernel_7_2_strncpy_patch ];
+      });
 
   # Open kernel modules require Turing (RTX 20xx / GTX 16xx) or newer.
   # legacy_580 targets Maxwell/Pascal/Volta and must use proprietary closed modules.
@@ -82,9 +101,9 @@ in
                        is the last to support these architectures — 590 and newer
                        dropped them — and the open kernel modules used by "latest"
                        require Turing or newer, so these GPUs cannot run "latest".
-                       Hosts on this variant are pinned to Linux 7.1 by
-                       modules/gpu/nvidia-legacy-kernel.nix; 580 does not build
-                       against 7.2.
+                       The 580.x closed modules are patched for Linux 7.2 by
+                       kernel_7_2_strncpy_patch above, so this variant tracks the
+                       role's normal kernel like every other GPU.
     '';
   };
 

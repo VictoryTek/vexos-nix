@@ -355,17 +355,10 @@
         # declares vexos.gpu.nvidiaDriverVariant and enables the proprietary driver.
         # For the other roles the host file already imports the same path; the
         # module system deduplicates path imports, so this is a no-op there.
-        # legacy_580 (Maxwell/Pascal/Volta) does not build against Linux 7.2, so
-        # roles whose default kernel track is linuxPackages_latest additionally
-        # import the 7.1 pin. Roles on the LTS track (server, headless-server,
-        # htpc) already sit at 6.12, where 580 builds fine — they must NOT get
-        # the pin, as it would move them off LTS.
-        latestKernelRoles = [ "desktop" "stateless" ];
+        # legacy_580 tracks the role's normal kernel — its 580.x closed modules
+        # are patched for Linux 7.2 in modules/gpu/nvidia.nix, so no kernel pin.
         legacyExtra = lib.optional (nvidiaVariant != null) {
-          imports = [ ./modules/gpu/nvidia.nix ]
-            ++ lib.optional
-                 (nvidiaVariant == "legacy_580" && builtins.elem role latestKernelRoles)
-                 ./modules/gpu/nvidia-legacy-kernel.nix;
+          imports = [ ./modules/gpu/nvidia.nix ];
           vexos.gpu.nvidiaDriverVariant = nvidiaVariant;
         };
 
