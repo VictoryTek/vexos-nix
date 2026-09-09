@@ -45,8 +45,9 @@ in
     # dconf defaults (modules/gnome.nix, modules/gnome-desktop.nix) that have
     # a real DMS equivalent; see
     # .github/docs/subagent_docs/hyprland_dms_gnome_parity_spec.md for the
-    # full key-by-key mapping and what was deliberately skipped. Bar/widget
-    # layout and plugins remain a later customisation phase.
+    # full key-by-key mapping and what was deliberately skipped. The Dank Bar
+    # widget layout is trimmed via `settings.barConfigs` below (see
+    # hyprland_dms_bar_dock_trim_spec.md); plugins remain a later phase.
     programs.dank-material-shell = {
       enable                 = true;
       systemd.enable         = true;
@@ -60,6 +61,15 @@ in
 
       # ── settings.json — persistent preferences ─────────────────────────────
       settings = {
+        # DMS settingsConfigVersion as of inputs.dms rev 069ddab
+        # (Common/SettingsData.qml). Declaring it keeps DMS from running its
+        # v0→N settings migration against this file on every shell start — the
+        # file is a read-only /nix/store symlink so a migration can never be
+        # persisted, and a barConfigs-synthesising migration step could
+        # otherwise clobber the layout pinned below. Re-check on every
+        # inputs.dms bump.
+        configVersion = 13;
+
         # GNOME: org/gnome/desktop/interface clock-format=12h (default here is "auto")
         clockFormat = "12h";
 
@@ -69,6 +79,16 @@ in
         dockAutoHide      = true;
         dockSmartAutoHide = true;   # closest DMS equivalent to GNOME's intellihide
 
+        # Launcher button on the dock, showing the OS logo. dockLauncherLogoMode
+        # "os" renders DMS's SystemLogo component, which resolves the distro
+        # logo from /etc/os-release — the VexOS shield, via
+        # modules/branding-display.nix. dockUseOverlayLayer is left unset
+        # (default false): dockAutoHide + dockSmartAutoHide above already give
+        # GNOME-intellihide-style reachability, and the overlay layer would
+        # force the dock above fullscreen windows, which is not wanted.
+        dockLauncherEnabled  = true;
+        dockLauncherLogoMode = "os";
+
         # VexOS Neo-Cyberpunk theme — hand-built from the wallpaper's own
         # extracted colors (see
         # .github/docs/subagent_docs/hyprland_neo_cyberpunk_rice_spec.md),
@@ -77,6 +97,36 @@ in
         # override this explicit theme selection.
         currentThemeName = "custom";
         customThemeFile  = "${config.home.homeDirectory}/.config/DankMaterialShell/themes/vexos-neo-cyberpunk.json";
+
+        # ── Dank Bar layout ───────────────────────────────────────────────────
+        # DMS renders the bar strictly from barConfigs[0].{left,center,right}
+        # Widgets (Modules/DankBar/DankBarContent.qml + WidgetHost.qml, rev
+        # 069ddab) — the legacy show* booleans are not consulted. This trims
+        # the upstream default layout by six widgets:
+        #   left:   - launcherButton      (use $mod+Space → spotlight)
+        #   center: - weather
+        #   right:  - clipboard           (use $mod+V)
+        #           - cpuUsage
+        #           - memUsage
+        #           - notificationButton  (use $mod+N)
+        # systemTray is kept — Sunshine / Vesktop / gamemode etc. need a tray.
+        # Only the structural keys DMS reads unguarded are set; every appearance
+        # key (spacing, transparency, autoHide, borders, …) is intentionally
+        # omitted so DMS's own `?? default` fallbacks supply the upstream
+        # defaults. See
+        # .github/docs/subagent_docs/hyprland_dms_bar_dock_trim_spec.md.
+        barConfigs = [{
+          id                = "default";   # DMS resolves the primary bar by this id
+          name              = "Main Bar";
+          enabled           = true;
+          visible           = true;
+          position          = 0;           # Position enum: Top=0 (dock is Left=2, set separately)
+          screenPreferences = [ "all" ];
+          showOnLastDisplay = true;
+          leftWidgets       = [ "workspaceSwitcher" "focusedWindow" ];
+          centerWidgets     = [ "music" "clock" ];
+          rightWidgets      = [ "systemTray" "battery" "controlCenterButton" ];
+        }];
       };
 
       # ── session.json — wallpaper, mode, pinned apps ────────────────────────
