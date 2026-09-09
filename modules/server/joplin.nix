@@ -172,7 +172,7 @@ in
     };
 
     virtualisation.oci-containers.containers.joplin-server = {
-      image = "joplin/server:3.7.1";
+      image = "joplin/server:3.7.2";
       ports = [ "${toString cfg.port}:22300" ];
       environment = {
         APP_PORT          = "22300";
