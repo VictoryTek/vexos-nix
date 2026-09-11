@@ -18,7 +18,7 @@
           enabled-extensions = config.vexos.gnome.commonExtensions;
           favorite-apps = [
             "brave-origin.desktop"
-            "app.zen_browser.zen.desktop"
+            "librewolf.desktop"
             "plex-desktop.desktop"             # nixpkgs plex-desktop package
             "io.freetubeapp.FreeTube.desktop"
             "org.gnome.Nautilus.desktop"

@@ -19,7 +19,7 @@
           favorite-apps = [
             "brave-origin.desktop"
             "torbrowser.desktop"
-            "app.zen_browser.zen.desktop"
+            "librewolf.desktop"
             "org.gnome.Nautilus.desktop"
             "com.mitchellh.ghostty.desktop"
             "io.github.up.desktop"

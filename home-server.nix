@@ -4,7 +4,7 @@
 # No gaming, no dev-language tooling. Focus: sysadmin utilities and remote management.
 { config, pkgs, lib, inputs, osConfig, ... }:
 {
-  imports = [ ./home/bash-common.nix ./home/gnome-common.nix ./home/gnome-common-browser.nix ];
+  imports = [ ./home/bash-common.nix ./home/gnome-common.nix ./home/gnome-common-browser.nix ./home/browser-extensions.nix ];
 
   home.username    = osConfig.vexos.user.name;
   home.homeDirectory = "/home/${osConfig.vexos.user.name}";

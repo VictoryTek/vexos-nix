@@ -20,7 +20,7 @@ let
   # left a dead placeholder icon on the dock that couldn't launch anything.
   basePinnedApps = [
     "brave-origin"
-    "app.zen_browser.zen"
+    "librewolf"
     "org.gnome.Nautilus"
     "com.mitchellh.ghostty"
     "io.github.up"

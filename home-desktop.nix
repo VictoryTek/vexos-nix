@@ -9,6 +9,7 @@
     ./home/photogimp.nix
     ./home/gnome-common.nix
     ./home/gnome-common-browser.nix
+    ./home/browser-extensions.nix
     ./home/dank-material-shell.nix   # active only when vexos.desktop.environment == "hyprland"; shell itself disabled in favour of Noctalia
     ./home/noctalia.nix              # active only when vexos.desktop.environment == "hyprland"; the active shell
   ];
@@ -138,7 +139,7 @@
 
   # ── Session environment variables ─────────────────────────────────────────
   # NIXOS_OZONE_WL: forces Electron apps (VS Code, etc.) to use the Wayland backend.
-  # MOZ_ENABLE_WAYLAND: forces Firefox/Zen to use the Wayland backend.
+  # MOZ_ENABLE_WAYLAND: forces Firefox/LibreWolf to use the Wayland backend.
   # QT_QPA_PLATFORM: ensures Qt apps prefer Wayland with XCB as fallback.
   home.sessionVariables = {
     NIXOS_OZONE_WL     = "1";

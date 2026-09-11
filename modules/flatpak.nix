@@ -8,7 +8,6 @@ let
     "it.mijorus.gearlever"
     "io.missioncenter.MissionCenter"
     "io.github.flattool.Warehouse"
-    "app.zen_browser.zen"
     "com.mattjakeman.ExtensionManager"
     "io.github.kolunmi.Bazaar"
     "org.pulseaudio.pavucontrol"

@@ -3,7 +3,7 @@
 # Manages HTPC-specific wallpapers, GNOME dconf wallpaper settings, and media-centre defaults.
 { config, pkgs, lib, inputs, osConfig, ... }:
 {
-  imports = [ ./home/bash-common.nix ./home/gnome-common.nix ./home/gnome-common-browser.nix ];
+  imports = [ ./home/bash-common.nix ./home/gnome-common.nix ./home/gnome-common-browser.nix ./home/browser-extensions.nix ];
 
   home.username    = osConfig.vexos.user.name;
   home.homeDirectory = "/home/${osConfig.vexos.user.name}";
@@ -159,7 +159,7 @@
 
   # ── Wayland session variables ─────────────────────────────────────────────
   # NIXOS_OZONE_WL: enables Wayland for Electron-based apps (ghostty, Brave).
-  # MOZ_ENABLE_WAYLAND: forces Firefox/Zen to use the Wayland backend.
+  # MOZ_ENABLE_WAYLAND: forces Firefox/LibreWolf to use the Wayland backend.
   # QT_QPA_PLATFORM: ensures Qt apps prefer Wayland with XCB as fallback.
   home.sessionVariables = {
     NIXOS_OZONE_WL     = "1";

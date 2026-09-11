@@ -18,7 +18,7 @@
           enabled-extensions = config.vexos.gnome.commonExtensions;
           favorite-apps = [
             "brave-origin.desktop"
-            "app.zen_browser.zen.desktop"
+            "librewolf.desktop"
             "org.gnome.Nautilus.desktop"
             "com.mitchellh.ghostty.desktop"
             "io.github.up.desktop"

@@ -30,7 +30,7 @@ in
             config.vexos.gnome.commonExtensions ++ config.vexos.gnome.extraExtensions;
           favorite-apps = [
             "brave-origin.desktop"
-            "app.zen_browser.zen.desktop"
+            "librewolf.desktop"
             "org.gnome.Nautilus.desktop"
             "com.mitchellh.ghostty.desktop"
             "io.github.up.desktop"

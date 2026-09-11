@@ -37,7 +37,7 @@ let
   # pinning it unconditionally would leave a dead icon that launches nothing.
   basePinnedApps = [
     "brave-origin"
-    "app.zen_browser.zen"
+    "librewolf"
     "org.gnome.Nautilus"
     "com.mitchellh.ghostty"
     "io.github.up"

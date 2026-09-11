@@ -7,6 +7,7 @@
     ./home/bash-common.nix
     ./home/gnome-common.nix
     ./home/gnome-common-browser.nix
+    ./home/browser-extensions.nix
   ];
 
   home.username    = osConfig.vexos.user.name;
