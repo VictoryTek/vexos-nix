@@ -182,14 +182,21 @@ in
           # Lanes hold group tokens, so inserting a widget elsewhere can never
           # split a segment.
           start  = [ "group:nav" ];
-          center = [ "group:media" ];
-          end    = [ "group:status" ];
+          center = [ "group:clock" ];
+          end    = [ "group:media" "group:status" ];
 
           capsule_group = [
             # Workspace indicator, on its own so it reads as a distinct pill.
             {
               id      = "nav";
               members = [ "workspaces" ];
+              fill    = "surface_variant";
+              border  = "outline";
+            }
+            # Clock, centered on its own.
+            {
+              id      = "clock";
+              members = [ "clock" ];
               fill    = "surface_variant";
               border  = "outline";
             }
@@ -200,10 +207,11 @@ in
               fill    = "surface_variant";
               border  = "outline";
             }
-            # System tray + clock share one capsule on the right.
+            # System tray + session (power/logout/restart) share one capsule
+            # on the right.
             {
               id      = "status";
-              members = [ "tray" "clock" ];
+              members = [ "tray" "session" ];
               fill    = "surface_variant";
               border  = "outline";
             }
@@ -218,6 +226,10 @@ in
           # Closest equivalent to GNOME's intellihide: reveal when the active
           # workspace is empty.
           smart_auto_hide = true;
+          # Without this, an auto-hidden dock still reserves an exclusive
+          # zone at its edge, shrinking the visible workspace area even while
+          # hidden. false makes it retract as a pure overlay with no gap.
+          reserve_space = false;
 
           # Visible border styling.
           border       = "outline";
