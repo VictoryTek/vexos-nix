@@ -16,9 +16,15 @@
 #
 # Config lands at ~/.config/noctalia/config.toml as a read-only /nix/store
 # symlink. Upstream's `checkConfig` (default true) runs `noctalia config
-# validate` against it at BUILD time, so an unknown or malformed key fails the
-# rebuild rather than being silently ignored — that is the verification gate for
-# every value in this file. Because the file is store-owned, changes made in
+# validate` against it at BUILD time, but note what that does and does not
+# catch: TOML *syntax* errors fail the build, while an unknown key or an
+# unknown enum value is only a WARNING and still exits 0. So a typo here will
+# not break the rebuild — it will silently do nothing. Every key and value in
+# this file was therefore checked directly against noctalia 5.1.0's validator,
+# which reported 0 errors and 0 warnings. Re-run that check when editing:
+#   noctalia config validate ~/.config/noctalia/config.toml
+# and treat any warning as a defect. Because the file is store-owned, changes
+# made in
 # Noctalia's own Settings GUI cannot persist across a rebuild; the same
 # trade-off home/dank-material-shell.nix documents for settings.json. See
 # .github/docs/subagent_docs/noctalia_v5_migration_spec.md §5.5 for the list of

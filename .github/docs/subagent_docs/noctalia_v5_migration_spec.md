@@ -105,8 +105,15 @@ cached-in-nixpkgs route to v5.
 - Config target: `~/.config/noctalia/config.toml` (**not**
   `~/.local/state/noctalia/settings.toml` as stated in the request).
 - `checkConfig` (default `true`) runs `noctalia config validate` at **build
-  time** — any unknown/invalid key fails the build rather than being ignored.
-  This is the primary verification mechanism for this change.
+  time**. **Verified empirically against noctalia 5.1.0** — it catches less than
+  its name suggests: TOML *syntax* errors are errors (exit 1), but an unknown
+  key (`dock.drag_to_reorder: unknown setting`) or an unknown enum value
+  (`dock.position: unknown value "diagonal"`) is only a **warning**, and the
+  command still exits 0. A typo therefore does **not** fail the rebuild; it
+  silently does nothing.
+  Consequently the real verification gate for this change was running the
+  validator directly against the generated TOML and requiring **0 errors and
+  0 warnings** — which the final config achieves.
 - Binary / `meta.mainProgram`: `noctalia`. IPC form: `noctalia msg <command>`
   (**not** `noctalia-shell ipc call …`, which is v4/DMS-style).
 - Cache: `https://noctalia.cachix.org`,
@@ -264,9 +271,9 @@ hot corners).
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Tag `v5.1.0` may not be in Cachix (the `cachix` branch tracks the latest cached commit, currently `main`) | Source build of a Qt/C++ shell | Dry-build reports fetch-vs-build. If uncached, options: move to `cachix` branch, or accept one build. Documented in `flake.nix` |
+| ~~Tag `v5.1.0` may not be in Cachix~~ | ~~Source build of a Qt/C++ shell~~ | **RESOLVED — verified.** `nix build --dry-run` against `noctalia.cachix.org` reports *"255 paths will be fetched (261.2 MiB), 0 will be built"*, and a real build fetched `noctalia-5.1.0` straight from the cache. No source build |
 | Two nixpkgs copies (no `follows`) | Extra eval memory + download | Accepted; same trade-off already made for `proxmox-nixos` / `vexboard` |
-| `checkConfig` fails the build on any bad key | Rebuild blocked | This is the desired behaviour — it is the verification gate. All keys were taken from the schema source at the pinned tag |
+| A typo'd key or enum value is only a warning, so it silently does nothing | A setting appears applied but is not | Validator run directly against the generated TOML; requires 0 errors **and** 0 warnings. Achieved. Re-run on every edit — `checkConfig` alone will not catch this |
 | Double polkit agent (`hyprpolkitagent` + Noctalia's built-in) | Conflicting auth prompts | Set `shell.polkit_agent = false`; leave the existing working `hyprpolkitagent` untouched |
 | Both shells enabled at once | Two bars | DMS `enable = false` removes `dms.service`; only `noctalia.service` remains |
 | Repo edits to `hyprland.conf` do not reach an existing install | Stale keybinds | Seed-once by design. `~/.config/hypr` absent on `vextop`, so no drift today. Called out in delivery notes |
