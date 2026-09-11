@@ -1,6 +1,24 @@
 # DMS → ReGreet Greeter Migration — Review
 
-Status: Phase 3 (Review & Quality Assurance) / Phase 6 (Preflight)
+Status: Phase 3 (Review & Quality Assurance) / Phase 6 (Preflight) — **PASSED**
+
+**Update (2026-09-11, post-commit):** the user committed the new files
+(`d9ccb95`, not yet pushed). Re-ran verification with the files git-tracked:
+
+- `nix eval --impure ".#nixosConfigurations.vexos-desktop-amd.config.system.stateVersion"`
+  → `"25.11"` (previously failed with "path … does not exist" — now resolves).
+- Forced-hyprland full closure eval → same
+  `/nix/store/qpnqxkg3icnghdg2sbdqx5f4nmq8b5gb-nixos-system-vexos-26.05.drv`
+  as the pre-commit bypass-eval (deterministic, confirms nothing changed but
+  git-visibility).
+- `bash scripts/preflight.sh` → **exit 0, "Preflight PASSED — safe to push."**
+  Stage `[8/8]` (`nix build .#nixosConfigurations.vexos-desktop-amd.pkgs.vexos.vexos-update`)
+  now succeeds — this is the exact stage that failed pre-commit, confirming
+  the §9 diagnosis was correct and the fix was purely staging the files.
+
+This confirms Phase 6 as **PASSED**, not just "code is correct but
+unverifiable." Score table and findings below are otherwise unchanged from
+the pre-commit pass; only Build Success moves to 100%.
 
 ---
 
@@ -92,10 +110,10 @@ This is standard, universal Nix flake behavior for any new file in a git-managed
 | Security | 100% | A |
 | Performance | 100% | A |
 | Consistency | 100% | A |
-| Build Success | 80% | B (full-closure eval passes; the flake-ref-style build used by preflight stage 8/8 is blocked purely by untracked files, not a code error — see finding above) |
+| Build Success | 100% | A (confirmed post-commit: `nix eval` on `.#` resolves, full-closure hyprland-branch eval reproduces the identical drvPath, and `bash scripts/preflight.sh` exits 0) |
 
-**Overall Grade: A- (96%)**
+**Overall Grade: A (99%)**
 
 ## Returns
 
-- **NEEDS_REFINEMENT is not applicable here** — refinement would mean changing code, and there is no code defect to fix. The blocker is procedural (git staging), sits outside every action this session is permitted to take, and is described precisely above so it isn't mistaken for a build regression caused by this change. Flagged to the user directly rather than silently spending refinement cycles on it.
+- **PASS.** Preflight confirmed passing post-commit (see update above). No CRITICAL issues; the one residual note (logo/CSS placement not visible on real hardware from this Windows session — spec §7) is cosmetic-verification-only, not a build or spec-compliance gap.
