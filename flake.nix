@@ -12,9 +12,17 @@
   # hard failure. Post-install, modules/nix-proxmox-cache.nix makes this
   # unconditional on server + headless-server.
   nixConfig = {
-    extra-substituters = [ "https://cache.saumon.network/proxmox-nixos" ];
+    extra-substituters = [
+      "https://cache.saumon.network/proxmox-nixos"
+      # Noctalia — prebuilt shell closures. The noctalia input deliberately does
+      # not follow this flake's nixpkgs (see inputs.noctalia), precisely so this
+      # cache stays valid. Post-install this is made unconditional for the
+      # desktop role by modules/nix-noctalia-cache.nix.
+      "https://noctalia.cachix.org"
+    ];
     extra-trusted-public-keys = [
       "proxmox-nixos:D9RYSWpQQC/msZUWphOY2I5RLH5Dd6yQcaHIuug7dWM="
+      "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4="
     ];
   };
 
@@ -89,6 +97,29 @@
     dms = {
       url = "github:AvengeMedia/DankMaterialShell/stable";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Noctalia — Wayland desktop shell (bar, dock, launcher, control center,
+    # lock screen, OSDs, hot corners, Material-You theming). Replaces DMS as the
+    # active Hyprland shell; see home/noctalia.nix. DMS stays installed but
+    # disabled (home/dank-material-shell.nix) so a revert is a one-line change.
+    #
+    # Pinned to the v5.1.0 tag, not a branch: upstream has no `v5` branch (the
+    # v5 line is `main`, v4 moved to `legacy-v4`), and a QML/C++ shell tracking
+    # a moving branch can break the desktop on an unrelated `nix flake update`.
+    # Bump this tag deliberately.
+    #
+    # DELIBERATE EXCEPTION — no `inputs.nixpkgs.follows` here, unlike dms above.
+    # Overriding Noctalia's nixpkgs changes the derivation hash and causes a
+    # total miss against the upstream Cachix cache (nixConfig above +
+    # modules/nix-noctalia-cache.nix), forcing a full Qt/C++/Quickshell source
+    # build. Upstream documents this directly:
+    # docs/user/getting-started/nixos.mdx — "To use the binary cache, you have
+    # to omit inputs.nixpkgs.follows". nixpkgs only carries noctalia-shell 4.7.5
+    # (the v4 line), so there is no cached v5 route via our own pin either.
+    # Same trade-off already accepted for proxmox-nixos and vexboard.
+    noctalia = {
+      url = "github:noctalia-dev/noctalia-shell/v5.1.0";
     };
   };
 

@@ -248,6 +248,38 @@
         "type": "github"
       }
     },
+    "nixpkgs_3": {
+      "locked": {
+        "lastModified": 1788614874,
+        "narHash": "sha256-PRK1fSEiAcO29DkUoOlsVLGYRK3h1YKVr+qQJB0VcYQ=",
+        "rev": "c043004d1c6985732bcc1cbc5a9c9aecbbb4e0f0",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixos/unstable/nixos-26.11pre1068089.c043004d1c69/nixexprs.tar.zst"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://channels.nixos.org/nixos-unstable/nixexprs.tar.zst"
+      }
+    },
+    "noctalia": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_3"
+      },
+      "locked": {
+        "lastModified": 1789053136,
+        "narHash": "sha256-A7ehoEnAJw4k1Qwpr/WkOkLXWZAVU970uB+sm6nBxP0=",
+        "owner": "noctalia-dev",
+        "repo": "noctalia-shell",
+        "rev": "c7b9197af77ff22bfb9a83c52a95643a1d90ca86",
+        "type": "github"
+      },
+      "original": {
+        "owner": "noctalia-dev",
+        "ref": "v5.1.0",
+        "repo": "noctalia-shell",
+        "type": "github"
+      }
+    },
     "proxmox-nixos": {
       "inputs": {
         "flake-compat": "flake-compat_2",
@@ -276,6 +308,7 @@
         "impermanence": "impermanence",
         "nixpkgs": "nixpkgs_2",
         "nixpkgs-unstable": "nixpkgs-unstable",
+        "noctalia": "noctalia",
         "proxmox-nixos": "proxmox-nixos",
         "sops-nix": "sops-nix",
         "up": "up",

@@ -49,7 +49,18 @@ in
     # widget layout is trimmed via `settings.barConfigs` below (see
     # hyprland_dms_bar_dock_trim_spec.md); plugins remain a later phase.
     programs.dank-material-shell = {
-      enable                 = true;
+      # DISABLED in favour of Noctalia v5 — see home/noctalia.nix.
+      # Everything below (settings, session, theme, bar layout) is deliberately
+      # left intact and untouched: with enable = false the upstream module
+      # generates nothing and dms.service is never created, but the full
+      # configuration stays here so reverting is a one-line change back to
+      # `true` (plus setting programs.noctalia.enable = false in
+      # home/noctalia.nix — the two shells must not run at once).
+      # The DMS flake input is likewise retained so `nix flake update` keeps it
+      # current. Note the polkit agent, udiskie, hypridle, mic-mute service and
+      # the seedHyprlandConf activation further down are NOT DMS-specific and
+      # remain active for Noctalia — they sit outside this attrset.
+      enable                 = false;
       systemd.enable         = true;
       quickshell.package     = pkgs.quickshell;   # 0.3.0 in nixos-26.05
       dgop.package           = pkgs.dgop;         # set explicitly — no module default

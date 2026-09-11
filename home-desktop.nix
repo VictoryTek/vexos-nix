@@ -9,7 +9,8 @@
     ./home/photogimp.nix
     ./home/gnome-common.nix
     ./home/gnome-common-browser.nix
-    ./home/dank-material-shell.nix   # active only when vexos.desktop.environment == "hyprland"
+    ./home/dank-material-shell.nix   # active only when vexos.desktop.environment == "hyprland"; shell itself disabled in favour of Noctalia
+    ./home/noctalia.nix              # active only when vexos.desktop.environment == "hyprland"; the active shell
   ];
 
   photogimp.enable = true;

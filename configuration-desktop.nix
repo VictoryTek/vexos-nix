@@ -32,6 +32,7 @@
     ./modules/nix.nix
     ./modules/notify.nix
     ./modules/nix-desktop.nix       # 14-day GC retention (workstation standard)
+    ./modules/nix-noctalia-cache.nix # Noctalia binary cache (see home/noctalia.nix)
     ./modules/locale.nix
     ./modules/users.nix
     ./modules/appimage.nix
