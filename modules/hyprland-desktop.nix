@@ -1,7 +1,8 @@
 # modules/hyprland-desktop.nix
-# Hyprland compositor + DankMaterialShell (DMS) desktop shell + DMS greeter, for
-# the desktop role. Active only when vexos.desktop.environment == "hyprland"
-# (see modules/desktop-environment.nix).
+# Hyprland compositor + DankMaterialShell (DMS) desktop shell, for the desktop
+# role. Active only when vexos.desktop.environment == "hyprland" (see
+# modules/desktop-environment.nix). The login greeter is a separate concern —
+# see modules/hyprland-greeter.nix (ReGreet).
 #
 # hyprland.conf is not written or managed HERE, but home/dank-material-shell.nix
 # seeds a minimal DMS-focused config to ~/.config/hypr/hyprland.conf ONCE on
@@ -12,14 +13,14 @@
 # playerctl, hyprpicker) are installed and ready.
 #
 # Layer split:
-#   • system (this file) — compositor, greeter, and the services/apps GNOME
-#     supplied implicitly that DMS does not replace
+#   • system (this file) — compositor and the services/apps GNOME supplied
+#     implicitly that DMS does not replace
 #   • user   (home/dank-material-shell.nix) — the DMS shell itself, its systemd
 #     user service and settings surface, the seeded hyprland.conf, plus the
 #     polkit agent and automounter
-#   • flake  (flake.nix dmsBase) — the single `dms` flake input and its two
-#     NixOS modules (dank-material-shell option tree + greeter). DMS ships no
-#     overlays. Modules in this repo stay pure and never take `inputs`.
+#   • flake  (flake.nix dmsBase) — the single `dms` flake input and its
+#     dank-material-shell option-tree NixOS module. DMS ships no overlays.
+#     Modules in this repo stay pure and never take `inputs`.
 #
 # DE-agnostic content (fonts, printing, Bluetooth, Moonlight, base XDG portal
 # enable) comes from modules/desktop-common.nix, imported transitively via
@@ -66,34 +67,6 @@ in
       binPath    = "${config.programs.hyprland.package}/bin/Hyprland";
     };
 
-    # ── Greeter ─────────────────────────────────────────────────────────────
-    # The DMS greeter is a greetd greeter that runs Hyprland ITSELF as its
-    # compositor (compositor.name = "hyprland" resolves the package from
-    # config.programs.hyprland.package). Its greeter UI ships inside the
-    # dms-shell package. The upstream module (flake.nix dmsBase →
-    # inputs.dms.nixosModules.greeter) does the greetd wiring itself: it sets
-    # services.greetd.settings.default_session.command (mkDefault) to the
-    # generated greeter script and reads the greetd user for an assertion.
-    # We therefore do NOT declare services.greetd ourselves — a second
-    # definition would collide.
-    programs.dank-material-shell.greeter = {
-      enable             = true;
-      compositor.name    = "hyprland";
-      quickshell.package = pkgs.quickshell;
-    };
-
-    # Do not restart greetd during `nixos-rebuild switch` — same rationale as
-    # systemd.services.display-manager.restartIfChanged in modules/gnome.nix.
-    # A switch that changes the greetd unit would otherwise kill the running
-    # Hyprland session mid-rebuild (black screen, blinking cursor). The new
-    # greeter configuration applies on the next reboot.
-    systemd.services.greetd.restartIfChanged = false;
-
-    # accounts-daemon: the greeter reads the system user list through it. GNOME
-    # pulled this in implicitly. Set it here so the DMS greeter shows real
-    # accounts regardless of whether its own module happens to enable it.
-    services.accounts-daemon.enable = true;
-
     # ── Secret Service (hard dependency) ─────────────────────────────────────
     # DMS relies on a Secret Service provider for stored credentials (VPN, some
     # widgets). Under GNOME this came free with the desktop; on Hyprland it must
@@ -103,10 +76,10 @@ in
 
     # ── Auto-login ────────────────────────────────────────────────────────────
     # GNOME-equivalent: modules/gnome.nix sets the same services.displayManager
-    # options for GDM. The DMS greeter module (inputs.dms.nixosModules.greeter)
-    # reads this standard option directly and wires it into greetd's
-    # initial_session, resolving the session command via
-    # services.displayManager.sessionData.autologinSession — which in turn
+    # options for GDM. This is generic NixOS greetd wiring, read regardless of
+    # which greeter package is in front of it (see modules/hyprland-greeter.nix)
+    # — it wires into greetd's initial_session, resolving the session command
+    # via services.displayManager.sessionData.autologinSession — which in turn
     # comes from defaultSession. It must name the UWSM session (see the
     # "SELECT THE UWSM ONE" comment on programs.uwsm.waylandCompositors.hyprland
     # above) or autologin boots a bare compositor with no shell, same as

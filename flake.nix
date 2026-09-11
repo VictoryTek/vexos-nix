@@ -258,26 +258,27 @@
     # sops-nix module shared by server and headless-server roles.
     sopsBase = [ sops-nix.nixosModules.sops ];
 
-    # DankMaterialShell NixOS modules — desktop role only. DMS ships no overlays,
+    # DankMaterialShell NixOS module — desktop role only. DMS ships no overlays,
     # so (unlike vexboardBase) there is no nixpkgs.overlays entry;
     # modules reference pkgs.quickshell / pkgs.dgop from nixpkgs directly and the
     # shell binary comes from the flake module defaults (dmsPkgs specialArg,
     # supplied by the module wrappers below).
     #
     #   • dank-material-shell — declares the NixOS-side programs.dank-material-shell
-    #     option tree that the greeter module reads. Installs nothing: its config
-    #     is guarded by programs.dank-material-shell.enable, which this repo sets
-    #     only via the Home Manager module (home/dank-material-shell.nix), itself
-    #     gated on vexos.desktop.environment == "hyprland".
-    #   • greeter — programs.dank-material-shell.greeter.*, and configures
-    #     services.greetd. Inert until greeter.enable is set, which happens only
-    #     inside modules/hyprland-desktop.nix's isHyprland guard.
+    #     option tree. Installs nothing: its config is guarded by
+    #     programs.dank-material-shell.enable, which this repo sets only via the
+    #     Home Manager module (home/dank-material-shell.nix, currently
+    #     enable = false — Noctalia is the active shell), itself gated on
+    #     vexos.desktop.environment == "hyprland".
+    #
+    # The DMS greeter module is intentionally NOT included — the login greeter
+    # is ReGreet (modules/hyprland-greeter.nix, programs.regreet from nixpkgs
+    # directly, no flake input needed).
     #
     # GNOME and COSMIC desktop hosts are therefore unaffected and nothing DMS is
     # ever built for them.
     dmsBase = [
       inputs.dms.nixosModules.dank-material-shell
-      inputs.dms.nixosModules.greeter
     ];
 
     # Single source of truth for per-role wiring. Consumed by `mkHost` (per-host

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <!--
+    ReGreet login background — VexOS Neo-Cyberpunk Dark palette
+    (files/dms/vexos-neo-cyberpunk.json), purpose-built for the greeter.
+    Not derived from wallpapers/vex-bb-*.jxl.
+  -->
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#050A14"/>
+      <stop offset="100%" stop-color="#0B1526"/>
+    </linearGradient>
+    <radialGradient id="glowCyan" cx="72%" cy="22%" r="55%">
+      <stop offset="0%" stop-color="#05F4FA" stop-opacity="0.32"/>
+      <stop offset="60%" stop-color="#05F4FA" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#05F4FA" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowOrange" cx="18%" cy="86%" r="45%">
+      <stop offset="0%" stop-color="#DD4014" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#DD4014" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M 64 0 L 0 0 0 64" fill="none" stroke="#05F4FA" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="55%" stop-color="#000000" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.85"/>
+    </linearGradient>
+    <mask id="gridMask">
+      <rect width="1920" height="1080" fill="#ffffff"/>
+      <rect width="1920" height="1080" fill="url(#fade)"/>
+    </mask>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#base)"/>
+  <rect width="1920" height="1080" fill="url(#glowCyan)"/>
+  <rect width="1920" height="1080" fill="url(#glowOrange)"/>
+
+  <g opacity="0.10" mask="url(#gridMask)">
+    <rect width="1920" height="1080" fill="url(#grid)"/>
+  </g>
+
+  <!-- circuit traces -->
+  <g stroke="#05F4FA" stroke-width="1.5" fill="none" opacity="0.16" stroke-linecap="round">
+    <path d="M 0 180 H 260 L 320 240 H 640"/>
+    <path d="M 1920 860 H 1600 L 1540 800 H 1180"/>
+    <path d="M 1920 140 H 1720 L 1660 200 V 420"/>
+  </g>
+  <g fill="#05F4FA" opacity="0.35">
+    <circle cx="320" cy="240" r="3.5"/>
+    <circle cx="640" cy="240" r="3.5"/>
+    <circle cx="1540" cy="800" r="3.5"/>
+    <circle cx="1180" cy="800" r="3.5"/>
+    <circle cx="1660" cy="200" r="3.5"/>
+    <circle cx="1660" cy="420" r="3.5"/>
+  </g>
+
+  <!-- vignette -->
+  <rect width="1920" height="1080" fill="url(#fade)" opacity="0.5"/>
+</svg>

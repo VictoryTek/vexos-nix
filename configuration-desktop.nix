@@ -7,6 +7,7 @@
     ./modules/gnome-desktop.nix
     ./modules/cosmic-desktop.nix    # active only when vexos.desktop.environment == "cosmic"
     ./modules/hyprland-desktop.nix  # active only when vexos.desktop.environment == "hyprland"
+    ./modules/hyprland-greeter.nix  # ReGreet login greeter; active only when vexos.desktop.environment == "hyprland"
     ./modules/sunshine.nix          # self-hosted Moonlight game-stream host
     ./modules/gaming.nix             # optional: vexos.features.gaming.enable (bundles gpu-gaming + system-gaming)
     ./modules/development.nix        # optional: vexos.features.development.enable
