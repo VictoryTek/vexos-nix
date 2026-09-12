@@ -394,8 +394,8 @@
       vexos-vanilla-nvidia-legacy580     = mkVanillaVariant "vexos-vanilla-nvidia-legacy580"     [ vexos-nix.nixosModules.gpuNvidia { vexos.gpu.nvidiaDriverVariant = "legacy_580"; } ];
       vexos-vanilla-intel                = mkVanillaVariant "vexos-vanilla-intel"                vexos-nix.nixosModules.gpuIntel;
       # gpuVanillaVm instead of gpuVm: vanilla does not import modules/system.nix,
-      # so vexos.btrfs.enable and vexos.swap.enable (declared there) are not
-      # available in this evaluation context.
+      # so vexos.btrfs.enable (declared there) is not available in this
+      # evaluation context.
       vexos-vanilla-vm     = mkVanillaVariant "vexos-vanilla-vm"     vexos-nix.nixosModules.gpuVanillaVm;
     };
   };

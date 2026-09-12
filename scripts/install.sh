@@ -421,6 +421,99 @@ fi
 
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}${NVIDIA_SUFFIX}"
 
+# ---------- Binary caches for the install build ------------------------------
+# The flake being built here is /etc/nixos (the thin template wrapper), and Nix
+# reads nixConfig only from the TOP-LEVEL flake — an input's nixConfig is
+# ignored. So this repo's own nixConfig block never applies during an install,
+# and modules/nix-noctalia-cache.nix only takes effect from the second boot
+# onward (it is part of the configuration being built). Without these options a
+# Hyprland install compiles noctalia — a Qt/C++/Quickshell shell that is in no
+# public cache except this one — entirely from source.
+#
+# Passed as --option rather than relying on nixConfig + --accept-flake-config so
+# they apply even when /etc/nixos/flake.nix is an older template: re-running the
+# installer to switch role/variant never re-downloads it. root is always a
+# trusted user, so extra-substituters is honoured.
+#
+# Keys duplicated from flake.nix's nixConfig — this script runs standalone via
+# `curl | bash` with no local checkout to source a shared fragment from, so the
+# two are kept in sync manually (same situation as the UNAVOIDABLE_REGEX copy in
+# pkgs/vexos-update/default.nix).
+INSTALL_CACHE_OPTS=(
+  --option extra-substituters
+  "https://noctalia.cachix.org https://cache.saumon.network/proxmox-nixos"
+  --option extra-trusted-public-keys
+  "noctalia.cachix.org-1:pCOR47nnMEo5thcxNDtzWpOxNFQsBRglJzxWPp3dkU4= proxmox-nixos:D9RYSWpQQC/msZUWphOY2I5RLH5Dd6yQcaHIuug7dWM="
+)
+
+# ---------- Temporary install swap -------------------------------------------
+# One full evaluation of a desktop configuration peaks around 1.7 GiB, and the
+# packages that are in no binary cache at all (up, vexportal — Rust release
+# builds) come on top of that. A 2-4 GiB guest with no swap gets killed by the
+# OOM killer mid-install. The installed system provisions its own swap
+# (modules/system.nix); this covers the window before that exists.
+VEXOS_INSTALL_SWAP="/var/vexos-install-swap"
+SWAP_CREATED=false
+
+cleanup_install_swap() {
+  if [ "$SWAP_CREATED" = "true" ]; then
+    sudo swapoff "$VEXOS_INSTALL_SWAP" 2>/dev/null || true
+    sudo rm -f "$VEXOS_INSTALL_SWAP"
+  fi
+}
+trap cleanup_install_swap EXIT
+
+setup_install_swap() {
+  local mem_kb swap_kb total_gib root_fs free_mib
+  mem_kb=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
+  swap_kb=$(awk '/^SwapTotal:/{print $2}' /proc/meminfo)
+  total_gib=$(( (mem_kb + swap_kb) / 1048576 ))
+  echo ""
+  echo -e "${CYAN}Memory available to the build: $(( mem_kb / 1048576 )) GiB RAM + $(( swap_kb / 1048576 )) GiB swap.${RESET}"
+
+  if [ "$total_gib" -ge 8 ]; then
+    return 0
+  fi
+
+  root_fs=$(findmnt -n -o FSTYPE / 2>/dev/null || echo unknown)
+  if [ "$root_fs" = "tmpfs" ] || [ "$root_fs" = "zfs" ]; then
+    echo -e "${YELLOW}⚠ Root filesystem is ${root_fs} — cannot add a temporary swapfile."
+    echo -e "  With under 8 GiB total the build may be killed by the OOM killer;"
+    echo -e "  raise the machine's RAM if it fails.${RESET}"
+    return 0
+  fi
+
+  free_mib=$(df -P -BM / | awk 'NR==2{sub(/M$/,"",$4); print $4}')
+  if [ "${free_mib:-0}" -lt 10240 ]; then
+    echo -e "${YELLOW}⚠ Less than 10 GiB free on / — skipping the temporary swapfile.${RESET}"
+    return 0
+  fi
+
+  echo -e "${CYAN}Under 8 GiB total — adding a temporary 4 GiB swapfile for the build...${RESET}"
+  sudo rm -f "$VEXOS_INSTALL_SWAP"
+  # Whole creation runs in a subshell so a failure is best-effort (consumed by
+  # `if`) instead of aborting the installer under `set -e`.
+  if ( set -e
+       if [ "$root_fs" = "btrfs" ]; then
+         # A plain file cannot be swapped on btrfs (needs nocow + nodatasum);
+         # `mkswapfile` creates it with the required attributes.
+         sudo btrfs filesystem mkswapfile --size 4g "$VEXOS_INSTALL_SWAP"
+       else
+         # dd rather than fallocate: swapon rejects the unwritten extents
+         # fallocate leaves behind on ext4.
+         sudo dd if=/dev/zero of="$VEXOS_INSTALL_SWAP" bs=1M count=4096 status=none
+         sudo chmod 600 "$VEXOS_INSTALL_SWAP"
+         sudo mkswap -q "$VEXOS_INSTALL_SWAP"
+       fi
+       sudo swapon "$VEXOS_INSTALL_SWAP" ); then
+    SWAP_CREATED=true
+    echo -e "${GREEN}✓ Temporary 4 GiB swapfile active (removed when the installer exits).${RESET}"
+  else
+    sudo rm -f "$VEXOS_INSTALL_SWAP"
+    echo -e "${YELLOW}⚠ Could not activate a temporary swapfile — continuing without it.${RESET}"
+  fi
+}
+
 # Always use 'boot' instead of 'switch': nixos-rebuild switch restarts
 # display-manager.service during switch-to-configuration, which kills the live ISO's
 # GNOME session and logs the user out. Using 'boot' installs the new generation as
@@ -431,7 +524,7 @@ REBUILD_ACTION="boot"
 render_header
 echo -e "${BOLD}Building ${CYAN}${FLAKE_TARGET}${RESET}${BOLD} (action: ${REBUILD_ACTION})...${RESET}"
 echo -e "${YELLOW}Using 'nixos-rebuild boot' to preserve the live session. The new system will not activate until you reboot.${RESET}"
-render_progress "Preparing system..." 1 4
+render_progress "Preparing system..." 1 3
 
 # ---------- UEFI / BIOS preflight check -------------------------------------
 # vexos-nix defaults to systemd-boot (UEFI). On Legacy BIOS machines we patch
@@ -731,11 +824,11 @@ for f in flake.nix hardware-configuration.nix stateless-user-override.nix featur
 done
 
 # ---------- Flake lock refresh -----------------------------------------------
-# Always resolve vexos-nix to the latest HEAD before dry-building.
+# Always resolve vexos-nix to the latest HEAD before building.
 # A stale /etc/nixos/flake.lock from a previous (failed) install attempt would
 # otherwise pin the flake to an old revision, potentially pulling in packages
 # that have since been removed from the repo.
-render_progress "Refreshing flake inputs..." 2 4
+render_progress "Refreshing flake inputs..." 2 3
 if [ -n "$GUM" ]; then
   "$GUM" spin --title "Refreshing flake inputs..." -- \
     sudo nix --extra-experimental-features "nix-command flakes" \
@@ -750,66 +843,24 @@ fi
 sudo "$GIT" -C /etc/nixos add flake.lock
 
 # ---------- Build & switch ---------------------------------------------------
-# Cache check: dry-build first to see what would need to be compiled locally.
-# Run a dry-build to surface anything that will be compiled locally rather than
-# fetched from cache. This is informational only — the install proceeds regardless.
-# Two derivation classes always build locally and are expected:
-#   • Proprietary NVIDIA userspace (nvidia-x11 / NVIDIA-*.run / nvidia-settings /
-#     nvidia-persistenced): unfree and non-redistributable, so Hydra never caches it.
-#     The open kernel module (nvidia-open) IS cached and is fetched, not built.
-#   • Patched OpenRazer: a local overlay patch (modules/razer.nix), so its hash never
-#     matches an upstream cached build.
-# Everything else is a transient Hydra lag and will typically be fast (binary
-# downloads for Electron apps, short Rust/Python crate builds, etc.).
-render_progress "Checking build cache..." 3 4
-_DRY_OUT_FILE="$(mktemp)"
-if [ -n "$GUM" ]; then
-  "$GUM" spin --title "Checking what will be fetched vs built locally..." -- \
-    bash -c "sudo nixos-rebuild dry-build --flake 'git+file:///etc/nixos#${FLAKE_TARGET}' >'${_DRY_OUT_FILE}' 2>&1 || true"
-else
-  echo -e "${CYAN}Checking what will be fetched vs built locally...${RESET}"
-  sudo nixos-rebuild dry-build --flake "git+file:///etc/nixos#${FLAKE_TARGET}" >"${_DRY_OUT_FILE}" 2>&1 || true
-fi
-DRY_OUT="$(cat "${_DRY_OUT_FILE}")"
-rm -f "${_DRY_OUT_FILE}"
-SOURCE_BUILDS=$(printf '%s\n' "$DRY_OUT" \
-  | awk '/will be built:/{p=1;next} /will be fetched:|^building |^[^ \t]/{p=0} p && /\/nix\/store\//{sub(/.*\/nix\/store\/[a-z0-9]+-/,""); print}' \
-  | grep -E -- '-[0-9]+\.[0-9]+' \
-  || true)
-
-if [ -n "$SOURCE_BUILDS" ]; then
-  # Also defined in pkgs/vexos-update/default.nix's UNAVOIDABLE_REGEX (kept in
-  # sync manually — this script runs standalone via `curl | bash` before NixOS
-  # is installed, with no local repo present to source a shared fragment from).
-  UNAVOIDABLE_REGEX='^(NVIDIA-Linux-|nvidia-x11-|nvidia-settings-|nvidia-persistenced-|openrazer-[0-9])'
-  UNAVOIDABLE=$(printf '%s\n' "$SOURCE_BUILDS" | grep -E "$UNAVOIDABLE_REGEX" || true)
-  OTHER=$(printf '%s\n' "$SOURCE_BUILDS" | grep -Ev "$UNAVOIDABLE_REGEX" || true)
-
-  if [ -n "$UNAVOIDABLE" ]; then
-    echo ""
-    echo -e "${CYAN}The following will build locally (expected — never in binary cache):"
-    echo -e "NVIDIA's proprietary userspace is unfree/non-redistributable; the patched"
-    echo -e "OpenRazer module is a local patch. The open NVIDIA kernel module IS fetched"
-    echo -e "from cache. One-time build of ~10-15 min (seconds without NVIDIA).${RESET}"
-    echo ""
-    printf '%s\n' "$UNAVOIDABLE" | sed 's/^/    /'
-    echo ""
-  fi
-
-  if [ -n "$OTHER" ]; then
-    echo ""
-    echo -e "${YELLOW}The following are not yet in the binary cache and will build locally."
-    echo -e "Most are binary repacks or short crate builds and will complete quickly.${RESET}"
-    echo ""
-    printf '%s\n' "$OTHER" | sed 's/^/    /'
-    echo ""
-  fi
-else
-  echo -e "${GREEN}✓ All packages available in binary cache.${RESET}"
-fi
+# No separate `nixos-rebuild dry-build` pass here: it costs one entire extra
+# evaluation (the most expensive non-build step, ~1.7 GiB peak on a desktop
+# config) purely to print the list of derivations that will be compiled locally
+# — which the real build below prints itself ("these N derivations will be
+# built") seconds later. NVIDIA's proprietary userspace and the patched
+# OpenRazer are the expected entries on that list: both are unfree or locally
+# patched, so Hydra never caches them.
+#
+# --max-jobs 1 matches what the installed system enforces for the same reason
+# (modules/nix.nix: "Prevents OOM on low-RAM machines"). It bounds peak memory
+# to one compile at a time and costs no time on a cache-hit install —
+# substitutions are governed by max-substitution-jobs, not max-jobs.
+render_progress "Preparing build environment..." 3 3
+setup_install_swap
 render_header
 if run_live_build "Building ${FLAKE_TARGET}..." \
-     sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE_TARGET}"; then
+     sudo nixos-rebuild "${REBUILD_ACTION}" --flake "git+file:///etc/nixos#${FLAKE_TARGET}" \
+     --max-jobs 1 "${INSTALL_CACHE_OPTS[@]}"; then
   echo ""
   echo -e "${GREEN}${BOLD}✓ Build complete. New generation registered as default.${RESET}"
   echo -e "${YELLOW}Reboot now to activate the new system. Your current session will remain active until you do.${RESET}"
@@ -852,7 +903,7 @@ else
   echo ""
   echo -e "${RED}${BOLD}Reboot skipped.${RESET}"
   echo "  Review the full log above/at ${BUILD_LOG_PATH} and retry:"
-  echo "    sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET}"
+  echo "    sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET} --max-jobs 1"
   echo ""
   exit 1
 fi

@@ -47,8 +47,13 @@ in
   # the version is no longer the reason.)
   services.scx.enable = lib.mkForce false;
 
-  # VMs rely on hypervisor memory management — no disk swap file needed.
-  vexos.swap.enable = false;
+  # Swap is deliberately NOT disabled here. A guest cannot be given more memory
+  # than its configured maximum — ballooning only hands unused pages back to the
+  # host — so "the hypervisor manages memory" is not a substitute for swap. A
+  # small guest (Proxmox defaults to 2 GiB) needs the standard swapfile from
+  # modules/system.nix: one full evaluation of a desktop configuration peaks
+  # around 1.7 GiB before any package is built. Set vexos.swap.enable = false in
+  # a host file if a particular guest genuinely must not have one.
 
   # Disable ZFS in VM builds. zfs-server.nix sets boot.supportedFilesystems.zfs = true
   # which causes NixOS to create zfs-import.target and make display-manager.service
