@@ -147,15 +147,9 @@ in
         };
 
         # ── Bar ─────────────────────────────────────────────────────────────
-        # Grouped capsule/pill segments rather than one flat strip: each lane
-        # holds a single `group:<id>` token, and the group renders its members
-        # inside one shared capsule. Groups are declared as capsule_group
-        # entries below.
-        #
-        # NOTE: upstream's docs say grouping is "managed entirely from the
-        # Settings GUI" — that is incomplete. The TOML schema accepts
-        # capsule_group + `group:` lane tokens directly, which is what makes
-        # this committable to the flake rather than clicked in by hand.
+        # Flat, ungrouped widgets (upstream's own default shape — example.toml
+        # ships capsule = false with bare widget tokens in each lane) rather
+        # than the previous pill-grouped layout.
         bar.default = {
           position = "top";
           enabled  = true;
@@ -169,53 +163,20 @@ in
           margin_ends          = 0;
           radius               = 12;
 
-          thickness      = 34;
-          padding        = 14;
+          thickness      = 30;
+          padding        = 10;
           widget_spacing = 6;
 
-          # Capsule defaults inherited by the groups below.
-          capsule           = true;
-          capsule_fill      = "surface_variant";
-          capsule_thickness = 0.76;
-          capsule_opacity   = 1.0;
+          # Translucent, wallpaper showing through slightly — no pill
+          # backgrounds behind individual widgets.
+          capsule             = false;
+          background_opacity  = 0.85;
 
-          # Lanes hold group tokens, so inserting a widget elsewhere can never
-          # split a segment.
-          start  = [ "group:nav" ];
-          center = [ "group:clock" ];
-          end    = [ "group:media" "group:status" ];
-
-          capsule_group = [
-            # Workspace indicator, on its own so it reads as a distinct pill.
-            {
-              id      = "nav";
-              members = [ "workspaces" ];
-              fill    = "surface_variant";
-              border  = "outline";
-            }
-            # Clock, centered on its own.
-            {
-              id      = "clock";
-              members = [ "clock" ];
-              fill    = "surface_variant";
-              border  = "outline";
-            }
-            # Media widget.
-            {
-              id      = "media";
-              members = [ "media" ];
-              fill    = "surface_variant";
-              border  = "outline";
-            }
-            # System tray + session (power/logout/restart) share one capsule
-            # on the right.
-            {
-              id      = "status";
-              members = [ "tray" "session" ];
-              fill    = "surface_variant";
-              border  = "outline";
-            }
-          ];
+          start  = [ "workspaces" ];
+          center = [ "clock" ];
+          # Label defaults already match: network shows the interface/SSID,
+          # battery and volume show their percentage, bluetooth is icon-only.
+          end    = [ "media" "tray" "network" "bluetooth" "volume" "battery" "session" ];
         };
 
         # ── Dock ────────────────────────────────────────────────────────────
