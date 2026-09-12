@@ -176,7 +176,12 @@ in
           center = [ "clock" ];
           # Label defaults already match: network shows the interface/SSID,
           # battery and volume show their percentage, bluetooth is icon-only.
-          end    = [ "media" "tray" "network" "bluetooth" "volume" "battery" "session" ];
+          end    = [ "tray" "network" "bluetooth" "volume" "battery" "session" ];
+        };
+
+        # Compact single-line clock: short weekday/month/day, then 12h time.
+        widget.clock = {
+          format = "{:%a %b %d  %-I:%M %p}";
         };
 
         # ── Dock ────────────────────────────────────────────────────────────
@@ -230,9 +235,11 @@ in
           # crossing it on the way somewhere else.
           delay_ms = 150;
 
-          top_left     = { action = "command"; command = ipc.launcher; };
+          # top_left is the GNOME-conventional Activities corner, so it gets
+          # the window overview here; launcher moved to bottom_left.
+          top_left     = { action = "command"; command = ipc.overview; };
           top_right    = { action = "command"; command = ipc.controlCenter; };
-          bottom_left  = { action = "command"; command = ipc.overview; };
+          bottom_left  = { action = "command"; command = ipc.launcher; };
           # bottom_right is intentionally left unset (defaults to action =
           # "none"): it is the corner most often hit by accident when reaching
           # for a scrollbar or the dock.
