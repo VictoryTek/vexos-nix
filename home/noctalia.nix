@@ -191,9 +191,7 @@ in
           center = [ "clock" ];
           # Label defaults already match: network shows the interface/SSID,
           # battery and volume show their percentage, bluetooth is icon-only.
-          # "launcher" leads the end lane so it reads app-launcher first, then
-          # status indicators, then session control at the far edge.
-          end    = [ "launcher" "tray" "network" "bluetooth" "volume" "battery" "session" ];
+          end    = [ "tray" "network" "bluetooth" "volume" "battery" "session" ];
         };
 
         # Compact single-line clock: short weekday/month/day, then 12h time.
@@ -240,9 +238,8 @@ in
           # store-owned symlink; change the order here instead.
           pinned = basePinnedApps;
 
-          # Launcher button at the start of the dock, as DMS's dockLauncherEnabled
-          # did.
-          launcher_position = "start";
+          # Launcher button at the end of the dock.
+          launcher_position = "end";
         };
 
         # ── Hot corners — GNOME-style ───────────────────────────────────────

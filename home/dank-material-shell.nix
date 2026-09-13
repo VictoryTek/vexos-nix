@@ -192,10 +192,13 @@ in
     # ── Removable-media automount ───────────────────────────────────────────
     # GNOME Shell auto-mounted USB drives; DMS does not. Requires
     # services.udisks2 system-side (set in modules/hyprland-desktop.nix).
+    # tray = "never": no tray icon at all — automount alone is wanted, not a
+    # status indicator. Set at udiskie's own source rather than filtered via
+    # Noctalia's widget.tray.hidden, so it never spawns in the first place.
     services.udiskie = {
       enable    = true;
       automount = true;
-      tray      = "auto";
+      tray      = "never";
     };
 
     # ── Tailscale tray icon ─────────────────────────────────────────────────
