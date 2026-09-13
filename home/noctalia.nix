@@ -127,6 +127,21 @@ in
               emoji      = { prefix = "/emoji"; global = false; };
             };
           };
+
+          # ── Panels ──────────────────────────────────────────────────────
+          panel = {
+            # "attached" (the default) centers the session panel along the
+            # BAR, not the screen. Floating + center pins it to the middle of
+            # the screen instead, same anchor vocabulary as OSD position.
+            session_placement = "floating";
+            session_position  = "center";
+
+            # Network/notifications bar widgets both open the control center
+            # (jumping to their tab); by default it centers along the bar
+            # instead of following the click. This makes it open next to
+            # whichever widget was clicked instead.
+            open_near_click_control_center = true;
+          };
         };
 
         # ── Theme — Material-You generated from the wallpaper ──────────────
@@ -176,12 +191,21 @@ in
           center = [ "clock" ];
           # Label defaults already match: network shows the interface/SSID,
           # battery and volume show their percentage, bluetooth is icon-only.
-          end    = [ "tray" "network" "bluetooth" "volume" "battery" "session" ];
+          # "launcher" leads the end lane so it reads app-launcher first, then
+          # status indicators, then session control at the far edge.
+          end    = [ "launcher" "tray" "network" "bluetooth" "volume" "battery" "session" ];
         };
 
         # Compact single-line clock: short weekday/month/day, then 12h time.
         widget.clock = {
           format = "{:%a %b %d  %-I:%M %p}";
+        };
+
+        # hide_passive (default true) hides any StatusNotifierItem reporting
+        # status "Passive" — Sunshine's own tray icon reports Passive, which
+        # silently hid it from the bar.
+        widget.tray = {
+          hide_passive = false;
         };
 
         # ── Dock ────────────────────────────────────────────────────────────
@@ -206,6 +230,7 @@ in
           margin_edge          = 0;
           radius               = 12;
 
+          icon_size    = 35;
           show_running = true;
           show_dots    = true;
 

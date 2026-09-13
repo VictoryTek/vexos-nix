@@ -198,6 +198,28 @@ in
       tray      = "auto";
     };
 
+    # ── Tailscale tray icon ─────────────────────────────────────────────────
+    # tailscaled itself has no tray icon — the GNOME tray entry
+    # (modules/gnome.nix, gnomeExtensions.tailscale-status) is a GNOME Shell
+    # extension with no Hyprland equivalent. tail-tray provides a real
+    # StatusNotifierItem that Noctalia's tray widget hosts directly, no bridge
+    # needed. `tailscale` (the CLI it shells out to) is already on PATH
+    # system-wide via services.tailscale (modules/network.nix).
+    home.packages = [ pkgs.tail-tray ];
+
+    systemd.user.services.tail-tray = {
+      Unit = {
+        Description = "Tailscale tray icon";
+        After       = [ "graphical-session.target" ];
+        PartOf      = [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = "${pkgs.tail-tray}/bin/tail-tray";
+        Restart   = "on-failure";
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
+    };
+
     # ── Mic mute on login ─────────────────────────────────────────────────────
     # GNOME equivalent: modules/gnome-desktop.nix mute-mic-on-login. Ported
     # verbatim (wpctl, not `dms ipc call mic mute`) so it works even before
