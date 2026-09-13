@@ -91,7 +91,11 @@ in
   systemd.services.vexos-vm-render-node-check = lib.mkIf needsRenderNode {
     description = "Warn on console if no DRM render node is available for the active compositor";
     wantedBy    = [ "graphical.target" ];
-    before      = [ "greetd.service" ];
+    # display-manager.service is the generic alias both GDM (Hyprland, via
+    # modules/hyprland-greeter.nix) and cosmic-greeter (COSMIC) register
+    # under — unlike the old greetd.service name, this covers both DEs
+    # needsRenderNode gates on.
+    before      = [ "display-manager.service" ];
     unitConfig.ConditionPathExists = "!/dev/dri/renderD128";
     serviceConfig = {
       Type            = "oneshot";

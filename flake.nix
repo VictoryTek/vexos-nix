@@ -272,8 +272,8 @@
     #     vexos.desktop.environment == "hyprland".
     #
     # The DMS greeter module is intentionally NOT included — the login greeter
-    # is ReGreet (modules/hyprland-greeter.nix, programs.regreet from nixpkgs
-    # directly, no flake input needed).
+    # is GDM (modules/hyprland-greeter.nix, services.displayManager.gdm from
+    # nixpkgs directly, no flake input needed).
     #
     # GNOME and COSMIC desktop hosts are therefore unaffected and nothing DMS is
     # ever built for them.

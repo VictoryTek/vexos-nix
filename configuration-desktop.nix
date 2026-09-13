@@ -7,7 +7,7 @@
     ./modules/gnome-desktop.nix
     ./modules/cosmic-desktop.nix    # active only when vexos.desktop.environment == "cosmic"
     ./modules/hyprland-desktop.nix  # active only when vexos.desktop.environment == "hyprland"
-    ./modules/hyprland-greeter.nix  # ReGreet login greeter; active only when vexos.desktop.environment == "hyprland"
+    ./modules/hyprland-greeter.nix  # GDM login greeter; active only when vexos.desktop.environment == "hyprland"
     ./modules/sunshine.nix          # self-hosted Moonlight game-stream host
     ./modules/gaming.nix             # optional: vexos.features.gaming.enable (bundles gpu-gaming + system-gaming)
     ./modules/development.nix        # optional: vexos.features.development.enable
@@ -23,7 +23,7 @@
     ./modules/packages-common.nix
     ./modules/packages-desktop.nix
     ./modules/branding.nix
-    ./modules/branding-display.nix  # wallpapers, GDM logo/dconf (GDM logo gated to gnome)
+    ./modules/branding-display.nix  # wallpapers, GDM logo/dconf (GDM logo gated to gnome/hyprland)
     ./modules/system.nix
     ./modules/system-latest-kernel.nix  # Linux 7.x (linuxPackages_latest)
     ./modules/system-custom-kernel.nix  # optional: `just enable-feature kernel` (overrides the above)

@@ -33,11 +33,11 @@ in
   # NOTE: Defining programs.dconf.profiles.gdm here overrides the GDM package's
   # built-in /share/dconf/profile/gdm. lib.mkDefault on enableUserDb prevents
   # an evaluation conflict if the GDM NixOS module sets this option in future.
-  # GDM/dconf-specific — inert on non-GNOME desktop hosts (COSMIC uses
-  # cosmic-greeter, Hyprland uses ReGreet; neither reads GDM's dconf
-  # profile), so gated to avoid configuring a display manager that isn't
-  # running.
-  programs.dconf.profiles.gdm = lib.mkIf (config.vexos.desktop.environment == "gnome") {
+  # GDM/dconf-specific — inert on COSMIC (cosmic-greeter does not read GDM's
+  # dconf profile), so gated to avoid configuring a display manager that
+  # isn't running. Hyprland uses GDM too (modules/hyprland-greeter.nix), so
+  # it gets the same branded login screen as GNOME.
+  programs.dconf.profiles.gdm = lib.mkIf (builtins.elem config.vexos.desktop.environment [ "gnome" "hyprland" ]) {
     enableUserDb = lib.mkDefault false;  # GDM system account — no per-user db
     databases = [
       {

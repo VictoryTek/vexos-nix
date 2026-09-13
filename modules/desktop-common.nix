@@ -5,14 +5,11 @@
 # Hyprland hosts get the same baseline.
 #
 # Auto-login is deliberately NOT here. services.displayManager.autoLogin is
-# implemented per-display-manager (GDM, cosmic-greeter, LightDM, SDDM); greetd
-# — which Hyprland uses — ignores it entirely and does autologin through its
-# own initial_session setting instead. Setting it unconditionally therefore
-# applied display-manager machinery to a greetd-only host. It now lives in the
-# DE modules whose display managers actually consume it:
-#   modules/gnome.nix          (GDM)
-#   modules/cosmic-desktop.nix (cosmic-greeter)
-#   modules/hyprland-desktop.nix uses greetd initial_session instead.
+# implemented per-display-manager (GDM, cosmic-greeter, LightDM, SDDM), so it
+# lives in the DE modules whose display managers actually consume it:
+#   modules/gnome.nix           (GDM)
+#   modules/cosmic-desktop.nix  (cosmic-greeter)
+#   modules/hyprland-desktop.nix (GDM, via modules/hyprland-greeter.nix)
 { pkgs, ... }:
 {
   # ── Moonlight client ──────────────────────────────────────────────────────

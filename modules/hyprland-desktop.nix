@@ -2,7 +2,7 @@
 # Hyprland compositor + DankMaterialShell (DMS) desktop shell, for the desktop
 # role. Active only when vexos.desktop.environment == "hyprland" (see
 # modules/desktop-environment.nix). The login greeter is a separate concern —
-# see modules/hyprland-greeter.nix (ReGreet).
+# see modules/hyprland-greeter.nix (GDM).
 #
 # hyprland.conf is not written or managed HERE, but home/dank-material-shell.nix
 # seeds a minimal DMS-focused config to ~/.config/hypr/hyprland.conf ONCE on
@@ -76,26 +76,23 @@ in
 
     # ── Auto-login ────────────────────────────────────────────────────────────
     # GNOME-equivalent: modules/gnome.nix sets the same services.displayManager
-    # options for GDM. This is generic NixOS greetd wiring, read regardless of
-    # which greeter package is in front of it (see modules/hyprland-greeter.nix)
-    # — it wires into greetd's initial_session, resolving the session command
-    # via services.displayManager.sessionData.autologinSession — which in turn
-    # comes from defaultSession. It must name the UWSM session (see the
-    # "SELECT THE UWSM ONE" comment on programs.uwsm.waylandCompositors.hyprland
-    # above) or autologin boots a bare compositor with no shell, same as
-    # picking the wrong entry manually in the greeter.
+    # options for GDM (modules/hyprland-greeter.nix enables GDM for this role
+    # too). defaultSession must name the UWSM session (see the "SELECT THE
+    # UWSM ONE" comment on programs.uwsm.waylandCompositors.hyprland above) or
+    # autologin boots a bare compositor with no shell, same as picking the
+    # wrong entry manually in the greeter.
     services.displayManager.autoLogin = {
       enable = true;
       user   = config.vexos.user.name;
     };
     services.displayManager.defaultSession = "hyprland-uwsm";
 
-    # Unlock the GNOME Keyring on auto-login. Mirrors
-    # security.pam.services.gdm-autologin.enableGnomeKeyring in modules/gnome.nix:
-    # a no-op for the actual autologin bypass (no password material to unlock
-    # with), kept for interactive re-logins (e.g. after loginctl
-    # terminate-session) through the "greetd" PAM service.
-    security.pam.services.greetd.enableGnomeKeyring = true;
+    # Unlock the GNOME Keyring on auto-login. Identical to
+    # security.pam.services.gdm-autologin.enableGnomeKeyring in modules/gnome.nix
+    # — a no-op for the actual autologin bypass (no password material to
+    # unlock with), kept for interactive re-logins (e.g. after loginctl
+    # terminate-session) through the "gdm-autologin" PAM service.
+    security.pam.services.gdm-autologin.enableGnomeKeyring = true;
 
     # ── Network share discovery (Nautilus "Network" sidebar) ─────────────────
     # Same key and rationale as modules/gnome.nix — GVfs (not GNOME Shell)
