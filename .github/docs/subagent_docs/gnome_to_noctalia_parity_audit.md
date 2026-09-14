@@ -56,30 +56,32 @@ author toolchain.
 
 ---
 
-## B. Native setting — config-only, no plugin needed
+## B. Native setting — config-only, no plugin needed — ✅ CLOSED (commit `74c107c`)
 
 Cheapest wins. Each is a known key with a known value.
 
 | # | Gap | Fix | Where | Verified |
 |---|---|---|---|---|
-| B1 | **Caffeine has no bar presence.** GNOME runs the caffeine extension; Noctalia ships a native `caffeine` bar widget but it is not in any lane. | add `"caffeine"` to `bar.default.end` | `home/noctalia.nix` | widget type confirmed in upstream widget list |
-| B2 | **No notifications indicator.** GNOME shows one; here it is `$mod+N` only. | add `"notifications"` to `bar.default.end` (widget exists; `hide_when_no_unread` available) | `home/noctalia.nix` | confirmed (`[widget.notifications]`) |
-| B3 | **No light/dark toggle affordance.** GNOME exposes one in quick settings. | add `"theme_mode"` bar widget (native type) | `home/noctalia.nix` | confirmed (`theme_mode_widget.cpp`) |
-| B4 | **Control-center shortcuts unconfigured** — GNOME's quick-settings tile set has no counterpart; Noctalia's Home tab is on defaults. | declare `[[control_center.shortcuts]]` (wifi, bluetooth, nightlight, notification, wallpaper, session) | `home/noctalia.nix` | confirmed in `example.toml` |
-| B5 | **Window button layout.** GNOME sets `appmenu:minimize,maximize,close`; Hyprland has no SSD, and GTK CSD apps read `gtk-decoration-layout`, which is unset here. | set GTK decoration layout to match | `home/gnome-common.nix` or a Hyprland-gated home module | GNOME key confirmed; GTK side **[verify]** |
-| B6 | **Focus stealing.** GNOME runs steal-my-focus-window so activation raises the window; Hyprland's `focus_on_activate` is unset (default off). | `focus_on_activate = true` | `files/hypr/hyprland.conf` (seeded file — note it is user-owned after first boot) | Hyprland option name **[verify]** |
-| B7 | **Screenshot affordance.** GNOME has a quick-settings screenshot entry; here it is Print-key only. | native `screenshot` bar widget and/or a control-center shortcut | `home/noctalia.nix` | widget type confirmed |
+| B1 | ✅ **Caffeine has no bar presence.** GNOME runs the caffeine extension; Noctalia ships a native `caffeine` bar widget but it is not in any lane. | add `"caffeine"` to `bar.default.end` | `home/noctalia.nix` | shipped — `caffeine` in `bar.default.end` |
+| B2 | ✅ **No notifications indicator.** GNOME shows one; here it is `$mod+N` only. | add `"notifications"` to `bar.default.end` (widget exists; `hide_when_no_unread` available) | `home/noctalia.nix` | shipped — `notifications` in `bar.default.end` + `widget.notifications.hide_when_no_unread = true` |
+| B3 | ✅ **No light/dark toggle affordance.** GNOME exposes one in quick settings. | add `"theme_mode"` bar widget (native type) | `home/noctalia.nix` | shipped — `theme_mode` in `bar.default.end` |
+| B4 | ✅ **Control-center shortcuts unconfigured** — GNOME's quick-settings tile set has no counterpart; Noctalia's Home tab is on defaults. | declare `[[control_center.shortcuts]]` (wifi, bluetooth, nightlight, notification, wallpaper, session) | `home/noctalia.nix` | no change needed — Noctalia's own defaults (wifi/bluetooth/caffeine/nightlight/notification/power_profile) already GNOME-quick-settings-equivalent |
+| B5 | ✅ **Window button layout.** GNOME sets `appmenu:minimize,maximize,close`; Hyprland has no SSD, and GTK CSD apps read `gtk-decoration-layout`, which is unset here. | set GTK decoration layout to match | `modules/hyprland-desktop.nix` | shipped — `"org/gnome/desktop/wm/preferences".button-layout = "appmenu:minimize,maximize,close"`; confirmed via `strings` on installed `libgtk-4.so` that GTK4 reads this key directly |
+| B6 | ✅ **Focus stealing.** GNOME runs steal-my-focus-window so activation raises the window; Hyprland's `focus_on_activate` is unset (default off). | `focus_on_activate = true` | `files/hypr/hyprland.conf` (seeded file — note it is user-owned after first boot) | shipped — `focus_on_activate = true` set in `misc {}` |
+| B7 | ✅ **Screenshot affordance.** GNOME has a quick-settings screenshot entry; here it is Print-key only. | native `screenshot` bar widget and/or a control-center shortcut | `home/noctalia.nix` | shipped — `screenshot` in `bar.default.end` |
 
 ---
 
-## C. Hook-able — use the `[hooks]` mechanism
+## C. Hook-able — use the `[hooks]` mechanism — ✅ CLOSED
 
-Same pattern as the wallpaper fix just shipped.
+Same pattern as the wallpaper fix just shipped. See
+`.github/docs/subagent_docs/gnome_parity_bucket_c_spec.md` /
+`gnome_parity_bucket_c_review.md`.
 
 | # | Gap | Approach | Verified |
 |---|---|---|---|
-| C1 | **Mic-mute has no audio feedback.** GNOME's `<Super>backslash` runs a flock-debounced wrapper that plays freedesktop `device-added`/`device-removed` on toggle. The Hyprland bind calls `noctalia msg mic-mute` with no sound and no debounce. | Keep Noctalia's IPC (so the OSD still shows) but restore the sound + flock debounce — either by pointing the keybind at a `writeShellScript` wrapper that calls both, or via a hook. Note `hooks` has no mic event, so **the keybind wrapper is the right vehicle**, not a hook. | GNOME script read in full; Noctalia hook list has no mic entry — confirmed |
-| C2 | **Nothing-to-say parity (always-visible mic state).** GNOME shows mute state permanently. Noctalia's `privacy` widget shows *capture activity* (mic/cam in use), which is a different signal. | Either accept `privacy` as close-enough, or a `custom_button` bar widget bound to `wpctl` state. A `custom_button` can run commands but polling state for its glyph is the hard part → may slide to bucket D. | `privacy` widget + `custom_button` both confirmed; state-polling capability **[verify]** |
+| C1 | ✅ **Mic-mute has no audio feedback.** GNOME's `<Super>backslash` runs a flock-debounced wrapper that plays freedesktop `device-added`/`device-removed` on toggle. The Hyprland bind calls `noctalia msg mic-mute` with no sound and no debounce. | Keep Noctalia's IPC (so the OSD still shows) but restore the sound + flock debounce — either by pointing the keybind at a `writeShellScript` wrapper that calls both, or via a hook. Note `hooks` has no mic event, so **the keybind wrapper is the right vehicle**, not a hook. | shipped — `vexos-mic-toggle` (`pkgs.writeShellScriptBin` in `home/dank-material-shell.nix`) wraps `noctalia msg mic-mute` with the same flock debounce + freedesktop sound pair as the GNOME script; `files/hypr/hyprland.conf` binds repointed at it |
+| C2 | ✅ **Nothing-to-say parity (always-visible mic state).** GNOME shows mute state permanently. Noctalia's `privacy` widget shows *capture activity* (mic/cam in use), which is a different signal. | Either accept `privacy` as close-enough, or a `custom_button` bar widget bound to `wpctl` state. A `custom_button` can run commands but polling state for its glyph is the hard part → may slide to bucket D. | decided — user chose "accept `privacy` as close-enough"; `"privacy"` added to `bar.default.end` in `home/noctalia.nix` (default `hide_inactive = false` already renders it always-visible) |
 
 ---
 
@@ -117,9 +119,9 @@ These differ by design. Listing them so they are decided, not drifted into.
 
 ## Recommended order
 
-1. **Bucket B in one pass** (B1–B4, B7 are pure `home/noctalia.nix` settings; B5/B6 need their own verification). Cheapest visible progress, one commit.
+1. ✅ **Bucket B in one pass** (B1–B4, B7 are pure `home/noctalia.nix` settings; B5/B6 need their own verification). Cheapest visible progress, one commit. — done in `74c107c`.
 2. **Settle bucket E** — these are decisions, not work, and E1/E2 change what "parity" even means for later items.
-3. **C1** (mic-mute sound + debounce) — self-contained, restores a behavior you lost outright.
+3. ✅ **C1** (mic-mute sound + debounce) — self-contained, restores a behavior you lost outright. — done, together with C2, see bucket C above.
 4. **F1** cursor check — one look, may add a B-item.
 5. **D1 background logo plugin** — the branding gap, and a good first plugin to learn the Luau/manifest workflow on.
 6. **D2 app folders** — largest effort, do last and only if the folders matter to you.

@@ -218,8 +218,13 @@ in
           # GNOME parity: caffeine/notifications sit with the other status
           # icons (appindicator-extension-style); theme_mode + screenshot are
           # utility actions grouped just before session, mirroring GNOME's
-          # rightmost power/session-menu convention.
-          end    = [ "tray" "caffeine" "notifications" "network" "bluetooth" "volume" "battery" "theme_mode" "screenshot" "session" ];
+          # rightmost power/session-menu convention. `privacy` is the accepted
+          # substitute for GNOME's always-visible mic-mute indicator — it
+          # shows capture activity (mic/cam/screen-share) rather than raw mute
+          # state, but its default `hide_inactive = false` already renders
+          # permanently (dimmed when idle, lit on capture), so no options
+          # block is needed to get "always visible".
+          end    = [ "tray" "caffeine" "notifications" "privacy" "network" "bluetooth" "volume" "battery" "theme_mode" "screenshot" "session" ];
         };
 
         # Compact single-line clock: short weekday/month/day, then 12h time.

@@ -208,7 +208,39 @@ in
     # StatusNotifierItem that Noctalia's tray widget hosts directly, no bridge
     # needed. `tailscale` (the CLI it shells out to) is already on PATH
     # system-wide via services.tailscale (modules/network.nix).
-    home.packages = [ pkgs.tail-tray ];
+    #
+    # ── Mic-mute toggle: sound + debounce (GNOME parity) ────────────────────
+    # GNOME equivalent: modules/gnome-desktop.nix's mute-mic custom keybinding
+    # script — flock-debounced so key autorepeat only fires one toggle per
+    # physical press, canberra-gtk-play-equivalent sound feedback on the
+    # result. The Hyprland bind (files/hypr/hyprland.conf) calls
+    # `noctalia msg mic-mute` directly today, which toggles the mic (and
+    # drives Noctalia's own OSD) but has no sound and no debounce. This wraps
+    # that same IPC call rather than replacing it — the OSD still fires —
+    # then reads the resulting state back via wpctl (same PipeWire graph
+    # `noctalia msg mic-mute` just wrote to, so no race) to pick the matching
+    # freedesktop sound. Exposed as a named PATH binary, not inlined in
+    # hyprland.conf, because that file is a plain-text seeded dotfile with no
+    # Nix templating — it cannot reference `${pkgs.foo}` store paths directly.
+    home.packages = [
+      pkgs.tail-tray
+      (pkgs.writeShellScriptBin "vexos-mic-toggle" ''
+        set -euo pipefail
+        (
+          flock -n 9 || exit 0
+          ${config.programs.noctalia.package}/bin/noctalia msg mic-mute >/dev/null
+          if ${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SOURCE@ \
+              | grep -q MUTED; then
+            ${pkgs.pipewire}/bin/pw-play \
+              ${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/device-removed.oga
+          else
+            ${pkgs.pipewire}/bin/pw-play \
+              ${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/device-added.oga
+          fi
+          sleep 0.3
+        ) 9>"''${XDG_RUNTIME_DIR}/mic-toggle.lock"
+      '')
+    ];
 
     systemd.user.services.tail-tray = {
       Unit = {
