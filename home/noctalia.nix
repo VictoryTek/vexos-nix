@@ -215,7 +215,11 @@ in
           center = [ "clock" ];
           # Label defaults already match: network shows the interface/SSID,
           # battery and volume show their percentage, bluetooth is icon-only.
-          end    = [ "tray" "network" "bluetooth" "volume" "battery" "session" ];
+          # GNOME parity: caffeine/notifications sit with the other status
+          # icons (appindicator-extension-style); theme_mode + screenshot are
+          # utility actions grouped just before session, mirroring GNOME's
+          # rightmost power/session-menu convention.
+          end    = [ "tray" "caffeine" "notifications" "network" "bluetooth" "volume" "battery" "theme_mode" "screenshot" "session" ];
         };
 
         # Compact single-line clock: short weekday/month/day, then 12h time.
@@ -228,6 +232,13 @@ in
         # silently hid it from the bar.
         widget.tray = {
           hide_passive = false;
+        };
+
+        # GNOME parity: closer to a quiet notification indicator that only
+        # lights up when there's something unread, rather than a permanently
+        # visible icon.
+        widget.notifications = {
+          hide_when_no_unread = true;
         };
 
         # ── Dock ────────────────────────────────────────────────────────────

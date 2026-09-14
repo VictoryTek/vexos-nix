@@ -99,11 +99,24 @@ in
     # reads this, and Nautilus is installed for Hyprland too (see
     # environment.systemPackages below). Declared separately here since this
     # module does not import modules/gnome.nix's system dconf profile.
+    #
+    # ── GTK window button layout (GNOME parity) ─────────────────────────────
+    # Hyprland has no server-side decorations, so GTK apps draw their own CSD
+    # headerbar — and GTK4 itself reads this exact GSettings key for that
+    # headerbar's button layout (confirmed directly: `strings` on the
+    # installed libgtk-4.so contains literal "org.gnome.desktop.wm.preferences"
+    # / "button-layout" references), independent of window manager. Same
+    # value modules/gnome.nix sets. gsettings-desktop-schemas (which ships
+    # this schema) is already installed below for exactly this class of GTK-
+    # outside-GNOME behavior.
     programs.dconf.profiles.user = {
       enableUserDb = true;
       databases = [
         {
-          settings."org/gnome/system/dns-sd".display-local = "merged";
+          settings = {
+            "org/gnome/system/dns-sd".display-local = "merged";
+            "org/gnome/desktop/wm/preferences".button-layout = "appmenu:minimize,maximize,close";
+          };
         }
       ];
     };
