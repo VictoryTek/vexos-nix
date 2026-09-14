@@ -161,6 +161,30 @@ in
           default.path   = "${config.home.homeDirectory}/Pictures/Wallpapers/vex-bb-dark.jxl";
         };
 
+        # ── Hooks — light/dark wallpaper switching ──────────────────────────
+        # GNOME parity: org/gnome/desktop/background carries BOTH picture-uri
+        # and picture-uri-dark, and gnome-settings-daemon swaps them when
+        # color-scheme changes. Noctalia has no equivalent — wallpaper.
+        # directory_light/directory_dark only pick which folder the wallpaper
+        # PICKER browses per mode, they do not re-apply anything — so the swap
+        # is wired through the theme_mode_changed hook instead.
+        #
+        # NOTE the coupling this one-liner depends on: NOCTALIA_THEME_MODE is
+        # exactly "light" or "dark" for this hook (only
+        # NOCTALIA_THEME_MODE_CONFIGURED can also be "auto"), and the deployed
+        # files are exactly vex-bb-light.jxl / vex-bb-dark.jxl — the same two
+        # names modules/branding-display.nix copies for every role — so the
+        # variable interpolates straight into the filename and no shell
+        # conditional is needed.
+        #
+        # wallpaper-set persists to settings.toml, so the mode and its
+        # wallpaper are written together and come back in sync on next boot.
+        # theme.source = "wallpaper" above then regenerates the palette from
+        # whichever image landed, so the accents follow the mode too.
+        hooks.theme_mode_changed =
+          "${config.programs.noctalia.package}/bin/noctalia msg wallpaper-set "
+          + "${config.home.homeDirectory}/Pictures/Wallpapers/vex-bb-$NOCTALIA_THEME_MODE.jxl";
+
         # ── Bar ─────────────────────────────────────────────────────────────
         # Flat, ungrouped widgets (upstream's own default shape — example.toml
         # ships capsule = false with bare widget tokens in each lane) rather
