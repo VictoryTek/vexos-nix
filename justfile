@@ -1801,6 +1801,42 @@ backup-now: _require-server-role
     sudo systemctl start restic-backups-main.service --wait
     echo "✓ Backup run complete. Check status with: systemctl status restic-backups-main.service"
 
+# Show timer schedule and last-run status for every configured nas-sync job
+# (vexos.server.nasSync.jobs.<name>). Job names are host-specific (set in
+# server-services.nix), so this discovers them from systemd rather than a
+# fixed list.
+nas-sync-status: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    UNITS=$(systemctl list-unit-files 'nas-sync-*.service' --no-legend 2>/dev/null | awk '{print $1}' | sed 's/\.service$//')
+    if [ -z "$UNITS" ]; then
+        echo "No nas-sync jobs configured — set vexos.server.nasSync.enable = true and at least"
+        echo "one vexos.server.nasSync.jobs.<name> entry in server-services.nix, then 'just rebuild'."
+        exit 0
+    fi
+    echo "── Timers ──────────────────────────────────────────"
+    systemctl list-timers 'nas-sync-*.timer' --all --no-pager
+    for unit in $UNITS; do
+        echo ""
+        echo "── systemctl status ${unit}.service ──────────────────────────"
+        systemctl status "${unit}.service" --no-pager --lines=10 || true
+    done
+
+# Manually trigger one nas-sync job outside its scheduled timer.
+# Usage: just nas-sync-now tv
+nas-sync-now name: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    UNIT="nas-sync-{{name}}.service"
+    if ! systemctl list-unit-files "$UNIT" &>/dev/null; then
+        echo "error: $UNIT not found — add vexos.server.nasSync.jobs.{{name}} in server-services.nix"
+        echo "       (with vexos.server.nasSync.enable = true), then 'just rebuild'."
+        exit 1
+    fi
+    sudo systemctl start "$UNIT" --wait
+    echo "✓ Sync '{{name}}' complete. Check status with: systemctl status $UNIT"
+    echo "  Full log: journalctl -u $UNIT"
+
 # Snapshot Plex's data directory (/var/lib/plex) to a single portable tar.gz,
 # suitable for moving to a new server. Usage: just backup-plex [dest.tar.gz]
 backup-plex dest="": _require-server-role

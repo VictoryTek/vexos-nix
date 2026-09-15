@@ -67,6 +67,7 @@
     ./mergerfs.nix        # bulk union pool (mixed-capacity drives)
     ./snapraid.nix        # parity for the mergerfs bulk tier
     ../storage-remote.nix  # attach a pool exported by another host (NFS/CIFS) — universal module
+    ./nas-sync.nix         # scheduled rsync mirror jobs between mounted NAS paths
     ./uptime-kuma.nix
     ./homepage.nix
     ./grafana.nix

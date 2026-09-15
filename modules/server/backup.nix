@@ -27,6 +27,7 @@ let
     "podman"          # container runtime
     "proxy"           # generates Caddy virtualHosts; holds no state of its own
     "nas"             # umbrella toggle over cockpit + plugins + backend selector
+    "nasSync"         # mirrors another NAS's live data; no /var/lib state of its own
 
     # ── Stateless, or derived state only ─────────────────────────────────
     "alertmanager"    # silences/nflog are transient operational state
