@@ -1,8 +1,9 @@
 # home/browser-extensions.nix
 # Shared addition for every role that installs brave-origin (desktop, server,
 # htpc, stateless — see home/gnome-common-browser.nix, which this mirrors):
-# preinstalls the same 5 extensions into Brave Origin and LibreWolf, and
-# defaults both to vertical tabs. Installed editable/removable, not locked —
+# preinstalls 4 extensions into both Brave Origin and LibreWolf, plus one
+# Firefox-only extension into LibreWolf alone, and defaults both to vertical
+# tabs. Installed editable/removable, not locked —
 # the user can disable or uninstall any of them afterward like any other
 # extension.
 #
@@ -21,9 +22,14 @@ let
   extensions = [
     { name = "bitwarden";  id = "nngceckbapebfimnlniiiahkandclblb"; amoGuid = "{446900e4-71c2-419f-a6a7-df9c091e268b}";     amoSlug = "bitwarden-password-manager"; }
     { name = "clearcache"; id = "cppjkneekbjaeellbfkmgnhonkkjfpdn"; amoGuid = "clearcache@michel.de.almeida";               amoSlug = "clearcache"; }
-    { name = "purpleads";  id = "lkgcfobnmghhbhgekffaadadhmeoindg"; amoGuid = "{a7399979-5203-4489-9861-b168187b52e1}";     amoSlug = "purpleadblock"; }
     { name = "smarthttps"; id = "cmleijjdpceldbelpnpkddofmcmcaknm"; amoGuid = "{b3e677f4-1150-4387-8629-da738260a48e}";     amoSlug = "smart-https-revived"; }
     { name = "tabliss";    id = "hipekcciheckooncpjeljhnekcoolahp"; amoGuid = "extension@tabliss.io";                      amoSlug = "tabliss"; }
+  ];
+
+  # Firefox-only (no Chrome Web Store listing) — added to LibreWolf's
+  # ExtensionSettings below alongside the shared list, not to Brave.
+  firefoxOnlyExtensions = [
+    { name = "twitchplayer"; amoGuid = "twitch5@coolcmd"; amoSlug = "twitch_5"; }
   ];
 
   # Rendered once at eval time; the activation script below only ever copies
@@ -84,7 +90,7 @@ in
             install_url       = "https://addons.mozilla.org/firefox/downloads/latest/${ext.amoSlug}/latest.xpi";
           };
         })
-        extensions);
+        (extensions ++ firefoxOnlyExtensions));
 
       Preferences = {
         "sidebar.revamp"      = { Value = true; Status = "default"; };
