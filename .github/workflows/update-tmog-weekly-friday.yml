@@ -1,0 +1,121 @@
+name: TMOG Pin — Weekly Friday
+
+# TMOG is not in nixpkgs and has no GitHub releases feed — it is a hand-maintained
+# pre-built AppImage package (pkgs/tmog/default.nix) with a hardcoded version and
+# fetchurl hash, served directly from tmog.org. That means neither the flake-lock
+# update workflows nor any in-app updater can ever move it: lock updates only touch
+# flake inputs, and /nix/store is read-only. Without this workflow the pin drifts
+# indefinitely.
+#
+# This workflow scrapes tmog.org's download page for the current AppImage filename
+# (TaskManagerOG-<version>-x86_64.AppImage), rewrites the version and hash in place,
+# BUILDS the result, and only commits if the build succeeds. The build gate matters
+# here in the same way it does for update-brave-origin-weekly-thursday.yml: a new
+# upstream binary can introduce shared-library dependencies that break
+# appimageTools/autoPatchelfHook, and CI's `nix eval ... drvPath` would not catch that.
+#
+# Mirrors update-brave-origin-weekly-thursday.yml's direct-commit-to-main style.
+# A commit here only updates the repo — hosts receive the new binary on the next
+# `git pull` + `just update` / the "Up" GUI.
+
+on:
+  schedule:
+    - cron: '0 6 * * 5'   # Fridays, 06:00 UTC (offset from the Wed/Thu pin jobs)
+  workflow_dispatch:        # Manual trigger: same scope as the schedule
+
+permissions:
+  contents: write           # Required to commit and push the updated pin back to main
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for a newer TMOG release
+        id: check
+        run: |
+          set -euo pipefail
+
+          PKG="pkgs/tmog/default.nix"
+
+          current=$(grep -oP '^\s*version\s*=\s*"\K[^"]+' "$PKG")
+          echo "Current pin: $current"
+
+          # tmog.org has no releases API; scrape the download link off the homepage.
+          latest=$(
+            curl -fsS https://tmog.org/ \
+              | grep -oP 'TaskManagerOG-\K[0-9]+\.[0-9]+\.[0-9]+(?=-x86_64\.AppImage)' \
+              | head -1
+          ) || true
+
+          if [ -z "$latest" ]; then
+            echo "warning: could not find a TaskManagerOG-<version>-x86_64.AppImage link"
+            echo "warning: on tmog.org (site change, or transient failure) — leaving the"
+            echo "warning: pin untouched."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Latest: $latest"
+
+          if [ "$latest" = "$current" ]; then
+            echo "tmog already at latest ($current)"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          url="https://tmog.org/downloads/TaskManagerOG-${latest}-x86_64.AppImage"
+          raw=$(nix-prefetch-url "$url")
+          hash=$(nix hash convert --hash-algo sha256 --to sri "$raw")
+          echo "New hash: $hash"
+
+          sed -i \
+            -e "s|^\(\s*version\s*=\s*\)\"${current}\"|\1\"${latest}\"|" \
+            -e "s|^\(\s*hash\s*=\s*\)\"sha256-[^\"]*\"|\1\"${hash}\"|" \
+            "$PKG"
+
+          # Guard against a silently-missed substitution.
+          if ! grep -q "\"${latest}\"" "$PKG" || ! grep -q "\"${hash}\"" "$PKG"; then
+            echo "error: in-place rewrite of $PKG did not apply cleanly"
+            exit 1
+          fi
+
+          echo "Bumping tmog: $current -> $latest"
+          echo "changed=true"    >> "$GITHUB_OUTPUT"
+          echo "version=$latest" >> "$GITHUB_OUTPUT"
+
+      # The package is only reachable through the vexos overlay inside each
+      # nixosConfiguration — there is no packages.<system> flake output — so build it
+      # against the flake's own pinned nixpkgs. Nix's dirty-tree evaluation picks up the
+      # modified (tracked) package file without any staging step.
+      - name: Build the bumped package
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          nix build --impure --no-link --print-out-paths --expr '
+            let
+              flake = builtins.getFlake (toString ./.);
+              pkgs  = import flake.inputs.nixpkgs {
+                system   = "x86_64-linux";
+                overlays = [ (import ./pkgs) ];
+              };
+            in pkgs.vexos.tmog'
+
+      - name: Commit updated TMOG pin
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pkgs/tmog/default.nix
+          git commit -m "chore(tmog): bump to ${{ steps.check.outputs.version }}"
+          git push

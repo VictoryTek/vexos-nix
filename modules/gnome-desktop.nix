@@ -119,6 +119,7 @@ in
             "com.github.tchx84.Flatseal.desktop"
             "org.gnome.World.PikaBackup.desktop"
             "LocalSend.desktop"
+            "com.tmog.taskmanager.desktop"
           ];
         };
 

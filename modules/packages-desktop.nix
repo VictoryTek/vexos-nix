@@ -13,5 +13,6 @@
     jdk21               # Java 21 (LTS)
     localsend           # Cross-platform AirDrop alternative (LAN file sharing)
     mpv                 # Video player (replaces Totem Flatpak on desktop/stateless/server)
+    vexos.tmog          # TMOG (TaskManagerOG) system monitor / task manager
   ];
 }
