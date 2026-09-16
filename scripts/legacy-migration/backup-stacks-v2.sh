@@ -43,6 +43,20 @@ log() {
 
 # Look up a stack's override line in services.conf, if any.
 # Prints: container|method|backup_cmd|artifact_path|restore_cmd
+# Finds whichever compose filename convention this stack actually uses.
+# Prints the filename (not full path) on success, fails if none match.
+find_compose_file() {
+  local stack_dir="$1"
+  local fname
+  for fname in docker-compose.yml docker-compose.yaml compose.yml compose.yaml; do
+    if [ -f "${stack_dir}${fname}" ]; then
+      echo "$fname"
+      return 0
+    fi
+  done
+  return 1
+}
+
 lookup_manifest() {
   local stack_name="$1"
   [ -f "$MANIFEST_CONF" ] || { echo "|generic|||"; return; }
@@ -62,15 +76,18 @@ lookup_manifest() {
 
 first_running_container() {
   local stack_dir="$1"
-  docker compose -f "${stack_dir}docker-compose.yml" ps -q 2>/dev/null | head -n1 \
+  local cfile
+  cfile=$(find_compose_file "$stack_dir") || return 1
+  docker compose -f "${stack_dir}${cfile}" ps -q 2>/dev/null | head -n1 \
     | xargs -r docker inspect --format '{{.Name}}' 2>/dev/null | sed 's#^/##'
 }
 
 # --- generic (fallback) DB detection, same as v1 ---
 detect_db_container() {
   local stack_dir="$1"
-  local containers
-  containers=$(docker compose -f "${stack_dir}docker-compose.yml" ps -q 2>/dev/null)
+  local cfile containers
+  cfile=$(find_compose_file "$stack_dir") || { echo "|"; return 1; }
+  containers=$(docker compose -f "${stack_dir}${cfile}" ps -q 2>/dev/null)
 
   for cid in $containers; do
     local image cname
@@ -116,7 +133,7 @@ total=0
 ok=0
 
 for stack_path in "$STACKS_DIR"/*/; do
-  [ -f "${stack_path}docker-compose.yml" ] || continue
+  compose_file=$(find_compose_file "$stack_path") || continue
   stack_name=$(basename "$stack_path")
   total=$((total+1))
   log "=== Processing ${stack_name} ==="
