@@ -34,8 +34,17 @@ REMOTE_PATH="/mnt/backup-storage/vmc01-migration"   # <-- only used if DO_REMOTE
 DO_REMOTE_SYNC=false   # off by default — backups stay local; copy to NAS/USB manually (see note at end of run)
 
 mkdir -p "$BACKUP_DIR"
+
+# Keep the previous run's log around as a dated backup rather than silently
+# losing it, but start this run with a clean backup.log — so a rerun's
+# output is never mixed in with an earlier (possibly broken) attempt.
+if [ -f "$LOG_FILE" ]; then
+  mv "$LOG_FILE" "${LOG_FILE}.$(date -r "$LOG_FILE" '+%Y%m%d-%H%M%S').old" 2>/dev/null
+fi
+: > "$LOG_FILE"
+
 : > "$SUMMARY_FILE"
-echo "stack,method,detail,backup_status,archive_status" >> "$SUMMARY_FILE"
+echo "stack,method,detail,backup_status,archive_status,other_mounts_found" >> "$SUMMARY_FILE"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
@@ -55,6 +64,18 @@ find_compose_file() {
     fi
   done
   return 1
+}
+
+# Extracts absolute-path bind mounts from a compose file's `volumes:` lists.
+# Prints "hostpath|containerpath" per line. Only matches lines of the form
+# "- /host/path:/container/path[:ro|:rw]" — named volumes (no leading /)
+# are intentionally not matched here, since they're Docker-managed, not
+# host paths to archive directly.
+collect_bind_mounts() {
+  local compose_file="$1"
+  grep -E '^\s*-\s*/[^:]+:/[^:[:space:]]+' "$compose_file" \
+    | sed -E 's/^[[:space:]]*-[[:space:]]*//' \
+    | awk -F: '{print $1"|"$2}'
 }
 
 lookup_manifest() {
@@ -108,7 +129,22 @@ dump_database_generic() {
   mkdir -p "$out_dir"
   case "$engine" in
     postgres) docker exec "$cname" sh -c 'pg_dumpall -U "${POSTGRES_USER:-postgres}"' > "${out_dir}/dump.sql" 2>>"$LOG_FILE" ;;
-    mysql)    docker exec "$cname" sh -c 'exec mysqldump -u root -p"${MYSQL_ROOT_PASSWORD}" --all-databases' > "${out_dir}/dump.sql" 2>>"$LOG_FILE" ;;
+    mysql)
+      # Try the standard root-password env var first; some images (notably
+      # linuxserver/mariadb) use a different variable name or a dedicated
+      # non-root user instead. Fall back through the common alternatives
+      # rather than failing silently on the first guess.
+      if docker exec "$cname" sh -c 'exec mysqldump -u root -p"${MYSQL_ROOT_PASSWORD}" --all-databases' > "${out_dir}/dump.sql" 2>>"$LOG_FILE"; then
+        return 0
+      fi
+      log "WARNING: mysqldump with MYSQL_ROOT_PASSWORD failed for ${cname}, trying MARIADB_ROOT_PASSWORD..."
+      if docker exec "$cname" sh -c 'exec mysqldump -u root -p"${MARIADB_ROOT_PASSWORD}" --all-databases' > "${out_dir}/dump.sql" 2>>"$LOG_FILE"; then
+        return 0
+      fi
+      log "WARNING: could not authenticate to ${cname} with either MYSQL_ROOT_PASSWORD or MARIADB_ROOT_PASSWORD."
+      log "  Check this container's actual env vars with: docker exec ${cname} env | grep -i sql"
+      return 1
+      ;;
     redis)    docker exec "$cname" redis-cli SAVE >>"$LOG_FILE" 2>&1
               docker cp "${cname}:/data/dump.rdb" "${out_dir}/dump.rdb" >>"$LOG_FILE" 2>&1 ;;
     *)        return 1 ;;
@@ -178,9 +214,37 @@ for stack_path in "$STACKS_DIR"/*/; do
   log "Stopping ${stack_name}..."
   (cd "$stack_path" && docker compose down) >>"$LOG_FILE" 2>&1
 
+  # --- Collect bind mounts: /config always gets archived (this is where
+  # every LinuxServer.io-style image, and most others, keep real app
+  # state). Anything else gets logged as a heads-up, not silently backed
+  # up — large shared data mounts (media libraries, downloads folders)
+  # are intentionally NOT captured here, since archiving them per-service
+  # would duplicate potentially huge shared storage many times over.
+  extra_tar_args=()
+  other_mounts_found="no"
+  if [ -n "$compose_file" ] && [ -f "${stack_path}${compose_file}" ]; then
+    while IFS='|' read -r hostpath containerpath; do
+      [ -z "$hostpath" ] && continue
+      [ "$hostpath" = "/var/run/docker.sock" ] && continue
+
+      normalized_dest="${containerpath%/}"   # strip trailing slash if any
+      if [ "$normalized_dest" = "/config" ]; then
+        if [ -e "$hostpath" ]; then
+          log "Found /config bind mount for ${stack_name}: ${hostpath} — including in archive"
+          extra_tar_args+=( -C / "${hostpath#/}" )
+        else
+          log "WARNING: /config bind mount ${hostpath} for ${stack_name} does not exist on disk — skipping"
+        fi
+      else
+        other_mounts_found="yes"
+        log "NOTE: ${stack_name} has an additional bind mount not auto-backed-up: ${hostpath} -> ${containerpath} (review manually if this holds app state, not just bulk/shared data)"
+      fi
+    done < <(collect_bind_mounts "${stack_path}${compose_file}")
+  fi
+
   archive_status="ok"
   log "Archiving ${stack_name}..."
-  if ! tar -czf "${BACKUP_DIR}/${stack_name}.tar.gz" -C "$STACKS_DIR" "$stack_name" 2>>"$LOG_FILE"; then
+  if ! tar -czf "${BACKUP_DIR}/${stack_name}.tar.gz" -C "$STACKS_DIR" "$stack_name" "${extra_tar_args[@]}" 2>>"$LOG_FILE"; then
     archive_status="FAILED"
     log "WARNING: archive failed for ${stack_name}"
   fi
@@ -188,7 +252,7 @@ for stack_path in "$STACKS_DIR"/*/; do
   log "Restarting ${stack_name}..."
   (cd "$stack_path" && docker compose up -d) >>"$LOG_FILE" 2>&1
 
-  echo "${stack_name},${m_method:-generic},${detail},${backup_status},${archive_status}" >> "$SUMMARY_FILE"
+  echo "${stack_name},${m_method:-generic},${detail},${backup_status},${archive_status},${other_mounts_found}" >> "$SUMMARY_FILE"
   [ "$archive_status" = "ok" ] && ok=$((ok+1))
 
   log "=== Done with ${stack_name} ==="
