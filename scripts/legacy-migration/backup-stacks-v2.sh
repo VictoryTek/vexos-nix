@@ -23,7 +23,7 @@
 
 set -uo pipefail  # not using -e — one stack failing shouldn't kill the whole run
 
-STACKS_DIR="/opt/stacks"
+STACKS_DIR="/Docker_Data/Files/AppData/Config/Dockge/stacks"
 BACKUP_DIR="/mnt/backup-target/vmc01-migration"
 MANIFEST_CONF="$(dirname "$0")/services.conf"   # expects services.conf next to this script
 LOG_FILE="${BACKUP_DIR}/backup.log"
@@ -189,7 +189,7 @@ log "Backup complete: ${ok}/${total} stacks archived successfully."
 # can access them.
 if [ -n "${SUDO_USER:-}" ]; then
   log "Fixing ownership: chown -R ${SUDO_USER} ${BACKUP_DIR} (so you can copy these without sudo)"
-  chown -R "${SUDO_USER}:${SUDO_USER}" "$BACKUP_DIR" 2>>"$LOG_FILE" \
+  chown -R "${SUDO_USER}" "$BACKUP_DIR" 2>>"$LOG_FILE" \
     || log "WARNING: chown to ${SUDO_USER} failed — you may need 'sudo chown -R \$(whoami) ${BACKUP_DIR}' manually"
   chmod -R u+rwX,go-rwx "$BACKUP_DIR" 2>>"$LOG_FILE"
 else
