@@ -130,18 +130,28 @@ dump_database_generic() {
   case "$engine" in
     postgres) docker exec "$cname" sh -c 'pg_dumpall -U "${POSTGRES_USER:-postgres}"' > "${out_dir}/dump.sql" 2>>"$LOG_FILE" ;;
     mysql)
-      # Try the standard root-password env var first; some images (notably
-      # linuxserver/mariadb) use a different variable name or a dedicated
-      # non-root user instead. Fall back through the common alternatives
-      # rather than failing silently on the first guess.
-      if docker exec "$cname" sh -c 'exec mysqldump -u root -p"${MYSQL_ROOT_PASSWORD}" --all-databases' > "${out_dir}/dump.sql" 2>>"$LOG_FILE"; then
+      # Prefer the app's own MYSQL_USER/MYSQL_PASSWORD/MYSQL_DATABASE when
+      # present — these are the credentials the app itself connects with,
+      # so we know they work, and dumping just that one database (rather
+      # than --all-databases as root) skips MySQL's internal system tables
+      # entirely. -h 127.0.0.1 forces a real TCP connection rather than the
+      # local Unix socket, which some images route to a 'root'@'localhost'
+      # account with different (sometimes socket-only) auth than the
+      # password-based 'root'@'%' account MYSQL_ROOT_PASSWORD sets up.
+      if docker exec "$cname" sh -c 'test -n "$MYSQL_USER" && test -n "$MYSQL_PASSWORD" && test -n "$MYSQL_DATABASE"' 2>/dev/null; then
+        if docker exec "$cname" sh -c 'exec mysqldump -h 127.0.0.1 -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' > "${out_dir}/dump.sql" 2>>"$LOG_FILE"; then
+          return 0
+        fi
+        log "WARNING: mysqldump with the app's own MYSQL_USER/MYSQL_PASSWORD failed for ${cname}, falling back to root..."
+      fi
+      if docker exec "$cname" sh -c 'exec mysqldump -h 127.0.0.1 -u root -p"${MYSQL_ROOT_PASSWORD}" --all-databases' > "${out_dir}/dump.sql" 2>>"$LOG_FILE"; then
         return 0
       fi
       log "WARNING: mysqldump with MYSQL_ROOT_PASSWORD failed for ${cname}, trying MARIADB_ROOT_PASSWORD..."
-      if docker exec "$cname" sh -c 'exec mysqldump -u root -p"${MARIADB_ROOT_PASSWORD}" --all-databases' > "${out_dir}/dump.sql" 2>>"$LOG_FILE"; then
+      if docker exec "$cname" sh -c 'exec mysqldump -h 127.0.0.1 -u root -p"${MARIADB_ROOT_PASSWORD}" --all-databases' > "${out_dir}/dump.sql" 2>>"$LOG_FILE"; then
         return 0
       fi
-      log "WARNING: could not authenticate to ${cname} with either MYSQL_ROOT_PASSWORD or MARIADB_ROOT_PASSWORD."
+      log "WARNING: could not authenticate to ${cname} with app credentials, MYSQL_ROOT_PASSWORD, or MARIADB_ROOT_PASSWORD."
       log "  Check this container's actual env vars with: docker exec ${cname} env | grep -i sql"
       return 1
       ;;
