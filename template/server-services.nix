@@ -11,7 +11,7 @@
 #   paperless, forgejo, code-server, attic, vaultwarden, authelia,
 #   nginx, caddy, traefik, adguard, headscale, unbound, nginx-proxy-manager,
 #   cockpit, uptime-kuma, homepage, grafana, scrutiny, prometheus, loki, netdata,
-#   dozzle, portainer, ntfy, mealie, listmonk, rustdesk, home-assistant,
+#   dozzle, portainer, ntfy, mealie, listmonk, humidor, home-registry, rustdesk, home-assistant,
 #   node-red, zigbee2mqtt, matrix-conduit, stirling-pdf, kiji-proxy, portbook, proxmox
 {
   # ── Secrets Backend (phased migration) ───────────────────────────────────
@@ -165,6 +165,12 @@
   # ── Food & Home ──────────────────────────────────────────────────────────
   # vexos.server.mealie.enable = false;                 # Port 9010 — recipe manager
   # vexos.server.listmonk.enable = false;                # Port 9025 — newsletter/mailing list manager
+
+  # ── Personal Trackers ─────────────────────────────────────────────────────
+  # vexos.server.humidor.enable = false;                # Port 9898 — cigar/humidor collection tracker
+  #   No further config needed: Postgres password auto-generates on first activation.
+  # vexos.server.home-registry.enable = false;          # Port 8210 — home inventory tracker
+  #   No further config needed: Postgres password auto-generates on first activation.
 
   # ── Remote Access ────────────────────────────────────────────────────────
   # vexos.server.rustdesk.enable = false;               # Ports 21115-21117

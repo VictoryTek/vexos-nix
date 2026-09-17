@@ -1616,7 +1616,7 @@ disable-feature feature: _require-desktop-role
 # Available server service module names.
 # Keep in sync with _service_catalog below, modules/server/default.nix, and
 # template/server-services.nix.
-_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana grimmory harmonia headscale kernel-builder home-assistant homepage immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana grimmory harmonia headscale kernel-builder home-assistant home-registry homepage humidor immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Server service catalog — single source of truth for both `just
 # available-services` (catalog view) and `just services` (per-host status).
@@ -1679,6 +1679,8 @@ _service_catalog := '''
     Productivity|mealie|Self-hosted recipe manager & meal planner
     Productivity|paperless|Document scanning, OCR, tagging & archival
     Productivity|stirling-pdf|Web-based PDF editing & conversion tools
+    Personal Trackers|home-registry|Self-hosted home inventory tracker
+    Personal Trackers|humidor|Self-hosted cigar/humidor collection tracker
     Remote Access|rustdesk|Open-source self-hosted remote desktop server
     Smart Home & Notifications|home-assistant|Open-source home automation platform
     Smart Home & Notifications|node-red|Low-code flow-based automation editor
@@ -2187,7 +2189,9 @@ service-info service="":
         grimmory)        printf "  %-18s  Web UI  http://<server-ip>:6060\n"                                           "$1" ;;
         headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
         home-assistant)  printf "  %-18s  Web UI  http://<server-ip>:8123\n"                                           "$1" ;;
+        home-registry)   printf "  %-18s  Web UI  http://<server-ip>:8210\n"                                           "$1" ;;
         homepage)        printf "  %-18s  Web UI  http://<server-ip>:3010   (requires docker)\n"                       "$1" ;;
+        humidor)         printf "  %-18s  Web UI  http://<server-ip>:9898\n"                                           "$1" ;;
         immich)          printf "  %-18s  Web UI  http://<server-ip>:2283\n"                                           "$1" ;;
         jellyfin)        printf "  %-18s  Web UI  http://<server-ip>:8096\n"                                           "$1" ;;
         joplin)          printf "  %-18s  Web UI  http://<tailnet-host>:22300   (Tailscale-only)\n"                     "$1" ;;
@@ -2313,7 +2317,9 @@ _service-units service:
       grimmory)       echo "docker-grimmory docker-grimmory-db" ;;
       headscale)      echo "headscale" ;;
       home-assistant) echo "home-assistant" ;;
+      home-registry)  echo "docker-home-registry docker-home-registry-db" ;;
       homepage)       echo "docker-homepage" ;;
+      humidor)        echo "docker-humidor docker-humidor-db" ;;
       immich)         echo "immich-server" ;;
       jellyfin)       echo "jellyfin" ;;
       joplin)         echo "docker-joplin-server docker-joplin-db" ;;
@@ -2398,7 +2404,9 @@ status service: _require-server-role
       grimmory)       URLS="http://localhost:6060" ;;
       headscale)      URLS="http://localhost:8085" ;;
       home-assistant) URLS="http://localhost:8123" ;;
+      home-registry)  URLS="http://localhost:8210" ;;
       homepage)       URLS="http://localhost:3010" ;;
+      humidor)        URLS="http://localhost:9898" ;;
       immich)         URLS="http://localhost:2283" ;;
       jellyfin)       URLS="http://localhost:8096" ;;
       joplin)         URLS="http://localhost:22300" ;;
@@ -3104,10 +3112,22 @@ enable service: _require-server-role
         echo "  About:    Home automation platform with Zigbee (ZHA), ESPHome, weather, and thousands of smart home integrations."
         echo "  Note:     First run launches an onboarding wizard to create the admin account."
         ;;
+      home-registry)
+        echo "  Services: docker-home-registry.service  docker-home-registry-db.service"
+        echo "  Web UI:   http://<server-ip>:8210"
+        echo "  About:    Self-hosted home inventory tracker (two-container stack: app + dedicated Postgres)."
+        echo "  Note:     No default admin credentials — create your account from the web UI on first visit."
+        ;;
       homepage)
         echo "  Container: homepage (NixOS OCI container)"
         echo "  Web UI:    http://<server-ip>:3010"
         echo "  About:     Customisable self-hosted service dashboard with status widgets and bookmarks. Requires Docker to be enabled."
+        ;;
+      humidor)
+        echo "  Services: docker-humidor.service  docker-humidor-db.service"
+        echo "  Web UI:   http://<server-ip>:9898"
+        echo "  About:    Self-hosted cigar/humidor collection tracker (two-container stack: app + dedicated Postgres)."
+        echo "  Note:     No default admin credentials — create your account from the web UI on first visit."
         ;;
       immich)
         echo "  Service:  immich-server.service"

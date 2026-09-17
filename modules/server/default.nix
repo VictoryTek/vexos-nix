@@ -85,6 +85,9 @@
     ./mealie.nix
     ./wishlist.nix
     ./listmonk.nix
+    # ── Personal Trackers ────────────────────────────────────────────────────
+    ./humidor.nix
+    ./home-registry.nix
     # ── Remote Access ────────────────────────────────────────────────────────
     ./rustdesk.nix
     # ── Automation & Smart Home ──────────────────────────────────────────────
