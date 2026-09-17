@@ -28,8 +28,29 @@ LOG_FILE="${INCOMING_DIR}/restore.log"
 
 mkdir -p "$STACKS_DIR"
 
+# Same rerun-friendliness as backup-stacks-v2.sh — keep the previous run's
+# log as a dated backup, start this run with a clean one.
+if [ -f "$LOG_FILE" ]; then
+  mv "$LOG_FILE" "${LOG_FILE}.$(date -r "$LOG_FILE" '+%Y%m%d-%H%M%S').old" 2>/dev/null
+fi
+: > "$LOG_FILE"
+
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+# Finds whichever compose filename convention this stack actually uses —
+# same as backup-stacks-v2.sh, needed since we can't assume docker-compose.yml.
+find_compose_file() {
+  local stack_dir="$1"
+  local fname
+  for fname in docker-compose.yml docker-compose.yaml compose.yml compose.yaml; do
+    if [ -f "${stack_dir}${fname}" ]; then
+      echo "$fname"
+      return 0
+    fi
+  done
+  return 1
 }
 
 # Same lookup as backup-stacks-v2.sh — reads the same file format.
@@ -53,7 +74,9 @@ lookup_manifest() {
 
 first_running_container() {
   local stack_dir="$1"
-  docker compose -f "${stack_dir}docker-compose.yml" ps -q 2>/dev/null | head -n1 \
+  local cfile
+  cfile=$(find_compose_file "$stack_dir") || return 1
+  docker compose -f "${stack_dir}${cfile}" ps -q 2>/dev/null | head -n1 \
     | xargs -r docker inspect --format '{{.Name}}' 2>/dev/null | sed 's#^/##'
 }
 
@@ -80,7 +103,23 @@ restore_database_generic() {
       ;;
     mysql)
       [ -f "${dump_dir}/dump.sql" ] || return 1
-      docker exec -i "$cname" sh -c 'exec mysql -u root -p"${MYSQL_ROOT_PASSWORD}"' < "${dump_dir}/dump.sql" >>"$LOG_FILE" 2>&1
+      # Mirror backup-stacks-v2.sh's preference order: it now dumps just
+      # the app's own database using its own credentials by default (no
+      # --all-databases, so no CREATE DATABASE/USE statement in the dump)
+      # — meaning restore must explicitly target that same database name.
+      # Only if that's unavailable does backup fall back to a root,
+      # self-contained --all-databases dump, which doesn't need a dbname.
+      if docker exec "$cname" sh -c 'test -n "$MYSQL_USER" && test -n "$MYSQL_PASSWORD" && test -n "$MYSQL_DATABASE"' 2>/dev/null; then
+        if docker exec -i "$cname" sh -c 'exec mysql -h 127.0.0.1 -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < "${dump_dir}/dump.sql" >>"$LOG_FILE" 2>&1; then
+          return 0
+        fi
+        log "WARNING: mysql restore with app credentials failed for ${cname}, trying root..."
+      fi
+      if docker exec -i "$cname" sh -c 'exec mysql -h 127.0.0.1 -u root -p"${MYSQL_ROOT_PASSWORD}"' < "${dump_dir}/dump.sql" >>"$LOG_FILE" 2>&1; then
+        return 0
+      fi
+      log "WARNING: mysql restore with MYSQL_ROOT_PASSWORD failed for ${cname}, trying MARIADB_ROOT_PASSWORD..."
+      docker exec -i "$cname" sh -c 'exec mysql -h 127.0.0.1 -u root -p"${MARIADB_ROOT_PASSWORD}"' < "${dump_dir}/dump.sql" >>"$LOG_FILE" 2>&1
       ;;
     redis)
       [ -f "${dump_dir}/dump.rdb" ] || return 1
@@ -133,14 +172,35 @@ for archive in "$INCOMING_DIR"/*.tar.gz; do
   total=$((total+1))
   log "=== Restoring ${stack_name} ==="
 
-  tar -xzf "$archive" -C "$STACKS_DIR" 2>>"$LOG_FILE"
-  stack_path="${STACKS_DIR}/${stack_name}/"
-  compose_file="${stack_path}docker-compose.yml"
+  # --- Extraction: the archive can contain TWO kinds of top-level entries —
+  # the stack folder itself (relative to STACKS_DIR), and any bind-mount
+  # paths backup-stacks-v2.sh captured from their real absolute location
+  # (e.g. "Docker_Data/Files/AppData/Config/Radarr"). Extracting the whole
+  # archive into STACKS_DIR would nest that bind-mount data in the wrong
+  # place — it needs to go back to "/" so it lands at its real original
+  # path. This assumes the new host has the same absolute directory
+  # layout as the old one; if it doesn't, relocate these manually after.
+  mapfile -t top_level_entries < <(tar -tzf "$archive" 2>>"$LOG_FILE" | awk -F'/' '{print $1}' | sort -u)
 
-  if [ ! -f "$compose_file" ]; then
+  if printf '%s\n' "${top_level_entries[@]}" | grep -qx "$stack_name"; then
+    tar -xzf "$archive" -C "$STACKS_DIR" "$stack_name" 2>>"$LOG_FILE"
+  else
+    log "WARNING: archive ${archive} has no top-level '${stack_name}/' entry — compose file may be missing"
+  fi
+
+  for entry in "${top_level_entries[@]}"; do
+    [ "$entry" = "$stack_name" ] && continue
+    [ -z "$entry" ] && continue
+    log "Restoring bind-mount data to its original location: /${entry}"
+    tar -xzf "$archive" -C / "$entry" 2>>"$LOG_FILE"
+  done
+
+  stack_path="${STACKS_DIR}/${stack_name}/"
+  compose_file=$(find_compose_file "$stack_path") || {
     log "WARNING: no compose file found for ${stack_name}, skipping"
     continue
-  fi
+  }
+  compose_file="${stack_path}${compose_file}"
 
   IFS='|' read -r m_container m_method m_backup_cmd m_artifact m_restore <<< "$(lookup_manifest "$stack_name")"
 
