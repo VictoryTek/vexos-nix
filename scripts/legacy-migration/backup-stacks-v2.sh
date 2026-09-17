@@ -25,6 +25,14 @@ set -uo pipefail  # not using -e — one stack failing shouldn't kill the whole 
 
 STACKS_DIR="/Docker_Data/Files/AppData/Config/Dockge/stacks"
 BACKUP_DIR="/mnt/backup-target/vmc01-migration"
+
+# Host path prefixes to NEVER back up per-service, even though they're
+# real bind mounts. This is for large, shared storage roots — media
+# libraries, download folders — where every service that touches them
+# maps in the SAME host directory, so archiving it per-stack would mean
+# N duplicate copies of potentially huge shared data. Add more prefixes
+# here if you have other shared bulk-storage roots.
+EXCLUDE_HOST_PATH_PREFIXES=("/goliath")
 MANIFEST_CONF="$(dirname "$0")/services.conf"   # expects services.conf next to this script
 LOG_FILE="${BACKUP_DIR}/backup.log"
 SUMMARY_FILE="${BACKUP_DIR}/manifest.csv"
@@ -44,7 +52,7 @@ fi
 : > "$LOG_FILE"
 
 : > "$SUMMARY_FILE"
-echo "stack,method,detail,backup_status,archive_status,other_mounts_found" >> "$SUMMARY_FILE"
+echo "stack,method,detail,backup_status,archive_status,excluded_bulk_mount_found" >> "$SUMMARY_FILE"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
@@ -224,12 +232,13 @@ for stack_path in "$STACKS_DIR"/*/; do
   log "Stopping ${stack_name}..."
   (cd "$stack_path" && docker compose down) >>"$LOG_FILE" 2>&1
 
-  # --- Collect bind mounts: /config always gets archived (this is where
-  # every LinuxServer.io-style image, and most others, keep real app
-  # state). Anything else gets logged as a heads-up, not silently backed
-  # up — large shared data mounts (media libraries, downloads folders)
-  # are intentionally NOT captured here, since archiving them per-service
-  # would duplicate potentially huge shared storage many times over.
+  # --- Collect bind mounts: back up every real bind mount by default,
+  # EXCEPT anything under EXCLUDE_HOST_PATH_PREFIXES (shared bulk storage
+  # like media libraries — those get skipped and logged, not silently
+  # duplicated across every service that touches them). This intentionally
+  # doesn't try to guess "which destination path convention means real app
+  # state" per-app (/config, /app/data, /usr/src/app/data all vary) —
+  # instead everything is captured unless it's explicitly excluded.
   extra_tar_args=()
   other_mounts_found="no"
   if [ -n "$compose_file" ] && [ -f "${stack_path}${compose_file}" ]; then
@@ -237,17 +246,24 @@ for stack_path in "$STACKS_DIR"/*/; do
       [ -z "$hostpath" ] && continue
       [ "$hostpath" = "/var/run/docker.sock" ] && continue
 
-      normalized_dest="${containerpath%/}"   # strip trailing slash if any
-      if [ "$normalized_dest" = "/config" ]; then
-        if [ -e "$hostpath" ]; then
-          log "Found /config bind mount for ${stack_name}: ${hostpath} — including in archive"
-          extra_tar_args+=( -C / "${hostpath#/}" )
-        else
-          log "WARNING: /config bind mount ${hostpath} for ${stack_name} does not exist on disk — skipping"
-        fi
-      else
+      excluded=false
+      for prefix in "${EXCLUDE_HOST_PATH_PREFIXES[@]}"; do
+        case "$hostpath" in
+          "$prefix"*) excluded=true; break ;;
+        esac
+      done
+
+      if [ "$excluded" = true ]; then
         other_mounts_found="yes"
-        log "NOTE: ${stack_name} has an additional bind mount not auto-backed-up: ${hostpath} -> ${containerpath} (review manually if this holds app state, not just bulk/shared data)"
+        log "Skipping excluded bind mount for ${stack_name}: ${hostpath} -> ${containerpath} (matches EXCLUDE_HOST_PATH_PREFIXES)"
+        continue
+      fi
+
+      if [ -e "$hostpath" ]; then
+        log "Including bind mount for ${stack_name}: ${hostpath} -> ${containerpath}"
+        extra_tar_args+=( -C / "${hostpath#/}" )
+      else
+        log "WARNING: bind mount ${hostpath} for ${stack_name} does not exist on disk — skipping"
       fi
     done < <(collect_bind_mounts "${stack_path}${compose_file}")
   fi
