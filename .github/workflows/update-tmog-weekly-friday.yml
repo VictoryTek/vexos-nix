@@ -107,6 +107,7 @@ jobs:
               flake = builtins.getFlake (toString ./.);
               pkgs  = import flake.inputs.nixpkgs {
                 system   = "x86_64-linux";
+                config.allowUnfree = true;  # tmog is license = unfree
                 overlays = [ (import ./pkgs) ];
               };
             in pkgs.vexos.tmog'
