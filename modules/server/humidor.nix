@@ -9,12 +9,12 @@
 #
 # No required configuration — vexos.server.humidor.enable = true; is enough:
 #   - The Postgres password is generated automatically on first activation
-#     and stored at dataDir/secrets/humidor-env (0600, root-only), along
-#     with a fully-assembled DATABASE_URL (the app reads DATABASE_URL as a
-#     single connection string, not discrete POSTGRES_HOST/USER/PORT vars
-#     like Joplin does). Set vexos.server.humidor.environmentFile yourself
-#     only if you want to manage the secret through another backend (e.g.
-#     sops-nix).
+#     and stored at dataDir/secrets/humidor-env (0600, root-only). The app
+#     container gets the rest of the connection (host/port/user/db) as
+#     discrete POSTGRES_* env vars, same pattern as Joplin, so the password
+#     stays the only secret in the env file. Set
+#     vexos.server.humidor.environmentFile yourself only if you want to
+#     manage the secret through another backend (e.g. sops-nix).
 #
 # Backup: the live Postgres data directory is not file-backup-safe, so a
 # nightly `pg_dump` writes a plain SQL dump to dataDir/dump, which is what
@@ -53,13 +53,12 @@ in
       type = lib.types.nullOr lib.types.path;
       default = null;
       description = ''
-        Optional systemd EnvironmentFile containing POSTGRES_PASSWORD=<secret>
-        and DATABASE_URL=<full connection string>, shared by both the humidor
-        and humidor-db containers. Leave unset (the default) to have a random
-        password generated automatically on first activation at
-        dataDir/secrets/humidor-env — no manual secret setup required. Set
-        this explicitly only to manage the password through another backend
-        (e.g. sops-nix).
+        Optional systemd EnvironmentFile containing POSTGRES_PASSWORD=<secret>,
+        shared by both the humidor and humidor-db containers. Leave unset
+        (the default) to have a random password generated automatically on
+        first activation at dataDir/secrets/humidor-env — no manual secret
+        setup required. Set this explicitly only to manage the password
+        through another backend (e.g. sops-nix).
       '';
     };
 
@@ -97,11 +96,10 @@ in
       '';
     };
 
-    # Auto-generates the Postgres password (and the DATABASE_URL Humidor
-    # actually reads) on first activation when the operator hasn't supplied
-    # their own environmentFile — this is what makes
-    # vexos.server.humidor.enable = true; sufficient on its own, with no
-    # manual secret creation required.
+    # Auto-generates the Postgres password on first activation when the
+    # operator hasn't supplied their own environmentFile — this is what
+    # makes vexos.server.humidor.enable = true; sufficient on its own, with
+    # no manual secret creation required.
     systemd.services."humidor-secrets-init" = lib.mkIf (cfg.environmentFile == null) {
       description   = "Generate Humidor Postgres password on first activation";
       wantedBy      = [ "multi-user.target" ];
@@ -113,10 +111,7 @@ in
         install -d -m 0700 "${cfg.dataDir}/secrets"
         if [ ! -f "${effectiveEnvFile}" ]; then
           dbPass=$(${pkgs.openssl}/bin/openssl rand -hex 24)
-          {
-            echo "POSTGRES_PASSWORD=$dbPass"
-            echo "DATABASE_URL=postgresql://humidor_user:$dbPass@humidor-db:5432/humidor_db"
-          } > "${effectiveEnvFile}"
+          echo "POSTGRES_PASSWORD=$dbPass" > "${effectiveEnvFile}"
           chmod 0600 "${effectiveEnvFile}"
         fi
       '';
@@ -150,6 +145,10 @@ in
       image = "ghcr.io/victorytek/humidor:latest";
       ports = [ "${toString cfg.port}:9898" ];
       environment = {
+        POSTGRES_HOST = "humidor-db";
+        POSTGRES_PORT = "5432";
+        POSTGRES_USER = "humidor_user";
+        POSTGRES_DB   = "humidor_db";
         PORT     = "9898";
         RUST_LOG = "info";
       };
