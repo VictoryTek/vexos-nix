@@ -21,8 +21,9 @@
 
 set -uo pipefail
 
-INCOMING_DIR="/opt/stacks-incoming"      # where the .tar.gz archives (and services.conf) were copied to
-STACKS_DIR="/opt/stacks"                  # where stacks should live on the new host
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INCOMING_DIR="$SCRIPT_DIR"                        # drop the .tar.gz archives + services.conf right next to this script
+STACKS_DIR="${SCRIPT_DIR}/stacks"                 # restored stacks land in a "stacks" folder next to this script
 MANIFEST_CONF="${INCOMING_DIR}/services.conf"   # backup-stacks-v2.sh copies this alongside the archives
 LOG_FILE="${INCOMING_DIR}/restore.log"
 
