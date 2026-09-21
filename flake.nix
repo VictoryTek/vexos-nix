@@ -48,6 +48,15 @@
     # impermanence has no nixpkgs dependency — follows not required.
     impermanence.url = "github:nix-community/impermanence";
 
+    # disko: disk partitioning/formatting CLI. Used ONLY by scripts/stateless-setup.sh
+    # (fresh stateless install from the live ISO), which runs it pinned to this
+    # lock file's revision via `nix run --inputs-from`. No module from it is
+    # imported — modules/stateless-disk.nix declares the layout itself.
+    disko = {
+      url = "github:nix-community/disko/latest";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # sops-nix: declarative encrypted secrets backend for server roles.
     sops-nix = {
       url = "github:Mic92/sops-nix";

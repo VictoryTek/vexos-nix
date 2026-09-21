@@ -435,8 +435,13 @@ echo -e "${BOLD}Running nixos-rebuild boot (activates on next reboot)...${RESET}
 echo -e "${YELLOW}This may take a while on first run.${RESET}"
 echo ""
 render_header
+# --override-input builds the vexos-nix config at this run's commit (VEXOS_REV),
+# the same one this script and its libs were fetched from, instead of whatever
+# /etc/nixos/flake.lock happens to hold — an older lock may predate the stateless
+# role, and a fresh one would resolve a moving main. Applied in memory only.
 if run_live_build "Building vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}..." \
-     nixos-rebuild boot --flake "/etc/nixos#vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}"; then
+     nixos-rebuild boot --flake "/etc/nixos#vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}" \
+     --override-input vexos-nix "github:VictoryTek/vexos-nix/${VEXOS_REV}"; then
   echo -e "${GREEN}  ✓ Build complete — new generation registered for next boot.${RESET}"
   # Release the build-time swap/mount now — the /nix sync section below
   # re-mounts this same volume independently and must not find it busy.

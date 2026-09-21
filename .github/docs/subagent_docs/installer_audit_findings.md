@@ -20,7 +20,7 @@ prerequisite for most of the cleanup below it.
 | 2 | No shellcheck coverage of `scripts/*.sh` | Gap | S | ☑ |
 | 3 | Text-patching `flake.nix` instead of side-file imports | Fragility | M | ☑ |
 | 4 | Prompt/bootstrap logic triplicated across 3 scripts | Duplication | M | ☑ |
-| 5 | `VEXOS_REV` pin does not cover the config; `disko` unpinned | Correctness | S | ☐ |
+| 5 | `VEXOS_REV` pin does not cover the config; `disko` unpinned | Correctness | S | ☑ |
 | 6 | ASUS patch fails open | Bug | S | ☑ (dissolved by 3) |
 | 7 | Fake progress bar hides real build state | UX | M | ☐ |
 | 8 | No unattended / non-interactive mode | Gap | M | ☐ |
@@ -311,6 +311,35 @@ with and without `gum` on `PATH` and confirm both paths render.
 - Add `disko` as a proper flake input with `inputs.nixpkgs.follows = "nixpkgs"`,
   per the CLAUDE.md flake-input rule, and have `stateless-setup.sh` use the pinned
   revision instead of `latest`.
+
+### Resolution
+- **Config pin:** `install.sh` and `stateless-setup.sh` now run
+  `flake update … --override-input vexos-nix github:VictoryTek/vexos-nix/${VEXOS_REV}`.
+  Tested empirically (Nix 2.34.1) against a wrapper flake pinned to an older pushed
+  commit: the written lock has `locked.rev` = the pin while `original` stays the
+  unpinned URL, so plain commands accept the lock as current (no re-resolve to
+  main), and a later plain `flake update` — what `vexos-update` does — moves to
+  main as normal. So the pin costs nothing after install.
+- **Beyond the audit:** `migrate-to-stateless.sh` never ran a `flake update` at all,
+  so it built whatever lock `/etc/nixos` already had (possibly one predating the
+  stateless role, or a fresh unpinned one). Its `nixos-rebuild boot` now carries the
+  same `--override-input`, applied in memory only (verified: pins in memory, leaves
+  the on-disk lock alone).
+- **disko:** added as a flake input (`github:nix-community/disko/latest`,
+  `inputs.nixpkgs.follows = "nixpkgs"`, verified against current disko docs via
+  Context7). `nix flake lock` added exactly that node (22 insertions, nothing else
+  moved; locked at `de57087`, 2026-01-20). `stateless-setup.sh` now runs
+  `nix run --inputs-from github:VictoryTek/vexos-nix/${VEXOS_REV} disko -- …`,
+  confirmed to resolve to the locked rev rather than `latest`. No disko module is
+  imported; it stays a CLI-only input, so it adds no eval cost to any host.
+- Verified: preflight exit 0; `nix eval` of `vexos-desktop-amd` and `vexos-htpc-vm`
+  through the wrapper against the modified checkout.
+- **Not verified:** a real `curl | bash` install, or an actual disko run. The disko
+  invocation requires the pinned commit to contain the new input, so it only works
+  once this change is pushed; running `stateless-setup.sh` from an *unpushed*
+  working tree (VEXOS_REV = an older main without the input) will fail at that step.
+- disko now follows the daily flake-update job like every other input, so the
+  revision used to wipe disks changes when that job bumps it — but never mid-run.
 
 ### Verification
 After an install, `nix flake metadata /etc/nixos` must report the `vexos-nix`

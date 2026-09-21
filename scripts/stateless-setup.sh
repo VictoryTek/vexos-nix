@@ -199,9 +199,12 @@ echo "  Saved to ${DISKO_TMP}"
 echo ""
 echo -e "${BOLD}${RED}DESTRUCTIVE STEP: Formatting ${DISK} with disko...${RESET}"
 echo ""
+# disko is a flake input of vexos-nix, so `--inputs-from` runs the revision
+# locked in flake.lock at this run's commit (VEXOS_REV) — not whatever `latest`
+# points at on the day, for a tool that wipes disks.
 sudo nix \
   --extra-experimental-features 'nix-command flakes' \
-  run 'github:nix-community/disko/latest' -- \
+  run --inputs-from "github:VictoryTek/vexos-nix/${VEXOS_REV}" disko -- \
   --mode destroy,format,mount \
   --yes-wipe-all-disks \
   "${DISKO_TMP}" \
@@ -394,16 +397,20 @@ sudo git -C /mnt/etc/nixos init -q
 sudo git -C /mnt/etc/nixos add .
 
 # ---------- Refresh flake inputs ----------------------------------------------
-# Always resolve vexos-nix to the latest HEAD before installing.
+# Lock vexos-nix to this run's commit (VEXOS_REV) before installing.
 # Without this, nixos-install creates a fresh flake.lock using whatever commit
 # GitHub's CDN happens to serve for the main branch — which may be a stale
 # cached revision if the branch was recently updated.  A stale commit can carry
 # bugs that have already been fixed in the current HEAD (e.g. the broken
 # lib.mkForce placement in modules/stateless-disk.nix that existed at c238ce6).
+# Pinning to VEXOS_REV also keeps the installed config identical to the scripts
+# that ran; the pin lives only in flake.lock, so a later `just update` moves to
+# main as usual.
 echo ""
 echo -e "${CYAN}Refreshing flake inputs...${RESET}"
 sudo nix --extra-experimental-features "nix-command flakes" \
-  flake update --flake git+file:///mnt/etc/nixos
+  flake update --flake git+file:///mnt/etc/nixos \
+  --override-input vexos-nix "github:VictoryTek/vexos-nix/${VEXOS_REV}"
 
 # ---------- Run nixos-install ------------------------------------------------
 FLAKE_TARGET="vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}"

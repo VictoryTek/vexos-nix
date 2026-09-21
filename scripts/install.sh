@@ -625,19 +625,26 @@ for f in flake.nix hardware-configuration.nix stateless-user-override.nix featur
 done
 
 # ---------- Flake lock refresh -----------------------------------------------
-# Always resolve vexos-nix to the latest HEAD before building.
-# A stale /etc/nixos/flake.lock from a previous (failed) install attempt would
-# otherwise pin the flake to an old revision, potentially pulling in packages
-# that have since been removed from the repo.
+# Always re-lock before building. A stale /etc/nixos/flake.lock from a previous
+# (failed) install attempt would otherwise pin the flake to an old revision,
+# potentially pulling in packages that have since been removed from the repo.
+#
+# vexos-nix is locked to this run's commit (VEXOS_REV) rather than to whatever
+# main is at this moment — the wrapper's input has no ref, so a plain update
+# would build a config that may differ from the scripts that were just run.
+# The pin lives only in flake.lock (its `original` stays the unpinned URL), so a
+# later `just update` / vexos-update moves to main as usual.
 render_progress "Refreshing flake inputs..." 2 3
 if [ -n "$GUM" ]; then
   "$GUM" spin --title "Refreshing flake inputs..." -- \
     sudo nix --extra-experimental-features "nix-command flakes" \
-    flake update --flake git+file:///etc/nixos
+    flake update --flake git+file:///etc/nixos \
+    --override-input vexos-nix "github:VictoryTek/vexos-nix/${VEXOS_REV}"
 else
   echo -e "${CYAN}Refreshing flake inputs...${RESET}"
   sudo nix --extra-experimental-features "nix-command flakes" \
-    flake update --flake git+file:///etc/nixos
+    flake update --flake git+file:///etc/nixos \
+    --override-input vexos-nix "github:VictoryTek/vexos-nix/${VEXOS_REV}"
 fi
 
 # Stage the refreshed lock file so all subsequent git+file:// evaluations see it.
