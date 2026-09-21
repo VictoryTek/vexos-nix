@@ -9,6 +9,10 @@
 # Or clone first and run locally:
 #   bash scripts/install.sh
 #
+# This is the only command needed: if /etc/nixos/flake.nix is missing the script
+# downloads the wrapper (template/etc-nixos-flake.nix) itself. Requires NixOS
+# already installed, with /etc/nixos/hardware-configuration.nix present.
+#
 # Supported roles (expand this list as new roles are added to the flake):
 #   desktop         — Gaming/workstation (AMD, NVIDIA, Intel, VM); choice of
 #                     GNOME/COSMIC/Hyprland desktop environment
@@ -148,6 +152,28 @@ ui_input() {
   "$GUM" input --header "$1" --placeholder "$2" --padding "0 0 0 ${HEADER_PAD:-0}" </dev/tty
 }
 
+# ---------- Flake wrapper ----------------------------------------------------
+# /etc/nixos/flake.nix is the thin wrapper (template/etc-nixos-flake.nix) that
+# pulls this repo's config. Fetched only when absent, so re-running the installer
+# to switch role/variant keeps the existing wrapper (and any edits to it).
+# Downloaded to a temp file first so a truncated download can never leave a
+# partial flake.nix that the "already exists" check would trust on the next run.
+ensure_flake_wrapper() {
+  [ -f /etc/nixos/flake.nix ] && return 0
+  local tmp
+  tmp="$(mktemp "${TMPDIR:-/tmp}/vexos-flake.XXXXXX")"
+  echo -e "${CYAN}No /etc/nixos/flake.nix found — downloading the vexos-nix flake wrapper...${RESET}"
+  if ! curl -fsSL -o "$tmp" \
+       "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/template/etc-nixos-flake.nix"; then
+    rm -f "$tmp"
+    echo -e "${RED}✗ Could not download the flake wrapper.${RESET}" >&2
+    exit 1
+  fi
+  sudo install -D -m 644 "$tmp" /etc/nixos/flake.nix
+  rm -f "$tmp"
+  echo -e "${GREEN}✓ /etc/nixos/flake.nix installed.${RESET}"
+}
+
 # ---------- Header -----------------------------------------------------------
 render_header
 echo -e "${YELLOW}Source: ${SCRIPT_URL}${RESET}"
@@ -276,6 +302,9 @@ if [ "$ROLE" = "stateless" ]; then
     echo ""
     echo -e "${CYAN}Existing install detected — launching in-place stateless migration...${RESET}"
     echo ""
+    # migrate-to-stateless.sh persists /etc/nixos/flake.nix into @persist and
+    # builds from it, so the wrapper must exist before the hand-off.
+    ensure_flake_wrapper
     # sudo resets the environment by default, so plain `export` above would not
     # reach this child — pass VEXOS_REV explicitly on the sudo command line.
     curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/migrate-to-stateless.sh" | sudo VEXOS_REV="${VEXOS_REV}" bash
@@ -525,6 +554,8 @@ render_header
 echo -e "${BOLD}Building ${CYAN}${FLAKE_TARGET}${RESET}${BOLD} (action: ${REBUILD_ACTION})...${RESET}"
 echo -e "${YELLOW}Using 'nixos-rebuild boot' to preserve the live session. The new system will not activate until you reboot.${RESET}"
 render_progress "Preparing system..." 1 3
+
+ensure_flake_wrapper
 
 # ---------- UEFI / BIOS preflight check -------------------------------------
 # vexos-nix defaults to systemd-boot (UEFI). On Legacy BIOS machines we patch

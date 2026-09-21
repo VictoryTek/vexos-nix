@@ -25,20 +25,12 @@ Each role utilizes "just" to give a variety of options. Simply type "just" in a 
 
 > Assumes NixOS is installed and `hardware-configuration.nix` already exists at `/etc/nixos/`.
 
-**1. Drop the flake wrapper into `/etc/nixos`**
-   ```bash
-sudo curl -fsSL -o /etc/nixos/flake.nix \
-  https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/template/etc-nixos-flake.nix
-   ```
-
-**2. Apply your role and GPU variant**
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh | bash
 ```
 
 
-The script asks which role and which GPU variant to install (AMD, NVIDIA, Intel, or VM), runs the build, and offers to reboot when complete. After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild.
+The script downloads the flake wrapper into `/etc/nixos` if it isn't there yet, asks which role and which GPU variant to install (AMD, NVIDIA, Intel, or VM), runs the build, and offers to reboot when complete. After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild.
 
 
 ## How it works
