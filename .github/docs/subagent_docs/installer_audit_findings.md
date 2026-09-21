@@ -18,10 +18,10 @@ prerequisite for most of the cleanup below it.
 |---|------|----------|------|--------|
 | 1 | `features.nix` never reset on re-run | Bug | S | ☑ |
 | 2 | No shellcheck coverage of `scripts/*.sh` | Gap | S | ☑ |
-| 3 | Text-patching `flake.nix` instead of side-file imports | Fragility | M | ☐ |
+| 3 | Text-patching `flake.nix` instead of side-file imports | Fragility | M | ☑ |
 | 4 | Prompt/bootstrap logic triplicated across 3 scripts | Duplication | M | ☐ |
 | 5 | `VEXOS_REV` pin does not cover the config; `disko` unpinned | Correctness | S | ☐ |
-| 6 | ASUS patch fails open | Bug | S | ☐ |
+| 6 | ASUS patch fails open | Bug | S | ☑ (dissolved by 3) |
 | 7 | Fake progress bar hides real build state | UX | M | ☐ |
 | 8 | No unattended / non-interactive mode | Gap | M | ☐ |
 | 9 | Divergent install-swap policies | Inconsistency | S | ☐ |
@@ -161,6 +161,47 @@ Consequences to handle:
 - The new files must be `git add`-ed before evaluation, same as the existing ones
   (`install.sh:820-824`).
 - Deletes roughly 120 lines, including both copies of the `awk` block-replacer.
+
+### Resolution
+Spec: `wrapper_sidefiles_spec.md`. Implemented as four optional side-files —
+`bootloader.nix`, `hardware-local.nix`, `host.nix` and a new `hostname.nix` —
+imported by all six builders via one shared `localFiles` list (`host.nix` only by
+the two server builders). The wrapper's default `bootloaderModule` was dropped
+outright: `modules/system.nix` already defaults to systemd-boot, and the inline
+copy was what caused the equal-priority conflict. `install.sh`,
+`stateless-setup.sh`, `just switch-bootloader` and `just set-hostname` now write
+whole files; no awk/sed rewrite of `flake.nix` remains.
+
+Findings beyond the audit:
+- **Existing machines keep the old wrapper** (never resynced), so a side-file
+  installer alone would be silently ignored on them. Added
+  `scripts/upgrade-wrapper.sh` (called from `ensure_flake_wrapper` and both
+  justfile recipes): fail-closed, backs up to `flake.nix.legacy.bak`, carries over
+  bootloader / hostId / hardwareModule contents. Tested against fixtures built
+  from the real old template (empty, GRUB, Limine, ASUS laptop/desktop, real
+  hostId, garbage → abort, GRUB-without-device → abort, current wrapper → no-op).
+- **Vanilla + BIOS/GRUB was broken** (wrote `vexos.bootloader`, undeclared on
+  vanilla). Confirmed by evaluation: "The option `vexos.bootloader' does not
+  exist". Vanilla now gets direct `boot.loader.grub` options.
+- `just switch-bootloader`'s "Already configured" grep matched the commented
+  example in the old wrapper header; now anchored.
+- `stateless-setup.sh` / `migrate-to-stateless.sh` persist the new side-files;
+  `vexos-update` and the installer force-add them to git.
+
+Verified by per-role `nix eval` of the new template against the local checkout,
+using the heredoc text extracted from `install.sh` itself: no side-files
+(desktop/htpc/vanilla), GRUB and Limine (`grub.enable`/`systemd-boot.enable`
+resolve correctly), ASUS laptop (`asus.enable`, `batteryChargeLimit = 80`) and
+desktop, `host.nix` on server + headless-server, `hostname.nix`, stateless.
+Not verified on hardware. Deliberate parity: installer only *writes*
+`bootloader.nix`/`hardware-local.nix` (never deletes), so a re-run answering "N"
+to Limine cannot flip an installed Limine host back to systemd-boot.
+
+Observation, not changed: a server role with no real hostId fails evaluation with
+"`networking.hostId` is defined both null and not null" before the friendlier
+assertion in `zfs-server.nix` is reached. Same for any config lacking a
+normal-priority hostId (CI stubs one for this reason); worth a look if someone
+hand-installs the template on a server without the installer.
 
 ### Verification
 Per-target `sudo nixos-rebuild dry-build` for an affected variant with each file
@@ -373,9 +414,9 @@ offered and completes.
 - `stateless-setup.sh:29-35` — `cleanup()` removes `/tmp/disk-password`, which is
   never created: LUKS is hardwired off at `stateless-setup.sh:288-291`. Pre-existing
   dead code; flagged per CLAUDE.md, do not delete unless explicitly asked.
-- `template/etc-nixos-flake.nix:78-86` — the BIOS/GRUB header comment shows a
-  `bootloaderModule = {` stanza *without* the `{ ... }:` prefix the real block
-  (line 113) and the installer's `awk` anchor both use. Dissolved by item 3.
+- ~~`template/etc-nixos-flake.nix:78-86` — the BIOS/GRUB header comment shows a
+  `bootloaderModule = {` stanza *without* the `{ ... }:` prefix~~ — resolved by
+  item 3 (header rewritten, block removed).
 - `install.sh:442-447` — `INSTALL_CACHE_OPTS` duplicates keys from `flake.nix`'s
   `nixConfig`, kept in sync by hand. The comment explains why (standalone
   `curl | bash`, no local checkout). Accepted cost; noted so it is not forgotten

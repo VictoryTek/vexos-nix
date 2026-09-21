@@ -430,31 +430,34 @@ echo -e "${BOLD}Downloading vexos-nix template flake to /mnt/etc/nixos/...${RESE
 sudo curl -fsSL "${TEMPLATE_URL}" -o /mnt/etc/nixos/flake.nix
 echo -e "${GREEN}✓ /mnt/etc/nixos/flake.nix downloaded.${RESET}"
 
-# ---------- ASUS hardware patch ---------------------------------------------
+# ---------- ASUS hardware-local.nix -----------------------------------------
+# The wrapper imports hardware-local.nix when present. Must be written before
+# `git add .` below so git+file:// picks it up.
 if [ "$ASUS_ENABLE" = "true" ]; then
-  if grep -qF 'hardwareModule = { ... }: { };' /mnt/etc/nixos/flake.nix 2>/dev/null; then
-    echo ""
-    if [ "$ASUS_LAPTOP" = "true" ]; then
-      echo -e "${BOLD}Patching flake.nix to enable ASUS ROG/TUF laptop support...${RESET}"
-      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; vexos.hardware.asus.batteryChargeLimit = 80; };/' /mnt/etc/nixos/flake.nix
-      echo -e "  ${GREEN}✓ ASUS laptop support enabled (battery charge limit set to 80%).${RESET}"
-    else
-      echo -e "${BOLD}Patching flake.nix to enable OpenRGB for ASUS desktop...${RESET}"
-      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { pkgs, ... }: { environment.systemPackages = [ pkgs.openrgb-with-all-plugins ]; boot.kernelModules = [ "i2c-dev" ]; services.udev.packages = [ pkgs.openrgb-with-all-plugins ]; };/' /mnt/etc/nixos/flake.nix
-      echo -e "  ${GREEN}✓ OpenRGB enabled for ASUS desktop Aura RGB control.${RESET}"
-    fi
+  echo ""
+  if [ "$ASUS_LAPTOP" = "true" ]; then
+    echo -e "${BOLD}Writing hardware-local.nix to enable ASUS ROG/TUF laptop support...${RESET}"
+    sudo tee /mnt/etc/nixos/hardware-local.nix > /dev/null << 'ASUSNIX'
+# /etc/nixos/hardware-local.nix
+# Written by stateless-setup.sh — ASUS ROG/TUF laptop.
+{
+  vexos.hardware.asus.enable = true;
+  vexos.hardware.asus.batteryChargeLimit = 80;
+}
+ASUSNIX
+    echo -e "  ${GREEN}✓ ASUS laptop support enabled (battery charge limit set to 80%).${RESET}"
   else
-    echo ""
-    echo -e "  ${YELLOW}⚠ hardwareModule not found in flake.nix — skipping ASUS patch.${RESET}"
-    echo "    To enable ASUS support manually, add to /etc/nixos/flake.nix:"
-    if [ "$ASUS_LAPTOP" = "true" ]; then
-      echo "      vexos.hardware.asus.enable = true;"
-      echo "      vexos.hardware.asus.batteryChargeLimit = 80;"
-    else
-      echo "      environment.systemPackages = [ pkgs.openrgb-with-all-plugins ];"
-      echo "      boot.kernelModules = [ \"i2c-dev\" ];"
-      echo "      services.udev.packages = [ pkgs.openrgb-with-all-plugins ];"
-    fi
+    echo -e "${BOLD}Writing hardware-local.nix to enable OpenRGB for ASUS desktop...${RESET}"
+    sudo tee /mnt/etc/nixos/hardware-local.nix > /dev/null << 'ASUSNIX'
+# /etc/nixos/hardware-local.nix
+# Written by stateless-setup.sh — ASUS desktop (Aura RGB via OpenRGB).
+{ pkgs, ... }: {
+  environment.systemPackages = [ pkgs.openrgb-with-all-plugins ];
+  boot.kernelModules = [ "i2c-dev" ];
+  services.udev.packages = [ pkgs.openrgb-with-all-plugins ];
+}
+ASUSNIX
+    echo -e "  ${GREEN}✓ OpenRGB enabled for ASUS desktop Aura RGB control.${RESET}"
   fi
 fi
 
@@ -558,6 +561,7 @@ sudo cp /mnt/etc/nixos/flake.lock /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/.gitignore /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp -p /mnt/etc/nixos/stateless-user-override.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 sudo cp /mnt/etc/nixos/vm-platform.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
+sudo cp /mnt/etc/nixos/hardware-local.nix /mnt/persistent/etc/nixos/ 2>/dev/null || true
 printf '%s' "vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}" | sudo tee /mnt/persistent/etc/nixos/vexos-variant > /dev/null
 # Persist the git repo so post-boot git+file:///etc/nixos URIs work and secrets stay out of the Nix store.
 sudo cp -r /mnt/etc/nixos/.git /mnt/persistent/etc/nixos/

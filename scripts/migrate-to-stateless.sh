@@ -581,6 +581,12 @@ cp -p /etc/nixos/stateless-user-override.nix "${BTRFS_MOUNT}/@persist/etc/nixos/
   echo -e "  ${GREEN}✓ stateless-user-override.nix persisted${RESET}" || true
 cp /etc/nixos/vm-platform.nix "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null && \
   echo -e "  ${GREEN}✓ vm-platform.nix persisted${RESET}" || true
+# Side-files the wrapper imports on every role (see template/etc-nixos-flake.nix);
+# present only if this host set them (ASUS, GRUB/Limine, `just set-hostname`).
+for _f in bootloader.nix hardware-local.nix hostname.nix; do
+  cp "/etc/nixos/${_f}" "${BTRFS_MOUNT}/@persist/etc/nixos/" 2>/dev/null && \
+    echo -e "  ${GREEN}✓ ${_f} persisted${RESET}" || true
+done
 printf '%s' "vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}" > "${BTRFS_MOUNT}/@persist/etc/nixos/vexos-variant"
 echo -e "  ${GREEN}✓ vexos-variant persisted${RESET}"
 echo -e "${GREEN}  ✓ Config files persisted to @persist.${RESET}"

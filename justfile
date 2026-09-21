@@ -465,7 +465,9 @@ switch-bootloader target="limine":
         echo "error: Limine migration is only supported on UEFI systems." >&2
         exit 1
     fi
-    if grep -qE 'vexos\.bootloader\s*=\s*"limine"' /etc/nixos/flake.nix; then
+    # bootloader.nix on a current wrapper; flake.nix on a legacy one (not yet
+    # upgraded). Anchored so a commented-out example in the old header doesn't match.
+    if grep -qsE '^\s*vexos\.bootloader\s*=\s*"limine"' /etc/nixos/bootloader.nix /etc/nixos/flake.nix; then
         echo "Already configured for Limine — nothing to do."
         exit 0
     fi
@@ -485,7 +487,7 @@ switch-bootloader target="limine":
     esac
 
     echo "This will:"
-    echo "  1. Patch /etc/nixos/flake.nix to use Limine (vexos.bootloader = \"limine\")"
+    echo "  1. Write /etc/nixos/bootloader.nix to use Limine (vexos.bootloader = \"limine\")"
     echo "  2. Rebuild and switch live — Limine installs ALONGSIDE the current"
     echo "     systemd-boot entry, which is left in place as a fallback"
     echo "  3. Reorder the UEFI BootOrder to put Limine first"
@@ -513,34 +515,17 @@ switch-bootloader target="limine":
     efibootmgr | grep -iP '^Boot[0-9A-Fa-f]{4}\*?\s+Linux Boot Manager\s*$' | grep -oP '^Boot\K[0-9A-Fa-f]{4}' \
         | sudo tee "$OLD_ENTRIES_FILE" >/dev/null || true
 
-    echo "Patching /etc/nixos/flake.nix..."
-    sudo awk '
-      /^    bootloaderModule = \{ \.\.\. \}: \{/ {
-        print "    bootloaderModule = { ... }: {"
-        print "      vexos.bootloader = \"limine\";"
-        print "    };"
-        in_block = 1
-        depth = 1
-        next
-      }
-      in_block {
-        for (i = 1; i <= length($0); i++) {
-          c = substr($0, i, 1)
-          if (c == "{") depth++
-          else if (c == "}") depth--
-        }
-        if (depth <= 0) in_block = 0
-        next
-      }
-      { print }
-    ' /etc/nixos/flake.nix | sudo tee /tmp/vexos-flake-limine.tmp >/dev/null
-    if ! grep -q 'limine' /tmp/vexos-flake-limine.tmp; then
-        echo "error: patch failed — bootloaderModule block not found in flake.nix." >&2
-        sudo rm -f /tmp/vexos-flake-limine.tmp
-        exit 1
-    fi
-    sudo mv /tmp/vexos-flake-limine.tmp /etc/nixos/flake.nix
-    echo "✓ flake.nix updated for Limine."
+    echo "Writing /etc/nixos/bootloader.nix..."
+    # A wrapper from before the side-file layout never imports bootloader.nix,
+    # so upgrade it first (no-op for a current wrapper).
+    bash "{{justfile_directory()}}/scripts/upgrade-wrapper.sh"
+    printf '%s\n' \
+        '# /etc/nixos/bootloader.nix' \
+        '# Written by just switch-bootloader — Limine instead of systemd-boot.' \
+        '{' \
+        '  vexos.bootloader = "limine";' \
+        '}' | sudo tee /etc/nixos/bootloader.nix >/dev/null
+    echo "✓ bootloader.nix written for Limine."
     echo ""
 
     echo "Rebuilding and switching to Limine..."
@@ -1199,35 +1184,49 @@ set-hostname name="":
     # Apply to the running kernel immediately.
     # --transient avoids writing /etc/hostname, which is read-only on NixOS
     # (it's a symlink into the Nix store). The static hostname is corrected
-    # on the next rebuild via the flake.nix edit below.
+    # on the next rebuild via the side-file written below.
     sudo hostnamectl set-hostname --transient "$NAME"
     echo "✓ Applied to running system (transient — persists after rebuild)"
 
-    # Persist through NixOS rebuilds by updating /etc/nixos/flake.nix.
+    # Persist through NixOS rebuilds.
     # networking.hostName = lib.mkDefault "vexos" (in modules/network.nix) is
-    # overridden by any plain assignment in hardwareModule or hostModule.
-    FLAKE="/etc/nixos/flake.nix"
+    # overridden by any plain assignment in a file the wrapper imports.
+    DIR="/etc/nixos"
     PERSISTED=false
 
-    if [ -f "$FLAKE" ]; then
-        if grep -qP 'networking\.hostName\s*=' "$FLAKE"; then
-            # Update existing networking.hostName value in-place.
-            sudo sed -i -E "s|networking\.hostName\s*=\s*\"[^\"]*\"|networking.hostName = \"${NAME}\"|g" "$FLAKE"
-            echo "✓ Updated networking.hostName in ${FLAKE}"
-            PERSISTED=true
-        elif grep -qF 'hardwareModule = { ... }: { };' "$FLAKE" 2>/dev/null; then
-            # Empty hardwareModule — inject the hostname assignment.
-            sudo sed -i "s|hardwareModule = { \.\.\. }: { };|hardwareModule = { ... }: { networking.hostName = \"${NAME}\"; };|" "$FLAKE"
-            echo "✓ Set networking.hostName in hardwareModule in ${FLAKE}"
+    if [ -f "$DIR/flake.nix" ]; then
+        # A wrapper from before the side-file layout never imports hostname.nix,
+        # so upgrade it first (no-op for a current wrapper).
+        bash "{{justfile_directory()}}/scripts/upgrade-wrapper.sh"
+
+        # Update the value in place wherever it is already set — e.g. carried
+        # into hardware-local.nix by the wrapper upgrade, or hand-set in flake.nix.
+        for _f in flake.nix hardware-local.nix hostname.nix; do
+            if [ -f "$DIR/$_f" ] && grep -qP 'networking\.hostName\s*=' "$DIR/$_f"; then
+                sudo sed -i -E "s|networking\.hostName\s*=\s*\"[^\"]*\"|networking.hostName = \"${NAME}\"|g" "$DIR/$_f"
+                echo "✓ Updated networking.hostName in ${DIR}/${_f}"
+                PERSISTED=true
+            fi
+        done
+
+        # Otherwise write it as its own side-file the wrapper imports.
+        if [ "$PERSISTED" = "false" ]; then
+            printf '%s\n' \
+                '# /etc/nixos/hostname.nix' \
+                '# Written by just set-hostname.' \
+                '{' \
+                "  networking.hostName = \"${NAME}\";" \
+                '}' | sudo tee "$DIR/hostname.nix" >/dev/null
+            echo "✓ Set networking.hostName in ${DIR}/hostname.nix"
             PERSISTED=true
         fi
     fi
 
     if [ "$PERSISTED" = "false" ]; then
         echo ""
-        echo "  Could not auto-update ${FLAKE}."
-        echo "  To persist the hostname across rebuilds, add this line to your"
-        echo "  hardwareModule (or hostModule for server roles) in ${FLAKE}:"
+        echo "  Could not auto-update ${DIR}/flake.nix (not found)."
+        echo "  To persist the hostname across rebuilds, add this line to a"
+        echo "  module your flake imports:"
         echo ""
         echo "    networking.hostName = \"${NAME}\";"
         echo ""

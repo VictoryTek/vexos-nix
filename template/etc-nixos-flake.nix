@@ -71,29 +71,22 @@
 #   /etc/nixos/vexos-variant is updated automatically — vexos-updater picks
 #   up the new variant from then on.
 #
-# ── Bootloader ──────────────────────────────────────────────────────────────
+# ── Per-machine settings live in side-files, not in this file ───────────────
 #
-#   Default: systemd-boot (EFI) — works on all modern hardware and VMs.
+#   This wrapper is never edited by the installer or by `just` recipes. Each
+#   optional file below is imported only when it exists next to this flake:
 #
-#   For BIOS/Legacy only: replace the bootloaderModule block below with:
-#     bootloaderModule = {
-#       boot.loader.systemd-boot.enable = false;
-#       boot.loader.grub = {
-#         enable     = true;
-#         efiSupport = false;
-#         device     = "/dev/sda";  # ← verify with: lsblk
-#       };
-#     };
-#
-#   Limine (opt-in, UEFI only): an alternative to systemd-boot whose own
-#   menu can list OSes on other physical disks (see modules/boot-discovery.nix
-#   upstream). Do not switch an already-installed machine by hand-editing
-#   this block — use `just switch-bootloader limine` instead, which also
-#   handles the systemd-boot NVRAM entry and ESP file cleanup. This block
-#   only matters for a fresh install choosing Limine from the start:
-#     bootloaderModule = { ... }: {
-#       vexos.bootloader = "limine";
-#     };
+#     bootloader.nix     BIOS/GRUB or Limine (default: systemd-boot, from
+#                        modules/system.nix — no file needed)
+#                          { vexos.bootloader = "grub"; vexos.grub.device = "/dev/sda"; }
+#                          { vexos.bootloader = "limine"; }
+#                        Do not switch an installed machine to Limine by hand —
+#                        use `just switch-bootloader limine`, which also handles
+#                        the systemd-boot NVRAM entry and ESP file cleanup.
+#     hardware-local.nix ASUS ROG/TUF options (or OpenRGB for ASUS desktops)
+#                          { vexos.hardware.asus.enable = true; }
+#     host.nix           networking.hostId — server and headless-server only
+#     hostname.nix       networking.hostName, written by `just set-hostname`
 #
 {
   inputs = {
@@ -108,29 +101,38 @@
     lib = nixpkgs.lib;
 
     # ── Bootloader ──────────────────────────────────────────────────────────
-    # EFI / systemd-boot (default — suitable for all modern bare-metal and VM installs).
-    # Replace with the BIOS/GRUB stanza from the header comment if needed.
-    bootloaderModule = { ... }: {
-      boot.loader.systemd-boot.enable      = true;
-      boot.loader.efi.canTouchEfiVariables = true;
-      # Boot entry title cleanup (strip kernel version, codename, date) is
-      # handled automatically by modules/branding.nix in the upstream config.
-    };
+    # Default is systemd-boot, set by modules/system.nix (vanilla: its own
+    # mkDefault), so nothing is declared here. Written by install.sh for
+    # BIOS/GRUB or opt-in Limine, and by `just switch-bootloader`.
+    # Boot entry title cleanup (strip kernel version, codename, date) is
+    # handled automatically by modules/branding.nix in the upstream config.
+    bootloaderFile = ./bootloader.nix;
+    hasBootloader  = builtins.pathExists bootloaderFile;
 
     # ── Per-machine hardware overrides ──────────────────────────────────────
-    # Set by the installer for hardware-specific features.
-    # To enable ASUS ROG/TUF support manually, change this to:
-    #   ASUS device (any):  { vexos.hardware.asus.enable = true; }
-    #   ASUS laptop:        { vexos.hardware.asus.enable = true; vexos.hardware.asus.batteryChargeLimit = 80; }
-    hardwareModule = { ... }: { };
+    # Written by the installer for hardware-specific features (ASUS ROG/TUF).
+    hardwareLocalFile = ./hardware-local.nix;
+    hasHardwareLocal  = builtins.pathExists hardwareLocalFile;
 
     # ── ZFS host identity (required for server and headless-server roles) ────
     # ZFS bakes this ID into every pool's vdev label at creation time.
-    # It must be unique per machine and must not change after pools are created.
-    #
-    hostModule = { ... }: {
-      networking.hostId = "XXXXXXXX"; # Substituted automatically by install.sh
-    };
+    # It must be unique per machine and must not change after pools are created,
+    # so install.sh writes host.nix once and never overwrites it. Without it the
+    # build aborts on the assertion in modules/zfs-server.nix.
+    hostFile = ./host.nix;
+    hasHost  = builtins.pathExists hostFile;
+
+    # ── Persisted hostname ──────────────────────────────────────────────────
+    # Written by `just set-hostname` so the name survives rebuilds.
+    hostnameFile = ./hostname.nix;
+    hasHostname  = builtins.pathExists hostnameFile;
+
+    # Side-files every role loads when present. host.nix is added separately by
+    # the two server builders — ZFS hostId is meaningless elsewhere.
+    localFiles =
+      lib.optional hasBootloader    bootloaderFile
+      ++ lib.optional hasHardwareLocal hardwareLocalFile
+      ++ lib.optional hasHostname   hostnameFile;
 
     # ── Kernel install override (written by installer for cache-miss fallback) ──
     # When the installer detects that target-kernel packages are not in cache,
@@ -190,9 +192,6 @@
           { nixpkgs.hostPlatform = "x86_64-linux"; }
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
 
-          bootloaderModule
-          hardwareModule
-
           # hardware-configuration.nix is generated by nixos-generate-config and
           # lives in /etc/nixos — it is never committed to the vexos-nix repo.
           ./hardware-configuration.nix
@@ -202,6 +201,7 @@
 
           # GPU-specific drivers and settings for this variant.
         ] ++ modules
+          ++ localFiles
           ++ lib.optional hasFeatures       featuresFile
           ++ lib.optional hasStorageRemote  storageRemoteFile
           ++ lib.optional hasKernelOverride kernelOverrideFile;
@@ -230,12 +230,11 @@
         [
           { nixpkgs.hostPlatform = "x86_64-linux"; }
           { vexos.variant = variant; }
-          bootloaderModule
-          hardwareModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.statelessBase
         ]
         ++ modules
+        ++ localFiles
         ++ lib.optional hasUserOverride userOverrideFile
         ++ lib.optional hasVmPlatform vmPlatformFile
         ++ lib.optional hasKernelOverride kernelOverrideFile;
@@ -253,11 +252,10 @@
         [
           { nixpkgs.hostPlatform = "x86_64-linux"; }
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
-          bootloaderModule
-          hardwareModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.htpcBase
         ] ++ modules
+          ++ localFiles
           ++ lib.optional hasFeatures       featuresFile
           ++ lib.optional hasStorageRemote  storageRemoteFile
           ++ lib.optional hasKernelOverride kernelOverrideFile;
@@ -273,16 +271,15 @@
         [
           { nixpkgs.hostPlatform = "x86_64-linux"; }
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
-          bootloaderModule
-          hardwareModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.vanillaBase
         ] ++ modules
+          ++ localFiles
           ++ lib.optional hasKernelOverride kernelOverrideFile;
     };
 
     # Headless server role: CLI only, no desktop environment.
-    # See the mkServerVariant comment above for the ZFS hostId requirement.
+    # See the mkServerVariant comment below for the ZFS hostId requirement.
     mkHeadlessServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
       specialArgs = { inputs = vexos-nix.inputs; };
       modules =
@@ -294,13 +291,12 @@
         [
           { nixpkgs.hostPlatform = "x86_64-linux"; }
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
-          bootloaderModule
-          hardwareModule
-          hostModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.headlessServerBase
         ]
         ++ modules
+        ++ localFiles
+        ++ lib.optional hasHost hostFile
         ++ lib.optional hasServices servicesFile
         ++ lib.optional hasStoragePool storagePoolFile
         ++ lib.optional hasStorageRemote storageRemoteFile
@@ -315,11 +311,10 @@
     # If the hostId changes after pools are created, ZFS will refuse to import
     # the pool on next boot.
     #
-    # networking.hostId is set in `hostModule` above — replace "XXXXXXXX" with
-    # the output of:  head -c 8 /etc/machine-id
-    #
-    # Leaving "XXXXXXXX" in place causes an assertion failure that aborts the
-    # build — it is NOT a warning.
+    # networking.hostId is set in host.nix (written by install.sh from
+    # `head -c 8 /etc/machine-id`). A missing host.nix leaves the placeholder
+    # in place, which causes an assertion failure that aborts the build — it
+    # is NOT a warning.
     mkServerVariant = variant: gpuModule: nixpkgs.lib.nixosSystem {
       specialArgs = { inputs = vexos-nix.inputs; };
       modules =
@@ -334,13 +329,12 @@
           # Persist the active variant name so vexos-updater and `just rebuild` can read it.
           # The server role does not use impermanence, so environment.etc is correct here.
           { environment.etc."nixos/vexos-variant".text = "${variant}\n"; }
-          bootloaderModule
-          hardwareModule
-          hostModule
           ./hardware-configuration.nix
           vexos-nix.nixosModules.serverBase
         ]
         ++ modules
+        ++ localFiles
+        ++ lib.optional hasHost      hostFile
         ++ lib.optional hasServices  servicesFile
         ++ lib.optional hasFeatures  featuresFile
         ++ lib.optional hasStoragePool storagePoolFile

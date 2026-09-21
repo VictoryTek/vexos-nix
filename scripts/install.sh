@@ -158,8 +158,21 @@ ui_input() {
 # to switch role/variant keeps the existing wrapper (and any edits to it).
 # Downloaded to a temp file first so a truncated download can never leave a
 # partial flake.nix that the "already exists" check would trust on the next run.
+#
+# An existing wrapper from before the side-file layout (inline bootloaderModule /
+# hardwareModule / hostModule blocks) is upgraded in place by
+# scripts/upgrade-wrapper.sh — a no-op for a current wrapper. Without that, the
+# side-files written below (bootloader.nix, hardware-local.nix, host.nix) would
+# be silently ignored.
 ensure_flake_wrapper() {
-  [ -f /etc/nixos/flake.nix ] && return 0
+  if [ -f /etc/nixos/flake.nix ]; then
+    if [ -f "$(dirname "$0")/upgrade-wrapper.sh" ]; then
+      bash "$(dirname "$0")/upgrade-wrapper.sh"
+    else
+      curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/upgrade-wrapper.sh" | bash
+    fi
+    return 0
+  fi
   local tmp
   tmp="$(mktemp "${TMPDIR:-/tmp}/vexos-flake.XXXXXX")"
   echo -e "${CYAN}No /etc/nixos/flake.nix found — downloading the vexos-nix flake wrapper...${RESET}"
@@ -559,7 +572,7 @@ ensure_flake_wrapper
 
 # ---------- UEFI / BIOS preflight check -------------------------------------
 # vexos-nix defaults to systemd-boot (UEFI). On Legacy BIOS machines we patch
-# /etc/nixos/flake.nix to use GRUB before building.
+# /etc/nixos/bootloader.nix to use GRUB before building.
 if [ ! -d /sys/firmware/efi ]; then
   echo -e "${YELLOW}${BOLD}⚠ Legacy BIOS / non-UEFI system detected.${RESET}"
   echo ""
@@ -586,39 +599,35 @@ if [ ! -d /sys/firmware/efi ]; then
     fi
   done
   echo ""
-  echo "  Patching /etc/nixos/flake.nix to use GRUB on ${GRUB_DEVICE}..."
-  # Replace the bootloaderModule block using awk (always available on NixOS ISO).
-  # Tracks brace depth to reliably skip the old block regardless of comments/content.
-  # Use vexos.bootloader / vexos.grub.device options so modules/system.nix owns
-  # the actual boot.loader.* assignments — avoids equal-priority option conflicts.
-  awk -v device="$GRUB_DEVICE" '
-    /^    bootloaderModule = \{ \.\.\. \}: \{/ {
-      print "    bootloaderModule = { ... }: {"
-      print "      vexos.bootloader  = \"grub\";"
-      print "      vexos.grub.device = \"" device "\";"
-      print "    };"
-      in_block = 1
-      depth = 1
-      next
-    }
-    in_block {
-      for (i = 1; i <= length($0); i++) {
-        c = substr($0, i, 1)
-        if (c == "{") depth++
-        else if (c == "}") depth--
-      }
-      if (depth <= 0) in_block = 0
-      next
-    }
-    { print }
-  ' /etc/nixos/flake.nix > /tmp/vexos-flake.tmp
-  if ! grep -q 'grub' /tmp/vexos-flake.tmp; then
-    echo -e "  ${RED}✗ Patch failed — bootloaderModule block not found in flake.nix.${RESET}" >&2
-    rm -f /tmp/vexos-flake.tmp
-    exit 1
+  echo "  Writing /etc/nixos/bootloader.nix to use GRUB on ${GRUB_DEVICE}..."
+  # The wrapper imports bootloader.nix when present. Use the vexos.bootloader /
+  # vexos.grub.device options so modules/system.nix owns the actual
+  # boot.loader.* assignments. Vanilla never imports that module (it sets
+  # systemd-boot with mkDefault), so there the GRUB options are set directly.
+  if [ "$ROLE" = "vanilla" ]; then
+    sudo tee /etc/nixos/bootloader.nix > /dev/null << GRUBNIX
+# /etc/nixos/bootloader.nix
+# Written by install.sh — legacy BIOS boot via GRUB.
+{
+  boot.loader.systemd-boot.enable = false;
+  boot.loader.grub = {
+    enable     = true;
+    efiSupport = false;
+    device     = "${GRUB_DEVICE}";
+  };
+}
+GRUBNIX
+  else
+    sudo tee /etc/nixos/bootloader.nix > /dev/null << GRUBNIX
+# /etc/nixos/bootloader.nix
+# Written by install.sh — legacy BIOS boot via GRUB.
+{
+  vexos.bootloader  = "grub";
+  vexos.grub.device = "${GRUB_DEVICE}";
+}
+GRUBNIX
   fi
-  sudo mv /tmp/vexos-flake.tmp /etc/nixos/flake.nix
-  echo -e "  ${GREEN}✓ flake.nix updated for GRUB (${GRUB_DEVICE}).${RESET}"
+  echo -e "  ${GREEN}✓ bootloader.nix written for GRUB (${GRUB_DEVICE}).${RESET}"
   echo ""
 else
   # UEFI system — ensure /boot (EFI system partition) is mounted before building.
@@ -656,8 +665,8 @@ else
   #
   # Not offered on vanilla: configuration-vanilla.nix sets
   # boot.loader.systemd-boot.enable directly and never imports
-  # modules/system.nix, so vexos.bootloader (which the patch below writes)
-  # isn't a declared option there — patching it in would break evaluation.
+  # modules/system.nix, so vexos.bootloader (which bootloader.nix sets below)
+  # isn't a declared option there — it would break evaluation.
   USE_LIMINE=false
   if [ "$ROLE" = "vanilla" ]; then
     :
@@ -677,80 +686,70 @@ else
     fi
 
     if [ "$USE_LIMINE" = "true" ]; then
-      echo "  Patching /etc/nixos/flake.nix to use Limine..."
-      # Same brace-depth block-replace as the GRUB patch above — keeps
-      # modules/system.nix as the single owner of the actual boot.loader.*
-      # assignments via vexos.bootloader.
-      awk '
-        /^    bootloaderModule = \{ \.\.\. \}: \{/ {
-          print "    bootloaderModule = { ... }: {"
-          print "      vexos.bootloader = \"limine\";"
-          print "    };"
-          in_block = 1
-          depth = 1
-          next
-        }
-        in_block {
-          for (i = 1; i <= length($0); i++) {
-            c = substr($0, i, 1)
-            if (c == "{") depth++
-            else if (c == "}") depth--
-          }
-          if (depth <= 0) in_block = 0
-          next
-        }
-        { print }
-      ' /etc/nixos/flake.nix > /tmp/vexos-flake.tmp
-      if ! grep -q 'limine' /tmp/vexos-flake.tmp; then
-        echo -e "  ${RED}✗ Patch failed — bootloaderModule block not found in flake.nix.${RESET}" >&2
-        rm -f /tmp/vexos-flake.tmp
-        exit 1
-      fi
-      sudo mv /tmp/vexos-flake.tmp /etc/nixos/flake.nix
-      echo -e "  ${GREEN}✓ flake.nix updated for Limine.${RESET}"
+      echo "  Writing /etc/nixos/bootloader.nix to use Limine..."
+      # Same as the GRUB case above — modules/system.nix stays the single owner
+      # of the actual boot.loader.* assignments via vexos.bootloader.
+      sudo tee /etc/nixos/bootloader.nix > /dev/null << 'LIMINENIX'
+# /etc/nixos/bootloader.nix
+# Written by install.sh — Limine instead of the default systemd-boot.
+{
+  vexos.bootloader = "limine";
+}
+LIMINENIX
+      echo -e "  ${GREEN}✓ bootloader.nix written for Limine.${RESET}"
     fi
     echo ""
   fi
 fi
 
-# ---------- ASUS hardware patch ---------------------------------------------
+# ---------- ASUS hardware-local.nix -----------------------------------------
+# The wrapper imports hardware-local.nix when present, so this is a plain file
+# write rather than a patch of flake.nix — it cannot half-succeed.
 if [ "$ASUS_ENABLE" = "true" ]; then
-  if grep -qF 'hardwareModule = { ... }: { };' /etc/nixos/flake.nix 2>/dev/null; then
-    echo ""
-    if [ "$ASUS_LAPTOP" = "true" ]; then
-      echo "  Patching /etc/nixos/flake.nix to enable ASUS ROG/TUF laptop support..."
-      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { ... }: { vexos.hardware.asus.enable = true; vexos.hardware.asus.batteryChargeLimit = 80; };/' /etc/nixos/flake.nix
-      echo -e "  ${GREEN}✓ ASUS laptop support enabled (battery charge limit set to 80%).${RESET}"
-    else
-      echo "  Patching /etc/nixos/flake.nix to enable OpenRGB for ASUS desktop..."
-      sudo sed -i 's/hardwareModule = { \.\.\. }: { };/hardwareModule = { pkgs, ... }: { environment.systemPackages = [ pkgs.openrgb-with-all-plugins ]; boot.kernelModules = [ "i2c-dev" ]; services.udev.packages = [ pkgs.openrgb-with-all-plugins ]; };/' /etc/nixos/flake.nix
-      echo -e "  ${GREEN}✓ OpenRGB enabled for ASUS desktop Aura RGB control.${RESET}"
-    fi
-    echo ""
+  echo ""
+  if [ "$ASUS_LAPTOP" = "true" ]; then
+    echo "  Writing /etc/nixos/hardware-local.nix to enable ASUS ROG/TUF laptop support..."
+    sudo tee /etc/nixos/hardware-local.nix > /dev/null << 'ASUSNIX'
+# /etc/nixos/hardware-local.nix
+# Written by install.sh — ASUS ROG/TUF laptop.
+{
+  vexos.hardware.asus.enable = true;
+  vexos.hardware.asus.batteryChargeLimit = 80;
+}
+ASUSNIX
+    echo -e "  ${GREEN}✓ ASUS laptop support enabled (battery charge limit set to 80%).${RESET}"
   else
-    echo ""
-    echo -e "  ${YELLOW}⚠ hardwareModule not found in /etc/nixos/flake.nix — skipping ASUS patch.${RESET}"
-    echo "    To enable ASUS support manually, add to your /etc/nixos/flake.nix:"
-    if [ "$ASUS_LAPTOP" = "true" ]; then
-      echo "      vexos.hardware.asus.enable = true;"
-      echo "      vexos.hardware.asus.batteryChargeLimit = 80;"
-    else
-      echo "      environment.systemPackages = [ pkgs.openrgb-with-all-plugins ];"
-      echo "      boot.kernelModules = [ \"i2c-dev\" ];"
-      echo "      services.udev.packages = [ pkgs.openrgb-with-all-plugins ];"
-    fi
-    echo ""
+    echo "  Writing /etc/nixos/hardware-local.nix to enable OpenRGB for ASUS desktop..."
+    sudo tee /etc/nixos/hardware-local.nix > /dev/null << 'ASUSNIX'
+# /etc/nixos/hardware-local.nix
+# Written by install.sh — ASUS desktop (Aura RGB via OpenRGB).
+{ pkgs, ... }: {
+  environment.systemPackages = [ pkgs.openrgb-with-all-plugins ];
+  boot.kernelModules = [ "i2c-dev" ];
+  services.udev.packages = [ pkgs.openrgb-with-all-plugins ];
+}
+ASUSNIX
+    echo -e "  ${GREEN}✓ OpenRGB enabled for ASUS desktop Aura RGB control.${RESET}"
   fi
+  echo ""
 fi
 
-# ---------- hostId substitution ----------------------------------------------
-# Replace the XXXXXXXX placeholder in /etc/nixos/flake.nix with the first 8 hex
-# characters of /etc/machine-id. Required for ZFS pool identity on server and
-# headless-server roles. Safe no-op for all other roles.
-if [ -f /etc/nixos/flake.nix ] && grep -qF '"XXXXXXXX"' /etc/nixos/flake.nix 2>/dev/null; then
+# ---------- ZFS hostId (host.nix) ---------------------------------------------
+# host.nix carries networking.hostId — the first 8 hex characters of
+# /etc/machine-id — for the server roles, where ZFS bakes it into every pool.
+# Written only when absent: it must never change once pools exist. Other roles
+# don't import host.nix, so nothing is written for them.
+if { [ "$ROLE" = "server" ] || [ "$ROLE" = "headless-server" ]; } && [ ! -f /etc/nixos/host.nix ]; then
   HOST_ID="$(head -c 8 /etc/machine-id)"
-  sudo sed -i "s/networking\.hostId = \"XXXXXXXX\"/networking.hostId = \"${HOST_ID}\"/" /etc/nixos/flake.nix
-  echo -e "  ${GREEN}✓ hostId set to ${HOST_ID}.${RESET}"
+  sudo tee /etc/nixos/host.nix > /dev/null << HOSTNIX
+# /etc/nixos/host.nix
+# ZFS host identity. Written once by install.sh; must not change after ZFS
+# pools are created.
+{
+  networking.hostId = "${HOST_ID}";
+}
+HOSTNIX
+  echo -e "  ${GREEN}✓ hostId set to ${HOST_ID} in /etc/nixos/host.nix.${RESET}"
 fi
 
 # ---------- Write host choices to /etc/nixos/features.nix ---------------------
@@ -870,10 +869,12 @@ fi
 # Ensure all flake-imported files are git-tracked and staged before any
 # git+file:// evaluation.  This handles both:
 #   a) Older repos created before flake.nix/flake.lock were tracked (legacy repair)
-#   b) Re-runs of the installer where flake.nix was re-downloaded and patched
-#      (hostId, ASUS, GRUB) but not yet re-staged — git+file:// would otherwise
-#      evaluate the stale committed version, ignoring the fresh patches.
-for f in flake.nix hardware-configuration.nix stateless-user-override.nix features.nix; do
+#   b) Re-runs of the installer where side-files (bootloader, ASUS, hostId) were
+#      just written or the wrapper was upgraded but not yet re-staged —
+#      git+file:// would otherwise evaluate the stale committed version,
+#      ignoring them.
+for f in flake.nix hardware-configuration.nix stateless-user-override.nix features.nix \
+         bootloader.nix hardware-local.nix host.nix hostname.nix; do
   if [ -f "/etc/nixos/$f" ]; then
     sudo "$GIT" -C /etc/nixos add -f "$f"
   fi

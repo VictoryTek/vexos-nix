@@ -94,7 +94,7 @@ GITIGNORE
     # when they were created.  flake.nix is included here too so a wrapper
     # patched by the auto-heal step above is committed before the
     # git+file:// dry-build/switch below.
-    for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix server-services.nix features.nix flake.nix; do
+    for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix server-services.nix features.nix bootloader.nix hardware-local.nix host.nix hostname.nix flake.nix; do
       if [ -f "/etc/nixos/$_f" ]; then
         git -C /etc/nixos add -f "$_f" 2>/dev/null || true
       fi
