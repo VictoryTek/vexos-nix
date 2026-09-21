@@ -7,16 +7,17 @@
 # Usage:   Run from repository root: bash scripts/preflight.sh
 #
 # Stages:
-#   [0/8] Nix + jq availability
-#   [1/8] nix flake show (structure validation — safe, low RAM)
+#   [0/9] Nix + jq availability
+#   [1/9] nix flake show (structure validation — safe, low RAM)
 #         + ci.yml matrix matches the flake's nixosConfigurations
-#   [2/8] Dry-build current machine variant only (full CI validation handled by GitHub Actions)
-#   [3/8] hardware-configuration.nix not tracked
-#   [4/8] system.stateVersion (all 6 configuration-*.nix files)
-#   [5/8] flake.lock validation (committed, pinned, freshness)
-#   [6/8] Nix formatting
-#   [7/8] Secret scan
-#   [8/8] vexos-update package builds (shellcheck runs at build time)
+#   [2/9] Dry-build current machine variant only (full CI validation handled by GitHub Actions)
+#   [3/9] hardware-configuration.nix not tracked
+#   [4/9] system.stateVersion (all 6 configuration-*.nix files)
+#   [5/9] flake.lock validation (committed, pinned, freshness)
+#   [6/9] Nix formatting
+#   [7/9] Secret scan
+#   [8/9] vexos-update package builds (shellcheck runs at build time)
+#   [9/9] shellcheck over scripts/*.sh and scripts/lib/*.sh (installer code)
 #
 # NOTE (Windows users): This script must be made executable on the NixOS host.
 #   Option A — chmod:
@@ -47,7 +48,7 @@ echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================================"
 echo ""
 # ---------- CHECK 0: Nix + jq availability (HARD for nix, WARN for jq) ------
-echo "[0/8] Checking for required tools..."
+echo "[0/9] Checking for required tools..."
 if ! command -v nix &>/dev/null; then
   echo ""
   fail "nix is not installed or not in PATH"
@@ -78,7 +79,7 @@ else
 fi
 echo ""
 # ---------- CHECK 1: flake structure + CI matrix coverage --------------------
-echo "[1/8] Validating flake structure..."
+echo "[1/9] Validating flake structure..."
 
 echo "  --- 1a: nix flake show (structure validation — safe, low RAM) ---"
 # NOTE: nix flake check is FORBIDDEN in this project — it evaluates all 30+
@@ -152,7 +153,7 @@ fi
 echo ""
 
 # ---------- CHECK 2: nixos-rebuild dry-build (current variant only) ----------
-echo "[2/8] Verifying system closure (dry-build current machine variant)..."
+echo "[2/9] Verifying system closure (dry-build current machine variant)..."
 # NOTE: Dry-building all 30 variants in a loop is FORBIDDEN in this project.
 # Each evaluation loads a full nixpkgs closure into RAM. Running 30 sequentially
 # still risks OOM on a 32GB machine and takes 30+ minutes.
@@ -194,7 +195,7 @@ fi
 echo ""
 
 # ---------- CHECK 3: hardware-configuration.nix not tracked (HARD) -----------
-echo "[3/8] Checking hardware-configuration.nix is not tracked in git..."
+echo "[3/9] Checking hardware-configuration.nix is not tracked in git..."
 if git ls-files hardware-configuration.nix | grep -q .; then
   fail "hardware-configuration.nix is tracked in git — remove it immediately"
   EXIT_CODE=1
@@ -204,7 +205,7 @@ fi
 echo ""
 
 # ---------- CHECK 4: system.stateVersion present (HARD) ----------------------
-echo "[4/8] Verifying system.stateVersion in all configuration files..."
+echo "[4/9] Verifying system.stateVersion in all configuration files..."
 STATEVER_FAIL=0
 for CFG in \
   configuration-desktop.nix \
@@ -238,7 +239,7 @@ if [ "$EXIT_CODE" -ne 0 ]; then
 fi
 
 # ---------- CHECK 5: flake.lock validation (WARN / HARD for pinning) ---------
-echo "[5/8] Validating flake.lock..."
+echo "[5/9] Validating flake.lock..."
 echo "  --- 5a: flake.lock committed ---"
 if ! test -f flake.lock; then
   warn "flake.lock does not exist — run: nix flake lock"
@@ -316,7 +317,7 @@ fi
 echo ""
 
 # ---------- CHECK 6: Nix formatting (WARN) -----------------------------------
-echo "[6/8] Checking Nix formatting..."
+echo "[6/9] Checking Nix formatting..."
 if command -v nixpkgs-fmt &>/dev/null; then
   if nixpkgs-fmt --check . 2>&1; then
     pass "Nix formatting OK"
@@ -329,7 +330,7 @@ fi
 echo ""
 
 # ---------- CHECK 7: Secret hygiene + backend consistency --------------------
-echo "[7/8] Secret hygiene and backend consistency checks..."
+echo "[7/9] Secret hygiene and backend consistency checks..."
 TRACKED_NIX=$(git ls-files '*.nix' 2>/dev/null || true)
 if [ -z "$TRACKED_NIX" ]; then
   warn "No tracked .nix files found — skipping secret scan"
@@ -448,7 +449,7 @@ fi
 echo ""
 
 # ---------- CHECK 8: vexos-update package builds --------------------------
-echo "[8/8] Building pkgs.vexos.vexos-update (shellcheck runs at build time)..."
+echo "[8/9] Building pkgs.vexos.vexos-update (shellcheck runs at build time)..."
 # writeShellApplication (pkgs/vexos-update/default.nix) shellchecks the script
 # as part of the build — this is a fast, standalone way to catch shellcheck
 # regressions even when CHECK 2's full dry-build is skipped (no sudo, no
@@ -458,6 +459,27 @@ if nix build --impure --no-link \
   pass "pkgs.vexos.vexos-update builds (shellcheck passed)"
 else
   fail "pkgs.vexos.vexos-update failed to build — check shellcheck output above"
+  EXIT_CODE=1
+fi
+echo ""
+
+# ---------- CHECK 9: shellcheck on installer scripts (HARD, WARN if no tool) -
+echo "[9/9] Running shellcheck on scripts/*.sh and scripts/lib/*.sh..."
+# These scripts run as root and partition disks, but are not built by Nix, so
+# nothing else lints them. Uses a local shellcheck if present, otherwise fetches
+# one via `nix shell`. Findings fail the run; a missing tool only warns.
+SHELLCHECK_CMD=()
+if command -v shellcheck &>/dev/null; then
+  SHELLCHECK_CMD=(shellcheck)
+elif nix shell nixpkgs#shellcheck -c true &>/dev/null; then
+  SHELLCHECK_CMD=(nix shell nixpkgs#shellcheck -c shellcheck)
+fi
+if [ "${#SHELLCHECK_CMD[@]}" -eq 0 ]; then
+  warn "shellcheck not available (and 'nix shell nixpkgs#shellcheck' failed) — skipping"
+elif "${SHELLCHECK_CMD[@]}" -S warning scripts/*.sh scripts/lib/*.sh 2>&1; then
+  pass "shellcheck -S warning clean (scripts/*.sh, scripts/lib/*.sh)"
+else
+  fail "shellcheck reported findings in scripts/ — see output above"
   EXIT_CODE=1
 fi
 echo ""

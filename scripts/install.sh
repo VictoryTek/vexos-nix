@@ -782,21 +782,46 @@ FEATURESNIX
   fi
 }
 
+# features_unset <nix.option.path>
+# Removes an active assignment of the option, if any. Counterpart to
+# features_set: a re-run of this installer must not leave the previous run's
+# answers behind (features.nix survives across runs, and also holds toggles from
+# `just enable-feature` that this installer must not touch — so only the keys
+# the installer itself manages are ever unset). Commented-out lines have no
+# effect and are left alone. No-op when features.nix does not exist.
+features_unset() {
+  _key="$1"
+  _key_re="$(printf '%s' "$_key" | sed 's/\./\\./g')"
+  if [ -f /etc/nixos/features.nix ] \
+     && grep -qE "^[[:space:]]*${_key_re}[[:space:]]*=" /etc/nixos/features.nix 2>/dev/null; then
+    sudo sed -i -E "/^[[:space:]]*${_key_re}[[:space:]]*=/d" /etc/nixos/features.nix
+    echo -e "  ${GREEN}✓ Removed stale ${_key} from /etc/nixos/features.nix.${RESET}"
+  fi
+}
+
 # Desktop environment — only written when a non-default DE was chosen. GNOME
 # stays the implicit default with no file needed, matching
-# vexos.desktop.environment's own NixOS default.
+# vexos.desktop.environment's own NixOS default. Every other outcome (GNOME, or
+# a non-desktop role) clears any value left by a previous run: features.nix is
+# imported by desktop, htpc and server, and a stale "hyprland" would evaluate
+# cleanly there and silently boot a GUI role with no desktop environment.
 if [ "$ROLE" = "desktop" ] && [ "$DESKTOP_ENV" != "gnome" ]; then
   render_header
   features_set "vexos.desktop.environment" "$DESKTOP_ENV"
   echo -e "  ${GREEN}✓ Desktop environment set to ${DESKTOP_ENV} in /etc/nixos/features.nix.${RESET}"
+else
+  features_unset "vexos.desktop.environment"
 fi
 
 # VM hypervisor — only written for VirtualBox. "qemu" is the option's own NixOS
-# default, so a QEMU/Proxmox guest needs no features.nix entry at all.
+# default, so a QEMU/Proxmox guest needs no features.nix entry at all; any
+# other outcome clears a VirtualBox value left by a previous run.
 if [ "$VM_PLATFORM" = "virtualbox" ]; then
   render_header
   features_set "vexos.vm.platform" "$VM_PLATFORM"
   echo -e "  ${GREEN}✓ VM platform set to ${VM_PLATFORM} in /etc/nixos/features.nix.${RESET}"
+else
+  features_unset "vexos.vm.platform"
 fi
 
 # ---------- Ensure git is available -------------------------------------------
