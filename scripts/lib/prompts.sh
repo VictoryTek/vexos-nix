@@ -19,10 +19,151 @@
 #   full   — redraw the branded header before each prompt and centre the menu
 #            text (install.sh)
 #   plain  — left-aligned lists, no screen clears (default; stateless scripts)
+#
+# Unattended mode: every question can be answered up front through a
+# VEXOS_ANSWER_<NAME> variable, normally set by the flags parse_answer_flags
+# reads (see _answer_usage). VEXOS_YES=1 (--yes) means "never prompt": a question
+# with no answer takes its safe default, or aborts naming the missing flag when it
+# has none. The variables are exported so `curl | bash` hand-offs inherit them.
 # =============================================================================
 # shellcheck disable=SC2034  # answers are globals consumed by the calling script
 
 GUM=""
+
+# ---------- Unattended mode ---------------------------------------------------
+_answer_set() { local v="VEXOS_ANSWER_$1"; [ -n "${!v+x}" ]; }
+_answer()     { local v="VEXOS_ANSWER_$1"; printf '%s' "${!v}"; }
+_unattended() { [ "${VEXOS_YES:-}" = 1 ]; }
+
+# _flag_for <NAME> — the command-line flag that sets VEXOS_ANSWER_<NAME>.
+_flag_for() {
+  case "$1" in
+    ROLE|SERVER_TYPE) echo "--role" ;;
+    DESKTOP_ENV)      echo "--desktop" ;;
+    VARIANT)          echo "--gpu" ;;
+    NVIDIA_SUFFIX)    echo "--nvidia-branch" ;;
+    VM_PLATFORM)      echo "--vm-platform" ;;
+    ASUS)             echo "--asus" ;;
+    GRUB_DEVICE)      echo "--grub-device" ;;
+    EFI_DEVICE)       echo "--efi-device" ;;
+    DISK)             echo "--disk" ;;
+    PASSWORD_HASH)    echo "--password-hash" ;;
+    *)                echo "VEXOS_ANSWER_$1" ;;
+  esac
+}
+
+# _need <NAME> — abort: an unattended run reached a question with no answer and
+# no safe default.
+_need() {
+  echo -e "${RED}✗ Unattended mode (--yes) needs an answer for $(_flag_for "$1") (or VEXOS_ANSWER_$1).${RESET}" >&2
+  exit 1
+}
+
+_answer_usage() {
+  cat <<'EOF'
+Answer flags (skip the matching question; combine with --yes for an unattended run):
+  --role R            desktop | stateless | htpc | server | headless-server | vanilla
+  --desktop D         gnome | cosmic | hyprland          (desktop role; default gnome)
+  --gpu G             amd | nvidia | intel | vm
+  --nvidia-branch B   latest | legacy580                 (nvidia only)
+  --vm-platform P     qemu | virtualbox                  (vm only)
+  --asus A            no | laptop | desktop              (default no)
+  --grub-device DEV   whole disk for GRUB                (legacy BIOS only)
+  --efi-device DEV    EFI partition to mount at /boot    (only if /boot is unmounted)
+  --limine            use Limine instead of systemd-boot (UEFI only; default no)
+  --disk DEV          target disk — ERASED              (stateless, live ISO)
+  --password-hash H   crypt(3) hash for the nimda user   (stateless; e.g. openssl passwd -6)
+  --reboot|--no-reboot  reboot when finished             (default no when unattended)
+  -y, --yes           never prompt: unanswered questions take their default, or abort
+                      when they have none. Also confirms the "proceed" prompt, so
+                      pass --disk explicitly for a stateless install.
+  --flag=value is accepted too. The same answers can be given as VEXOS_ANSWER_<NAME>
+  environment variables (VEXOS_YES=1 for --yes).
+EOF
+}
+
+# parse_answer_flags "$@" — turns the flags above into exported VEXOS_ANSWER_*
+# variables (and VEXOS_YES) so this script and any `curl | bash` child see them.
+# `--role headless-server` is shorthand for server + headless; `--role server`
+# alone means the GUI server.
+parse_answer_flags() {
+  local args=() a name
+  for a in "$@"; do
+    case "$a" in
+      --*=*) args+=("${a%%=*}" "${a#*=}") ;;
+      *)     args+=("$a") ;;
+    esac
+  done
+  set -- "${args[@]+"${args[@]}"}"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --role)           name=ROLE ;;
+      --desktop)        name=DESKTOP_ENV ;;
+      --gpu)            name=VARIANT ;;
+      --nvidia-branch)  name=NVIDIA_SUFFIX ;;
+      --vm-platform)    name=VM_PLATFORM ;;
+      --asus)           name=ASUS ;;
+      --grub-device)    name=GRUB_DEVICE ;;
+      --efi-device)     name=EFI_DEVICE ;;
+      --disk)           name=DISK ;;
+      --password-hash)  name=PASSWORD_HASH ;;
+      --limine)         export VEXOS_ANSWER_LIMINE=yes; shift; continue ;;
+      --reboot)         export VEXOS_ANSWER_REBOOT=yes; shift; continue ;;
+      --no-reboot)      export VEXOS_ANSWER_REBOOT=no;  shift; continue ;;
+      -y|--yes)         export VEXOS_YES=1;             shift; continue ;;
+      -h|--help)        _answer_usage; exit 0 ;;
+      *)
+        echo -e "${RED}✗ Unknown option '$1'.${RESET}" >&2
+        _answer_usage >&2
+        exit 2
+        ;;
+    esac
+    if [ $# -lt 2 ]; then
+      echo -e "${RED}✗ $1 needs a value.${RESET}" >&2
+      exit 2
+    fi
+    export "VEXOS_ANSWER_${name}=$2"
+    shift 2
+  done
+  if _answer_set ROLE; then
+    case "$(_answer ROLE)" in
+      headless-server) export VEXOS_ANSWER_ROLE=server VEXOS_ANSWER_SERVER_TYPE=headless ;;
+      server)          _answer_set SERVER_TYPE || export VEXOS_ANSWER_SERVER_TYPE=gui ;;
+    esac
+  fi
+}
+
+# preset_block_device VAR NAME — resolves VAR from VEXOS_ANSWER_NAME (validated as
+# a block device; aborts if not). Under --yes with no answer, aborts. Returns 1
+# when the run is interactive so the caller falls through to its own prompt.
+preset_block_device() {
+  local var="$1" name="$2" val
+  if _answer_set "$name"; then
+    val="$(_answer "$name")"
+  elif _unattended; then
+    _need "$name"
+  else
+    return 1
+  fi
+  if [ ! -b "$val" ]; then
+    echo -e "${RED}✗ $(_flag_for "$name") '${val}' is not a block device.${RESET}" >&2
+    exit 1
+  fi
+  printf -v "$var" '%s' "$val"
+}
+
+# preset_yes_no NAME UNATTENDED_DEFAULT — sets PRESET_YN to yes|no from
+# VEXOS_ANSWER_NAME, or from UNATTENDED_DEFAULT under --yes. Returns 1 when the
+# run is interactive so the caller asks.
+preset_yes_no() {
+  if _answer_set "$1"; then
+    PRESET_YN="$(_answer "$1")"
+  elif _unattended; then
+    PRESET_YN="$2"
+  else
+    return 1
+  fi
+}
 
 # ---------- gum (nice interactive prompts, best-effort) ----------------------
 # Fetched at runtime from the nixpkgs binary cache, same pattern as the git
@@ -30,6 +171,7 @@ GUM=""
 # empty and every prompt below uses its plain read-based form.
 init_gum() {
   local store
+  _unattended && return 0  # nothing will be prompted, so don't fetch it
   if command -v gum >/dev/null 2>&1; then
     GUM="gum"
   else
@@ -102,6 +244,27 @@ ask_choice() {
     labels+=("${e#*:}")
   done
 
+  # Preset answer (VEXOS_ANSWER_<VAR>): matched against the same values/aliases
+  # the interactive prompt accepts, case-insensitively. Anything else aborts —
+  # in an unattended run a typo must fail loudly, not fall through to a prompt.
+  local preset="VEXOS_ANSWER_${__var}" want i
+  if [ -n "${!preset+x}" ]; then
+    want="${!preset,,}"
+    for i in "${!names[@]}"; do
+      if [[ "${names[$i]}" == *",${want},"* ]]; then
+        printf -v "$__var" '%s' "${values[$i]}"
+        return 0
+      fi
+    done
+    echo -e "${RED}✗ Invalid $(_flag_for "$__var") '${!preset}'. Valid: $(printf '%s, ' "${values[@]}" | sed 's/, $//').${RESET}" >&2
+    exit 1
+  fi
+  if _unattended; then
+    [ -n "$default" ] || _need "$__var"
+    printf -v "$__var" '%s' "$default"
+    return 0
+  fi
+
   local hint="" nameable=true
   for v in "${values[@]}"; do
     case "$v" in ""|-*) nameable=false ;; esac
@@ -111,7 +274,7 @@ ask_choice() {
     if [ -n "$default" ]; then hint=" or name (default: ${default})"; fi
   fi
 
-  local result="" picked=false draw=true input error="" i list
+  local result="" picked=false draw=true input error="" list
   if [ -n "${GUM:-}" ]; then
     _prompt_break
     [ -n "$preamble" ] && echo -e "$preamble"
@@ -191,8 +354,8 @@ ask_nvidia_branch() {
     "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}
 ${YELLOW}Wrong choice? Run this script again and switch.${RESET}
 " \
-    ":Latest     — RTX, GTX 16xx, GTX 750 and newer" \
-    "-legacy580:Legacy 580 — Maxwell/Pascal/Volta (580.x, required)"
+    ",latest:Latest     — RTX, GTX 16xx, GTX 750 and newer" \
+    "-legacy580,legacy580:Legacy 580 — Maxwell/Pascal/Volta (580.x, required)"
 }
 
 # ask_vm_platform → VM_PLATFORM (qemu | virtualbox)
@@ -212,6 +375,19 @@ ask_vm_platform() {
 ask_asus() {
   ASUS_ENABLE=false
   ASUS_LAPTOP=false
+  if _answer_set ASUS; then
+    case "$(_answer ASUS | tr '[:upper:]' '[:lower:]')" in
+      no|none|false) ;;
+      laptop)        ASUS_ENABLE=true; ASUS_LAPTOP=true ;;
+      desktop)       ASUS_ENABLE=true ;;
+      *)
+        echo -e "${RED}✗ Invalid --asus '$(_answer ASUS)'. Valid: no, laptop, desktop.${RESET}" >&2
+        exit 1
+        ;;
+    esac
+    return 0
+  fi
+  _unattended && return 0  # default: not an ASUS device
   _prompt_break
   echo -e "${BOLD}Is this an ASUS ROG/TUF device?${RESET}"
   echo "  Laptop: enables asusd (fan curves, charge limit), supergfxctl, power-profiles-daemon"
@@ -229,6 +405,18 @@ ask_asus() {
 # the binary cache when missing and use the absolute store path.
 ask_password() {
   local openssl pw pw2
+  # Unattended: a ready-made crypt hash only — a plaintext password on a command
+  # line would end up in ps output and shell history.
+  if _answer_set PASSWORD_HASH; then
+    HASHED_PW="$(_answer PASSWORD_HASH)"
+    if [[ ! "$HASHED_PW" =~ ^\$[0-9a-z]+\$ ]]; then
+      echo -e "${RED}✗ --password-hash must be a crypt(3) hash such as one from 'openssl passwd -6' (single-quote it: it contains \$).${RESET}" >&2
+      exit 1
+    fi
+    echo -e "${GREEN}  ✓ Using the supplied password hash.${RESET}"
+    return 0
+  fi
+  _unattended && _need PASSWORD_HASH
   if command -v openssl &>/dev/null; then
     openssl="openssl"
   else

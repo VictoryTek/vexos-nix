@@ -23,7 +23,7 @@ prerequisite for most of the cleanup below it.
 | 5 | `VEXOS_REV` pin does not cover the config; `disko` unpinned | Correctness | S | ☑ |
 | 6 | ASUS patch fails open | Bug | S | ☑ (dissolved by 3) |
 | 7 | Fake progress bar hides real build state | UX | M | ☑ |
-| 8 | No unattended / non-interactive mode | Gap | M | ☐ |
+| 8 | No unattended / non-interactive mode | Gap | M | ☑ (CI VM job not done) |
 | 9 | Divergent install-swap policies | Inconsistency | S | ☐ |
 | 10 | No resume after a failed `nixos-install` | UX | M | ☐ |
 | 11 | Stale comments + dead code | Hygiene | S | ☐ |
@@ -436,6 +436,49 @@ Accept `--role`, `--gpu`, `--nvidia-branch`, `--vm-platform`, `--desktop`,
 interactive prompt when absent. Pairs naturally with item 4: each `ask_*` function
 returns its flag value when set and prompts otherwise. Then add a CI job that runs
 a full install in a VM.
+
+### Resolution
+One mechanism: every question reads a `VEXOS_ANSWER_<NAME>` variable; the flags are
+sugar that set and export them (so the `curl | bash` hand-offs inherit them, and
+`install.sh` forwards them through `sudo` to `migrate-to-stateless.sh`).
+`VEXOS_YES=1` / `--yes` means "never prompt": an unanswered question takes a safe
+default (no ASUS, no Limine, no reboot, GNOME) or aborts naming the missing flag
+when it has none (role, GPU, NVIDIA branch, VM platform, disk, password). Logic
+lives in `scripts/lib/prompts.sh` (`parse_answer_flags`, `preset_block_device`,
+`preset_yes_no`, presets inside `ask_choice`/`ask_asus`/`ask_password`), so all three
+scripts share it — item 4's `ask_*`-sets-a-global design is what made this small.
+
+Flags: `--role` (incl. `headless-server`), `--desktop`, `--gpu`, `--nvidia-branch`,
+`--vm-platform`, `--asus`, `--grub-device`, `--efi-device`, `--limine`, `--disk`,
+`--password-hash`, `--reboot`/`--no-reboot`, `--yes`; `--flag=value` accepted;
+`--help` lists them. Beyond the audit's list, because they also block a no-TTY run:
+the GRUB/EFI device prompts, the Limine question, the destructive "proceed"
+confirmations and the reboot prompts. A typo in a preset aborts (never falls
+through to a prompt). Presets accept the same values/aliases as the interactive
+prompt, case-insensitively.
+
+Decisions to be aware of:
+- **Password:** hash only (`--password-hash`, e.g. from `openssl passwd -6`); a
+  plaintext password on a command line would land in `ps` and shell history.
+- **`--yes` confirms the disk-erasing prompt**, but `--disk` must be passed
+  explicitly — an unattended stateless install aborts rather than guessing a disk.
+- `run_live_build` now streams plain output (no cursor animation) when stdout is not
+  a terminal, keeping the same log / exit-code contract, so CI logs stay readable.
+- `init_gum` is skipped under `--yes`; README has a short "Unattended install"
+  section.
+
+Verified with no controlling terminal (`setsid`, stdin `/dev/null`, so any stray
+`/dev/tty` read would fail): 39 cases across flag parsing, every preset, `--yes`
+defaults and aborts, block-device validation, and `run_live_build` non-tty
+(no escape codes, exit codes kept); the real `install.sh` for `--help` (rc 0),
+`--bogus` (rc 2), `--yes` alone (aborts naming `--role`) and an invalid `--gpu`;
+plus a 9-case interactive pty regression (both styles). Preflight exit 0.
+
+**Not done:** the audit's "add a CI job that runs a full install in a VM".
+Everything needed to drive one now exists, but the job itself (a NixOS VM in
+GitHub Actions running `install.sh --yes …`) is a separate piece of work. **Not
+verified:** an end-to-end unattended install on a real machine, and the
+`sudo`-forwarded env reaching `migrate-to-stateless.sh` (depends on sudoers policy).
 
 ### Verification
 A fully-flagged invocation completes with no TTY attached.

@@ -80,6 +80,9 @@ _load_lib() {
   source /dev/stdin <<<"$src"
 }
 _load_lib bootstrap.sh || { echo "error: could not load scripts/lib/bootstrap.sh (pinned to ${VEXOS_REV})." >&2; exit 1; }
+# Answer flags / --yes for an unattended run (also inherited from install.sh
+# through the environment); see --help.
+parse_answer_flags "$@"
 
 # ---------- Header -----------------------------------------------------------
 echo ""
@@ -106,6 +109,7 @@ echo ""
 
 # ---------- Prompt: target disk ---------------------------------------------
 DISK=""
+preset_block_device DISK DISK || true  # --disk; else prompt below
 while [ -z "$DISK" ]; do
   printf "Enter the disk device to install to (e.g. /dev/nvme0n1 or /dev/sda): "
   read -r DISK_INPUT </dev/tty
@@ -179,8 +183,12 @@ echo "  Hostname:   ${HOSTNAME}"
 echo "  LUKS:       disabled (no encryption)"
 echo "  Flake target: vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}"
 echo ""
-printf "Proceed with installation? This will ERASE ${DISK}. [y/N] "
-read -r PROCEED </dev/tty
+if preset_yes_no PROCEED yes; then  # --yes confirms; needs an explicit --disk (above)
+  PROCEED="$PRESET_YN"
+else
+  printf "Proceed with installation? This will ERASE ${DISK}. [y/N] "
+  read -r PROCEED </dev/tty
+fi
 case "${PROCEED,,}" in
   y|yes) ;;
   *)
@@ -469,8 +477,12 @@ echo ""
 echo -e "${YELLOW}Note: Passwords changed at runtime do NOT persist across reboots.${RESET}"
 echo -e "${YELLOW}      The password resets to the configured value on every boot (by design).${RESET}"
 echo ""
-printf "Reboot now? [y/N] "
-read -r REBOOT_CHOICE </dev/tty
+if preset_yes_no REBOOT no; then  # --reboot; default no when unattended
+  REBOOT_CHOICE="$PRESET_YN"
+else
+  printf "Reboot now? [y/N] "
+  read -r REBOOT_CHOICE </dev/tty
+fi
 case "${REBOOT_CHOICE,,}" in
   y|yes)
     echo "Rebooting..."

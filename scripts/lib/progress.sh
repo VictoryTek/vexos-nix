@@ -150,6 +150,15 @@ run_live_build() {
   # shellcheck disable=SC2034  # BUILD_LOG_PATH is this function's output contract
   BUILD_LOG_PATH="$build_log"
 
+  # Not a terminal (unattended run, CI, output piped to a file): the cursor-
+  # addressed animation would only fill the log with escape codes, so stream the
+  # build output plainly and keep the same log/exit-code contract.
+  if [ ! -t 1 ]; then
+    echo "$title"
+    "$@" 2>&1 | tee "$build_log" || exit_code="${PIPESTATUS[0]}"
+    return "$exit_code"
+  fi
+
   # _truncate_to_width <text> <max> — returns <text> unchanged if it fits, else
   # the first max-1 characters + an ellipsis. redraw_frame clears the tip line
   # with a single \033[2K (one physical row); an untruncated tip wider than the

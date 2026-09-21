@@ -74,6 +74,9 @@ _load_lib() {
   source /dev/stdin <<<"$src"
 }
 _load_lib bootstrap.sh || { echo "error: could not load scripts/lib/bootstrap.sh (pinned to ${VEXOS_REV})." >&2; exit 1; }
+# Answer flags / --yes for an unattended run (also inherited from install.sh
+# through the environment); see --help.
+parse_answer_flags "$@"
 
 BTRFS_MOUNT="/mnt/vexos-migrate-btrfs"
 HW_CONFIG="/etc/nixos/hardware-configuration.nix"
@@ -212,8 +215,12 @@ echo -e "${YELLOW}${BOLD}  This will modify /etc/nixos/hardware-configuration.ni
 echo -e "${YELLOW}  A backup will be saved to: ${HW_CONFIG_BAK}${RESET}"
 echo ""
 
-printf "Proceed with migration? [y/N] "
-read -r PROCEED </dev/tty
+if preset_yes_no PROCEED yes; then  # --yes confirms
+  PROCEED="$PRESET_YN"
+else
+  printf "Proceed with migration? [y/N] "
+  read -r PROCEED </dev/tty
+fi
 case "${PROCEED,,}" in
   y|yes) ;;
   *)
@@ -531,8 +538,12 @@ echo -e "${YELLOW}the Btrfs partition remains but is not mounted. You can reclai
 echo -e "${YELLOW}that space later by booting from a live ISO and deleting the root${RESET}"
 echo -e "${YELLOW}subvolume contents (keep only @nix and @persist).${RESET}"
 echo ""
-printf "Reboot now? [y/N] "
-read -r REBOOT_CHOICE </dev/tty
+if preset_yes_no REBOOT no; then  # --reboot; default no when unattended
+  REBOOT_CHOICE="$PRESET_YN"
+else
+  printf "Reboot now? [y/N] "
+  read -r REBOOT_CHOICE </dev/tty
+fi
 case "${REBOOT_CHOICE,,}" in
   y|yes)
     echo "Rebooting..."

@@ -9,6 +9,10 @@
 # Or clone first and run locally:
 #   bash scripts/install.sh
 #
+# Unattended (no prompts, no TTY needed): answer every question with flags and add
+# --yes. `bash scripts/install.sh --help` lists them; through curl, pass them after `bash -s --`:
+#   curl -fsSL .../scripts/install.sh | bash -s -- --role desktop --gpu amd --yes
+#
 # This is the only command needed: if /etc/nixos/flake.nix is missing the script
 # downloads the wrapper (template/etc-nixos-flake.nix) itself. Requires NixOS
 # already installed, with /etc/nixos/hardware-configuration.nix present.
@@ -74,6 +78,9 @@ _load_lib() {
   source /dev/stdin <<<"$src"
 }
 _load_lib bootstrap.sh || { echo "error: could not load scripts/lib/bootstrap.sh (pinned to ${VEXOS_REV})." >&2; exit 1; }
+# Answer flags / --yes for an unattended run (see --help); exported so the
+# stateless hand-off scripts inherit them.
+parse_answer_flags "$@"
 init_gum
 
 # ---------- Flake wrapper ----------------------------------------------------
@@ -172,8 +179,13 @@ if [ "$ROLE" = "stateless" ]; then
     # builds from it, so the wrapper must exist before the hand-off.
     ensure_flake_wrapper
     # sudo resets the environment by default, so plain `export` above would not
-    # reach this child — pass VEXOS_REV explicitly on the sudo command line.
-    curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/migrate-to-stateless.sh" | sudo VEXOS_REV="${VEXOS_REV}" bash
+    # reach this child — pass VEXOS_REV, and any answers given as flags, explicitly
+    # on the sudo command line.
+    _sudo_env=(VEXOS_REV="${VEXOS_REV}")
+    for _n in VEXOS_YES "${!VEXOS_ANSWER_@}"; do
+      [ -n "${!_n+x}" ] && _sudo_env+=("${_n}=${!_n}")
+    done
+    curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/migrate-to-stateless.sh" | sudo "${_sudo_env[@]}" bash
     exit 0
   fi
 fi
@@ -330,6 +342,7 @@ if [ ! -d /sys/firmware/efi ]; then
   echo "  not a partition. Provide the disk device, not a partition number."
   echo ""
   GRUB_DEVICE=""
+  preset_block_device GRUB_DEVICE GRUB_DEVICE || true  # --grub-device; else prompt below
   while [ -z "$GRUB_DEVICE" ]; do
     if [ -n "$GUM" ]; then
       GRUB_DEVICE="$(ui_input "Enter disk device for GRUB" "/dev/sda, /dev/nvme0n1")"
@@ -383,7 +396,10 @@ else
     echo ""
     lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT 2>/dev/null || true
     echo ""
-    if [ -n "$GUM" ]; then
+    EFI_DEV=""
+    if preset_block_device EFI_DEV EFI_DEVICE; then  # --efi-device
+      :
+    elif [ -n "$GUM" ]; then
       EFI_DEV="$(ui_input "Enter EFI partition device" "/dev/sda1, /dev/nvme0n1p1")"
     else
       printf "  Enter EFI partition device (e.g. /dev/sda1, /dev/nvme0n1p1): "
@@ -416,7 +432,9 @@ else
     :
   else
     echo ""
-    if [ -n "$GUM" ]; then
+    if preset_yes_no LIMINE no; then  # --limine; default no when unattended
+      if [ "$PRESET_YN" = "yes" ]; then USE_LIMINE=true; fi
+    elif [ -n "$GUM" ]; then
       if ui_confirm "Use Limine instead of the default systemd-boot? (opt-in, dual-boot-friendly)"; then
         USE_LIMINE=true
       fi
@@ -685,7 +703,9 @@ if run_live_build "Building ${FLAKE_TARGET}..." \
   fi
   echo ""
   REBOOT_NOW=true
-  if [ -n "$GUM" ]; then
+  if preset_yes_no REBOOT no; then  # --reboot / --no-reboot; default no when unattended
+    [ "$PRESET_YN" = "yes" ] || REBOOT_NOW=false
+  elif [ -n "$GUM" ]; then
     ui_confirm "Reboot now?" || REBOOT_NOW=false
   else
     printf "Reboot now? [Y/n] "

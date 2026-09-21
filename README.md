@@ -32,6 +32,17 @@ curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/i
 
 The script downloads the flake wrapper into `/etc/nixos` if it isn't there yet, asks which role and which GPU variant to install (AMD, NVIDIA, Intel, or VM), runs the build, and offers to reboot when complete. After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild.
 
+### Unattended install
+
+Every question can be answered with a flag, and `--yes` means "never prompt" — no terminal is needed. Anything left unanswered takes a safe default (no ASUS, no Limine, no reboot, GNOME) or aborts naming the missing flag.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh \
+  | bash -s -- --role desktop --gpu amd --yes
+```
+
+Run with `--help` for the full list (`--desktop`, `--nvidia-branch`, `--vm-platform`, `--asus`, `--grub-device`, `--efi-device`, `--limine`, `--reboot`, and for a stateless install `--disk` and `--password-hash`). The same answers can be given as `VEXOS_ANSWER_<NAME>` environment variables. `--yes` also confirms the destructive "proceed" prompt of the stateless installer, so it only runs when you have passed `--disk` explicitly.
+
 
 ## How it works
 
