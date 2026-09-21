@@ -22,7 +22,7 @@ prerequisite for most of the cleanup below it.
 | 4 | Prompt/bootstrap logic triplicated across 3 scripts | Duplication | M | ☑ |
 | 5 | `VEXOS_REV` pin does not cover the config; `disko` unpinned | Correctness | S | ☑ |
 | 6 | ASUS patch fails open | Bug | S | ☑ (dissolved by 3) |
-| 7 | Fake progress bar hides real build state | UX | M | ☐ |
+| 7 | Fake progress bar hides real build state | UX | M | ☑ |
 | 8 | No unattended / non-interactive mode | Gap | M | ☐ |
 | 9 | Divergent install-swap policies | Inconsistency | S | ☐ |
 | 10 | No resume after a failed `nixos-install` | UX | M | ☐ |
@@ -388,6 +388,32 @@ one or two lines of `$build_log` beneath the bar each frame. Better: drive
 counts into the percentage. Note the frame loop already clears exactly the five
 lines it rewrites (`progress.sh:186-194`) and truncates to terminal width to avoid
 wrap artefacts — any added line must follow the same discipline.
+
+### Resolution
+Took the cheap option, in `scripts/lib/progress.sh` (shared, so all three
+installers get it): each frame now also draws a status line — an elapsed clock
+plus the last line of the build log, e.g. `[12:34] building 'linux-7.2.drv'...` —
+with `/nix/store/<hash>-` prefixes, ANSI escapes and CRs stripped for display
+only (the log file itself is untouched, so the callers' `tail -n 60` on failure
+still shows full paths). Frames are 6 rows instead of 5 and keep the
+clear-only-what-you-rewrite discipline; the line is cut to `cols-2` with an
+ellipsis so it never wraps.
+
+Deliberately **not** done: `--log-format internal-json`. `run_live_build` wraps
+three different commands (`nixos-rebuild`, `nixos-rebuild boot`, `nixos-install`)
+and every caller's failure path prints the raw log for a human; internal-json
+would make that unreadable and need a parser per call site. The status line
+answers the actual question (slow or hung?) from plain Nix output.
+
+The bar itself is still the time-based curve — it now only signals "alive"; the
+status line is the real information. If a true percentage is wanted later, the
+"these N derivations will be built" / "N paths will be fetched" lines in the log
+are the plain-text source for it (units differ, so it needs a design decision).
+
+Verified under a pty with a fake nix-style build: 80 and 40 columns (truncation
+at 78/38), ANSI/CR/store-hash stripping, exactly 6 rows cleared per frame, and a
+failing build (exit code preserved, animation dropped, log intact). Not verified
+against a real multi-hour build or a real-terminal resize.
 
 ### Verification
 Run a build with at least one from-source derivation and confirm the displayed

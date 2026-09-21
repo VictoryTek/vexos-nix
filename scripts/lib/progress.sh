@@ -124,19 +124,22 @@ VEXOS_TIPS=(
 )
 
 # run_live_build "<title>" <command...> — runs <command...> in the background
-# with its real output captured to a temp log (not shown live: nixos-rebuild's
-# own output is too voluminous/low-signal to watch line by line), while a
-# cursor-addressed progress bar + rotating tip redraw in place below the
-# already-drawn logo. Progress is a simple time-based asymptotic curve, since
-# there's no reliable step count to grep for. Sets BUILD_LOG_PATH so the caller
-# can show the log on failure (the transparency this trades away by not
-# streaming output live).
+# with its real output captured to a temp log (not streamed: nixos-rebuild's own
+# output is too voluminous to watch line by line), while a cursor-addressed
+# progress bar, a live status line and a rotating tip redraw in place below the
+# already-drawn logo. The bar is a simple time-based asymptotic curve — there's
+# no reliable overall step count to grep for — so it only shows that the build is
+# alive. The status line is the real signal: an elapsed clock plus the last line
+# of the log, which for a slow from-source build names the derivation being built
+# (e.g. "[12:34] building 'linux-7.2.drv'..."), so a long build is distinguishable
+# from a hung one. Sets BUILD_LOG_PATH so the caller can show the log on failure.
 #
-# Each frame clears only the 5 lines it's about to rewrite (\033[2K per line)
+# Each frame clears only the 6 lines it's about to rewrite (\033[2K per line)
 # instead of \033[J — clearing the whole region every 0.5s visibly flashed on
 # real terminals. Cols, the centered title, every tip's centered text, and
 # dyn_row are recomputed by recompute_layout(), called once before the loop and
-# again only after a confirmed SIGWINCH (terminal resize).
+# again only after a confirmed SIGWINCH (terminal resize). The status line is
+# truncated to one terminal row for the same reason as the tips.
 run_live_build() {
   local title="$1"; shift
   local build_log exit_code=0 dyn_row
@@ -161,6 +164,19 @@ run_live_build() {
     fi
   }
 
+  # _status_line <log> <elapsed-seconds> — "[mm:ss] <last line of the log>",
+  # centred and cut to one row. Control characters/ANSI escapes are stripped and
+  # /nix/store/<hash>- prefixes dropped, so "building '/nix/store/abc…-foo.drv'..."
+  # reads "building 'foo.drv'...". Only the log's tail is read (it can be huge).
+  _status_line() {
+    local log="$1" secs="$2" last text
+    last="$(tail -n 5 "$log" 2>/dev/null | tr -d '\r' \
+      | sed -E 's/\x1b\[[0-9;?]*[a-zA-Z]//g; s#/nix/store/[a-z0-9]{32}-##g; s/\t/ /g' \
+      | grep -v '^[[:space:]]*$' | tail -n 1 || true)"
+    printf -v text '[%02d:%02d] %s' $(( secs / 60 )) $(( secs % 60 )) "${last:-starting…}"
+    center_block "$(_truncate_to_width "$text" $(( cols - 2 )))"
+  }
+
   recompute_layout() {
     cols=$(tput cols 2>/dev/null || echo 80)
     bar_pad=$(( (cols - bar_width) / 2 ))
@@ -181,16 +197,17 @@ run_live_build() {
   "$@" >"$build_log" 2>&1 &
   local build_pid=$!
 
-  # redraw_frame <percent> <tip-index-or-empty> — <empty> tip index means the
-  # final (100% or blank) frame; still draws the title/bar, clears the tip line.
+  # redraw_frame <percent> <status-line> <tip> — either text may be empty (the
+  # final frame has no live status); the lines are still cleared, not skipped.
   redraw_frame() {
-    local frame_pct="$1" frame_tip="$2"
+    local frame_pct="$1" frame_status="$2" frame_tip="$3"
     printf '\033[%d;1H' "$dyn_row"
     printf '\033[2K%b\n' "${BOLD}${centered_title}${RESET}"
     printf '\033[2K\n'
     printf '\033[2K%*s%b%b%b %s%%\n' "$bar_pad" '' "$VEXOS_TEAL" "$(progress_bar "$frame_pct" "$bar_width")" "$RESET" "$frame_pct"
+    printf '\033[2K%b\n' "$frame_status"
     printf '\033[2K\n'
-    printf '\033[2K%b\n' "${frame_tip:-}"
+    printf '\033[2K%b\n' "$frame_tip"
   }
 
   trap 'resized=1' WINCH
@@ -206,19 +223,19 @@ run_live_build() {
     elapsed=$(( EPOCHSECONDS - start_epoch ))
     pct=$(( 92 * elapsed / (elapsed + 60) ))
     tip_idx=$(( (elapsed / 6) % tip_count ))
-    redraw_frame "$pct" "${centered_tips[$tip_idx]}"
+    redraw_frame "$pct" "$(_status_line "$build_log" "$elapsed")" "${centered_tips[$tip_idx]}"
     sleep 0.5
   done
   wait "$build_pid" || exit_code=$?
 
   if (( exit_code == 0 )); then
-    redraw_frame 100 "$(center_block "Full build log: $build_log")"
+    redraw_frame 100 "" "$(center_block "Full build log: $build_log")"
   else
     printf '\033[%d;1H\033[J' "$dyn_row"  # failing — drop the animation entirely
   fi
   printf '\033[?25h'
   trap - WINCH
-  unset -f redraw_frame recompute_layout _truncate_to_width
+  unset -f redraw_frame recompute_layout _truncate_to_width _status_line
   return $exit_code
 }
 
