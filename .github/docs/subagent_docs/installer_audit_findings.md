@@ -19,7 +19,7 @@ prerequisite for most of the cleanup below it.
 | 1 | `features.nix` never reset on re-run | Bug | S | ☑ |
 | 2 | No shellcheck coverage of `scripts/*.sh` | Gap | S | ☑ |
 | 3 | Text-patching `flake.nix` instead of side-file imports | Fragility | M | ☑ |
-| 4 | Prompt/bootstrap logic triplicated across 3 scripts | Duplication | M | ☐ |
+| 4 | Prompt/bootstrap logic triplicated across 3 scripts | Duplication | M | ☑ |
 | 5 | `VEXOS_REV` pin does not cover the config; `disko` unpinned | Correctness | S | ☐ |
 | 6 | ASUS patch fails open | Bug | S | ☑ (dissolved by 3) |
 | 7 | Fake progress bar hides real build state | UX | M | ☐ |
@@ -248,6 +248,40 @@ Both stateless scripts then inherit the `gum` UI for free. Preserve the existing
 best-effort fallback contract: every helper must degrade to a plain `read` prompt
 when `gum` is unavailable.
 
+### Resolution
+Spec: `installer_shared_libs_spec.md`. Added `scripts/lib/bootstrap.sh` (colours,
+loads `progress.sh` with its plain fallbacks, loads `prompts.sh`) and
+`scripts/lib/prompts.sh` (`ui_*`, `init_gum`, a generic `ask_choice`, `ask_yes_no`,
+`ask_gpu_variant`, `ask_nvidia_branch`, `ask_vm_platform`, `ask_asus`,
+`ask_password`). `ask_choice` replaced the six hand-written numbered-menu loops
+in `install.sh` (including role / server type / desktop env, which the audit did
+not list) and the stateless copies. Each script keeps only `VEXOS_REV`
+resolution and a ~15-line `_load_lib` stub — the unavoidable chicken-and-egg.
+The stateless scripts now get the gum arrow-key UI; total across the three
+scripts + libs went 2427 → 2299 lines.
+
+Design points worth knowing:
+- `ask_*` set globals instead of echoing (a fallback menu inside `$( )` would be
+  swallowed) — this is also the shape item 8 (`--gpu` etc. flags) needs.
+- `VEXOS_PROMPT_STYLE=full` (set only by `install.sh`) keeps its centred menus and
+  header redraw; the stateless scripts stay plain, so nothing was restyled.
+- Behaviour changes: a lib that cannot be loaded now aborts with a clear message
+  (only the cosmetic `progress.sh` still degrades to plain output); prompt wording
+  is generated ("Enter choice [1-N] or name (…)"); NVIDIA hints print above the
+  menu everywhere; password prompt reads "Password (hidden):" in both scripts.
+- Also resolves the first item-11 bullet (stale "only VirtualBox writes
+  features.nix" comments): those blocks are gone, replaced by one accurate
+  comment on `ask_vm_platform`.
+- Found and fixed while testing: the old `center_block() { cat; }` fallback in
+  `install.sh` ignored its argument (`center_block` takes text as `$1`, not stdin).
+
+Verified by driving the real libs under a pty with scripted input (28 cases:
+number / name / alias / case / default / empty / invalid-then-valid for every
+`ask_*`, both styles, mismatched-then-matching password) plus a stub `gum` for
+the value mapping, and by running each script's real loader stub against a fake
+`curl` in ok / prompts-missing / fetch-fails modes. Not run on a live ISO or
+against the real `gum` binary.
+
 ### Verification
 `bash -n` + `shellcheck` on all four files; run each script to the first prompt
 with and without `gum` on `PATH` and confirm both paths render.
@@ -407,10 +441,8 @@ offered and completes.
 
 **Severity:** Hygiene. Flagged, not to be removed except where noted.
 
-- `stateless-setup.sh:192-195` and `migrate-to-stateless.sh:391-394` both claim
-  "only VirtualBox writes `/etc/nixos/features.nix`" — the code writes
-  `vm-platform.nix` (`stateless-setup.sh:482`, `migrate-to-stateless.sh:495`).
-  Stale comment; safe to correct alongside item 4.
+- ~~`stateless-setup.sh:192-195` and `migrate-to-stateless.sh:391-394` claim
+  "only VirtualBox writes `/etc/nixos/features.nix`"~~ — resolved by item 4.
 - `stateless-setup.sh:29-35` — `cleanup()` removes `/tmp/disk-password`, which is
   never created: LUKS is hardwired off at `stateless-setup.sh:288-291`. Pre-existing
   dead code; flagged per CLAUDE.md, do not delete unless explicitly asked.

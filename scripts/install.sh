@@ -49,108 +49,32 @@ export VEXOS_REV
 
 SCRIPT_URL="https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/install.sh"
 
-# ---------- Color helpers (only if stdout is a TTY with color support) -------
-# shellcheck disable=SC2034  # VEXOS_ORANGE is consumed by the sourced lib/progress.sh
-if [ -t 1 ] && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
-  RED='\033[0;31m'
-  GREEN='\033[0;32m'
-  YELLOW='\033[0;33m'
-  CYAN='\033[0;36m'
-  BOLD='\033[1m'
-  RESET='\033[0m'
-  # Brand colors sampled from files/pixmaps/*/vex.png (teal wordmark, orange
-  # shield accent), brightened slightly for legibility on a terminal background.
-  VEXOS_TEAL='\033[38;2;20;166;184m'
-  VEXOS_ORANGE='\033[38;2;232;121;12m'
-else
-  RED='' GREEN='' YELLOW='' CYAN='' BOLD='' RESET='' VEXOS_TEAL='' VEXOS_ORANGE=''
-fi
-
-# ---------- Shared full-screen build-progress UI ----------------------------
-# VEXOS_LOGO / center_block / render_header / progress_bar / render_progress /
-# VEXOS_TIPS / run_live_build + the best-effort chafa PNG logo render live in
-# scripts/lib/progress.sh so install.sh, stateless-setup.sh and
-# migrate-to-stateless.sh all draw the identical screen. Sourced from the local
-# checkout when run as `bash scripts/install.sh`, otherwise fetched pinned to
-# this run's commit (same mechanism as every other file this script pulls).
-# Keep this loader block in sync across the three installer scripts.
-# shellcheck disable=SC2034  # read by render_header in the sourced lib/progress.sh
+# ---------- Shared libs ------------------------------------------------------
+# Colours, the full-screen build-progress UI (lib/progress.sh) and the prompts
+# (lib/prompts.sh: gum arrow-key UI with plain read fallbacks) are shared with
+# stateless-setup.sh and migrate-to-stateless.sh, so they live in scripts/lib/
+# and are pulled in through lib/bootstrap.sh. Only this stub is duplicated: it
+# has to run before anything can be fetched.
+# shellcheck disable=SC2034  # read by the sourced libs
 VEXOS_INSTALLER_TITLE="VexOS Interactive Installer"
-_load_progress_lib() {
+# shellcheck disable=SC2034  # read by the sourced libs
+VEXOS_PROMPT_STYLE="full"
+# _load_lib NAME — source scripts/lib/NAME from the local checkout when run as
+# `bash scripts/install.sh`, otherwise fetch it pinned to this run's commit (same
+# mechanism as every other file this script pulls). Returns 1 on failure.
+_load_lib() {
   local local_lib src
-  local_lib="$(dirname "$0")/lib/progress.sh"
+  local_lib="$(dirname "$0")/lib/$1"
   if [ -f "$local_lib" ]; then
     src="$(cat "$local_lib")"
   else
-    src="$(curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/lib/progress.sh" 2>/dev/null || true)"
+    src="$(curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/lib/$1" 2>/dev/null || true)"
   fi
-  [ -n "$src" ] && printf '%s' "$src" | grep -q 'run_live_build()' || return 1
+  [ -n "$src" ] || return 1
   source /dev/stdin <<<"$src"
 }
-if ! _load_progress_lib; then
-  echo -e "${YELLOW}Warning: could not load lib/progress.sh — falling back to plain output.${RESET}" >&2
-  center_block() { cat; }
-  render_header() { clear 2>/dev/null || true; }
-  render_progress() { echo -e "${VEXOS_TEAL:-}→ [${2}/${3}]${RESET:-} ${BOLD:-}${1}${RESET:-}"; }
-  progress_bar() { :; }
-  run_live_build() {
-    local t="$1"; shift
-    echo -e "${BOLD:-}${t}${RESET:-}"
-    BUILD_LOG_PATH="$(mktemp "${TMPDIR:-/tmp}/vexos-install-build.XXXXXX.log")"
-    "$@" 2>&1 | tee "$BUILD_LOG_PATH"
-    return "${PIPESTATUS[0]}"
-  }
-fi
-
-# ---------- gum (nice interactive prompts, best-effort) ----------------------
-# Fetched at runtime from the nixpkgs binary cache, same pattern as the git
-# fallback below. If unavailable (offline, cache unreachable), $GUM stays empty
-# and every ui_* helper below falls back to the plain read-based prompt it wraps.
-GUM=""
-if command -v gum >/dev/null 2>&1; then
-  GUM="gum"
-else
-  _GUM_STORE="$(nix --extra-experimental-features 'nix-command flakes' \
-    build nixpkgs#gum --no-link --print-out-paths 2>/dev/null || true)"
-  if [ -n "$_GUM_STORE" ] && [ -x "$_GUM_STORE/bin/gum" ]; then
-    GUM="$_GUM_STORE/bin/gum"
-  fi
-fi
-
-# ui_choose "$title" "value1:label1" "value2:label2" ... — prints $title, lets the
-# user arrow-key through the labels, echoes the chosen value on stdout.
-# --padding indents the widget by $HEADER_PAD to roughly line up with the
-# centered logo above it — gum has no --align flag for interactive widgets,
-# only --padding, so this approximates centering rather than reflowing it.
-ui_choose() {
-  local title="$1"; shift
-  local values=() labels=()
-  local pair
-  for pair in "$@"; do
-    values+=("${pair%%:*}")
-    labels+=("${pair#*:}")
-  done
-  local chosen
-  chosen="$("$GUM" choose --header "$title" --padding "0 0 0 ${HEADER_PAD:-0}" "${labels[@]}" </dev/tty)"
-  local i
-  for i in "${!labels[@]}"; do
-    if [ "${labels[$i]}" = "$chosen" ]; then
-      echo "${values[$i]}"
-      return 0
-    fi
-  done
-  return 1
-}
-
-# ui_confirm "$prompt" — exit status 0 = yes, 1 = no (matches `if ui_confirm ...`).
-ui_confirm() {
-  "$GUM" confirm --padding "0 0 0 ${HEADER_PAD:-0}" "$1" </dev/tty
-}
-
-# ui_input "$prompt" "$placeholder" — echoes the entered text on stdout.
-ui_input() {
-  "$GUM" input --header "$1" --placeholder "$2" --padding "0 0 0 ${HEADER_PAD:-0}" </dev/tty
-}
+_load_lib bootstrap.sh || { echo "error: could not load scripts/lib/bootstrap.sh (pinned to ${VEXOS_REV})." >&2; exit 1; }
+init_gum
 
 # ---------- Flake wrapper ----------------------------------------------------
 # /etc/nixos/flake.nix is the thin wrapper (template/etc-nixos-flake.nix) that
@@ -194,66 +118,18 @@ echo -e "${YELLOW}Verify: https://github.com/VictoryTek/vexos-nix/blob/${VEXOS_R
 echo ""
 
 # ---------- Role selection ---------------------------------------------------
-render_header
-ROLE=""
-if [ -n "$GUM" ]; then
-  ROLE="$(ui_choose "Select your role" \
-    "desktop:Desktop  — Full gaming / workstation stack" \
-    "stateless:Stateless — Minimal build (no gaming / dev / virt / ASUS)" \
-    "htpc:HTPC    — Home theatre PC" \
-    "server:Server  — Server (GUI or Headless)" \
-    "vanilla:Vanilla  — Stock NixOS baseline (system restore)")"
-else
-  while [ -z "$ROLE" ]; do
-    center_block "Select your role:
-  1) Desktop  — Full gaming / workstation stack
-  2) Stateless — Minimal build (no gaming / dev / virt / ASUS)
-  3) HTPC    — Home theatre PC
-  4) Server  — Server (GUI or Headless)
-  5) Vanilla  — Stock NixOS baseline (system restore)"
-    echo ""
-    printf "Enter choice [1-5] or name (desktop / stateless / htpc / server / vanilla): "
-    read -r INPUT </dev/tty
-    case "${INPUT,,}" in
-      1|desktop)  ROLE="desktop"  ;;
-      2|stateless) ROLE="stateless" ;;
-      3|htpc)     ROLE="htpc"     ;;
-      4|server)   ROLE="server"   ;;
-      5|vanilla)  ROLE="vanilla"  ;;
-      *)
-        render_header
-        echo -e "${RED}Invalid selection '${INPUT}'. Choose 1-5 or a role name.${RESET}"
-        ;;
-    esac
-  done
-fi
+ask_choice ROLE "Select your role" "" "" \
+  "desktop:Desktop  — Full gaming / workstation stack" \
+  "stateless:Stateless — Minimal build (no gaming / dev / virt / ASUS)" \
+  "htpc:HTPC    — Home theatre PC" \
+  "server:Server  — Server (GUI or Headless)" \
+  "vanilla:Vanilla  — Stock NixOS baseline (system restore)"
 
 # ---------- Server sub-type selection ----------------------------------------
 if [ "$ROLE" = "server" ]; then
-  render_header
-  SERVER_TYPE=""
-  if [ -n "$GUM" ]; then
-    SERVER_TYPE="$(ui_choose "Select server type" \
-      "headless:Headless Server — CLI only, no desktop environment" \
-      "gui:GUI Server      — GNOME desktop environment")"
-  else
-    while [ -z "$SERVER_TYPE" ]; do
-      center_block "Select server type:
-  1) Headless Server — CLI only, no desktop environment
-  2) GUI Server      — GNOME desktop environment"
-      echo ""
-      printf "Enter choice [1-2] or name (headless / gui): "
-      read -r INPUT </dev/tty
-      case "${INPUT,,}" in
-        1|headless) SERVER_TYPE="headless" ;;
-        2|gui)      SERVER_TYPE="gui"     ;;
-        *)
-          render_header
-          echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
-          ;;
-      esac
-    done
-  fi
+  ask_choice SERVER_TYPE "Select server type" "" "" \
+    "headless:Headless Server — CLI only, no desktop environment" \
+    "gui:GUI Server      — GNOME desktop environment"
 
   if [ "$SERVER_TYPE" = "headless" ]; then
     ROLE="headless-server"
@@ -263,33 +139,10 @@ fi
 # ---------- Desktop environment selection (desktop role only) ----------------
 DESKTOP_ENV="gnome"
 if [ "$ROLE" = "desktop" ]; then
-  render_header
-  if [ -n "$GUM" ]; then
-    DESKTOP_ENV="$(ui_choose "Select desktop environment" \
-      "gnome:GNOME    — Full-featured, most tested (default)" \
-      "cosmic:COSMIC   — System76's new Rust-based desktop" \
-      "hyprland:Hyprland — Tiling Wayland compositor + DankMaterialShell")"
-  else
-    DESKTOP_ENV=""
-    while [ -z "$DESKTOP_ENV" ]; do
-      center_block "Select desktop environment:
-  1) GNOME    — Full-featured, most tested (default)
-  2) COSMIC   — System76's new Rust-based desktop
-  3) Hyprland — Tiling Wayland compositor + DankMaterialShell"
-      echo ""
-      printf "Enter choice [1-3] or name (default: gnome): "
-      read -r INPUT </dev/tty
-      case "${INPUT,,}" in
-        ""|1|gnome)    DESKTOP_ENV="gnome"    ;;
-        2|cosmic)      DESKTOP_ENV="cosmic"   ;;
-        3|hyprland)    DESKTOP_ENV="hyprland" ;;
-        *)
-          render_header
-          echo -e "${RED}Invalid selection '${INPUT}'. Choose 1-3 or a name.${RESET}"
-          ;;
-      esac
-    done
-  fi
+  ask_choice DESKTOP_ENV "Select desktop environment" "gnome" "" \
+    "gnome:GNOME    — Full-featured, most tested (default)" \
+    "cosmic:COSMIC   — System76's new Rust-based desktop" \
+    "hyprland:Hyprland — Tiling Wayland compositor + DankMaterialShell"
 fi
 
 # ---------- Stateless role: auto-detect context and invoke correct script ----
@@ -328,137 +181,28 @@ fi
 # ---------- GPU variant selection --------------------------------------------
 VARIANT=""
 if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || [ "$ROLE" = "headless-server" ] || [ "$ROLE" = "stateless" ] || [ "$ROLE" = "vanilla" ]; then
-  render_header
-  if [ -n "$GUM" ]; then
-    VARIANT="$(ui_choose "Select your GPU variant" \
-      "amd:AMD    — AMD GPU (RADV, ROCm, LACT)" \
-      "nvidia:NVIDIA — NVIDIA GPU (proprietary, open kernel modules)" \
-      "intel:Intel  — Intel iGPU or Arc dGPU" \
-      "vm:VM     — QEMU/KVM or VirtualBox guest")"
-  else
-    while [ -z "$VARIANT" ]; do
-      center_block "Select your GPU variant:
-  1) AMD    — AMD GPU (RADV, ROCm, LACT)
-  2) NVIDIA — NVIDIA GPU (proprietary, open kernel modules)
-  3) Intel  — Intel iGPU or Arc dGPU
-  4) VM     — QEMU/KVM or VirtualBox guest"
-      echo ""
-      printf "Enter choice [1-4] or name (amd / nvidia / intel / vm): "
-      read -r INPUT </dev/tty
-      case "${INPUT,,}" in          # ${var,,} = lowercase (bash 4+)
-        1|amd)    VARIANT="amd"    ;;
-        2|nvidia) VARIANT="nvidia" ;;
-        3|intel)  VARIANT="intel"  ;;
-        4|vm)     VARIANT="vm"     ;;
-        *)
-          render_header
-          echo -e "${RED}Invalid selection '${INPUT}'. Please enter 1, 2, 3, 4, amd, nvidia, intel, or vm.${RESET}"
-          ;;
-      esac
-    done
-  fi
+  ask_gpu_variant
 fi
 
 # ---------- VM hypervisor selection ------------------------------------------
-# QEMU/KVM and VirtualBox need different guest packages, and VirtualBox pins the
-# kernel to 6.18 LTS to keep its guest additions building. Asking here means a
-# Proxmox/QEMU guest keeps its role's own kernel instead of inheriting that pin.
+# See ask_vm_platform (lib/prompts.sh) for why this is asked up front.
 VM_PLATFORM=""
 if [ "$VARIANT" = "vm" ]; then
-  render_header
-  if [ -n "$GUM" ]; then
-    VM_PLATFORM="$(ui_choose "Select your hypervisor" \
-      "qemu:QEMU/KVM  — Proxmox, libvirt, plain QEMU (guest agent + SPICE)" \
-      "virtualbox:VirtualBox — Guest Additions, shared folders (pins kernel 6.18 LTS)")"
-  else
-    while [ -z "$VM_PLATFORM" ]; do
-      center_block "Select your hypervisor:
-  1) QEMU/KVM  — Proxmox, libvirt, plain QEMU (guest agent + SPICE)
-  2) VirtualBox — Guest Additions, shared folders (pins kernel 6.18 LTS)"
-      echo ""
-      printf "Enter choice [1-2] or name (qemu / virtualbox): "
-      read -r INPUT </dev/tty
-      case "${INPUT,,}" in
-        1|qemu|kvm|proxmox) VM_PLATFORM="qemu"       ;;
-        2|virtualbox|vbox)  VM_PLATFORM="virtualbox" ;;
-        *)
-          render_header
-          echo -e "${RED}Invalid selection '${INPUT}'. Please enter 1, 2, qemu, or virtualbox.${RESET}"
-          ;;
-      esac
-    done
-  fi
+  ask_vm_platform
 fi
 
 # ---------- NVIDIA driver branch selection -----------------------------------
 # Vanilla always uses the kernel nouveau driver — no proprietary driver branches.
 NVIDIA_SUFFIX=""
 if [ "$VARIANT" = "nvidia" ]; then
-  render_header
-  echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"
-  echo -e "${YELLOW}Wrong choice? Run this installer again and switch.${RESET}"
-  echo ""
-
-  if [ -n "$GUM" ]; then
-    NVIDIA_SUFFIX="$(ui_choose "Select NVIDIA driver branch" \
-      ":Latest     — RTX, GTX 16xx, GTX 750 and newer" \
-      "-legacy580:Legacy 580 — Maxwell/Pascal/Volta (580.x, required)")"
-  else
-    while true; do
-      center_block "Select NVIDIA driver branch:
-  1) Latest     — RTX, GTX 16xx, GTX 750 and newer
-  2) Legacy 580 — Maxwell/Pascal/Volta (580.x, required)"
-      echo ""
-      printf "Enter choice [1-2]: "
-      read -r INPUT </dev/tty
-      case "${INPUT}" in
-        1) NVIDIA_SUFFIX="";           break ;;
-        2) NVIDIA_SUFFIX="-legacy580"; break ;;
-        *)
-          render_header
-          echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"
-          echo -e "${YELLOW}Wrong choice? Run this installer again and switch.${RESET}"
-          echo ""
-          echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}"
-          ;;
-      esac
-    done
-  fi
+  ask_nvidia_branch
 fi
 
 # ---------- ASUS ROG/TUF hardware ------------------------------------------
 ASUS_ENABLE=false
 ASUS_LAPTOP=false
 if [ "$VARIANT" != "vm" ]; then
-  render_header
-  echo -e "${BOLD}Is this an ASUS ROG/TUF device?${RESET}"
-  echo "  Laptop: enables asusd (fan curves, charge limit), supergfxctl, power-profiles-daemon"
-  echo "  Desktop: enables OpenRGB for ASUS Aura motherboard RGB control"
-  echo ""
-  if [ -n "$GUM" ]; then
-    if ui_confirm "ASUS ROG/TUF device?"; then ASUS_ENABLE=true; else ASUS_ENABLE=false; fi
-  else
-    printf "ASUS ROG/TUF device? [y/N] "
-    read -r INPUT </dev/tty
-    case "${INPUT,,}" in
-      y|yes) ASUS_ENABLE=true ;;
-      *)     ASUS_ENABLE=false ;;
-    esac
-  fi
-
-  if [ "$ASUS_ENABLE" = "true" ]; then
-    render_header
-    if [ -n "$GUM" ]; then
-      if ui_confirm "Is this device a laptop?"; then ASUS_LAPTOP=true; else ASUS_LAPTOP=false; fi
-    else
-      printf "Is this device a laptop? [y/N] "
-      read -r INPUT </dev/tty
-      case "${INPUT,,}" in
-        y|yes) ASUS_LAPTOP=true ;;
-        *)     ASUS_LAPTOP=false ;;
-      esac
-    fi
-  fi
+  ask_asus
 fi
 
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}${NVIDIA_SUFFIX}"

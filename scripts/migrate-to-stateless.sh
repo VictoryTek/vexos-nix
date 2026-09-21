@@ -38,18 +38,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ---------- Color helpers (only if TTY with color support) -------------------
-if [ -t 1 ] && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
-  RED='\033[0;31m'
-  GREEN='\033[0;32m'
-  YELLOW='\033[0;33m'
-  CYAN='\033[0;36m'
-  BOLD='\033[1m'
-  RESET='\033[0m'
-else
-  RED='' GREEN='' YELLOW='' CYAN='' BOLD='' RESET=''
-fi
-
 # ---------- Resolve one commit for this run (for the shared progress lib) ----
 # Normally inherited from install.sh, which resolves and exports VEXOS_REV
 # before handing off here. Resolve it ourselves for a direct `curl | bash` run
@@ -64,36 +52,28 @@ if [ -z "${VEXOS_REV:-}" ]; then
   VEXOS_REV="$("$_REV_GIT" ls-remote https://github.com/VictoryTek/vexos-nix main | cut -f1)"
 fi
 
-# ---------- Shared full-screen build-progress UI ----------------------------
-# render_header / run_live_build + the brand-logo progress screen live in
-# scripts/lib/progress.sh (shared with install.sh and stateless-setup.sh) so
-# all three installers draw the identical screen. Fetched pinned to this run's
-# commit; on any load failure the fallbacks below run the build with plain
-# streaming output. Keep this loader block in sync across the three scripts.
-# shellcheck disable=SC2034  # read by render_header in the sourced lib/progress.sh
+# ---------- Shared libs ------------------------------------------------------
+# Colours, the full-screen build-progress UI (lib/progress.sh) and the prompts
+# (lib/prompts.sh) are shared with install.sh and stateless-setup.sh, so they
+# live in scripts/lib/ and are pulled in through lib/bootstrap.sh. Only this
+# stub is duplicated: it has to run before anything can be fetched.
+# shellcheck disable=SC2034  # read by the sourced libs
 VEXOS_INSTALLER_TITLE="VexOS Stateless Migration"
-_load_progress_lib() {
+# _load_lib NAME — source scripts/lib/NAME from the local checkout when run as
+# `bash scripts/migrate-to-stateless.sh`, otherwise fetch it pinned to this run's
+# commit (VEXOS_REV, resolved above). Returns 1 on failure.
+_load_lib() {
   local local_lib src
-  local_lib="$(dirname "$0")/lib/progress.sh"
+  local_lib="$(dirname "$0")/lib/$1"
   if [ -f "$local_lib" ]; then
     src="$(cat "$local_lib")"
   else
-    src="$(curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/lib/progress.sh" 2>/dev/null || true)"
+    src="$(curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/lib/$1" 2>/dev/null || true)"
   fi
-  [ -n "$src" ] && printf '%s' "$src" | grep -q 'run_live_build()' || return 1
+  [ -n "$src" ] || return 1
   source /dev/stdin <<<"$src"
 }
-if ! _load_progress_lib; then
-  echo -e "${YELLOW}Warning: could not load lib/progress.sh — falling back to plain output.${RESET}" >&2
-  render_header() { :; }
-  run_live_build() {
-    local t="$1"; shift
-    echo -e "${BOLD}${t}${RESET}"
-    BUILD_LOG_PATH="$(mktemp "${TMPDIR:-/tmp}/vexos-build.XXXXXX.log")"
-    "$@" 2>&1 | tee "$BUILD_LOG_PATH"
-    return "${PIPESTATUS[0]}"
-  }
-fi
+_load_lib bootstrap.sh || { echo "error: could not load scripts/lib/bootstrap.sh (pinned to ${VEXOS_REV})." >&2; exit 1; }
 
 BTRFS_MOUNT="/mnt/vexos-migrate-btrfs"
 HW_CONFIG="/etc/nixos/hardware-configuration.nix"
@@ -342,74 +322,23 @@ cp "${TMPFILE}" "${HW_CONFIG}"
 rm -f "${TMPFILE}"
 echo -e "${GREEN}  ✓ Filesystem declarations appended.${RESET}"
 
-# ---------- GPU variant prompt -----------------------------------------------
-echo ""
-echo -e "${BOLD}Select your GPU variant:${RESET}"
-echo "  1) AMD    — AMD GPU (RADV, ROCm, LACT)"
-echo "  2) NVIDIA — NVIDIA GPU (proprietary, open kernel modules)"
-echo "  3) Intel  — Intel iGPU or Arc dGPU"
-echo "  4) VM     — QEMU/KVM or VirtualBox guest"
-echo ""
+# ---------- Prompts: GPU, NVIDIA branch, hypervisor --------------------------
+# Shared with the other installers via lib/prompts.sh (gum is best-effort).
+init_gum
 
 VARIANT=""
-while [ -z "$VARIANT" ]; do
-  printf "Enter choice [1-4] or name (amd / nvidia / intel / vm): "
-  read -r INPUT </dev/tty
-  case "${INPUT,,}" in
-    1|amd)    VARIANT="amd"    ;;
-    2|nvidia) VARIANT="nvidia" ;;
-    3|intel)  VARIANT="intel"  ;;
-    4|vm)     VARIANT="vm"     ;;
-    *)
-      echo -e "${RED}Invalid selection. Please enter 1, 2, 3, 4, amd, nvidia, intel, or vm.${RESET}"
-      ;;
-  esac
-done
+ask_gpu_variant
 
-# ---------- NVIDIA driver branch -------------------------------------------
 NVIDIA_SUFFIX=""
 if [ "$VARIANT" = "nvidia" ]; then
-  echo ""
-  echo -e "${BOLD}Select NVIDIA driver branch:${RESET}"
-  echo "  1) Latest     — RTX, GTX 16xx, GTX 750 and newer"
-  echo "  2) Legacy 580 — Maxwell/Pascal/Volta (580.x, required)"
-  echo ""
-  echo -e "${YELLOW}Not sure? Check: https://www.nvidia.com/en-us/drivers/unix/legacy-gpu/${RESET}"
-  echo -e "${YELLOW}Wrong choice? Run this script again and switch.${RESET}"
-  echo ""
-  while true; do
-    printf "Enter choice [1-2]: "
-    read -r INPUT </dev/tty
-    case "${INPUT}" in
-      1) NVIDIA_SUFFIX="";           break ;;
-      2) NVIDIA_SUFFIX="-legacy580"; break ;;
-      *) echo -e "${RED}Invalid selection '${INPUT}'. Choose 1 or 2.${RESET}" ;;
-    esac
-  done
+  ask_nvidia_branch
 fi
 
-# ---------- VM hypervisor selection -----------------------------------------
-# QEMU/KVM and VirtualBox need different guest packages, and VirtualBox pins
-# the kernel to 6.18 LTS to keep its guest additions building. "qemu" is the
-# vexos.vm.platform default, so only VirtualBox writes /etc/nixos/features.nix.
+# "qemu" is the vexos.vm.platform default, so only VirtualBox writes
+# /etc/nixos/vm-platform.nix (see below).
 VM_PLATFORM=""
 if [ "$VARIANT" = "vm" ]; then
-  echo ""
-  echo -e "${BOLD}Select your hypervisor:${RESET}"
-  echo "  1) QEMU/KVM  — Proxmox, libvirt, plain QEMU (guest agent + SPICE)"
-  echo "  2) VirtualBox — Guest Additions, shared folders (pins kernel 6.18 LTS)"
-  echo ""
-  while [ -z "$VM_PLATFORM" ]; do
-    printf "Enter choice [1-2] or name (qemu / virtualbox): "
-    read -r INPUT </dev/tty
-    case "${INPUT,,}" in
-      1|qemu|kvm|proxmox) VM_PLATFORM="qemu"       ;;
-      2|virtualbox|vbox)  VM_PLATFORM="virtualbox" ;;
-      *)
-        echo -e "${RED}Invalid selection '${INPUT}'. Please enter 1, 2, qemu, or virtualbox.${RESET}"
-        ;;
-    esac
-  done
+  ask_vm_platform
 fi
 
 # ---------- Preserve existing user password -----------------------------------
@@ -433,34 +362,7 @@ if [[ "${EXISTING_HASH}" == '$'* ]]; then
 else
   echo -e "${YELLOW}  No password hash for ${DETECTED_USER} found in /etc/shadow (locked or no password set).${RESET}"
   echo -e "${BOLD}  Please set a new login password for the stateless installation:${RESET}"
-  # Stock NixOS installs do not include openssl in PATH; fetch it from the
-  # binary cache when missing (same pattern as the git bootstrap in install.sh).
-  if command -v openssl &>/dev/null; then
-    OPENSSL="openssl"
-  else
-    echo -e "${CYAN}  openssl not found on this system — fetching from nixpkgs binary cache...${RESET}"
-    OPENSSL="$(nix --extra-experimental-features 'nix-command flakes' \
-      build nixpkgs#openssl.bin --no-link --print-out-paths)/bin/openssl"
-  fi
-  while true; do
-    printf "  New password (hidden): "
-    read -rs PW </dev/tty
-    echo ""
-    if [ -z "$PW" ]; then
-      echo -e "${RED}  Password cannot be empty. Please set a password.${RESET}"
-      continue
-    fi
-    printf "  Confirm password:  "
-    read -rs PW2 </dev/tty
-    echo ""
-    if [ "$PW" = "$PW2" ]; then
-      HASHED_PW=$(printf '%s' "$PW" | "$OPENSSL" passwd -6 -stdin)
-      echo -e "${GREEN}  ✓ Password accepted.${RESET}"
-      break
-    else
-      echo -e "${RED}  Passwords do not match. Try again.${RESET}"
-    fi
-  done
+  ask_password
 fi
 
 if [ -n "$HASHED_PW" ]; then
