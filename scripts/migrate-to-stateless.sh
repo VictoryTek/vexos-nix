@@ -417,19 +417,19 @@ fi
 # nixos-rebuild boot (below) builds the entire target closure on whatever swap
 # the currently-running system already has — which may be none on a fresh
 # test VM, and a from-source build under memory pressure can OOM regardless of
-# the VM's RAM. @persist was just created above, so mount it again and swap on
-# a file there (same path/size modules/impermanence.nix expects for the
-# installed system), using the same Btrfs-aware creation NixOS's own swap
-# module uses. Released by the cleanup() trap and again explicitly below,
-# before the later independent re-mount of this volume for the /nix sync step.
+# the VM's RAM. @persist was just created above, so mount it again and let
+# ensure_install_swap (lib/swap.sh) create a file there (same path/size
+# modules/impermanence.nix expects for the installed system) — guarded the
+# same way install.sh's own swapfile is (skipped when RAM+swap already covers
+# it; previously unconditional here). Released by the cleanup() trap and again
+# explicitly below, before the later independent re-mount of this volume for
+# the /nix sync step. Left on disk either way, same reasoning as
+# stateless-setup.sh's identical swapfile — see its comment.
 echo ""
-echo -e "${BOLD}Activating temporary swap for the build (8 GiB on @persist)...${RESET}"
 mkdir -p "${BTRFS_MOUNT}"
 mount -o subvolid=5 "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}" 2>/dev/null || \
   mount "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}"
-btrfs filesystem mkswapfile --size 8192M --uuid clear "${BTRFS_MOUNT}/@persist/swapfile"
-swapon "${BTRFS_MOUNT}/@persist/swapfile"
-echo -e "${GREEN}  ✓ Temporary build-time swap active.${RESET}"
+ensure_install_swap "${BTRFS_MOUNT}/@persist/swapfile" 8192
 
 # ---------- nixos-rebuild boot -----------------------------------------------
 # CRITICAL: Use 'boot' instead of 'switch'.

@@ -227,18 +227,18 @@ echo -e "${GREEN}${BOLD}✓ Disk formatted and mounted at /mnt.${RESET}"
 # the live ISO, which has no swap of its own — a from-source build under
 # memory pressure can OOM the installer regardless of how much RAM the target
 # machine/VM has. modules/impermanence.nix declares a persistent swapfile at
-# /persistent/swapfile for the *installed* system, but that only activates on
-# first boot of the new generation; it does nothing during this install.
-# Create and swap on that same file now (same path/size the module expects),
-# using the same Btrfs-aware creation NixOS's own swap module uses, so the
-# live ISO has real overflow capacity for the build. First boot's swap
-# activation will find a correctly-sized file already in place and reuse it
-# rather than recreating it.
+# /persistent/swapfile for the *installed* system (auto-created there via
+# `btrfs filesystem mkswapfile` on first boot if missing), but that does
+# nothing during this install. ensure_install_swap (lib/swap.sh) creates that
+# same file now (same path/size the module expects) so the live ISO has real
+# overflow capacity for the build — guarded the same way install.sh's own
+# swapfile is (skipped when RAM+swap already covers it; previously
+# unconditional here). Unlike install.sh's scratch file, this one is left on
+# disk either way: if created, first boot's swap activation finds a
+# correctly-sized file already in place and reuses it rather than recreating
+# it; if skipped (guard), first boot creates it itself.
 echo ""
-echo -e "${BOLD}Activating temporary swap for the install (8 GiB on /mnt/persistent)...${RESET}"
-sudo btrfs filesystem mkswapfile --size 8192M --uuid clear /mnt/persistent/swapfile
-sudo swapon /mnt/persistent/swapfile
-echo -e "${GREEN}  ✓ Temporary install-time swap active.${RESET}"
+ensure_install_swap /mnt/persistent/swapfile 8192
 
 # ---------- Generate hardware configuration ---------------------------------
 echo ""

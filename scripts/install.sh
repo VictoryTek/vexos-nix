@@ -245,16 +245,16 @@ INSTALL_CACHE_OPTS=(
 )
 
 # ---------- Temporary install swap -------------------------------------------
-# One full evaluation of a desktop configuration peaks around 1.7 GiB, and the
-# packages that are in no binary cache at all (up, vexportal — Rust release
-# builds) come on top of that. A 2-4 GiB guest with no swap gets killed by the
-# OOM killer mid-install. The installed system provisions its own swap
-# (modules/system.nix); this covers the window before that exists.
+# ensure_install_swap (lib/swap.sh) guards creation on RAM/filesystem/free
+# space — see its own comment. Unlike the stateless scripts' swapfile (which
+# becomes the *installed* system's permanent swap — see their comments), this
+# one is scratch space only: the installed system provisions its own separate
+# swap at a different path (modules/system.nix), so this file is always
+# deleted on exit.
 VEXOS_INSTALL_SWAP="/var/vexos-install-swap"
-SWAP_CREATED=false
 
 cleanup_install_swap() {
-  if [ "$SWAP_CREATED" = "true" ]; then
+  if [ "${INSTALL_SWAP_ACTIVE:-false}" = "true" ]; then
     sudo swapoff "$VEXOS_INSTALL_SWAP" 2>/dev/null || true
     sudo rm -f "$VEXOS_INSTALL_SWAP"
   fi
@@ -262,54 +262,7 @@ cleanup_install_swap() {
 trap cleanup_install_swap EXIT
 
 setup_install_swap() {
-  local mem_kb swap_kb total_gib root_fs free_mib
-  mem_kb=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
-  swap_kb=$(awk '/^SwapTotal:/{print $2}' /proc/meminfo)
-  total_gib=$(( (mem_kb + swap_kb) / 1048576 ))
-  echo ""
-  echo -e "${CYAN}Memory available to the build: $(( mem_kb / 1048576 )) GiB RAM + $(( swap_kb / 1048576 )) GiB swap.${RESET}"
-
-  if [ "$total_gib" -ge 8 ]; then
-    return 0
-  fi
-
-  root_fs=$(findmnt -n -o FSTYPE / 2>/dev/null || echo unknown)
-  if [ "$root_fs" = "tmpfs" ] || [ "$root_fs" = "zfs" ]; then
-    echo -e "${YELLOW}⚠ Root filesystem is ${root_fs} — cannot add a temporary swapfile."
-    echo -e "  With under 8 GiB total the build may be killed by the OOM killer;"
-    echo -e "  raise the machine's RAM if it fails.${RESET}"
-    return 0
-  fi
-
-  free_mib=$(df -P -BM / | awk 'NR==2{sub(/M$/,"",$4); print $4}')
-  if [ "${free_mib:-0}" -lt 10240 ]; then
-    echo -e "${YELLOW}⚠ Less than 10 GiB free on / — skipping the temporary swapfile.${RESET}"
-    return 0
-  fi
-
-  echo -e "${CYAN}Under 8 GiB total — adding a temporary 4 GiB swapfile for the build...${RESET}"
-  sudo rm -f "$VEXOS_INSTALL_SWAP"
-  # Whole creation runs in a subshell so a failure is best-effort (consumed by
-  # `if`) instead of aborting the installer under `set -e`.
-  if ( set -e
-       if [ "$root_fs" = "btrfs" ]; then
-         # A plain file cannot be swapped on btrfs (needs nocow + nodatasum);
-         # `mkswapfile` creates it with the required attributes.
-         sudo btrfs filesystem mkswapfile --size 4g "$VEXOS_INSTALL_SWAP"
-       else
-         # dd rather than fallocate: swapon rejects the unwritten extents
-         # fallocate leaves behind on ext4.
-         sudo dd if=/dev/zero of="$VEXOS_INSTALL_SWAP" bs=1M count=4096 status=none
-         sudo chmod 600 "$VEXOS_INSTALL_SWAP"
-         sudo mkswap -q "$VEXOS_INSTALL_SWAP"
-       fi
-       sudo swapon "$VEXOS_INSTALL_SWAP" ); then
-    SWAP_CREATED=true
-    echo -e "${GREEN}✓ Temporary 4 GiB swapfile active (removed when the installer exits).${RESET}"
-  else
-    sudo rm -f "$VEXOS_INSTALL_SWAP"
-    echo -e "${YELLOW}⚠ Could not activate a temporary swapfile — continuing without it.${RESET}"
-  fi
+  ensure_install_swap "$VEXOS_INSTALL_SWAP" 4096
 }
 
 # Always use 'boot' instead of 'switch': nixos-rebuild switch restarts

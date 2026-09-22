@@ -24,7 +24,7 @@ prerequisite for most of the cleanup below it.
 | 6 | ASUS patch fails open | Bug | S | ☑ (dissolved by 3) |
 | 7 | Fake progress bar hides real build state | UX | M | ☑ |
 | 8 | No unattended / non-interactive mode | Gap | M | ☑ (CI VM job not done) |
-| 9 | Divergent install-swap policies | Inconsistency | S | ☐ |
+| 9 | Divergent install-swap policies | Inconsistency | S | ☑ |
 | 10 | No resume after a failed `nixos-install` | UX | M | ☐ |
 | 11 | Stale comments + dead code | Hygiene | S | ☐ |
 | 12 | **Overhaul:** no live-ISO path for 5 of 6 roles | Architecture | L | ☐ |
@@ -506,6 +506,57 @@ wrong — but the guards differ for no documented reason.
 Extract one `ensure_install_swap()` into `scripts/lib/`, parameterised by size and
 target path, carrying `install.sh`'s guards. Document why the stateless path uses
 the impermanence-managed location and size.
+
+### Resolution
+Spec: `install_swap_spec.md`. Extracted `ensure_install_swap <path> <size-mib>`
+into a new `scripts/lib/swap.sh`, loaded by `lib/bootstrap.sh` (aborts on load
+failure, same as `prompts.sh` — not cosmetic). Applies `install.sh`'s three
+original guards uniformly (RAM+swap ≥ 8 GiB → skip; target fs is tmpfs/zfs →
+skip; free space under size+6 GiB headroom → skip), parameterised by path and
+size so each caller keeps its own values. Each caller keeps its own EXIT-trap
+cleanup, since their lifecycles genuinely differ:
+- `install.sh`: 4 GiB at `/var/vexos-install-swap`, always deleted on exit —
+  scratch space only; the installed system provisions its own separate swap.
+- `stateless-setup.sh` / `migrate-to-stateless.sh`: 8 GiB matching
+  `modules/impermanence.nix`'s `swapDevices` declaration exactly, left on disk
+  (only `swapoff`, never `rm`) — it becomes the *installed* system's permanent
+  swapfile, not scratch space, so a shared teardown would have been wrong here.
+
+**Finding beyond the audit, from reading `modules/impermanence.nix`:** that
+module's own comment says NixOS auto-creates this exact file via
+`btrfs filesystem mkswapfile` on first boot if it's missing. So the
+stateless scripts' early creation was always an optimization (skip
+re-creating it at boot), not a correctness requirement — which is what makes
+applying the RAM guard to them safe.
+
+**Behaviour change (intended by the audit's "carrying install.sh's guards"):**
+the two stateless scripts previously created their 8 GiB swapfile
+unconditionally; they now skip it under the same conditions `install.sh`
+always has, most commonly ≥8 GiB RAM. The final installed system is unaffected
+either way (see above) — NixOS creates the file at first boot if it's still
+missing. Flagged here since it's a real behaviour change, even though the
+audit's own proposed fix directs it.
+
+**Incidental parity fix:** `install.sh`'s original creation omitted
+`--uuid clear` (both stateless scripts already passed it, to avoid a stale
+swap signature on a freshly wiped disk). The shared function now always
+passes it.
+
+Verified against the real, unmodified `scripts/lib/swap.sh` (sourced directly,
+not reimplemented) under WSL running as root: 8 cases against genuine tmpfs,
+loopback-btrfs and loopback-ext4 filesystems (real `mkfs.btrfs`/`mkfs.ext4`,
+real `losetup`), with `/proc/meminfo` faked both high and low via an `awk`
+shim ahead of the sourced script's real awk calls (a fragile-looking mechanism
+that worked correctly once directed at the exact call pattern) — RAM-guard skip
+regardless of target fs, tmpfs-target skip, real btrfs creation confirmed by
+`swapon --show`, real ext4 creation via the dd+mkswap branch confirmed the same
+way, insufficient-free-space skip, and `findmnt -T` correctly resolving a
+non-mountpoint subdirectory (the exact shape of `migrate-to-stateless.sh`'s
+`@persist/swapfile` target) to its containing filesystem. Fixture teardown
+confirmed clean (no leaked swap/loop devices/mounts). Preflight exit 0.
+**Not verified:** the real `install.sh`/`stateless-setup.sh`/
+`migrate-to-stateless.sh` end to end, or real NVMe/physical-disk paths (only
+loopback images).
 
 ### Verification
 Install on a ≥8 GiB machine and confirm no temporary swapfile is created where the

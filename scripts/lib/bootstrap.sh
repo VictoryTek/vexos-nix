@@ -8,7 +8,8 @@
 # live here, because fetching this file needs VEXOS_REV first.
 #
 # Provides: colour variables, the shared build-progress UI (lib/progress.sh, with
-# plain-output fallbacks) and the shared prompts (lib/prompts.sh).
+# plain-output fallbacks), the shared prompts (lib/prompts.sh), and the shared
+# install-time swapfile guard (lib/swap.sh).
 # Expects: _load_lib, VEXOS_REV and VEXOS_INSTALLER_TITLE from the caller.
 # =============================================================================
 # shellcheck disable=SC2034  # colour variables are consumed by the calling script
@@ -49,5 +50,13 @@ fi
 # Not cosmetic: the scripts cannot ask their questions without it.
 if ! _load_lib prompts.sh; then
   echo -e "${RED}✗ Could not load lib/prompts.sh (pinned to ${VEXOS_REV}) — aborting.${RESET}" >&2
+  exit 1
+fi
+
+# ---------- Shared install-time swap -----------------------------------------
+# Not cosmetic: silently skipping this guard would mean building with no OOM
+# safety net on a low-RAM machine.
+if ! _load_lib swap.sh; then
+  echo -e "${RED}✗ Could not load lib/swap.sh (pinned to ${VEXOS_REV}) — aborting.${RESET}" >&2
   exit 1
 fi
