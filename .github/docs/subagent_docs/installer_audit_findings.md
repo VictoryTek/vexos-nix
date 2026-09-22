@@ -26,7 +26,7 @@ prerequisite for most of the cleanup below it.
 | 8 | No unattended / non-interactive mode | Gap | M | ☑ (CI VM job not done) |
 | 9 | Divergent install-swap policies | Inconsistency | S | ☑ |
 | 10 | No resume after a failed `nixos-install` | UX | M | ☑ |
-| 11 | Stale comments + dead code | Hygiene | S | ☐ |
+| 11 | Stale comments + dead code | Hygiene | S | ☑ (2/4 resolved by 3+4; other 2 deliberately kept) |
 | 12 | **Overhaul:** no live-ISO path for 5 of 6 roles | Architecture | L | ☐ |
 
 ---
@@ -657,6 +657,29 @@ offered and completes.
   `nixConfig`, kept in sync by hand. The comment explains why (standalone
   `curl | bash`, no local checkout). Accepted cost; noted so it is not forgotten
   when cache keys change.
+
+### Resolution
+No code changes: two of the four original bullets were resolved as side
+effects of items 3 and 4 (struck through above, in place before this item was
+reached); the remaining two are explicitly marked in the audit itself as
+"do not delete/change" (dead code the user hasn't asked to remove; an
+accepted, self-documented cost), matching CLAUDE.md's dead-code policy — so
+there is nothing for this item to do beyond confirming the flags themselves
+haven't gone stale.
+
+Re-verified both against the current code (line numbers had shifted from
+items 1-10's edits, content had not):
+- `stateless-setup.sh`'s `cleanup()` still removes `/tmp/disk-password`
+  (now line 37) and LUKS is still hardwired to `"false"` (`LUKS_BOOL`, now
+  line 181) — still genuinely dead, still not touched.
+- `install.sh`'s `INSTALL_CACHE_OPTS` (now line 240) still matches
+  `flake.nix`'s `nixConfig` (line 14) exactly — same two substituter URLs,
+  same two trusted public keys, only their order differs (functionally
+  irrelevant). No drift to flag.
+
+### Verification
+Both re-checked by direct comparison against the current file contents (grep
++ read), not re-derived from the original audit's line numbers.
 
 ---
 
