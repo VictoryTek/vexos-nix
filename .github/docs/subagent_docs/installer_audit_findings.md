@@ -25,7 +25,7 @@ prerequisite for most of the cleanup below it.
 | 7 | Fake progress bar hides real build state | UX | M | ☑ |
 | 8 | No unattended / non-interactive mode | Gap | M | ☑ (CI VM job not done) |
 | 9 | Divergent install-swap policies | Inconsistency | S | ☑ |
-| 10 | No resume after a failed `nixos-install` | UX | M | ☐ |
+| 10 | No resume after a failed `nixos-install` | UX | M | ☑ |
 | 11 | Stale comments + dead code | Hygiene | S | ☐ |
 | 12 | **Overhaul:** no live-ISO path for 5 of 6 roles | Architecture | L | ☐ |
 
@@ -579,6 +579,61 @@ Detect an already-provisioned target (`@nix` and `@persist` present with the
 expected layout) and offer to skip straight to `nixos-install`.
 `migrate-to-stateless.sh:205-220` already does exactly this kind of
 existing-subvolume detection — reuse that approach.
+
+### Resolution
+Spec: `stateless_resume_spec.md`. Implemented in `stateless-setup.sh` only —
+`migrate-to-stateless.sh` has no destructive step to skip (it already detects
+existing subvolumes and just skips creating them; that's the technique this
+item reuses, not a second instance of the same problem). Detection sits right
+before the "Installation summary" block, mirroring where
+`migrate-to-stateless.sh` places its own check:
+- disko's own partition labels for this layout (`disk-main-ESP` /
+  `disk-main-data`, from `template/stateless-disko.nix`'s `disk.main`
+  names — a fixed disko naming convention, not something this script invents)
+  exist as block devices.
+- Both resolve (`lsblk -no PKNAME`) to the **currently selected** `$DISK` —
+  a stale layout left on a different disk is never silently reused.
+- Filesystem types are `vfat`/`btrfs`.
+- `@nix` and `@persist` both show up under `btrfs subvolume show` — the same
+  call `migrate-to-stateless.sh` already makes, just against a not-yet-mounted
+  raw partition instead of an existing root.
+
+If a resumable layout is found, the summary and the confirmation prompt say
+so plainly ("Mode: Resume — reuses the existing layout, disk not erased"
+instead of "will be erased"), and disko itself does the mount —
+`--mode mount` in place of `--mode destroy,format,mount --yes-wipe-all-disks`
+— confirmed via Context7 against current disko docs that `mount` only mounts,
+no destroy/format involved. This is a genuine resume, not just "skip a
+formatting step": `@nix` already holds whatever the failed attempt
+downloaded/built, so the following `nixos-install` reuses it instead of
+starting cold.
+
+New `--wipe` flag (added to `lib/prompts.sh` alongside item 8's `--limine`/
+`--reboot`, same shape) forces a fresh reformat even when resume is possible.
+Interactively, resume is the default (the question is framed "Wipe and start
+over instead of resuming?" so pressing Enter takes the safe path); under
+`--yes` with no `--wipe`, resume is chosen automatically — a silent wipe is
+the wrong default for an unattended run.
+
+Verified against the real, unmodified detection block (extracted verbatim
+from the shipped file with the same awk-range technique used for item 1, not
+retyped) under WSL running as root: built a genuine GPT+partition+btrfs+
+subvolume layout with real `parted`/`mkfs.vfat`/`mkfs.btrfs`/
+`btrfs subvolume create` (not through disko itself — isolates the detection
+logic from the network-fetched disko binary). Four cases: chosen disk matches
+the disk carrying the layout → true; chosen disk is a different, unrelated
+disk → false (the cross-disk guard specifically); a disk that doesn't
+exist → false; partlabels and filesystem types present but `@persist`
+missing → false (the subvolume-presence check specifically, not just the
+coarser partition check). Fixture teardown confirmed clean (one dangling
+by-partlabel symlink from a loopback-specific udev timing quirk, not present
+on real hardware, cleared with `udevadm trigger --action=remove`). Preflight
+exit 0.
+
+**Not verified:** `stateless-setup.sh` end to end (needs a live ISO), a real
+interrupted `nixos-install` recovering via this path, or disko's own
+`--mode mount` against the exact locked disko revision (no real disk hardware
+available from here).
 
 ### Verification
 Interrupt an install during the build, re-run, and confirm the resume path is

@@ -17,6 +17,13 @@
 #   4. Downloads the vexos-nix template flake to /mnt/etc/nixos/
 #   5. Runs nixos-install targeting the chosen vexos-stateless-<variant>
 #
+# Resuming a failed attempt:
+#   If a previous run got as far as formatting the disk but nixos-install then
+#   failed, re-running this script detects the existing @nix/@persist layout
+#   and offers to mount it as-is instead of wiping the disk again — @nix keeps
+#   whatever the failed attempt already downloaded/built. Pass --wipe to force
+#   a fresh reformat instead.
+#
 # SECURITY NOTICE:
 #   This script is fetched from raw.githubusercontent.com and executed directly.
 #   Always verify the source URL above before running.
@@ -173,10 +180,55 @@ HOSTNAME="vexos"
 # Encryption is the responsibility of the hypervisor or physical security policy.
 LUKS_BOOL="false"
 
+# ---------- Check for a resumable previous attempt on this disk -------------
+# A nixos-install failure after disko already formatted the disk (below) would
+# otherwise mean a re-run wipes it and rebuilds the entire closure from
+# nothing — including whatever the failed attempt already downloaded/built
+# into @nix. Detect disko's own layout (partition labels from
+# template/stateless-disko.nix's disk.main.{ESP,data}) already present on the
+# CHOSEN disk specifically, with @nix and @persist subvolumes both there —
+# same btrfs-subvolume-show detection migrate-to-stateless.sh already uses,
+# adapted to raw (not-yet-mounted) partitions rather than an existing root.
+RESUME=false
+_esp_part="/dev/disk/by-partlabel/disk-main-ESP"
+_data_part="/dev/disk/by-partlabel/disk-main-data"
+if [ -b "$_esp_part" ] && [ -b "$_data_part" ] \
+   && [ "/dev/$(lsblk -no PKNAME "$_esp_part" 2>/dev/null)" = "$DISK" ] \
+   && [ "/dev/$(lsblk -no PKNAME "$_data_part" 2>/dev/null)" = "$DISK" ] \
+   && [ "$(lsblk -no FSTYPE "$_esp_part" 2>/dev/null)" = "vfat" ] \
+   && [ "$(lsblk -no FSTYPE "$_data_part" 2>/dev/null)" = "btrfs" ]; then
+  _resume_check_mnt="$(mktemp -d)"
+  if sudo mount -o subvolid=5 "$_data_part" "$_resume_check_mnt" 2>/dev/null; then
+    if sudo btrfs subvolume show "$_resume_check_mnt/@nix" &>/dev/null \
+       && sudo btrfs subvolume show "$_resume_check_mnt/@persist" &>/dev/null; then
+      RESUME=true
+    fi
+    sudo umount "$_resume_check_mnt"
+  fi
+  rmdir "$_resume_check_mnt" 2>/dev/null || true
+fi
+
+if $RESUME; then
+  echo ""
+  echo -e "${YELLOW}${BOLD}An existing VexOS stateless layout was found on ${DISK}${RESET}"
+  echo -e "${YELLOW}(a previous install attempt — @nix and @persist already exist).${RESET}"
+  echo -e "${YELLOW}Resuming reuses whatever was already downloaded/built and skips the wipe.${RESET}"
+  if preset_yes_no WIPE no; then  # --wipe forces a fresh reformat; --yes alone resumes
+    [ "$PRESET_YN" = "yes" ] && RESUME=false
+  elif ask_yes_no "Wipe the disk and start over instead of resuming?"; then
+    RESUME=false
+  fi
+fi
+
 # ---------- Summary and final confirmation ----------------------------------
 echo ""
 echo -e "${BOLD}Installation summary:${RESET}"
 echo "  Disk:       ${DISK}"
+if $RESUME; then
+  echo "  Mode:       Resume — reuses the existing layout, disk not erased"
+else
+  echo "  Mode:       Fresh install — ${DISK} will be erased"
+fi
 echo "  GPU variant: ${VARIANT}${NVIDIA_SUFFIX}"
 [ "$VARIANT" = "vm" ] && echo "  Hypervisor: ${VM_PLATFORM}"
 echo "  Hostname:   ${HOSTNAME}"
@@ -185,6 +237,9 @@ echo "  Flake target: vexos-stateless-${VARIANT}${NVIDIA_SUFFIX}"
 echo ""
 if preset_yes_no PROCEED yes; then  # --yes confirms; needs an explicit --disk (above)
   PROCEED="$PRESET_YN"
+elif $RESUME; then
+  printf "Proceed with installation? Will resume the existing layout on ${DISK}. [y/N] "
+  read -r PROCEED </dev/tty
 else
   printf "Proceed with installation? This will ERASE ${DISK}. [y/N] "
   read -r PROCEED </dev/tty
@@ -205,7 +260,13 @@ echo "  Saved to ${DISKO_TMP}"
 
 # ---------- Run disko --------------------------------------------------------
 echo ""
-echo -e "${BOLD}${RED}DESTRUCTIVE STEP: Formatting ${DISK} with disko...${RESET}"
+DISKO_ARGS=(--mode "destroy,format,mount" --yes-wipe-all-disks)
+if $RESUME; then
+  echo -e "${BOLD}Resuming: mounting the existing layout on ${DISK} (not reformatting)...${RESET}"
+  DISKO_ARGS=(--mode mount)
+else
+  echo -e "${BOLD}${RED}DESTRUCTIVE STEP: Formatting ${DISK} with disko...${RESET}"
+fi
 echo ""
 # disko is a flake input of vexos-nix, so `--inputs-from` runs the revision
 # locked in flake.lock at this run's commit (VEXOS_REV) — not whatever `latest`
@@ -213,14 +274,17 @@ echo ""
 sudo nix \
   --extra-experimental-features 'nix-command flakes' \
   run --inputs-from "github:VictoryTek/vexos-nix/${VEXOS_REV}" disko -- \
-  --mode destroy,format,mount \
-  --yes-wipe-all-disks \
+  "${DISKO_ARGS[@]}" \
   "${DISKO_TMP}" \
   --arg disk "\"${DISK}\"" \
   --arg enableLuks "${LUKS_BOOL}"
 
 echo ""
-echo -e "${GREEN}${BOLD}✓ Disk formatted and mounted at /mnt.${RESET}"
+if $RESUME; then
+  echo -e "${GREEN}${BOLD}✓ Existing layout mounted at /mnt.${RESET}"
+else
+  echo -e "${GREEN}${BOLD}✓ Disk formatted and mounted at /mnt.${RESET}"
+fi
 
 # ---------- Activate temporary install-time swap -----------------------------
 # nixos-install (below) builds the entire target closure while running from

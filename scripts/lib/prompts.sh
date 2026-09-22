@@ -72,6 +72,9 @@ Answer flags (skip the matching question; combine with --yes for an unattended r
   --efi-device DEV    EFI partition to mount at /boot    (only if /boot is unmounted)
   --limine            use Limine instead of systemd-boot (UEFI only; default no)
   --disk DEV          target disk — ERASED              (stateless, live ISO)
+  --wipe              force a fresh reformat of --disk even if a previous
+                      attempt's layout could be resumed instead (stateless;
+                      default: resume when possible)
   --password-hash H   crypt(3) hash for the nimda user   (stateless; e.g. openssl passwd -6)
   --reboot|--no-reboot  reboot when finished             (default no when unattended)
   -y, --yes           never prompt: unanswered questions take their default, or abort
@@ -108,6 +111,7 @@ parse_answer_flags() {
       --disk)           name=DISK ;;
       --password-hash)  name=PASSWORD_HASH ;;
       --limine)         export VEXOS_ANSWER_LIMINE=yes; shift; continue ;;
+      --wipe)           export VEXOS_ANSWER_WIPE=yes;   shift; continue ;;
       --reboot)         export VEXOS_ANSWER_REBOOT=yes; shift; continue ;;
       --no-reboot)      export VEXOS_ANSWER_REBOOT=no;  shift; continue ;;
       -y|--yes)         export VEXOS_YES=1;             shift; continue ;;
