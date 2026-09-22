@@ -61,6 +61,12 @@
     # ProtonPlus, PrismLauncher) — both toggles are needed for those.
     vexos.flatpak.enable = lib.mkDefault false;
 
+    # modules/sunshine.nix defaults vexos.features.sunshine.enable to true (it's the
+    # project's remote-access story on every other role) — override back to false here
+    # for the same reason as flatpak above: vanilla stays stock until explicitly opted
+    # into via /etc/nixos/features.nix.
+    vexos.features.sunshine.enable = lib.mkDefault false;
+
     # ---------- GNOME desktop (stock NixOS default) ----------
     # Mirrors the desktop environment a standard NixOS GNOME install provides.
     # No custom extensions, overlays, or vexos-specific packages.

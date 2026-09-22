@@ -9,7 +9,9 @@
 #   development   — Docker, VSCodium, Python, Node, Go, Claude Code, Nix LSP
 #   print3d       — Blender and OrcaSlicer (via Flatpak)
 #   virtualization — libvirtd/KVM, QEMU-KVM, GNOME Boxes / virt-manager support
-#   sunshine      — Self-hosted Moonlight game-stream host (KMS capture)
+#   sunshine      — Self-hosted Moonlight game-stream host (KMS capture).
+#                   On by default on desktop/server/htpc (the project's remote-access
+#                   story); off by default on vanilla. Set to false below to opt out.
 #
 # Desktop environment (desktop role only) — set via `just switch` or the
 # installer's desktop-environment prompt. Values: gnome (default), cosmic,
@@ -32,7 +34,7 @@
   # vexos.features.development.enable    = false;
   # vexos.features.print3d.enable        = false;
   # vexos.features.virtualization.enable = false;
-  # vexos.features.sunshine.enable       = false;
+  # vexos.features.sunshine.enable       = true;   # default on desktop/server/htpc; set false to opt out
   # vexos.desktop.environment            = "gnome";
   # vexos.vm.platform                    = "qemu";
 }

@@ -1414,10 +1414,18 @@ features: _require-desktop-role
     #!/usr/bin/env bash
     set -euo pipefail
     FEAT_FILE="/etc/nixos/features.nix"
+    # $2 ("on"/"off", default "off") is the module's own default when the option is
+    # absent/commented out in features.nix — sunshine defaults to true in
+    # modules/sunshine.nix, the rest default to false.
     _check() {
         local feat="$1"
+        local default="${2:-off}"
         if grep -qP "vexos\.features\.${feat//./\\.}\.enable\s*=\s*true" "$FEAT_FILE" 2>/dev/null; then
             printf "    \033[32m✓\033[0m %s\n" "$feat"
+        elif grep -qP "vexos\.features\.${feat//./\\.}\.enable\s*=\s*false" "$FEAT_FILE" 2>/dev/null; then
+            printf "    \033[90m✗\033[0m %s\n" "$feat"
+        elif [ "$default" = "on" ]; then
+            printf "    \033[32m✓\033[0m %s (default)\n" "$feat"
         else
             printf "    \033[90m✗\033[0m %s\n" "$feat"
         fi
@@ -1429,7 +1437,7 @@ features: _require-desktop-role
     _check development
     _check print3d
     _check virtualization
-    _check sunshine
+    _check sunshine on
     echo ""
     echo "Use 'just enable-feature <feature>' / 'just disable-feature <feature>' to toggle."
     echo ""

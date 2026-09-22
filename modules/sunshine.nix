@@ -2,15 +2,20 @@
 # Self-hosted Moonlight game-stream host — the project's remote-access
 # solution (GNOME Remote Desktop/RDP has been removed; see modules/gnome.nix).
 #
-# Optional feature — enable on a per-host basis via /etc/nixos/features.nix:
-#   vexos.features.sunshine.enable = true;
+# On by default on every role that imports this file — it's the project's
+# remote-access story, not an optional extra. Opt out on a per-host basis via
+# /etc/nixos/features.nix:
+#   vexos.features.sunshine.enable = false;
 # Toggle with `just enable-feature sunshine` / `just disable-feature sunshine`.
 #
 # Imported unconditionally by: configuration-desktop.nix, configuration-server.nix,
-# configuration-htpc.nix (matching modules/gaming.nix's precedent — the import is
-# unconditional, the config below is gated by the feature option).
+# configuration-htpc.nix, configuration-vanilla.nix (matching modules/gaming.nix's
+# precedent — the import is unconditional, the config below is gated by the feature
+# option). vanilla overrides the default back to false in its own config to preserve
+# its "stays stock" contract — see configuration-vanilla.nix.
 # NOT imported by: configuration-stateless.nix (tmpfs home — Sunshine's paired-client
-# state does not persist across reboots without extra impermanence config)
+# state does not persist across reboots without extra impermanence config),
+# configuration-headless-server.nix (no GUI, nothing to stream)
 #
 # Runs as a systemd --user service tied to graphical-session.target — starts
 # automatically with the auto-login session. No keyring dependency, no root
@@ -30,7 +35,8 @@ let
   cfg = config.vexos.features.sunshine;
 in
 {
-  options.vexos.features.sunshine.enable = lib.mkEnableOption "Sunshine (self-hosted Moonlight game-stream host)";
+  options.vexos.features.sunshine.enable =
+    lib.mkEnableOption "Sunshine (self-hosted Moonlight game-stream host)" // { default = true; };
 
   config = lib.mkIf cfg.enable {
     services.sunshine = {
