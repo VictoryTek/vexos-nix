@@ -48,10 +48,13 @@
     # impermanence has no nixpkgs dependency — follows not required.
     impermanence.url = "github:nix-community/impermanence";
 
-    # disko: disk partitioning/formatting CLI. Used ONLY by scripts/stateless-setup.sh
-    # (fresh stateless install from the live ISO), which runs it pinned to this
-    # lock file's revision via `nix run --inputs-from`. No module from it is
-    # imported — modules/stateless-disk.nix declares the layout itself.
+    # disko: disk partitioning/formatting CLI. Used ONLY by
+    # scripts/bare-metal-install.sh (fresh install of any role from the live
+    # ISO), which runs it pinned to this lock file's revision via
+    # `nix run --inputs-from`. No module from it is imported — the stateless
+    # role's own subvolume layout is declared by modules/stateless-disk.nix;
+    # every other role gets its fileSystems from a freshly generated
+    # hardware-configuration.nix instead.
     disko = {
       url = "github:nix-community/disko/latest";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -232,16 +235,26 @@
       in if builtins.pathExists path then [ path ] else [];
 
     # Optional VM guest platform selector for the stateless role.
-    # Written by stateless-setup.sh / migrate-to-stateless.sh for VirtualBox
+    # Written by bare-metal-install.sh / migrate-to-stateless.sh for VirtualBox
     # guests (QEMU is the vexos.vm.platform default and needs no file). A
     # dedicated file rather than features.nix keeps the stateless role isolated
     # from the desktop feature-toggle options, which it does not declare.
+    #
+    # NOTE: only wired into roles.stateless below, same as
+    # statelessUserOverrideModule — unlike template/etc-nixos-flake.nix (the
+    # wrapper bare-metal-install.sh's own output uses), which now wires
+    # vm-platform.nix into every role uniformly (vexos.vm.platform is declared
+    # by modules/gpu/vm-guest-additions.nix, reachable from any role's `vm`
+    # variant — headless-server and vanilla included). This mkHost path is for
+    # a direct-checkout deployment (not what bare-metal-install.sh produces),
+    # so the same gap exists here for headless-server/vanilla; flagged, not
+    # fixed as part of the live-ISO install overhaul.
     statelessVmPlatformModule =
       let path = /etc/nixos/vm-platform.nix;
       in if builtins.pathExists path then [ path ] else [];
 
     # Optional per-machine user override for the stateless role.
-    # Written by stateless-setup.sh / migrate-to-stateless.sh at install time.
+    # Written by bare-metal-install.sh / migrate-to-stateless.sh at install time.
     # Without this file the compiled-in default is a locked account
     # (hashedPassword = "!") — the setup scripts must run before first use.
     statelessUserOverrideModule =

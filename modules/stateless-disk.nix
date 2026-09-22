@@ -9,9 +9,9 @@
 # Workflow — two supported paths:
 #
 #   Fresh install from ISO:
-#     1. Run scripts/stateless-setup.sh from the NixOS live ISO
+#     1. Run scripts/bare-metal-install.sh from the NixOS live ISO
 #     2. disko CLI formats the disk (creates ESP + Btrfs @nix/@persist subvols)
-#     3. stateless-setup.sh generates hardware-configuration.nix with
+#     3. bare-metal-install.sh generates hardware-configuration.nix with
 #        --no-filesystems and then appends stateless filesystem entries with
 #        neededForBoot = true (same as the migration path below)
 #     4. nixos-install evaluates the config; hardware-configuration.nix entries

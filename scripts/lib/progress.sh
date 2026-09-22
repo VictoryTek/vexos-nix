@@ -3,7 +3,7 @@
 # lib/progress.sh — vexos-nix shared full-screen build-progress UI
 # Repository: https://github.com/VictoryTek/vexos-nix
 #
-# Sourced by scripts/install.sh, scripts/stateless-setup.sh and
+# Sourced by scripts/install.sh, scripts/bare-metal-install.sh and
 # scripts/migrate-to-stateless.sh so all three installers show the identical
 # brand-logo + centered progress-bar + rotating-tip screen while a long build
 # runs. This file is the single source of truth for that UI — do not re-inline

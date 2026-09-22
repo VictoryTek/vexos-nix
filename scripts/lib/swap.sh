@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # =============================================================================
 # scripts/lib/swap.sh — shared temporary install-time swap
-# (install.sh, stateless-setup.sh, migrate-to-stateless.sh).
+# (install.sh, bare-metal-install.sh, migrate-to-stateless.sh).
 #
 # Extracted so the three scripts agree on when a swapfile is worth creating:
 # install.sh guarded on RAM/free-space/filesystem; both stateless scripts

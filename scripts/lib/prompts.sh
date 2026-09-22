@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # scripts/lib/prompts.sh — shared interactive prompts for the installer scripts
-# (install.sh, stateless-setup.sh, migrate-to-stateless.sh).
+# (install.sh, bare-metal-install.sh, migrate-to-stateless.sh).
 #
 # Sourced via scripts/lib/bootstrap.sh, never executed. Expects the colour
 # variables from bootstrap.sh and render_header / center_block from
@@ -71,11 +71,11 @@ Answer flags (skip the matching question; combine with --yes for an unattended r
   --grub-device DEV   whole disk for GRUB                (legacy BIOS only)
   --efi-device DEV    EFI partition to mount at /boot    (only if /boot is unmounted)
   --limine            use Limine instead of systemd-boot (UEFI only; default no)
-  --disk DEV          target disk — ERASED              (stateless, live ISO)
+  --disk DEV          target disk — ERASED              (bare-metal install, live ISO)
   --wipe              force a fresh reformat of --disk even if a previous
-                      attempt's layout could be resumed instead (stateless;
-                      default: resume when possible)
-  --password-hash H   crypt(3) hash for the nimda user   (stateless; e.g. openssl passwd -6)
+                      attempt's layout could be resumed instead (bare-metal
+                      install; default: resume when possible)
+  --password-hash H   crypt(3) hash for the nimda user   (bare-metal install; e.g. openssl passwd -6)
   --reboot|--no-reboot  reboot when finished             (default no when unattended)
   -y, --yes           never prompt: unanswered questions take their default, or abort
                       when they have none. Also confirms the "proceed" prompt, so

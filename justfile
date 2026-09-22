@@ -34,7 +34,7 @@ default:
         echo ""
         echo "Reminder:"
         echo "    The primary user account starts LOCKED (no password) until you"
-        echo "    set one. Run 'sudo bash scripts/stateless-setup.sh', or manually"
+        echo "    set one. Run 'sudo bash scripts/bare-metal-install.sh', or manually"
         echo "    create /etc/nixos/stateless-user-override.nix with a hash from"
         echo "    'mkpasswd -m sha-512'. Once set, the password persists across"
         echo "    reboots — it lives in that file, not on the wiped tmpfs root."

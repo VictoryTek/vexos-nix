@@ -54,7 +54,7 @@ fi
 
 # ---------- Shared libs ------------------------------------------------------
 # Colours, the full-screen build-progress UI (lib/progress.sh) and the prompts
-# (lib/prompts.sh) are shared with install.sh and stateless-setup.sh, so they
+# (lib/prompts.sh) are shared with install.sh and bare-metal-install.sh, so they
 # live in scripts/lib/ and are pulled in through lib/bootstrap.sh. Only this
 # stub is duplicated: it has to run before anything can be fetched.
 # shellcheck disable=SC2034  # read by the sourced libs
@@ -424,7 +424,7 @@ fi
 # it; previously unconditional here). Released by the cleanup() trap and again
 # explicitly below, before the later independent re-mount of this volume for
 # the /nix sync step. Left on disk either way, same reasoning as
-# stateless-setup.sh's identical swapfile — see its comment.
+# bare-metal-install.sh's identical swapfile — see its comment.
 echo ""
 mkdir -p "${BTRFS_MOUNT}"
 mount -o subvolid=5 "${ROOT_DEV_RAW}" "${BTRFS_MOUNT}" 2>/dev/null || \

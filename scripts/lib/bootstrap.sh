@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # scripts/lib/bootstrap.sh — common startup for the installer scripts
-# (install.sh, stateless-setup.sh, migrate-to-stateless.sh).
+# (install.sh, bare-metal-install.sh, migrate-to-stateless.sh).
 #
 # Sourced by each script through its inline `_load_lib` stub, never executed.
 # The stub — VEXOS_REV resolution plus _load_lib — is the one piece that cannot

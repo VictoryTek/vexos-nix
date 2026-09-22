@@ -23,14 +23,14 @@ Each role utilizes "just" to give a variety of options. Simply type "just" in a 
 
 ## Fresh install
 
-> Assumes NixOS is installed and `hardware-configuration.nix` already exists at `/etc/nixos/`.
+One command, from either starting point:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/install.sh | bash
 ```
 
-
-The script downloads the flake wrapper into `/etc/nixos` if it isn't there yet, asks which role and which GPU variant to install (AMD, NVIDIA, Intel, or VM), runs the build, and offers to reboot when complete. After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild.
+- **NixOS already installed:** the script downloads the flake wrapper into `/etc/nixos` if it isn't there yet, asks which role and which GPU variant to install (AMD, NVIDIA, Intel, or VM), runs the build, and offers to reboot when complete. After this first build, `/etc/nixos/vexos-variant` is written automatically and kept in sync on every future rebuild.
+- **NixOS live ISO, blank disk:** detected automatically — asks which role, GPU variant and disk, then partitions the disk (Btrfs; the stateless role gets its own `@nix`/`@persist` subvolume split, every other role a single conventional root), runs `nixos-install`, and offers to reboot. If a previous attempt formatted the disk but `nixos-install` then failed, re-running offers to resume instead of wiping it again.
 
 ### Unattended install
 
@@ -41,7 +41,7 @@ curl -fsSL https://raw.githubusercontent.com/VictoryTek/vexos-nix/main/scripts/i
   | bash -s -- --role desktop --gpu amd --yes
 ```
 
-Run with `--help` for the full list (`--desktop`, `--nvidia-branch`, `--vm-platform`, `--asus`, `--grub-device`, `--efi-device`, `--limine`, `--reboot`, and for a stateless install `--disk` and `--password-hash`). The same answers can be given as `VEXOS_ANSWER_<NAME>` environment variables. `--yes` also confirms the destructive "proceed" prompt of the stateless installer, so it only runs when you have passed `--disk` explicitly.
+Run with `--help` for the full list (`--desktop`, `--nvidia-branch`, `--vm-platform`, `--asus`, `--grub-device`, `--efi-device`, `--limine`, `--reboot`, and for a live-ISO install `--disk`, `--wipe` and `--password-hash`). The same answers can be given as `VEXOS_ANSWER_<NAME>` environment variables. `--yes` also confirms the destructive "proceed" prompt of a live-ISO install, so it only runs when you have passed `--disk` explicitly.
 
 
 ## How it works

@@ -27,7 +27,7 @@ prerequisite for most of the cleanup below it.
 | 9 | Divergent install-swap policies | Inconsistency | S | ☑ |
 | 10 | No resume after a failed `nixos-install` | UX | M | ☑ |
 | 11 | Stale comments + dead code | Hygiene | S | ☑ (2/4 resolved by 3+4; other 2 deliberately kept) |
-| 12 | **Overhaul:** no live-ISO path for 5 of 6 roles | Architecture | L | ☐ |
+| 12 | **Overhaul:** no live-ISO path for 5 of 6 roles | Architecture | L | ☑ |
 
 ---
 
@@ -715,6 +715,79 @@ Extend the disko path to every role, so `install.sh` handles bare metal end to e
 Interim mitigation, worth doing regardless and cheap: move the tmpfs/live-ISO
 detection **above** the role branch and fail fast with a clear message for roles
 that have no ISO path.
+
+### Resolution
+Spec: `bare_metal_overhaul_spec.md`. User explicitly chose full implementation
+over the cheaper interim mitigation.
+
+- `template/stateless-disko.nix` → renamed `template/disko-layout.nix`, took a
+  `stateless` bool param (default `true`, preserving today's behaviour for
+  existing callers). `false` produces a single conventional Btrfs partition
+  mounted at `/` (Btrfs, not ext4 — matches this repo's existing conventions;
+  no subvolume split — the other five roles have no impermanence needs). ESP
+  and LUKS wrapping unchanged, refactored into a shared `rootContent` binding.
+- `stateless-setup.sh` → renamed `scripts/bare-metal-install.sh`, takes a role
+  (inherited from `install.sh`'s hand-off, or `--role`/prompted standalone).
+  Item 10's resume detection generalises almost for free: the
+  subvolume-presence check only applies when `stateless`; the conventional
+  layout has nothing to check beyond partition existence and fstype — simpler
+  than the stateless case, not harder.
+- `install.sh`'s live-ISO detection moved out of the `ROLE = stateless`-only
+  branch to run once, for every role, right after role/DE selection. The
+  stateless-only switch-variant/migrate-in-place logic is unchanged, still
+  gated on `ROLE = stateless` (unrelated to this item — migration-in-place
+  isn't a concept the other five roles have). GPU/NVIDIA/VM/ASUS prompts now
+  run once, uniformly, before branching on live-ISO-ness at the very end.
+
+**Two correctness gaps found during research, both required for item 12's own
+"end to end" promise, neither mentioned in the audit:**
+- `modules/users.nix` declares `nimda` with no password at all, and
+  `nixos-install` never prompts for one — undeclared defaults to locked. A
+  bare-metal install of any non-stateless role would have booted into an
+  account nobody could log into. Fixed: `bare-metal-install.sh` now always
+  asks for a password (item 8's `ask_password`) and writes a new
+  `user-override.nix` (mirrors `stateless-user-override.nix`'s existing shape;
+  stateless keeps its own separate file untouched).
+- `vexos.vm.platform` (VirtualBox selection) was silently inert for
+  `headless-server`/`vanilla`: `install.sh` wrote it to `features.nix`, which
+  neither builder imports (confirmed by reading `template/etc-nixos-flake.nix`)
+  — accepted, printed success, never applied. Fixed: `vm-platform.nix`
+  promoted to the shared `localFiles` list (all six builders, same as
+  `bootloader.nix`/`hardware-local.nix`/`hostname.nix`); `install.sh`'s
+  "already installed" flow now writes it directly instead of through
+  `features.nix`. The identical bug also exists in root `flake.nix`'s separate
+  `mkHost`/`roles` table (a different deployment style bare-metal-install.sh
+  doesn't produce) — flagged in that file's own comment, not fixed, to keep
+  this item's diff to what its own new code path needs.
+- **Third gap, found in review, also fixed:** the disko layout is UEFI-only
+  (GPT + ESP) with no BIOS/MBR variant. Nothing would have stopped a BIOS-only
+  machine from "successfully" installing an unbootable system. Added a
+  `/sys/firmware/efi` check at the start of `bare-metal-install.sh` that fails
+  fast with a clear message instead.
+
+Verified: the generalized disko template directly with real `nix eval`/
+`--impure` (14 cases: both modes evaluate, `@nix`/`@persist` present only when
+`stateless`, ESP present both ways, LUKS wrapping still works) plus disko's
+own `--dry-run` accepting both modes (real network-fetched disko binary, no
+disk touched). The wrapper template's `nix eval` matrix (18 cases across a
+throwaway checkout, `--override-input vexos-nix path:.`): baseline (no
+side-files) for all 5 non-eval'd-elsewhere roles, `vm-platform.nix` now
+resolving on `headless-server`/`vanilla`/`desktop` (previously broken for the
+first two), `user-override.nix` resolving on `desktop`/`vanilla`/
+`headless-server`, `stateless-user-override.nix` unaffected, and both new
+files together for every role's own `-vm` toplevel. `bash -n` + shellcheck
+clean on the new/renamed scripts. Full-repo grep swept clean of
+`stateless-setup.sh`/`stateless-disko.nix` references both before starting
+(established the rename's blast radius: 14 files) and after finishing (zero
+left). `nix flake show --impure` (also preflight's own stage 1) confirms the
+flake structure is intact. Preflight exit 0.
+
+**Not verified, and cannot be from here:** an actual `nixos-install` run, a
+real live ISO, real disk hardware, disko's `--mode mount` against a genuinely
+interrupted prior attempt, or the UEFI/BIOS check against real firmware. This
+is by a wide margin the least-tested item in the tracker, proportional to it
+being the least testable from a dev machine with no target hardware or VM —
+flagged clearly rather than overstated.
 
 ### Verification
 Install each role from a live ISO in a VM and boot the result. Requires item 8 to

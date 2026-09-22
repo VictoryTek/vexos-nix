@@ -9,7 +9,7 @@
 # modules/stateless-disk.nix. No LUKS encryption is used.
 #
 # Two setup paths are supported:
-#   Fresh install from ISO: run scripts/stateless-setup.sh (formats disk, calls nixos-install).
+#   Fresh install from ISO: run scripts/bare-metal-install.sh (formats disk, calls nixos-install).
 #   Existing system migration: run scripts/migrate-to-stateless.sh (in-place Btrfs subvol setup).
 # No LUKS — disk layout is plain Btrfs with @nix and @persist subvolumes.
 { config, lib, pkgs, ... }:
@@ -104,7 +104,7 @@ in
           vexos.impermanence.enable = true requires
           fileSystems."${cfg.persistentPath}" to be declared with neededForBoot = true.
           This is normally satisfied automatically by modules/stateless-disk.nix.
-          For fresh installs: run scripts/stateless-setup.sh from the NixOS live ISO.
+          For fresh installs: run scripts/bare-metal-install.sh from the NixOS live ISO.
           For existing systems: run scripts/migrate-to-stateless.sh to migrate in-place.
         '';
       }

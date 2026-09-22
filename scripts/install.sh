@@ -13,9 +13,12 @@
 # --yes. `bash scripts/install.sh --help` lists them; through curl, pass them after `bash -s --`:
 #   curl -fsSL .../scripts/install.sh | bash -s -- --role desktop --gpu amd --yes
 #
-# This is the only command needed: if /etc/nixos/flake.nix is missing the script
-# downloads the wrapper (template/etc-nixos-flake.nix) itself. Requires NixOS
-# already installed, with /etc/nixos/hardware-configuration.nix present.
+# This is the only command needed, on either of two starting points:
+#   - An already-installed NixOS system: if /etc/nixos/flake.nix is missing
+#     the script downloads the wrapper (template/etc-nixos-flake.nix) itself,
+#     using the existing /etc/nixos/hardware-configuration.nix.
+#   - A NixOS live ISO on a blank disk: detected automatically, hands off to
+#     scripts/bare-metal-install.sh (disko-based, any role — see that script).
 #
 # Supported roles (expand this list as new roles are added to the flake):
 #   desktop         — Gaming/workstation (AMD, NVIDIA, Intel, VM); choice of
@@ -36,7 +39,7 @@ set -euo pipefail
 
 # ---------- Resolve one commit for this entire run ---------------------------
 # main is a moving target, and a full install can take several minutes. Without
-# this, install.sh handing off to stateless-setup.sh/migrate-to-stateless.sh via
+# this, install.sh handing off to bare-metal-install.sh/migrate-to-stateless.sh via
 # `curl main/... | bash` could silently mix code from two different commits if
 # main is updated mid-run. Resolve the commit once and export it so those
 # sub-scripts inherit the same pin instead of re-resolving main themselves.
@@ -56,7 +59,7 @@ SCRIPT_URL="https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/
 # ---------- Shared libs ------------------------------------------------------
 # Colours, the full-screen build-progress UI (lib/progress.sh) and the prompts
 # (lib/prompts.sh: gum arrow-key UI with plain read fallbacks) are shared with
-# stateless-setup.sh and migrate-to-stateless.sh, so they live in scripts/lib/
+# bare-metal-install.sh and migrate-to-stateless.sh, so they live in scripts/lib/
 # and are pulled in through lib/bootstrap.sh. Only this stub is duplicated: it
 # has to run before anything can be fetched.
 # shellcheck disable=SC2034  # read by the sourced libs
@@ -152,24 +155,34 @@ if [ "$ROLE" = "desktop" ]; then
     "hyprland:Hyprland — Tiling Wayland compositor + DankMaterialShell"
 fi
 
-# ---------- Stateless role: auto-detect context and invoke correct script ----
-if [ "$ROLE" = "stateless" ]; then
-  ROOT_FSTYPE=$(findmnt -n -o FSTYPE / 2>/dev/null || true)
-  # Distinguish live ISO (tmpfs + no /nix mount) from running stateless system
-  # (tmpfs + /nix mounted on btrfs subvol @nix).
+# ---------- Live-ISO / existing-system detection -----------------------------
+# Generalized: this used to be computed only inside the stateless branch below,
+# reachable only for that one role. Every role can now be installed bare-metal
+# from a live ISO (scripts/bare-metal-install.sh), so it's computed once, up
+# front, for all of them.
+ROOT_FSTYPE=$(findmnt -n -o FSTYPE / 2>/dev/null || true)
+LIVE_ISO=false
+if [ "$ROOT_FSTYPE" = "tmpfs" ]; then
+  # Distinguish a genuine live ISO (tmpfs root, no /nix mount) from an
+  # already-running stateless (impermanence) system, which also has a tmpfs
+  # root by design (tmpfs root + /nix mounted on btrfs subvol @nix).
   NIX_FSTYPE=$(findmnt -n -o FSTYPE /nix 2>/dev/null || true)
-  if [ "$ROOT_FSTYPE" = "tmpfs" ] && [ "$NIX_FSTYPE" = "btrfs" ]; then
+  if [ "$NIX_FSTYPE" != "btrfs" ]; then
+    LIVE_ISO=true
+  fi
+fi
+
+# ---------- Stateless-only: switch variant in place, or migrate an existing --
+# ---------- (non-live-ISO) install ------------------------------------------
+# Fresh bare-metal installs (live ISO, any role) are handled uniformly further
+# below — this block only covers the two outcomes that are specific to the
+# stateless role and don't apply to any other role.
+if [ "$ROLE" = "stateless" ] && ! $LIVE_ISO; then
+  if [ "$ROOT_FSTYPE" = "tmpfs" ]; then
     # Already running a stateless (impermanence) system — just rebuild with new variant.
     # Fall through to GPU selection and nixos-rebuild switch below.
     echo ""
     echo -e "${CYAN}Stateless system detected — will switch variant via nixos-rebuild.${RESET}"
-  elif [ "$ROOT_FSTYPE" = "tmpfs" ]; then
-    # Running from NixOS live ISO — full disk setup
-    echo ""
-    echo -e "${CYAN}Live ISO detected — launching stateless disk setup (erases target disk)...${RESET}"
-    echo ""
-    curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/stateless-setup.sh" | bash
-    exit 0
   else
     # Running on an existing NixOS install — in-place Btrfs migration
     echo ""
@@ -191,6 +204,9 @@ if [ "$ROLE" = "stateless" ]; then
 fi
 
 # ---------- GPU variant selection --------------------------------------------
+# Shared by both paths below (live-ISO bare-metal install, and the
+# already-installed nixos-rebuild path) — asked once, uniformly, regardless of
+# which one this run turns out to be.
 VARIANT=""
 if [ "$ROLE" = "desktop" ] || [ "$ROLE" = "htpc" ] || [ "$ROLE" = "server" ] || [ "$ROLE" = "headless-server" ] || [ "$ROLE" = "stateless" ] || [ "$ROLE" = "vanilla" ]; then
   ask_gpu_variant
@@ -215,6 +231,36 @@ ASUS_ENABLE=false
 ASUS_LAPTOP=false
 if [ "$VARIANT" != "vm" ]; then
   ask_asus
+fi
+
+# ---------- Live-ISO bare-metal install (any role) ---------------------------
+# Every role gets a disko-based bare-metal install now, not just stateless —
+# hand off the GPU/NVIDIA/VM/ASUS/desktop-environment answers already
+# collected above so bare-metal-install.sh doesn't ask them again.
+if $LIVE_ISO; then
+  echo ""
+  echo -e "${CYAN}Live ISO detected — launching bare-metal install (erases target disk)...${RESET}"
+  echo ""
+  _sudo_env=(
+    VEXOS_REV="${VEXOS_REV}"
+    ROLE="${ROLE}"
+    DESKTOP_ENV="${DESKTOP_ENV}"
+    VARIANT="${VARIANT}"
+    NVIDIA_SUFFIX="${NVIDIA_SUFFIX}"
+    VM_PLATFORM="${VM_PLATFORM}"
+    ASUS_ENABLE="${ASUS_ENABLE}"
+    ASUS_LAPTOP="${ASUS_LAPTOP}"
+    # Tells bare-metal-install.sh every question above was already asked here
+    # (including ones whose answer is a plain default, e.g. DESKTOP_ENV=gnome)
+    # — don't re-ask any of them.
+    VEXOS_ANSWERS_PROVIDED=1
+  )
+  for _n in VEXOS_YES "${!VEXOS_ANSWER_@}"; do
+    [ -n "${!_n+x}" ] && _sudo_env+=("${_n}=${!_n}")
+  done
+  curl -fsSL "https://raw.githubusercontent.com/VictoryTek/vexos-nix/${VEXOS_REV}/scripts/bare-metal-install.sh" \
+    | sudo "${_sudo_env[@]}" bash
+  exit 0
 fi
 
 FLAKE_TARGET="vexos-${ROLE}-${VARIANT}${NVIDIA_SUFFIX}"
@@ -528,14 +574,29 @@ else
 fi
 
 # VM hypervisor — only written for VirtualBox. "qemu" is the option's own NixOS
-# default, so a QEMU/Proxmox guest needs no features.nix entry at all; any
-# other outcome clears a VirtualBox value left by a previous run.
+# default, so a QEMU/Proxmox guest needs no file at all; any other outcome
+# clears a VirtualBox value left by a previous run.
+#
+# A plain side-file, not features.nix: vexos.vm.platform is declared by
+# modules/gpu/vm-guest-additions.nix, reachable from any role's `vm` variant
+# (headless-server and vanilla included) — but those two roles don't import
+# featuresFile, so writing it there would be silently inert for them. The
+# wrapper imports vm-platform.nix uniformly for every role instead (item 12's
+# fix for a pre-existing bug found while generalising the bare-metal install
+# path — see template/etc-nixos-flake.nix's localFiles).
 if [ "$VM_PLATFORM" = "virtualbox" ]; then
   render_header
-  features_set "vexos.vm.platform" "$VM_PLATFORM"
-  echo -e "  ${GREEN}✓ VM platform set to ${VM_PLATFORM} in /etc/nixos/features.nix.${RESET}"
-else
-  features_unset "vexos.vm.platform"
+  sudo tee /etc/nixos/vm-platform.nix > /dev/null << 'VMPLATFORMNIX'
+# /etc/nixos/vm-platform.nix
+# Written by install.sh — VirtualBox guest.
+{
+  vexos.vm.platform = "virtualbox";
+}
+VMPLATFORMNIX
+  echo -e "  ${GREEN}✓ VM platform set to virtualbox in /etc/nixos/vm-platform.nix.${RESET}"
+elif [ -f /etc/nixos/vm-platform.nix ]; then
+  sudo rm -f /etc/nixos/vm-platform.nix
+  echo -e "  ${GREEN}✓ Removed stale /etc/nixos/vm-platform.nix.${RESET}"
 fi
 
 # ---------- Ensure git is available -------------------------------------------
@@ -589,7 +650,8 @@ fi
 #      git+file:// would otherwise evaluate the stale committed version,
 #      ignoring them.
 for f in flake.nix hardware-configuration.nix stateless-user-override.nix features.nix \
-         bootloader.nix hardware-local.nix host.nix hostname.nix; do
+         bootloader.nix hardware-local.nix host.nix hostname.nix vm-platform.nix \
+         user-override.nix; do
   if [ -f "/etc/nixos/$f" ]; then
     sudo "$GIT" -C /etc/nixos add -f "$f"
   fi
