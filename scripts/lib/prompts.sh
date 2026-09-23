@@ -46,6 +46,7 @@ _flag_for() {
     ASUS)             echo "--asus" ;;
     GRUB_DEVICE)      echo "--grub-device" ;;
     EFI_DEVICE)       echo "--efi-device" ;;
+    BOOTLOADER)       echo "--bootloader" ;;
     DISK)             echo "--disk" ;;
     PASSWORD_HASH)    echo "--password-hash" ;;
     *)                echo "VEXOS_ANSWER_$1" ;;
@@ -70,7 +71,8 @@ Answer flags (skip the matching question; combine with --yes for an unattended r
   --asus A            no | laptop | desktop              (default no)
   --grub-device DEV   whole disk for GRUB                (legacy BIOS only)
   --efi-device DEV    EFI partition to mount at /boot    (only if /boot is unmounted)
-  --limine            use Limine instead of systemd-boot (UEFI only; default no)
+  --bootloader B      systemd-boot | limine              (UEFI only; default systemd-boot)
+  --limine            shorthand for --bootloader limine
   --disk DEV          target disk — ERASED              (bare-metal install, live ISO)
   --wipe              force a fresh reformat of --disk even if a previous
                       attempt's layout could be resumed instead (bare-metal
@@ -110,7 +112,8 @@ parse_answer_flags() {
       --efi-device)     name=EFI_DEVICE ;;
       --disk)           name=DISK ;;
       --password-hash)  name=PASSWORD_HASH ;;
-      --limine)         export VEXOS_ANSWER_LIMINE=yes; shift; continue ;;
+      --bootloader)     name=BOOTLOADER ;;
+      --limine)         export VEXOS_ANSWER_BOOTLOADER=limine; shift; continue ;;
       --wipe)           export VEXOS_ANSWER_WIPE=yes;   shift; continue ;;
       --reboot)         export VEXOS_ANSWER_REBOOT=yes; shift; continue ;;
       --no-reboot)      export VEXOS_ANSWER_REBOOT=no;  shift; continue ;;

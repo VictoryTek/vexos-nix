@@ -62,7 +62,6 @@
           name = "System";
           apps = [
             "org.pulseaudio.pavucontrol.desktop"
-            "io.missioncenter.MissionCenter.desktop"
             "org.gnome.Settings.desktop"
             "org.gnome.seahorse.Application.desktop"
             "nixos-manual.desktop"

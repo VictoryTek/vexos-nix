@@ -416,7 +416,7 @@ else
   fi
 
   # ---------- Bootloader choice (UEFI only) -----------------------------------
-  # systemd-boot remains the default in every case — Limine is opt-in only.
+  # Asked up front: systemd-boot (default) or Limine.
   # Unlike systemd-boot, Limine's own menu can be made to list OSes on other
   # physical disks (see modules/boot-discovery.nix upstream); it's newer and
   # less battle-tested in nixpkgs, so it's presented as a deliberate choice,
@@ -430,21 +430,10 @@ else
   if [ "$ROLE" = "vanilla" ]; then
     :
   else
-    echo ""
-    if preset_yes_no LIMINE no; then  # --limine; default no when unattended
-      if [ "$PRESET_YN" = "yes" ]; then USE_LIMINE=true; fi
-    elif [ -n "$GUM" ]; then
-      if ui_confirm "Use Limine instead of the default systemd-boot? (opt-in, dual-boot-friendly)"; then
-        USE_LIMINE=true
-      fi
-    else
-      printf "  Use Limine instead of the default systemd-boot? [y/N] "
-      read -r INPUT </dev/tty
-      case "${INPUT,,}" in
-        y|yes) USE_LIMINE=true ;;
-        *)     USE_LIMINE=false ;;
-      esac
-    fi
+    ask_choice BOOTLOADER "Select your bootloader" "systemd-boot" "" \
+      "systemd-boot:systemd-boot — default, simple and well tested" \
+      "limine:Limine       — opt-in, can list OSes on other disks (dual-boot friendly)"
+    if [ "$BOOTLOADER" = "limine" ]; then USE_LIMINE=true; fi
 
     if [ "$USE_LIMINE" = "true" ]; then
       echo "  Writing /etc/nixos/bootloader.nix to use Limine..."
