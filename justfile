@@ -17,7 +17,7 @@ default:
         echo "Available recipes (GUI Server / Headless Server roles):"
         echo "    available-services         List all available server service modules"
         echo "    service-info [service]     Show ports and URLs for enabled (or specified) services"
-        echo "    services                   List enabled/disabled status of server service modules"
+        echo "    services                   List enabled server services and how to access them"
         echo "    status <service>           Show systemctl status and HTTP reachability for a service"
         echo "    restart <service>          Restart a service's systemd unit(s), clearing any start-limit-hit"
         echo "    enable <service>           Enable a server service module"
@@ -2525,41 +2525,10 @@ restart service: _require-server-role
     done
     echo ""
 
-# List all server services and their enabled/disabled status.
+# List enabled server services and how to access them.
 [private]
 services: _require-server-role
-    #!/usr/bin/env bash
-    set -euo pipefail
-    SVC_FILE="/etc/nixos/server-services.nix"
-    if [ ! -f "$SVC_FILE" ]; then
-        echo "No services have been enabled yet. Run 'just enable <service>' to get started."
-        exit 0
-    fi
-    _check() {
-        local svc="$1"
-        local nix_name
-        nix_name=$(echo "$svc" | sed 's/-/_/g')
-        [ "$svc" = "kernel-builder" ] && nix_name="kernelBuilder"
-        if grep -qP "vexos\.server\.(${svc}|${nix_name})\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
-            printf "    \033[32m✓\033[0m %s\n" "$svc"
-        elif [ "$svc" = "arr" ] && grep -qP '^\s*vexos\.server\.arr\.\w+\.enable\s*=\s*true' "$SVC_FILE" 2>/dev/null; then
-            printf "    \033[32m✓\033[0m %s\n" "$svc"
-        else
-            printf "    \033[90m✗\033[0m %s\n" "$svc"
-        fi
-    }
-    echo ""
-    echo "Server services (/etc/nixos/server-services.nix):"
-    prev_group=""
-    while IFS='|' read -r group name desc; do
-        [ -z "$group" ] && continue
-        if [ "$group" != "$prev_group" ]; then
-            printf "\n  \033[1m%s\033[0m\n" "$group"
-            prev_group="$group"
-        fi
-        _check "$name"
-    done <<< '{{ replace(_service_catalog, "'", "'\\''") }}'
-    echo ""
+    @just service-info
 
 # Enable a server service module.  Usage: just enable docker
 [private]
