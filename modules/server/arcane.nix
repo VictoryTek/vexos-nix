@@ -10,7 +10,6 @@
 # Default access: http://<host-ip>:3552
 #
 # Required configuration:
-#   vexos.server.arcane.appUrl          = "https://arcane.example.com";
 #   vexos.server.arcane.environmentFile = "/etc/nixos/secrets/arcane-env";
 #
 #   The environment file must be a systemd EnvironmentFile (KEY=VALUE lines)
@@ -47,11 +46,13 @@ in
 
     appUrl = lib.mkOption {
       type = lib.types.str;
-      default = "http://arcane.example.com";
+      default = "http://localhost:${toString cfg.port}";
       description = ''
-        Public URL for this Arcane instance, e.g. "https://arcane.example.com".
-        Used by Arcane to construct links and redirects. Must be set to the
-        actual URL — the default placeholder is intentionally invalid.
+        Base URL Arcane uses to construct links, redirects, and (if
+        configured) OIDC callback URLs. Defaults to a working LAN/localhost
+        value so Arcane runs out of the box. Override this only if Arcane is
+        placed behind a reverse proxy with a real public domain, e.g.
+        "https://arcane.example.com".
       '';
     };
 
@@ -82,13 +83,6 @@ in
     ];
 
     assertions = [
-      {
-        assertion = cfg.appUrl != "http://arcane.example.com";
-        message = ''
-          vexos.server.arcane.appUrl must be set to the actual public URL of
-          this Arcane instance (e.g. "https://arcane.example.com").
-        '';
-      }
       {
         assertion = cfg.environmentFile != null;
         message = ''

@@ -42,8 +42,8 @@
   # ── Container Runtime ────────────────────────────────────────────────────
   # vexos.server.docker.enable = false;
   # vexos.server.arcane.enable = false;                  # Port 3552 — Docker/Podman management UI
-  # vexos.server.arcane.appUrl = "https://arcane.example.com";
   # vexos.server.arcane.environmentFile = "/etc/nixos/secrets/arcane-env"; # ENCRYPTION_KEY + JWT_SECRET (openssl rand -hex 32)
+  # vexos.server.arcane.appUrl = "https://arcane.example.com"; # optional — only needed behind a reverse proxy; defaults to http://localhost:<port>
 
   # ── Media Servers ────────────────────────────────────────────────────────
   # vexos.server.jellyfin.enable = false;
