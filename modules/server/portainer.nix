@@ -56,7 +56,7 @@ in
     virtualisation.oci-containers.backend = lib.mkIf (cfg.backend == "docker") (lib.mkDefault "docker");
 
     virtualisation.oci-containers.containers.portainer = {
-      image = "portainer/portainer-ce:2.45.0";
+      image = "portainer/portainer-ce:2.45.1";
       ports = [ "${toString cfg.port}:9443" ];
       volumes = [
         (if cfg.backend == "docker"

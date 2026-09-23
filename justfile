@@ -2845,28 +2845,16 @@ enable service: _require-server-role
 
     echo "✓ Enabled: $SERVICE"
 
-    # Ensure Arcane has appUrl and environmentFile — required by the build
-    # assertion. appUrl is host-specific and must be supplied by the user;
+    # Ensure Arcane has environmentFile — required by the build assertion.
     # environmentFile (ENCRYPTION_KEY/JWT_SECRET) is auto-generated, mirroring
     # the SearXNG/VexBoard secret pattern below since there is no external
-    # value for the user to supply for those.
+    # value for the user to supply. appUrl defaults to a working
+    # http://localhost:<port> value in modules/server/arcane.nix, so no
+    # prompt is needed for it — override vexos.server.arcane.appUrl directly
+    # in server-services.nix if Arcane is later placed behind a reverse proxy.
     if [ "$SERVICE" = "arcane" ]; then
-        ARCANE_URL_OPTION="vexos.server.arcane.appUrl"
         ARCANE_ENV_OPTION="vexos.server.arcane.environmentFile"
         ARCANE_SECRET_PATH="/etc/nixos/secrets/arcane-env"
-
-        _arcane_url_set="$(grep -oP "^\s*${ARCANE_URL_OPTION//./\\.}\s*=\s*\"\K[^\"]*" "$SVC_FILE" 2>/dev/null || true)"
-        if [ -z "$_arcane_url_set" ] || [ "$_arcane_url_set" = "http://arcane.example.com" ]; then
-            _arcane_url=""
-            while [ -z "$_arcane_url" ]; do
-                read -r -p "  Enter the public URL for this Arcane instance (e.g. https://arcane.example.com): " _arcane_url
-            done
-            if grep -qP "^\s*#?\s*${ARCANE_URL_OPTION//./\\.}\s*=" "$SVC_FILE" 2>/dev/null; then
-                sudo sed -i -E "s|^(\s*)#?\s*(${ARCANE_URL_OPTION//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${ARCANE_URL_OPTION} = \"${_arcane_url}\";|" "$SVC_FILE"
-            else
-                sudo sed -i "\$ s|^}|  ${ARCANE_URL_OPTION} = \"${_arcane_url}\";\n}|" "$SVC_FILE"
-            fi
-        fi
 
         if ! grep -qP "^\s*${ARCANE_ENV_OPTION//./\\.}\s*=" "$SVC_FILE" 2>/dev/null; then
             if [ ! -f "$ARCANE_SECRET_PATH" ]; then
