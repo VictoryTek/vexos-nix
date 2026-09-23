@@ -67,6 +67,36 @@ find_compose_file() {
   return 1
 }
 
+# Finds network names declared "external: true" in a compose file — these
+# are expected to already exist on the host (created once, outside any
+# single stack) and `docker compose up` fails immediately if they don't.
+# On a fresh host nothing has ever created them, so we create whatever
+# this stack references, idempotently, before bringing it up.
+collect_external_networks() {
+  local compose_file="$1"
+  awk '
+    /^networks:/ { in_net=1; next }
+    in_net && /^[^[:space:]]/ { in_net=0 }
+    in_net && /^  [a-zA-Z0-9_.-]+:[[:space:]]*$/ {
+      name=$1; sub(/:$/, "", name); pending=name; next
+    }
+    in_net && /external:[[:space:]]*true/ && pending != "" {
+      print pending; pending=""
+    }
+  ' "$compose_file"
+}
+
+ensure_external_networks() {
+  local compose_file="$1"
+  while IFS= read -r net; do
+    [ -z "$net" ] && continue
+    if ! docker network inspect "$net" >/dev/null 2>&1; then
+      log "Creating external network '${net}' (referenced by $(basename "$compose_file") as external, but not found on this host)"
+      docker network create "$net" >>"$LOG_FILE" 2>&1
+    fi
+  done < <(collect_external_networks "$compose_file")
+}
+
 # Same lookup as backup-stacks-v2.sh — reads the same file format.
 # Prints: container|method|backup_cmd|artifact_path|restore_cmd
 lookup_manifest() {
@@ -215,6 +245,7 @@ for archive in "$INCOMING_DIR"/*.tar.gz; do
     continue
   }
   compose_file="${stack_path}${compose_file}"
+  ensure_external_networks "$compose_file"
 
   IFS='|' read -r m_container m_method m_backup_cmd m_artifact m_restore <<< "$(lookup_manifest "$stack_name")"
 
