@@ -21,6 +21,19 @@
 
 set -uo pipefail
 
+# Widen PATH to cover common docker install locations. A script run
+# non-interactively (even via sudo ./script.sh) doesn't source your
+# shell's rc files, so it can end up with a much narrower PATH than your
+# interactive terminal has — this is a common cause of "docker: command
+# not found" inside a script when `docker` works fine typed directly.
+for p in /run/current-system/sw/bin /etc/profiles/per-user/root/bin /usr/local/bin /usr/bin /bin /snap/bin; do
+  case ":$PATH:" in
+    *":$p:"*) ;;                # already present
+    *) [ -d "$p" ] && PATH="$PATH:$p" ;;
+  esac
+done
+export PATH
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INCOMING_DIR="$SCRIPT_DIR"                        # drop the .tar.gz archives + services.conf right next to this script
 STACKS_DIR="${SCRIPT_DIR}/stacks"                 # restored stacks land in a "stacks" folder next to this script
