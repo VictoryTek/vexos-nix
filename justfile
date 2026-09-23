@@ -2968,6 +2968,7 @@ enable service: _require-server-role
       arcane)
         echo "  Container: arcane (NixOS OCI container, Docker or Podman backend)"
         echo "  Web UI:    http://<server-ip>:3552"
+        echo "  Login:     Default arcane / arcane-admin — you are prompted to change the password on first login."
         echo "  About:     Modern container management UI — browse containers, images, volumes, and networks from a browser."
         echo "  Backend:   vexos.server.arcane.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just enable podman' first)."
         echo "  appUrl and environmentFile (ENCRYPTION_KEY/JWT_SECRET) were configured above."
@@ -3133,6 +3134,7 @@ enable service: _require-server-role
       nextcloud)
         echo "  Service:  phpfpm-nextcloud.service (fronted by Nginx)"
         echo "  Web UI:   http://nextcloud.local"
+        echo "  Login:    admin / the password stored in /etc/nixos/secrets/nextcloud-admin-pass (vexos.server.nextcloud.adminPassFile)."
         echo "  About:    Self-hosted file sync, calendar (CalDAV), and contacts (CardDAV) — Google Drive / OneDrive alternative."
         echo "  Note:     Add a DNS entry or /etc/hosts record pointing 'nextcloud.local' to this server's IP."
         echo "  CLI:      sudo -u nextcloud nextcloud-occ"
@@ -3416,6 +3418,7 @@ enable service: _require-server-role
       paperless)
         echo "  Service:  paperless.service"
         echo "  Web UI:   http://<server-ip>:28981"
+        echo "  Login:    No default password — create the admin first: sudo paperless-manage createsuperuser"
         echo "  About:    Document management system with OCR, tagging, full-text search, and automatic consumption."
         echo "  Note:     Drop documents into the consume folder — Paperless OCRs and indexes them automatically."
         ;;
@@ -3428,6 +3431,7 @@ enable service: _require-server-role
       portainer)
         echo "  Container: portainer (NixOS OCI container, Docker or Podman backend)"
         echo "  Web UI:   https://<server-ip>:9443"
+        echo "  Login:    No default credentials — create the admin account on first visit (Portainer locks setup after ~5 minutes; restart the container if it does)."
         echo "  About:    Web UI for managing containers, images, volumes, and networks."
         echo "  Backend:  vexos.server.portainer.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just enable podman' first)."
         ;;
