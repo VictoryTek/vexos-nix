@@ -35,8 +35,7 @@
   #   attic-server-token-rs256-secret-base64
 
   # ── Dashboard ────────────────────────────────────────────────────────────
-  # VexBoard (port 7280) is automatically enabled by `just enable <service>` the first time any service
-  # is enabled. To suppress it: vexos.server.vexboard.enable = false;
+  # VexBoard (port 7280) is enabled only via `just enable vexboard`.
   # vexos.server.vexboard.secretFile = "/etc/nixos/secrets/vexboard-secret";
 
   # ── Container Runtime ────────────────────────────────────────────────────

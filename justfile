@@ -1672,7 +1672,7 @@ _service_catalog := '''
     Monitoring & Admin|prometheus|Metrics collection & alerting toolkit
     Monitoring & Admin|scrutiny|S.M.A.R.T. disk health monitoring dashboard
     Monitoring & Admin|uptime-kuma|Self-hosted uptime & status page monitoring
-    Monitoring & Admin|vexboard|VexOS Server dashboard (auto-enabled with first service)
+    Monitoring & Admin|vexboard|VexOS Server dashboard
     Networking & Security|adguard|DNS-based ad & tracker blocker
     Networking & Security|authelia|Single sign-on & two-factor auth gateway
     Networking & Security|headscale|Self-hosted Tailscale-compatible VPN (WireGuard)
@@ -2237,7 +2237,7 @@ service-info service="":
         traefik)         printf "  %-18s  Ports :8882, :8445  |  Dashboard http://<server-ip>:8079/dashboard/\n"       "$1" ;;
         uptime-kuma)     printf "  %-18s  Web UI  http://<server-ip>:3001\n"                                           "$1" ;;
         vaultwarden)     printf "  %-18s  Web UI  http://<server-ip>:8222   |  Admin .../admin\n"                      "$1" ;;
-        vexboard)        printf "  %-18s  Web UI  http://<server-ip>:7280   (server dashboard — auto-enabled with first service)\n" "$1" ;;
+        vexboard)        printf "  %-18s  Web UI  http://<server-ip>:7280   (server dashboard)\n" "$1" ;;
         authelia)        printf "  %-18s  Web UI  http://<server-ip>:9091\n"                                                   "$1" ;;
         code-server)     printf "  %-18s  Web UI  http://<server-ip>:4444\n"                                                   "$1" ;;
         dozzle)          printf "  %-18s  Web UI  http://<server-ip>:8888   (requires docker)\n"                               "$1" ;;
@@ -2686,12 +2686,6 @@ enable service: _require-server-role
             echo "✓ Enabled: $SERVICE (full stack)"
         fi
 
-        VB_OPTION="vexos.server.vexboard.enable"
-        if ! grep -qP "^\s*vexos\.server\.vexboard\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
-            _set_flag "$VB_OPTION" true
-            echo "  + VexBoard also enabled (server dashboard — http://<server-ip>:7280)"
-        fi
-
         echo "  → Run 'just rebuild' to apply."
         echo ""
         echo "  Enabled components:"
@@ -2866,7 +2860,7 @@ enable service: _require-server-role
     fi
 
     # Ensure VexBoard has a secretFile — required by the build assertion.
-    # Runs when VexBoard is explicitly enabled or auto-enabled alongside a service.
+    # Runs when VexBoard is explicitly enabled.
     _ensure_vexboard_secret() {
         local svc_file="$1"
         local secret_path="/etc/nixos/secrets/vexboard-secret"
@@ -2887,22 +2881,6 @@ enable service: _require-server-role
 
     # Explicit `just enable vexboard` — ensure secret is generated.
     if [ "$SERVICE" = "vexboard" ]; then
-        _ensure_vexboard_secret "$SVC_FILE"
-    fi
-
-    # Auto-enable VexBoard alongside the first service enabled on this host.
-    if [ "$SERVICE" != "vexboard" ]; then
-        VB_OPTION="vexos.server.vexboard.enable"
-        if ! grep -qP "^\s*vexos\.server\.vexboard\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
-            if grep -qP "^\s*#?\s*${VB_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
-                sudo sed -i -E "s/^(\s*)#?\s*(${VB_OPTION//./\\.})\s*=\s*(true|false)\s*;/\1${VB_OPTION} = true;/" "$SVC_FILE"
-            else
-                sudo sed -i "\$ s|^}|  ${VB_OPTION} = true;\n}|" "$SVC_FILE"
-            fi
-            echo "  + VexBoard also enabled (server dashboard — http://<server-ip>:7280)"
-        fi
-        # Always ensure secretFile is set — runs even if VexBoard was already enabled
-        # on a pre-existing VM where a prior session left enable=true but no secretFile.
         _ensure_vexboard_secret "$SVC_FILE"
     fi
 
@@ -3484,7 +3462,7 @@ enable service: _require-server-role
       vexboard)
         echo "  Service:  vexboard.service"
         echo "  Web UI:   http://<server-ip>:7280"
-        echo "  About:    VexOS Server dashboard — automatically enabled alongside the first service you enable."
+        echo "  About:    VexOS Server dashboard — enable explicitly with 'just enable vexboard'."
         echo "  Note:     To disable: set 'vexos.server.vexboard.enable = false;' in server-services.nix."
         echo "  Secret:   Set VEXBOARD_AUTH__SECRET via vexos.server.vexboard.secretFile for production use."
         echo "            Generate a secret:  openssl rand -base64 48"
@@ -3522,9 +3500,6 @@ enable service: _require-server-role
         echo "            Requires an MQTT broker — consider enabling Mosquitto separately."
         ;;
     esac
-    if [ "$SERVICE" != "vexboard" ]; then
-        echo "  VexBoard: http://<server-ip>:7280  — configure your server dashboard tiles"
-    fi
     echo ""
 
 # Toggle Plex Pass hardware transcoding on/off for an already-enabled Plex installation.
