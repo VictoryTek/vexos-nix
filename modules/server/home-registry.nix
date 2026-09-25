@@ -11,9 +11,10 @@
 # enough:
 #   - The Postgres password is generated automatically on first activation
 #     and stored at dataDir/secrets/home-registry-env (0600, root-only). The
-#     app container gets the rest of the connection (host/port/user/db) as
-#     discrete POSTGRES_* env vars, same pattern as Joplin, so the password
-#     stays the only secret in the env file. Set
+#     app container gets a composed DATABASE_URL from a generated second env
+#     file (dataDir/secrets/home-registry-app-env) — see the stopgap note on
+#     home-registry-app-env-init below. The db container still reads
+#     discrete POSTGRES_* vars from the original env file. Set
 #     vexos.server.home-registry.environmentFile yourself only if you want to
 #     manage the secret through another backend (e.g. sops-nix).
 #   - The Postgres user (postgres) and database name (home_inventory) match
@@ -35,6 +36,9 @@ let
     if cfg.environmentFile != null
     then cfg.environmentFile
     else "${cfg.dataDir}/secrets/home-registry-env";
+  # Generated env file holding the composed DATABASE_URL for the app
+  # container (see the home-registry-app-env-init unit below).
+  appEnvFile = "${cfg.dataDir}/secrets/home-registry-app-env";
 in
 {
   options.vexos.server.home-registry = {
@@ -124,6 +128,47 @@ in
       '';
     };
 
+    # STOPGAP for the DATABASE_URL-only image generation. The currently
+    # published ghcr.io/victorytek/home-registry:beta image reads only a
+    # single composed DATABASE_URL and ignores discrete POSTGRES_* vars. Its
+    # parser requires the literal postgres:// prefix, splits on '@', ':' and
+    # '/', and does NOT percent-decode — so the password is used verbatim
+    # and must not contain those characters (the unit fails loudly if it
+    # does; auto-generated hex passwords are always safe). The password only
+    # exists at runtime in effectiveEnvFile, so this unit composes the URL
+    # into a second env file for the app container. Once an image containing
+    # upstream commit 4c9dfc4 (discrete POSTGRES_* support) is built and
+    # published, this unit and appEnvFile can be dropped and the app
+    # container can take POSTGRES_HOST/PORT/USER/DB in `environment` plus
+    # effectiveEnvFile again. Runs on every start so a rotated password is
+    # picked up.
+    systemd.services."home-registry-app-env-init" = {
+      description   = "Compose DATABASE_URL for the Home Registry app container";
+      wantedBy      = [ "multi-user.target" ];
+      after         = lib.optional (cfg.environmentFile == null) "home-registry-secrets-init.service";
+      requires      = lib.optional (cfg.environmentFile == null) "home-registry-secrets-init.service";
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+      };
+      script = ''
+        install -d -m 0700 "${cfg.dataDir}/secrets"
+        pw=$(sed -n 's/^POSTGRES_PASSWORD=//p' "${effectiveEnvFile}" | head -n1)
+        if [ -z "$pw" ]; then
+          echo "POSTGRES_PASSWORD not found in ${effectiveEnvFile}" >&2
+          exit 1
+        fi
+        case "$pw" in
+          *@*|*:*|*/*)
+            echo "POSTGRES_PASSWORD contains '@', ':' or '/', which the home-registry image's unencoded DATABASE_URL parser cannot handle" >&2
+            exit 1
+            ;;
+        esac
+        umask 077
+        printf 'DATABASE_URL=postgres://postgres:%s@home-registry-db:5432/home_inventory\n' "$pw" > "${appEnvFile}"
+      '';
+    };
+
     # No tmpfiles rule for dataDir/postgres: the postgres:17 image's root
     # entrypoint chowns PGDATA to its own UID on first run and expects to
     # own it thereafter. A "d ... root root" rule here would re-assert
@@ -152,22 +197,18 @@ in
       image = "ghcr.io/victorytek/home-registry:beta";
       ports = [ "${toString cfg.port}:8210" ];
       environment = {
-        POSTGRES_HOST = "home-registry-db";
-        POSTGRES_PORT = "5432";
-        POSTGRES_USER = "postgres";
-        POSTGRES_DB   = "home_inventory";
         PORT     = "8210";
         RUST_LOG = "info";
       };
-      environmentFiles = [ effectiveEnvFile ];
+      environmentFiles = [ appEnvFile ];
       extraOptions = [ "--network=home-registry-net" ];
       dependsOn = [ "home-registry-db" ];
     };
 
     systemd.services."docker-home-registry-db".after    = [ "home-registry-network.service" ] ++ lib.optional (cfg.environmentFile == null) "home-registry-secrets-init.service";
     systemd.services."docker-home-registry-db".requires = [ "home-registry-network.service" ] ++ lib.optional (cfg.environmentFile == null) "home-registry-secrets-init.service";
-    systemd.services."docker-home-registry".after       = [ "home-registry-network.service" ] ++ lib.optional (cfg.environmentFile == null) "home-registry-secrets-init.service";
-    systemd.services."docker-home-registry".requires    = [ "home-registry-network.service" ] ++ lib.optional (cfg.environmentFile == null) "home-registry-secrets-init.service";
+    systemd.services."docker-home-registry".after       = [ "home-registry-network.service" "home-registry-app-env-init.service" ];
+    systemd.services."docker-home-registry".requires    = [ "home-registry-network.service" "home-registry-app-env-init.service" ];
 
     networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   })

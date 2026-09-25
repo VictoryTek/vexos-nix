@@ -10,9 +10,10 @@
 # No required configuration — vexos.server.humidor.enable = true; is enough:
 #   - The Postgres password is generated automatically on first activation
 #     and stored at dataDir/secrets/humidor-env (0600, root-only). The app
-#     container gets the rest of the connection (host/port/user/db) as
-#     discrete POSTGRES_* env vars, same pattern as Joplin, so the password
-#     stays the only secret in the env file. Set
+#     container gets a composed DATABASE_URL from a generated second env
+#     file (dataDir/secrets/humidor-app-env) — see the stopgap note on
+#     humidor-app-env-init below. The db container still reads discrete
+#     POSTGRES_* vars from the original env file. Set
 #     vexos.server.humidor.environmentFile yourself only if you want to
 #     manage the secret through another backend (e.g. sops-nix).
 #
@@ -29,6 +30,9 @@ let
     if cfg.environmentFile != null
     then cfg.environmentFile
     else "${cfg.dataDir}/secrets/humidor-env";
+  # Generated env file holding the composed DATABASE_URL for the app
+  # container (see the humidor-app-env-init unit below).
+  appEnvFile = "${cfg.dataDir}/secrets/humidor-app-env";
 in
 {
   options.vexos.server.humidor = {
@@ -117,6 +121,39 @@ in
       '';
     };
 
+    # STOPGAP for the DATABASE_URL-only image generation. The currently
+    # published ghcr.io/victorytek/humidor image reads only a single composed
+    # DATABASE_URL (postgresql:// scheme, handed to tokio-postgres, which
+    # percent-decodes) and ignores discrete POSTGRES_* vars. The password only
+    # exists at runtime in effectiveEnvFile, so this unit composes the URL
+    # into a second env file for the app container. Once an image containing
+    # upstream commit 27cfd31 (discrete POSTGRES_* support) is built and
+    # published, this unit and appEnvFile can be dropped and the app
+    # container can take POSTGRES_HOST/PORT/USER/DB in `environment` plus
+    # effectiveEnvFile again. Runs on every start so a rotated password is
+    # picked up.
+    systemd.services."humidor-app-env-init" = {
+      description   = "Compose DATABASE_URL for the Humidor app container";
+      wantedBy      = [ "multi-user.target" ];
+      after         = lib.optional (cfg.environmentFile == null) "humidor-secrets-init.service";
+      requires      = lib.optional (cfg.environmentFile == null) "humidor-secrets-init.service";
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+      };
+      script = ''
+        install -d -m 0700 "${cfg.dataDir}/secrets"
+        pw=$(sed -n 's/^POSTGRES_PASSWORD=//p' "${effectiveEnvFile}" | head -n1)
+        if [ -z "$pw" ]; then
+          echo "POSTGRES_PASSWORD not found in ${effectiveEnvFile}" >&2
+          exit 1
+        fi
+        encPw=$(${pkgs.jq}/bin/jq -rn --arg p "$pw" '$p|@uri')
+        umask 077
+        printf 'DATABASE_URL=postgresql://humidor_user:%s@humidor-db:5432/humidor_db\n' "$encPw" > "${appEnvFile}"
+      '';
+    };
+
     # No tmpfiles rule for dataDir/postgres: the postgres:17 image's root
     # entrypoint chowns PGDATA to its own UID on first run and expects to
     # own it thereafter. A "d ... root root" rule here would re-assert
@@ -145,22 +182,18 @@ in
       image = "ghcr.io/victorytek/humidor:latest";
       ports = [ "${toString cfg.port}:9898" ];
       environment = {
-        POSTGRES_HOST = "humidor-db";
-        POSTGRES_PORT = "5432";
-        POSTGRES_USER = "humidor_user";
-        POSTGRES_DB   = "humidor_db";
         PORT     = "9898";
         RUST_LOG = "info";
       };
-      environmentFiles = [ effectiveEnvFile ];
+      environmentFiles = [ appEnvFile ];
       extraOptions = [ "--network=humidor-net" ];
       dependsOn = [ "humidor-db" ];
     };
 
     systemd.services."docker-humidor-db".after    = [ "humidor-network.service" ] ++ lib.optional (cfg.environmentFile == null) "humidor-secrets-init.service";
     systemd.services."docker-humidor-db".requires = [ "humidor-network.service" ] ++ lib.optional (cfg.environmentFile == null) "humidor-secrets-init.service";
-    systemd.services."docker-humidor".after       = [ "humidor-network.service" ] ++ lib.optional (cfg.environmentFile == null) "humidor-secrets-init.service";
-    systemd.services."docker-humidor".requires    = [ "humidor-network.service" ] ++ lib.optional (cfg.environmentFile == null) "humidor-secrets-init.service";
+    systemd.services."docker-humidor".after       = [ "humidor-network.service" "humidor-app-env-init.service" ];
+    systemd.services."docker-humidor".requires    = [ "humidor-network.service" "humidor-app-env-init.service" ];
 
     networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;
   })
