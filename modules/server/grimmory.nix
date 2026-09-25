@@ -16,7 +16,7 @@
 #
 # First run: visit the web UI and create the admin account yourself — Grimmory
 # has no published default credentials to change (unlike Joplin/Vaultwarden).
-# Since openFirewall defaults to true (LAN-reachable, matching Komga/Kavita),
+# Since openFirewall defaults to true (LAN-reachable),
 # claim the admin account promptly after enabling.
 { config, lib, pkgs, ... }:
 let

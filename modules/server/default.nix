@@ -14,14 +14,11 @@
     ./plex.nix
     ./audiobookshelf.nix
     ./tautulli.nix
-    ./navidrome.nix
     # ── Media Requests ───────────────────────────────────────────────────────
     ./seerr.nix
     # ── Media Automation (Arr Stack) ─────────────────────────────────────────
     ./arr.nix
     # ── Books & Comics ───────────────────────────────────────────────────────
-    ./komga.nix
-    ./kavita.nix
     ./grimmory.nix
     ./bookshelf.nix
     # ── Game Servers ─────────────────────────────────────────────────────────
@@ -30,7 +27,6 @@
     ./nextcloud.nix
     ./syncthing.nix
     ./immich.nix
-    ./minio.nix
     ./photoprism.nix
     ./joplin.nix
     # ── Documents ────────────────────────────────────────────────────────────
@@ -45,7 +41,6 @@
     ./vexboard.nix
     # ── AI & Privacy ─────────────────────────────────────────────────────────
     ./kiji-proxy.nix
-    ./portbook.nix
     ./searxng.nix
     # ── Security ─────────────────────────────────────────────────────────────
     ./vaultwarden.nix
@@ -70,34 +65,22 @@
     ./nas-sync.nix         # scheduled rsync mirror jobs between mounted NAS paths
     ./uptime-kuma.nix
     ./homepage.nix
-    ./grafana.nix
     ./scrutiny.nix
     ./prometheus.nix
     ./alertmanager.nix
-    ./loki.nix
     ./fluent-bit.nix
     ./netdata.nix
-    ./dozzle.nix
     ./portainer.nix
     # ── Notifications ────────────────────────────────────────────────────────
     ./ntfy.nix
     # ── Food & Home ──────────────────────────────────────────────────────────
     ./mealie.nix
     ./wishlist.nix
-    ./listmonk.nix
-    # ── Personal Trackers ────────────────────────────────────────────────────
+    # ── Inventory ────────────────────────────────────────────────────
     ./humidor.nix
     ./home-registry.nix
-    # ── Remote Access ────────────────────────────────────────────────────────
-    ./rustdesk.nix
     # ── Automation & Smart Home ──────────────────────────────────────────────
-    ./home-assistant.nix
-    ./node-red.nix
     ./zigbee2mqtt.nix
-    # ── Communications ───────────────────────────────────────────────────────
-    ./matrix-conduit.nix
-    # ── PDF Tools ────────────────────────────────────────────────────────────
-    ./stirling-pdf.nix
     # ── Virtualisation ────────────────────────────────────────────────────────────
     ./proxmox.nix
     # ── Backup ───────────────────────────────────────────────────────────────

@@ -34,14 +34,12 @@ let
     "cloudflare-ddns" # polls public IP and writes to Cloudflare's API; no local state
     "cockpit"         # web UI over the host; no state of its own
     "code-server"     # workspace lives in the user's home, backed up separately
-    "dozzle"          # log viewer over the container socket; stateless
     "fluent-bit"      # /var/lib/fluent-bit holds only a systemd log cursor
     "kernelBuilder"   # GC roots for derived build artifacts; rebuildable
     "kiji-proxy"      # stateless proxy
-    "netdata"         # metrics; Prometheus/Loki are the durable stores
+    "netdata"         # metrics; Prometheus is the durable store
     "nginx"           # config is declarative; certs live in /var/lib/acme
     "searxng"         # config is declarative; no persistent user data
-    "stirling-pdf"    # documents are processed in-flight, not stored
     "unbound"         # cache + regenerable DNSSEC trust anchor
 
     # ── Deliberately excluded ────────────────────────────────────────────

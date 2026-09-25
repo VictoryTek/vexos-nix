@@ -79,18 +79,6 @@ in
           mode = "0400";
         };
 
-        minio-root-user = {
-          owner = "root";
-          group = "root";
-          mode = "0400";
-        };
-
-        minio-root-password = {
-          owner = "root";
-          group = "root";
-          mode = "0400";
-        };
-
         attic-server-token-rs256-secret-base64 = {
           owner = "root";
           group = "root";
@@ -123,18 +111,6 @@ in
           mode = "0400";
         };
 
-        listmonk-admin-user = {
-          owner = "root";
-          group = "root";
-          mode = "0400";
-        };
-
-        listmonk-admin-password = {
-          owner = "root";
-          group = "root";
-          mode = "0400";
-        };
-
         vaultwarden-admin-token = {
           owner = "root";
           group = "root";
@@ -161,16 +137,6 @@ in
       };
 
       templates = {
-        "minio-credentials" = {
-          owner = "root";
-          group = "root";
-          mode = "0400";
-          content = ''
-            MINIO_ROOT_USER=${config.sops.placeholder.minio-root-user}
-            MINIO_ROOT_PASSWORD=${config.sops.placeholder.minio-root-password}
-          '';
-        };
-
         "attic-credentials" = {
           owner = "root";
           group = "root";
@@ -198,16 +164,6 @@ in
           '';
         };
 
-        "listmonk-env" = {
-          owner = "root";
-          group = "root";
-          mode = "0400";
-          content = ''
-            LISTMONK_ADMIN_USER=${config.sops.placeholder.listmonk-admin-user}
-            LISTMONK_ADMIN_PASSWORD=${config.sops.placeholder.listmonk-admin-password}
-          '';
-        };
-
         "vaultwarden-env" = {
           owner = "root";
           group = "root";
@@ -223,12 +179,10 @@ in
 
     vexos.server.nextcloud.adminPassFile = lib.mkForce config.sops.secrets."nextcloud-admin-pass".path;
     vexos.server.photoprism.passwordFile = lib.mkForce config.sops.secrets."photoprism-password".path;
-    vexos.server.minio.rootCredentialsFile = lib.mkForce config.sops.templates."minio-credentials".path;
     vexos.server.attic.environmentFile = lib.mkForce config.sops.templates."attic-credentials".path;
     vexos.server.harmonia.signKeyPath = lib.mkForce config.sops.secrets."harmonia-cache-priv-key".path;
     vexos.server.vexboard.secretFile = lib.mkForce config.sops.templates."vexboard-credentials".path;
     vexos.server.kiji-proxy.environmentFile = lib.mkForce config.sops.templates."kiji-proxy-env".path;
-    services.listmonk.secretFile = lib.mkForce config.sops.templates."listmonk-env".path;
     vexos.server.vaultwarden.environmentFile = lib.mkForce config.sops.templates."vaultwarden-env".path;
     vexos.server.authelia.jwtSecretFile = lib.mkForce config.sops.secrets."authelia-jwt-secret".path;
     vexos.server.authelia.sessionSecretFile = lib.mkForce config.sops.secrets."authelia-session-secret".path;

@@ -2,7 +2,7 @@
 # Backend-agnostic permissions enforcement for /etc/nixos/secrets.
 #
 # Project services that need credentials read a secret file from this directory
-# at runtime (e.g. nextcloud-admin-pass, minio-credentials, attic-credentials,
+# at runtime (e.g. nextcloud-admin-pass, attic-credentials,
 # photoprism-password).  Without explicit enforcement the directory is
 # world-readable, exposing secrets to any process running as an unprivileged user.
 #

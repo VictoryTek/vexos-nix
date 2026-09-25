@@ -11,7 +11,7 @@
 # The `attic` CLI is installed automatically when this module is enabled.
 # After enabling and rebuilding, run `just attic-bootstrap` to create the
 # cache, mint tokens, and print client/CI setup values.
-# To push this repo's own custom pkgs/* packages (cockpit-navigator, portbook,
+# To push this repo's own custom pkgs/* packages (cockpit-navigator,
 # vexos-update, etc.) after logging in, run: just attic-push [cache-name]
 { config, lib, pkgs, ... }:
 let

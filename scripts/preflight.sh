@@ -355,11 +355,6 @@ else
     PLAINTEXT_REGRESSION=1
   fi
 
-  if grep -Eq 'rootCredentialsFile[[:space:]]*=[[:space:]]*"/etc/nixos/secrets/minio-credentials"' modules/server/minio.nix 2>/dev/null; then
-    fail "Hardcoded plaintext MinIO rootCredentialsFile assignment detected in modules/server/minio.nix"
-    PLAINTEXT_REGRESSION=1
-  fi
-
   if grep -Eq 'passwordFile[[:space:]]*=[[:space:]]*"/etc/nixos/secrets/photoprism-password"' modules/server/photoprism.nix 2>/dev/null; then
     fail "Hardcoded plaintext PhotoPrism passwordFile assignment detected in modules/server/photoprism.nix"
     PLAINTEXT_REGRESSION=1
@@ -405,8 +400,6 @@ else
       for REQUIRED_TOKEN in \
         'nextcloud-admin-pass' \
         'photoprism-password' \
-        'minio-root-user' \
-        'minio-root-password' \
         'attic-server-token-rs256-secret-base64'; do
         if ! grep -Fq "$REQUIRED_TOKEN" modules/secrets-sops.nix 2>/dev/null; then
           fail "modules/secrets-sops.nix missing required declaration token: $REQUIRED_TOKEN"

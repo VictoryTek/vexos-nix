@@ -95,6 +95,7 @@ in
       Preferences = {
         "sidebar.revamp"      = { Value = true; Status = "default"; };
         "sidebar.verticalTabs" = { Value = true; Status = "default"; };
+        "sidebar.expandOnHover" = { Value = true; Status = "default"; };
       };
     };
   };

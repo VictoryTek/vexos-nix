@@ -13,7 +13,6 @@ final: prev: {
     brave-origin         = final.callPackage ./brave-origin { };
     # ── AI & Privacy ────────────────────────────────────────────────────────
     kiji-proxy           = final.callPackage ./kiji-proxy { };
-    portbook             = final.callPackage ./portbook { };
     # ── System ──────────────────────────────────────────────────────────────
     vexos-update         = final.callPackage ./vexos-update { };
     # ── Utilities ───────────────────────────────────────────────────────────

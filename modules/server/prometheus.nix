@@ -1,6 +1,5 @@
 # modules/server/prometheus.nix
 # Prometheus — time-series metrics collection and alerting.
-# Pair with Grafana (enable separately) for dashboards.
 # ⚠ Default port 9090 conflicts with Cockpit — Prometheus uses 9092 to avoid conflict.
 { config, lib, pkgs, ... }:
 let

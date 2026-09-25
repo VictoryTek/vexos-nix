@@ -1623,7 +1623,7 @@ disable-feature feature: _require-desktop-role
 # Available server service module names.
 # Keep in sync with _service_catalog below, modules/server/default.nix, and
 # template/server-services.nix.
-_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand dozzle forgejo grafana grimmory harmonia headscale kernel-builder home-assistant home-registry homepage humidor immich jellyfin joplin kavita kiji-proxy komga listmonk loki matrix-conduit mealie minio nas navidrome netdata nextcloud nginx nginx-proxy-manager node-red ntfy paperless papermc photoprism plex podman portainer portbook prometheus proxmox rustdesk scrutiny searxng seerr stirling-pdf syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy mealie nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism plex podman portainer prometheus proxmox scrutiny searxng seerr syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Server service catalog — single source of truth for both `just
 # available-services` (catalog view) and `just services` (per-host status).
@@ -1633,11 +1633,7 @@ _server_service_names := "adguard arcane arr attic audiobookshelf authelia backu
 # and template/server-services.nix.
 _service_catalog := '''
     Books & Reading|grimmory|Self-hosted ebook/comic/audiobook library
-    Books & Reading|kavita|Self-hosted manga, comics & book library
-    Books & Reading|komga|Comic book & manga media server
-    Communications|matrix-conduit|Lightweight Matrix homeserver (chat protocol)
     Files & Storage|immich|Self-hosted photo & video backup
-    Files & Storage|minio|S3-compatible object storage server
     Files & Storage|nextcloud|File sync, sharing & collaboration suite
     Files & Storage|photoprism|AI-powered photo management & sharing
     Files & Storage|syncthing|Continuous peer-to-peer file synchronisation
@@ -1655,20 +1651,17 @@ _service_catalog := '''
     Infrastructure|podman|Rootless OCI container runtime
     Infrastructure|portainer|Web UI for managing Docker/Podman stacks
     Infrastructure|traefik|Cloud-native edge router & reverse proxy
+    Inventory|home-registry|Self-hosted home inventory tracker
+    Inventory|humidor|Self-hosted cigar collection inventory tracker
     Media|audiobookshelf|Self-hosted audiobook & podcast server
     Media|jellyfin|Open-source media streaming server
-    Media|navidrome|Music streaming server (Subsonic-compatible)
     Media|plex|Personal media library & streaming server
     Media|tautulli|Monitoring & analytics for Plex Media Server
     Media Requests & Automation|arr|*arr suite — Sonarr, Radarr, Lidarr, Prowlarr, SABnzbd, Maintainerr
     Media Requests & Automation|seerr|Media request manager (Jellyfin, Plex, Emby)
     Monitoring & Admin|cockpit|Web-based Linux server management console
-    Monitoring & Admin|dozzle|Real-time container log viewer
-    Monitoring & Admin|grafana|Metrics visualisation & dashboards
-    Monitoring & Admin|loki|Log aggregation system (pairs with Grafana)
     Monitoring & Admin|nas|Cockpit + NAS plugins (Samba, NFS, ZFS)
     Monitoring & Admin|netdata|Real-time performance & health monitoring
-    Monitoring & Admin|portbook|Quick-access bookmark panel for services
     Monitoring & Admin|prometheus|Metrics collection & alerting toolkit
     Monitoring & Admin|scrutiny|S.M.A.R.T. disk health monitoring dashboard
     Monitoring & Admin|uptime-kuma|Self-hosted uptime & status page monitoring
@@ -1682,15 +1675,8 @@ _service_catalog := '''
     Productivity|forgejo|Self-hosted Git & code collaboration (Gitea fork)
     Productivity|homepage|Customisable server dashboard & start page
     Productivity|joplin|Self-hosted Joplin Server note sync backend
-    Productivity|listmonk|Self-hosted newsletter & mailing list manager
     Productivity|mealie|Self-hosted recipe manager & meal planner
     Productivity|paperless|Document scanning, OCR, tagging & archival
-    Productivity|stirling-pdf|Web-based PDF editing & conversion tools
-    Personal Trackers|home-registry|Self-hosted home inventory tracker
-    Personal Trackers|humidor|Self-hosted cigar/humidor collection tracker
-    Remote Access|rustdesk|Open-source self-hosted remote desktop server
-    Smart Home & Notifications|home-assistant|Open-source home automation platform
-    Smart Home & Notifications|node-red|Low-code flow-based automation editor
     Smart Home & Notifications|ntfy|Simple HTTP-based push notification server
     Smart Home & Notifications|zigbee2mqtt|Zigbee → MQTT bridge (no proprietary hub needed)
     AI & Privacy|kiji-proxy|Privacy-first OpenAI-compatible AI API proxy
@@ -1787,10 +1773,9 @@ secrets-init: _require-server-role
     echo ""
     echo "Then create/edit the secrets file with:  sops secrets/server/secrets.yaml"
     echo "Required keys (see modules/secrets-sops.nix):"
-    echo "  nextcloud-admin-pass, photoprism-password, minio-root-user,"
-    echo "  minio-root-password, attic-server-token-rs256-secret-base64,"
-    echo "  vexboard-auth-secret, kiji-proxy-openai-key, listmonk-admin-user,"
-    echo "  listmonk-admin-password, vaultwarden-admin-token,"
+    echo "  nextcloud-admin-pass, photoprism-password,"
+    echo "  attic-server-token-rs256-secret-base64,"
+    echo "  vexboard-auth-secret, kiji-proxy-openai-key, vaultwarden-admin-token,"
     echo "  authelia-jwt-secret, authelia-session-secret,"
     echo "  authelia-storage-encryption-key"
     echo ""
@@ -2190,21 +2175,17 @@ service-info service="":
         docker)          printf "  %-18s  No web UI — docker / docker compose CLI\n"                                   "$1" ;;
         dockhand)        printf "  %-18s  Web UI  http://<server-ip>:8073   (Docker/Podman container manager)\n"      "$1" ;;
         forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000\n"                                           "$1" ;;
-        grafana)         printf "  %-18s  Web UI  http://<server-ip>:3030\n"                                           "$1" ;;
         harmonia)        printf "  %-18s  HTTP    http://<server-ip>:5000   (Nix binary cache)\n"                      "$1" ;;
         kernel-builder)  printf "  %-18s  No web UI — nightly timer; see 'just kernel-build-status'\n"            "$1" ;;
         grimmory)        printf "  %-18s  Web UI  http://<server-ip>:6060\n"                                           "$1" ;;
         headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
-        home-assistant)  printf "  %-18s  Web UI  http://<server-ip>:8123\n"                                           "$1" ;;
         home-registry)   printf "  %-18s  Web UI  http://<server-ip>:8210\n"                                           "$1" ;;
         homepage)        printf "  %-18s  Web UI  http://<server-ip>:3010   (requires docker)\n"                       "$1" ;;
         humidor)         printf "  %-18s  Web UI  http://<server-ip>:9898\n"                                           "$1" ;;
         immich)          printf "  %-18s  Web UI  http://<server-ip>:2283\n"                                           "$1" ;;
         jellyfin)        printf "  %-18s  Web UI  http://<server-ip>:8096\n"                                           "$1" ;;
         joplin)          printf "  %-18s  Web UI  http://<tailnet-host>:22300   (Tailscale-only)\n"                     "$1" ;;
-        kavita)          printf "  %-18s  Web UI  http://<server-ip>:5000\n"                                           "$1" ;;
         kiji-proxy)      printf "  %-18s  Proxy   http://127.0.0.1:8080   |  Health: http://localhost:8080/health\n"    "$1" ;;
-        komga)           printf "  %-18s  Web UI  http://<server-ip>:8090\n"                                           "$1" ;;
         mealie)          printf "  %-18s  Web UI  http://<server-ip>:9010\n"                                           "$1" ;;
         nextcloud)       printf "  %-18s  Web UI  http://nextcloud.local     (Nginx frontend)\n"                       "$1" ;;
         nginx)           printf "  %-18s  Ports :80, :443\n"                                                           "$1" ;;
@@ -2228,10 +2209,8 @@ service-info service="":
             ;;
         plex)            printf "  %-18s  Web UI  http://<server-ip>:32400/web\n"                                      "$1" ;;
         podman)          printf "  %-18s  No web UI — podman / podman compose CLI\n"                                   "$1" ;;
-        rustdesk)        printf "  %-18s  Ports :21115-21117 / :21118-21119 (no web UI)\n"                             "$1" ;;
         scrutiny)        printf "  %-18s  Web UI  http://<server-ip>:8078\n"                                           "$1" ;;
         searxng)         printf "  %-18s  Web UI  http://<server-ip>:8888   (loopback-only by default)\n"              "$1" ;;
-        stirling-pdf)    printf "  %-18s  Web UI  http://<server-ip>:8077\n"                                           "$1" ;;
         syncthing)       printf "  %-18s  Web UI  http://<server-ip>:8384\n"                                           "$1" ;;
         tautulli)        printf "  %-18s  Web UI  http://<server-ip>:8181\n"                                           "$1" ;;
         traefik)         printf "  %-18s  Ports :8882, :8445  |  Dashboard http://<server-ip>:8079/dashboard/\n"       "$1" ;;
@@ -2240,19 +2219,11 @@ service-info service="":
         vexboard)        printf "  %-18s  Web UI  http://<server-ip>:7280   (server dashboard)\n" "$1" ;;
         authelia)        printf "  %-18s  Web UI  http://<server-ip>:9091\n"                                                   "$1" ;;
         code-server)     printf "  %-18s  Web UI  http://<server-ip>:4444\n"                                                   "$1" ;;
-        dozzle)          printf "  %-18s  Web UI  http://<server-ip>:8888   (requires docker)\n"                               "$1" ;;
-        listmonk)        printf "  %-18s  Web UI  http://<server-ip>:9025\n"                                                   "$1" ;;
-        loki)            printf "  %-18s  API     http://<server-ip>:3100   (no web UI — pair with Grafana)\n"                 "$1" ;;
-        matrix-conduit)  printf "  %-18s  API     http://<server-ip>:6167   |  Federation :8448\n"                             "$1" ;;
-        minio)           printf "  %-18s  API :9000  Console http://<server-ip>:9001\n"                                   "$1" ;;
-        navidrome)       printf "  %-18s  Web UI  http://<server-ip>:4533\n"                                                   "$1" ;;
         netdata)         printf "  %-18s  Web UI  http://<server-ip>:19999\n"                                                  "$1" ;;
         nginx-proxy-manager) printf "  %-18s  Admin http://<server-ip>:81   |  Ports :8881, :8444\n"                         "$1" ;;
-        node-red)        printf "  %-18s  Web UI  http://<server-ip>:1880\n"                                                   "$1" ;;
         paperless)       printf "  %-18s  Web UI  http://<server-ip>:28981\n"                                                  "$1" ;;
         photoprism)      printf "  %-18s  Web UI  http://<server-ip>:2342\n"                                                   "$1" ;;
         portainer)       printf "  %-18s  Web UI  https://<server-ip>:9443  (Docker/Podman container manager)\n"               "$1" ;;
-        portbook)        printf "  %-18s  Web UI  http://<server-ip>:7777   |  CLI: portbook ls / tui / watch\n"       "$1" ;;
         prometheus)      printf "  %-18s  Web UI  http://<server-ip>:9092\n"                                               "$1" ;;
         proxmox)         printf "  %-18s  Web UI  https://<server-ip>:8006  |  Ports :3128 (SPICE), :5900-5999 (VNC)\n"        "$1" ;;
         unbound)         printf "  %-18s  DNS on :5335\n"                                                                  "$1" ;;
@@ -2318,20 +2289,16 @@ _service-units service:
       docker)         echo "docker" ;;
       dockhand)       echo "docker-dockhand podman-dockhand" ;;
       forgejo)        echo "forgejo" ;;
-      grafana)        echo "grafana" ;;
       harmonia)       echo "harmonia" ;;
       kernel-builder) echo "kernel-build-ogc" ;;
       grimmory)       echo "docker-grimmory docker-grimmory-db" ;;
       headscale)      echo "headscale" ;;
-      home-assistant) echo "home-assistant" ;;
       home-registry)  echo "docker-home-registry docker-home-registry-db" ;;
       homepage)       echo "docker-homepage" ;;
       humidor)        echo "docker-humidor docker-humidor-db" ;;
       immich)         echo "immich-server" ;;
       jellyfin)       echo "jellyfin" ;;
       joplin)         echo "docker-joplin-server docker-joplin-db" ;;
-      kavita)         echo "kavita" ;;
-      komga)          echo "komga" ;;
       kiji-proxy)     echo "kiji-proxy" ;;
       mealie)         echo "mealie" ;;
       nextcloud)      echo "phpfpm-nextcloud nginx" ;;
@@ -2341,10 +2308,8 @@ _service-units service:
       papermc)        echo "minecraft-server" ;;
       plex)           echo "plex" ;;
       podman)         echo "podman" ;;
-      rustdesk)       echo "rustdesk-server hbbr hbbs" ;;
       scrutiny)       echo "scrutiny" ;;
       searxng)        echo "uwsgi" ;;
-      stirling-pdf)   echo "docker-stirling-pdf" ;;
       syncthing)      echo "syncthing" ;;
       tautulli)       echo "tautulli" ;;
       traefik)        echo "traefik" ;;
@@ -2353,19 +2318,11 @@ _service-units service:
       vexboard)       echo "vexboard" ;;
       authelia)       echo "docker-authelia" ;;
       code-server)    echo "code-server" ;;
-      dozzle)         echo "docker-dozzle" ;;
-      listmonk)       echo "listmonk" ;;
-      loki)           echo "loki" ;;
-      matrix-conduit) echo "conduit" ;;
-      minio)          echo "minio" ;;
-      navidrome)      echo "navidrome" ;;
       netdata)        echo "netdata" ;;
       nginx-proxy-manager) echo "docker-nginx-proxy-manager" ;;
-      node-red)       echo "node-red" ;;
       paperless)      echo "paperless" ;;
       photoprism)     echo "photoprism" ;;
       portainer)      echo "docker-portainer podman-portainer" ;;
-      portbook)       echo "portbook" ;;
       prometheus)     echo "prometheus" ;;
       proxmox)        echo "pve-cluster pvedaemon pveproxy pvestatd pvescheduler" ;;
       unbound)        echo "unbound" ;;
@@ -2405,20 +2362,16 @@ status service: _require-server-role
       docker)         URLS="" ;;
       dockhand)       URLS="http://localhost:8073" ;;
       forgejo)        URLS="http://localhost:3000" ;;
-      grafana)        URLS="http://localhost:3030" ;;
       harmonia)       URLS="http://localhost:5000" ;;
       kernel-builder) URLS="" ;;
       grimmory)       URLS="http://localhost:6060" ;;
       headscale)      URLS="http://localhost:8085" ;;
-      home-assistant) URLS="http://localhost:8123" ;;
       home-registry)  URLS="http://localhost:8210" ;;
       homepage)       URLS="http://localhost:3010" ;;
       humidor)        URLS="http://localhost:9898" ;;
       immich)         URLS="http://localhost:2283" ;;
       jellyfin)       URLS="http://localhost:8096" ;;
       joplin)         URLS="http://localhost:22300" ;;
-      kavita)         URLS="http://localhost:5000" ;;
-      komga)          URLS="http://localhost:8090" ;;
       kiji-proxy)     URLS="http://localhost:8080/health" ;;
       mealie)         URLS="http://localhost:9010" ;;
       nextcloud)      URLS="http://localhost:80" ;;
@@ -2428,10 +2381,8 @@ status service: _require-server-role
       papermc)        URLS="" ;;
       plex)           URLS="http://localhost:32400/web" ;;
       podman)         URLS="" ;;
-      rustdesk)       URLS="" ;;
       scrutiny)       URLS="http://localhost:8078" ;;
       searxng)        URLS="http://localhost:8888" ;;
-      stirling-pdf)   URLS="http://localhost:8077" ;;
       syncthing)      URLS="http://localhost:8384" ;;
       tautulli)       URLS="http://localhost:8181" ;;
       traefik)        URLS="http://localhost:8079/dashboard/" ;;
@@ -2440,19 +2391,11 @@ status service: _require-server-role
       vexboard)       URLS="http://localhost:7280" ;;
       authelia)       URLS="http://localhost:9091" ;;
       code-server)    URLS="http://localhost:4444" ;;
-      dozzle)         URLS="http://localhost:8888" ;;
-      listmonk)       URLS="http://localhost:9025" ;;
-      loki)           URLS="http://localhost:3100/ready" ;;
-      matrix-conduit) URLS="http://localhost:6167/_matrix/client/versions" ;;
-      minio)          URLS="http://localhost:9001 http://localhost:9000" ;;
-      navidrome)      URLS="http://localhost:4533" ;;
       netdata)        URLS="http://localhost:19999" ;;
       nginx-proxy-manager) URLS="http://localhost:81" ;;
-      node-red)       URLS="http://localhost:1880" ;;
       paperless)      URLS="http://localhost:28981" ;;
       photoprism)     URLS="http://localhost:2342" ;;
       portainer)      URLS="https://localhost:9443" ;;
-      portbook)       URLS="http://localhost:7777" ;;
       prometheus)     URLS="http://localhost:9092" ;;
       proxmox)        URLS="https://localhost:8006" ;;
       unbound)        URLS="" ;;
@@ -2554,9 +2497,9 @@ enable service: _require-server-role
     case "$SERVICE" in
         proxmox)
             _storage_tier="zfs-vm" ;;
-        nextcloud|immich|photoprism|paperless|minio|syncthing|forgejo)
+        nextcloud|immich|photoprism|paperless|syncthing|forgejo)
             _storage_tier="zfs-live" ;;
-        jellyfin|plex|navidrome|audiobookshelf|kavita|komga|arr)
+        jellyfin|plex|audiobookshelf|arr)
             _storage_tier="mergerfs-bulk" ;;
     esac
     if [ -n "$_storage_tier" ]; then
@@ -3009,12 +2952,6 @@ enable service: _require-server-role
         echo "  Web UI:   http://<server-ip>:3000"
         echo "  About:    Lightweight self-hosted Git forge (Gitea fork) — issues, pull requests, CI. Registration is disabled by default."
         ;;
-      grafana)
-        echo "  Service:  grafana.service"
-        echo "  Web UI:   http://<server-ip>:3030"
-        echo "  About:    Metrics and observability dashboard. Pair with Prometheus to graph system and application metrics."
-        echo "  Login:    Default admin / admin — change on first login."
-        ;;
       harmonia)
         echo "  Service:  harmonia.service"
         echo "  HTTP:     http://<server-ip>:5000"
@@ -3048,12 +2985,6 @@ enable service: _require-server-role
         echo "  Web UI:   http://<server-ip>:8085"
         echo "  About:    Self-hosted Tailscale control server for a WireGuard mesh VPN without Tailscale's coordination servers."
         echo "  CLI:      Manage nodes with 'headscale' on the server."
-        ;;
-      home-assistant)
-        echo "  Service:  home-assistant.service"
-        echo "  Web UI:   http://<server-ip>:8123"
-        echo "  About:    Home automation platform with Zigbee (ZHA), ESPHome, weather, and thousands of smart home integrations."
-        echo "  Note:     First run launches an onboarding wizard to create the admin account."
         ;;
       home-registry)
         echo "  Services: docker-home-registry.service  docker-home-registry-db.service"
@@ -3090,18 +3021,6 @@ enable service: _require-server-role
         echo "  About:    Self-hosted sync server for Joplin desktop/mobile clients (two-container stack: app + dedicated Postgres)."
         echo "  Login:    admin@localhost / admin — change from the web UI after first boot."
         echo "  Note:     If clients get 'invalid origin' sync errors, set vexos.server.joplin.baseUrl to your tailnet's fully-qualified MagicDNS name."
-        ;;
-      kavita)
-        echo "  Service:  kavita.service"
-        echo "  Web UI:   http://<server-ip>:5000"
-        echo "  About:    Self-hosted digital reading server for ebooks (EPUB/PDF), comics (CBZ/CBR), and manga with OPDS feed support."
-        echo "  Note:     Create the admin account on first visit, then add library folders."
-        ;;
-      komga)
-        echo "  Service:  komga.service"
-        echo "  Web UI:   http://<server-ip>:8090"
-        echo "  About:    Self-hosted comics and manga server with a built-in web reader and OPDS feed."
-        echo "  Note:     Create the admin account on first visit, then add library folders."
         ;;
       mealie)
         echo "  Service:  mealie.service"
@@ -3182,12 +3101,6 @@ enable service: _require-server-role
             echo "  Plex Pass: Disabled. Re-enable with: just enable-plex-pass"
         fi
         ;;
-      rustdesk)
-        echo "  Service:  rustdesk-server.service"
-        echo "  No web UI — configure RustDesk clients to use this server's IP as the custom relay/ID server."
-        echo "  Ports:    TCP 21115–21117 (signal + relay), WebSocket 21118–21119"
-        echo "  About:    Self-hosted relay and signal server for RustDesk remote desktop — no dependency on RustDesk's public servers."
-        ;;
       scrutiny)
         echo "  Service:  scrutiny.service"
         echo "  Web UI:   http://<server-ip>:8078"
@@ -3203,11 +3116,6 @@ enable service: _require-server-role
         echo "  Note:     Closed to the network by default (openFirewall=false, binds to 127.0.0.1)."
         echo "            Front it with Caddy/Nginx/Traefik (already in this repo) to expose it, or"
         echo "            set vexos.server.searxng.openFirewall = true for direct LAN access."
-        ;;
-      stirling-pdf)
-        echo "  Container: stirling-pdf (NixOS OCI container)"
-        echo "  Web UI:    http://<server-ip>:8077"
-        echo "  About:     Web-based PDF toolbox — merge, split, rotate, compress, OCR, watermark, and convert. All processing is local."
         ;;
       syncthing)
         echo "  Service:  syncthing.service"
@@ -3320,61 +3228,6 @@ enable service: _require-server-role
         echo "  Note:     Set vexos.server.code-server.hashedPassword to your argon2 hash string."
         echo "            Generate hash: echo -n 'yourpassword' | nix run nixpkgs#libargon2 -- \"\$(head -c 20 /dev/random | base64)\" -e"
         ;;
-      dozzle)
-        echo "  Container: dozzle (NixOS OCI container)"
-        echo "  Web UI:   http://<server-ip>:8888"
-        echo "  About:    Real-time Docker log viewer in the browser. No persistent storage — live tailing only."
-        echo "  Note:     Requires Docker to be enabled (just enable docker)."
-        ;;
-      listmonk)
-        echo "  Service:  listmonk.service"
-        echo "  Web UI:   http://<server-ip>:9025"
-        echo "  About:    Self-hosted newsletter and mailing list manager with campaign analytics."
-        echo "  Login:    Default admin / listmonk — change immediately after first login."
-        echo "  Warning:  Default port 9000 remapped to 9025 to avoid conflict with Mealie and Minio."
-        ;;
-      loki)
-        echo "  Service:  loki.service"
-        echo "  API:      http://<server-ip>:3100"
-        echo "  About:    Log aggregation system designed to work with Grafana and Promtail. No standalone web UI."
-        echo "  Note:     Add Loki as a data source in Grafana (http://<server-ip>:3100). Use Promtail to ship logs."
-        ;;
-      matrix-conduit)
-        MC_SERVER_NAME=""
-        MC_OPTION="vexos.server.matrix-conduit.serverName"
-        while [ -z "$MC_SERVER_NAME" ]; do
-          read -r -p "  Enter your Matrix server name (e.g. yourdomain.com) [default: localhost]: " MC_SERVER_NAME
-          MC_SERVER_NAME="${MC_SERVER_NAME:-localhost}"
-        done
-        if grep -qP "^\s*#?\s*${MC_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
-          sudo sed -i -E "s|^(\s*)#?\s*(${MC_OPTION//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${MC_OPTION} = \"${MC_SERVER_NAME}\";|" "$SVC_FILE"
-        else
-          sudo sed -i "s|${OPTION} = true;|${OPTION} = true;\n  ${MC_OPTION} = \"${MC_SERVER_NAME}\";|" "$SVC_FILE"
-        fi
-        echo "✓ Enabled: matrix-conduit (server name: ${MC_SERVER_NAME})"
-        echo "  → Run 'just rebuild' to apply."
-        echo ""
-        echo "  Service:  conduit.service"
-        echo "  API:      http://<server-ip>:6167"
-        echo "  About:    Lightweight Matrix homeserver (Conduit). Supports encrypted messaging and federation."
-        echo "  Note:     Set vexos.server.matrix-conduit.serverName to your domain name before first run."
-        echo "            Federation requires a public domain with port 8448 forwarded or a .well-known delegate."
-        ;;
-      minio)
-        echo "  Service:  minio.service"
-        echo "  API:      http://<server-ip>:9000"
-        echo "  Console:  http://<server-ip>:9001"
-        echo "  About:    S3-compatible object storage server. Use as a backend for Nextcloud, Immich, or S3 clients."
-        echo "  Note:     Create /etc/nixos/minio-credentials with:"
-        echo "              MINIO_ROOT_USER=yourusername"
-        echo "              MINIO_ROOT_PASSWORD=yourpassword"
-        ;;
-      navidrome)
-        echo "  Service:  navidrome.service"
-        echo "  Web UI:   http://<server-ip>:4533"
-        echo "  About:    Self-hosted music streaming server with Subsonic API — compatible with DSub, Symfonium, and others."
-        echo "  Note:     Set vexos.server.navidrome.musicFolder to your music library path (default: /var/lib/navidrome/music)."
-        ;;
       netdata)
         echo "  Service:  netdata.service"
         echo "  Web UI:   http://<server-ip>:19999"
@@ -3386,12 +3239,6 @@ enable service: _require-server-role
         echo "  Ports:    :8881 (HTTP proxy), :8444 (HTTPS proxy)"
         echo "  About:    Web UI for managing Nginx reverse proxy rules with automatic Let's Encrypt TLS."
         echo "  Login:    Default admin@example.com / changeme — change immediately after first login."
-        ;;
-      node-red)
-        echo "  Service:  node-red.service"
-        echo "  Web UI:   http://<server-ip>:1880"
-        echo "  About:    Flow-based visual programming tool for wiring together devices, APIs, and online services."
-        echo "  Note:     Pairs well with Home Assistant and MQTT for home automation flows."
         ;;
       paperless)
         echo "  Service:  paperless.service"
@@ -3413,52 +3260,6 @@ enable service: _require-server-role
         echo "  About:    Web UI for managing containers, images, volumes, and networks."
         echo "  Backend:  vexos.server.portainer.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just enable podman' first)."
         ;;
-      portbook)
-        # ── Auto-patch the package hash if still a placeholder ──────────────────
-        _PB_PKG=""
-        _jf_raw="{{justfile_directory()}}"
-        _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-        _jf_dir=$(dirname "$_jf_real")
-        _walk="$PWD"
-        while [ "$_walk" != "/" ] && [ -z "$_PB_PKG" ]; do
-          [ -f "$_walk/pkgs/portbook/default.nix" ] && _PB_PKG="$_walk/pkgs/portbook/default.nix"
-          _walk=$(dirname "$_walk")
-        done
-        for _cand in "$_jf_raw" "$_jf_dir" "$HOME/Projects/vexos-nix"; do
-          [ -n "$_PB_PKG" ] && break
-          [ -f "$_cand/pkgs/portbook/default.nix" ] && _PB_PKG="$_cand/pkgs/portbook/default.nix"
-        done
-        if [ -n "$_PB_PKG" ] && grep -q 'lib\.fakeHash' "$_PB_PKG"; then
-          echo ""
-          echo "  Fetching portbook package hash (~5 MB download)..."
-          _PB_URL="https://github.com/a-grasso/portbook/releases/download/v0.2.1/portbook-x86_64-unknown-linux-gnu.tar.xz"
-          _PB_B32=$(nix-prefetch-url --unpack "$_PB_URL" 2>/dev/null) || _PB_B32=""
-          _PB_SRI=""
-          [ -n "$_PB_B32" ] && _PB_SRI=$(nix hash to-sri --type sha256 "$_PB_B32" 2>/dev/null) || true
-          if [ -n "$_PB_SRI" ]; then
-            sed -i "s|lib\.fakeHash|\"${_PB_SRI}\"|" "$_PB_PKG"
-            echo "  ✓ Package hash set: ${_PB_SRI}"
-          else
-            echo "  ⚠ Could not fetch hash automatically. Run manually then rebuild:"
-            echo "      HASH=\$(nix-prefetch-url --unpack $_PB_URL)"
-            echo "      SRI=\$(nix hash to-sri --type sha256 \"\$HASH\")"
-            echo "      sed -i \"s|lib\\.fakeHash|\\\"\$SRI\\\"|\" $_PB_PKG"
-          fi
-        elif [ -n "$_PB_PKG" ]; then
-          echo "  ✓ Package hash already set."
-        else
-          echo "  ⚠ Could not find pkgs/portbook/default.nix — set the hash manually before rebuilding."
-        fi
-        echo ""
-        echo "  Service:  portbook.service"
-        echo "  Web UI:   http://<server-ip>:7777"
-        echo "  About:    Auto-discovers HTTP servers on localhost ports. Classifies each as"
-        echo "            live/error/dead and labels with project name and page title."
-        echo "  CLI:      portbook ls                — one-shot grouped terminal list"
-        echo "            portbook tui               — interactive TUI with live updates"
-        echo "            portbook watch --json      — streaming JSON for scripts/agents"
-        echo "            portbook explain <port>    — diagnostic block for a single port"
-        ;;
       vexboard)
         echo "  Service:  vexboard.service"
         echo "  Web UI:   http://<server-ip>:7280"
@@ -3470,7 +3271,7 @@ enable service: _require-server-role
       prometheus)
         echo "  Service:  prometheus.service"
         echo "  Web UI:   http://<server-ip>:9092"
-        echo "  About:    Time-series metrics collection and alerting. Pair with Grafana for dashboards."
+        echo "  About:    Time-series metrics collection and alerting."
         echo "  Note:     Add scrape targets in the module. Node Exporter is not auto-enabled — add it separately."
         ;;
       unbound)
@@ -3612,7 +3413,7 @@ attic-push cache="vexos":
         exit 1
     fi
 
-    PACKAGES="cockpit-navigator cockpit-file-sharing cockpit-identities brave-origin kiji-proxy portbook vexos-update"
+    PACKAGES="cockpit-navigator cockpit-file-sharing cockpit-identities brave-origin kiji-proxy vexos-update"
 
     # Some packages (kiji-proxy) use a placeholder hash until `just enable
     # kiji-proxy` patches it in locally, so a single package failing to build

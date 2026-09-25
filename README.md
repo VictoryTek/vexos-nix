@@ -5,7 +5,7 @@
 
 <div align="center">
 
-# vexos-nix
+# VexOS
 
 </div>
 

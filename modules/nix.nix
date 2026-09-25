@@ -14,7 +14,7 @@ in
 {
   # ── Attic client options ──────────────────────────────────────────────────
   # Configure the project's own Attic binary cache as a substituter so that
-  # every host fetches pre-built custom packages (portbook, cockpit-navigator,
+  # every host fetches pre-built custom packages (cockpit-navigator,
   # cockpit-file-sharing, etc.) instead of rebuilding them locally.
   #
   # Usage in a host or server-services.nix:

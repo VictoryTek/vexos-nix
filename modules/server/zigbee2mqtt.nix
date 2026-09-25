@@ -3,7 +3,6 @@
 # Default frontend port: 8088 (non-standard to avoid conflict with port 8080 services)
 # Set serialPort to your Zigbee coordinator device (e.g. /dev/ttyUSB0, /dev/ttyACM0).
 # MQTT broker: Mosquitto is started automatically on 127.0.0.1:1883 (loopback-only, not firewalled).
-# Pair with home-assistant or node-red for automations.
 # ⚠ The web frontend has no authentication of its own — anyone who can reach the
 #   port can control paired Zigbee devices. Set openFirewall = false to restrict
 #   access to localhost/VPN only.
