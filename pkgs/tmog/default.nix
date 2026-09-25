@@ -19,11 +19,11 @@
 
 let
   pname = "tmog";
-  version = "0.1.3";
+  version = "1.0.0";
 
   src = fetchurl {
     url = "https://tmog.org/downloads/TaskManagerOG-${version}-x86_64.AppImage";
-    hash = "sha256-qKoR9eMKJzJQvPuSR8wxF+gw1s/69QKWHpPxKz3YWCc=";
+    hash = "sha256-7jd6c5SfiQhju8+tCd02tgugR28Me8vQ0Os0NeKQKpY=";
   };
 
   # Pulls the AppImage's own .desktop file and hicolor icon set out at build time so
