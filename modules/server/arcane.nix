@@ -108,7 +108,7 @@ in
     virtualisation.oci-containers.backend = lib.mkIf (cfg.backend == "docker") (lib.mkDefault "docker");
 
     virtualisation.oci-containers.containers.arcane = {
-      image = "ghcr.io/getarcaneapp/manager:v1.19.4";
+      image = "ghcr.io/getarcaneapp/manager:v2.13.1";
       ports = [ "${toString cfg.port}:3552" ];
       volumes = [
         (if cfg.backend == "docker"
