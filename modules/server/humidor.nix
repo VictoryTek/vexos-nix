@@ -135,8 +135,8 @@ in
     systemd.services."humidor-app-env-init" = {
       description   = "Compose DATABASE_URL for the Humidor app container";
       wantedBy      = [ "multi-user.target" ];
-      after         = lib.optional (cfg.environmentFile == null) "humidor-secrets-init.service";
-      requires      = lib.optional (cfg.environmentFile == null) "humidor-secrets-init.service";
+      after         = [ "docker-humidor-db.service" ] ++ lib.optional (cfg.environmentFile == null) "humidor-secrets-init.service";
+      requires      = [ "docker-humidor-db.service" ] ++ lib.optional (cfg.environmentFile == null) "humidor-secrets-init.service";
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
@@ -151,6 +151,20 @@ in
         encPw=$(${pkgs.jq}/bin/jq -rn --arg p "$pw" '$p|@uri')
         umask 077
         printf 'DATABASE_URL=postgresql://humidor_user:%s@humidor-db:5432/humidor_db\n' "$encPw" > "${appEnvFile}"
+
+        # docker-humidor-db.service reports "active" the instant `docker run`
+        # forks (docker backend has no sd_notify), well before the postgres
+        # entrypoint finishes initdb and starts listening. The Humidor binary
+        # doesn't retry a failed DB connection itself, so without this wait it
+        # crash-loops (via systemd's own Restart=on-failure) until Postgres
+        # catches up. Block here instead, since this unit already gates
+        # docker-humidor.service via Requires above.
+        for i in $(seq 1 60); do
+          ${pkgs.docker}/bin/docker exec humidor-db pg_isready >/dev/null 2>&1 && exit 0
+          sleep 1
+        done
+        echo "humidor-db did not become ready within 60s" >&2
+        exit 1
       '';
     };
 
