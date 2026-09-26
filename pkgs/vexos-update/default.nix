@@ -229,11 +229,74 @@ GITIGNORE
     nix --extra-experimental-features "nix-command flakes" \
       flake update --flake git+file:///etc/nixos
 
+    # ── Dead server-service entries (before evaluation) ──────────────────
+    # server-services.nix is host-owned and never resynced, but the option
+    # names in it belong to the repo. When a service module is deleted
+    # upstream, a host still listing it fails the dry-build below outright
+    # ("The option `vexos.server.<name>' does not exist"), blocking the very
+    # update that carries the removal. Nix cannot warn about this — it throws
+    # before any warning could be emitted — so the check has to happen here,
+    # ahead of evaluation.
+    #
+    # Run the tool from the revision just locked rather than the copy
+    # installed on this host: on the update that first delivers a removal,
+    # the installed copy predates it and knows nothing about it. A failure to
+    # resolve or run it is non-fatal — the dry-build below still catches the
+    # problem, just with a less helpful message (see the hint it prints).
+    if [ -f /etc/nixos/server-services.nix ]; then
+      PRUNE_REV=$(nix --extra-experimental-features "nix-command flakes" \
+        flake metadata git+file:///etc/nixos --json 2>/dev/null \
+        | jq -r '.locks.nodes.root.inputs["vexos-nix"] as $n
+                 | .locks.nodes[$n].locked.rev // empty' 2>/dev/null || true)
+
+      if [ -n "$PRUNE_REV" ]; then
+        echo "Checking server-services.nix against the services this release provides..."
+        PRUNE_RC=0
+        PRUNE_OUT=$(nix --extra-experimental-features "nix-command flakes" \
+          run "github:VictoryTek/vexos-nix/$PRUNE_REV#prune-services" \
+          -- --check 2>&1) || PRUNE_RC=$?
+
+        # Only exit 1 *with the tool's own wording* means dead entries. Any
+        # other failure — a revision predating this app, no network, an
+        # unparseable file — must not masquerade as one and block the update;
+        # the dry-build below still catches a genuine problem and prints the
+        # hint.
+        if [ "$PRUNE_RC" -eq 0 ]; then
+          printf '%s\n' "$PRUNE_OUT"
+        elif [ "$PRUNE_RC" -eq 1 ] \
+          && printf '%s' "$PRUNE_OUT" | grep -q "no longer exist in vexos-nix"; then
+          printf '%s\n' "$PRUNE_OUT" >&2
+          echo "" >&2
+          echo "error: /etc/nixos/server-services.nix lists services that no longer exist." >&2
+          echo "Update stopped before building; nothing on this system was changed." >&2
+          echo "Run 'just prune-services' to remove them, then 'just update' again." >&2
+          cp /etc/nixos/flake.lock.bak /etc/nixos/flake.lock
+          rm -f /etc/nixos/flake.lock.bak
+          exit 1
+        else
+          echo "warning: the server-services.nix check did not run (exit $PRUNE_RC) —" >&2
+          echo "         continuing; the dry-build below still catches stale entries." >&2
+          printf '%s\n' "$PRUNE_OUT" >&2
+        fi
+      else
+        echo "warning: could not resolve the locked vexos-nix revision — skipping" >&2
+        echo "         the server-services.nix check." >&2
+      fi
+    fi
+
     echo "Checking for packages that require a local source build..."
     if ! DRY=$(nixos-rebuild dry-build \
       --flake git+file:///etc/nixos#"$VARIANT" 2>&1); then
       echo "error: dry-build failed after updating flake inputs — restoring flake.lock:" >&2
       printf '%s\n' "$DRY" >&2
+      # Backstop for the check above (skipped, or a form it cannot parse):
+      # translate the raw module-system throw into the actual fix.
+      if printf '%s' "$DRY" | grep -q "option \`vexos\.server\."; then
+        echo "" >&2
+        echo "hint: this names an option that no longer exists, so it is almost" >&2
+        echo "      certainly a leftover entry in /etc/nixos/server-services.nix." >&2
+        echo "      Run 'just prune-services', then 'just update' again." >&2
+      fi
       cp /etc/nixos/flake.lock.bak /etc/nixos/flake.lock
       rm -f /etc/nixos/flake.lock.bak
       exit 1

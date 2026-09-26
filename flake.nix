@@ -540,7 +540,30 @@
           config.allowUnfree = true;
         };
       in
-      lib.mapAttrs' (n: v: lib.nameValuePair "kernel-${n}" v) kernelPkgs.vexos.kernels;
+      lib.mapAttrs' (n: v: lib.nameValuePair "kernel-${n}" v) kernelPkgs.vexos.kernels
+      // {
+        # Host-file maintenance tool. Deliberately built here rather than in
+        # pkgs/default.nix: it bakes in the server service names, and deriving
+        # those inside the overlay would make the overlay's own `final`
+        # reachable from the evaluation that reads them. Kept out of the
+        # overlay, no nixosConfiguration ever evaluates it.
+        vexos-prune-services = kernelPkgs.callPackage ./pkgs/vexos-prune-services {
+          serviceNames = import ./lib/server-service-names.nix {
+            inherit lib;
+            pkgs = kernelPkgs;
+          };
+        };
+      };
+
+    # ── Flake apps ───────────────────────────────────────────────────────────
+    # prune-services is exposed as an app so a host can run it with no rebuild:
+    #   nix run github:VictoryTek/vexos-nix#prune-services -- --apply
+    # vexos-update invokes this same app at the locked revision before its
+    # dry-build, so the logic is never the stale copy installed on the host.
+    apps.${system}.prune-services = {
+      type = "app";
+      program = "${self.packages.${system}.vexos-prune-services}/bin/vexos-prune-services";
+    };
 
     # ── NixOS modules (consumed by /etc/nixos/flake.nix on the host) ─────────
     # The thin wrapper at /etc/nixos/flake.nix imports these instead of

@@ -3339,6 +3339,22 @@ disable-plex-pass: _require-server-role
     fi
     echo ""
 
+# Remove entries for services that no longer exist from server-services.nix.
+# The valid-name list is derived from the repo's option declarations, so this
+# needs no maintenance when a service is added or removed. Run straight from
+# GitHub so it works even before a rebuild has installed the current tooling.
+#
+# Deliberately main, not the host's locked revision: `just update` restores
+# flake.lock when it stops, so the locked revision is the OLD one that still
+# declares the removed service. Pruning against that would find nothing and
+# leave the next update failing exactly as before.
+[private]
+prune-services: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    sudo nix --extra-experimental-features "nix-command flakes" \
+        run "github:VictoryTek/vexos-nix#prune-services" -- --apply
+
 # Disable a server service module.  Usage: just disable docker
 [private]
 disable service: _require-server-role

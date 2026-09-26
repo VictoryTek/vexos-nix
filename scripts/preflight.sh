@@ -48,7 +48,7 @@ echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================================"
 echo ""
 # ---------- CHECK 0: Nix + jq availability (HARD for nix, WARN for jq) ------
-echo "[0/9] Checking for required tools..."
+echo "[0/10] Checking for required tools..."
 if ! command -v nix &>/dev/null; then
   echo ""
   fail "nix is not installed or not in PATH"
@@ -79,7 +79,7 @@ else
 fi
 echo ""
 # ---------- CHECK 1: flake structure + CI matrix coverage --------------------
-echo "[1/9] Validating flake structure..."
+echo "[1/10] Validating flake structure..."
 
 echo "  --- 1a: nix flake show (structure validation — safe, low RAM) ---"
 # NOTE: nix flake check is FORBIDDEN in this project — it evaluates all 30+
@@ -153,7 +153,7 @@ fi
 echo ""
 
 # ---------- CHECK 2: nixos-rebuild dry-build (current variant only) ----------
-echo "[2/9] Verifying system closure (dry-build current machine variant)..."
+echo "[2/10] Verifying system closure (dry-build current machine variant)..."
 # NOTE: Dry-building all 30 variants in a loop is FORBIDDEN in this project.
 # Each evaluation loads a full nixpkgs closure into RAM. Running 30 sequentially
 # still risks OOM on a 32GB machine and takes 30+ minutes.
@@ -195,7 +195,7 @@ fi
 echo ""
 
 # ---------- CHECK 3: hardware-configuration.nix not tracked (HARD) -----------
-echo "[3/9] Checking hardware-configuration.nix is not tracked in git..."
+echo "[3/10] Checking hardware-configuration.nix is not tracked in git..."
 if git ls-files hardware-configuration.nix | grep -q .; then
   fail "hardware-configuration.nix is tracked in git — remove it immediately"
   EXIT_CODE=1
@@ -205,7 +205,7 @@ fi
 echo ""
 
 # ---------- CHECK 4: system.stateVersion present (HARD) ----------------------
-echo "[4/9] Verifying system.stateVersion in all configuration files..."
+echo "[4/10] Verifying system.stateVersion in all configuration files..."
 STATEVER_FAIL=0
 for CFG in \
   configuration-desktop.nix \
@@ -239,7 +239,7 @@ if [ "$EXIT_CODE" -ne 0 ]; then
 fi
 
 # ---------- CHECK 5: flake.lock validation (WARN / HARD for pinning) ---------
-echo "[5/9] Validating flake.lock..."
+echo "[5/10] Validating flake.lock..."
 echo "  --- 5a: flake.lock committed ---"
 if ! test -f flake.lock; then
   warn "flake.lock does not exist — run: nix flake lock"
@@ -317,7 +317,7 @@ fi
 echo ""
 
 # ---------- CHECK 6: Nix formatting (WARN) -----------------------------------
-echo "[6/9] Checking Nix formatting..."
+echo "[6/10] Checking Nix formatting..."
 if command -v nixpkgs-fmt &>/dev/null; then
   if nixpkgs-fmt --check . 2>&1; then
     pass "Nix formatting OK"
@@ -330,7 +330,7 @@ fi
 echo ""
 
 # ---------- CHECK 7: Secret hygiene + backend consistency --------------------
-echo "[7/9] Secret hygiene and backend consistency checks..."
+echo "[7/10] Secret hygiene and backend consistency checks..."
 TRACKED_NIX=$(git ls-files '*.nix' 2>/dev/null || true)
 if [ -z "$TRACKED_NIX" ]; then
   warn "No tracked .nix files found — skipping secret scan"
@@ -442,7 +442,7 @@ fi
 echo ""
 
 # ---------- CHECK 8: vexos-update package builds --------------------------
-echo "[8/9] Building pkgs.vexos.vexos-update (shellcheck runs at build time)..."
+echo "[8/10] Building pkgs.vexos.vexos-update (shellcheck runs at build time)..."
 # writeShellApplication (pkgs/vexos-update/default.nix) shellchecks the script
 # as part of the build — this is a fast, standalone way to catch shellcheck
 # regressions even when CHECK 2's full dry-build is skipped (no sudo, no
@@ -457,7 +457,7 @@ fi
 echo ""
 
 # ---------- CHECK 9: shellcheck on installer scripts (HARD, WARN if no tool) -
-echo "[9/9] Running shellcheck on scripts/*.sh and scripts/lib/*.sh..."
+echo "[9/10] Running shellcheck on scripts/*.sh and scripts/lib/*.sh..."
 # These scripts run as root and partition disks, but are not built by Nix, so
 # nothing else lints them. Uses a local shellcheck if present, otherwise fetches
 # one via `nix shell`. Findings fail the run; a missing tool only warns.
@@ -473,6 +473,32 @@ elif "${SHELLCHECK_CMD[@]}" -S warning scripts/*.sh scripts/lib/*.sh 2>&1; then
   pass "shellcheck -S warning clean (scripts/*.sh, scripts/lib/*.sh)"
 else
   fail "shellcheck reported findings in scripts/ — see output above"
+  EXIT_CODE=1
+fi
+echo ""
+
+# ---------- CHECK 10: server service name derivation (HARD) ------------------
+echo "[10/10] Verifying the server service name list still derives..."
+# lib/server-service-names.nix reads the service names out of the option
+# declarations so that removing a service needs no bookkeeping anywhere. If a
+# refactor breaks that derivation it must fail here, in CI — an empty list on a
+# host would mark every entry in server-services.nix as dead. The tool itself
+# refuses to act on an empty list, but this catches the regression first.
+# Inspect the list actually baked into the built tool, rather than re-deriving
+# it a second way — this is the exact value a host would act on.
+if PRUNE_OUT=$(nix build --impure --no-link --print-out-paths \
+    ".#packages.x86_64-linux.vexos-prune-services" 2>&1); then
+  COUNT=$(sed -n 's/^VALID="\(.*\)"$/\1/p' \
+    "$PRUNE_OUT/bin/vexos-prune-services" | head -1 | wc -w)
+  if [ "$COUNT" -gt 0 ]; then
+    pass "server service names derive ($COUNT services)"
+  else
+    fail "derived service list is EMPTY — prune tooling would treat every entry as dead"
+    EXIT_CODE=1
+  fi
+else
+  fail "vexos-prune-services failed to build:"
+  printf '%s\n' "$PRUNE_OUT"
   EXIT_CODE=1
 fi
 echo ""
