@@ -486,21 +486,31 @@ echo "[10/10] Verifying the server service name list still derives..."
 # refuses to act on an empty list, but this catches the regression first.
 # Inspect the list actually baked into the built tool, rather than re-deriving
 # it a second way — this is the exact value a host would act on.
+# stderr goes to its own file: nix writes "Git tree is dirty" and flake-config
+# warnings there, and folding them into the captured stdout would corrupt the
+# store path. --print-out-paths can emit more than one line, so take the last.
+PRUNE_ERR=$(mktemp)
 if PRUNE_OUT=$(nix build --impure --no-link --print-out-paths \
-    ".#packages.x86_64-linux.vexos-prune-services" 2>&1); then
-  COUNT=$(sed -n 's/^VALID="\(.*\)"$/\1/p' \
-    "$PRUNE_OUT/bin/vexos-prune-services" | head -1 | wc -w)
-  if [ "$COUNT" -gt 0 ]; then
-    pass "server service names derive ($COUNT services)"
-  else
-    fail "derived service list is EMPTY — prune tooling would treat every entry as dead"
+    ".#packages.x86_64-linux.vexos-prune-services" 2>"$PRUNE_ERR"); then
+  PRUNE_BIN="$(printf '%s\n' "$PRUNE_OUT" | tail -1)/bin/vexos-prune-services"
+  if [ ! -f "$PRUNE_BIN" ]; then
+    fail "built vexos-prune-services but $PRUNE_BIN is missing"
     EXIT_CODE=1
+  else
+    COUNT=$(sed -n 's/^VALID="\(.*\)"$/\1/p' "$PRUNE_BIN" | head -1 | wc -w)
+    if [ "$COUNT" -gt 0 ]; then
+      pass "server service names derive ($COUNT services)"
+    else
+      fail "derived service list is EMPTY — prune tooling would treat every entry as dead"
+      EXIT_CODE=1
+    fi
   fi
 else
   fail "vexos-prune-services failed to build:"
-  printf '%s\n' "$PRUNE_OUT"
+  cat "$PRUNE_ERR"
   EXIT_CODE=1
 fi
+rm -f "$PRUNE_ERR"
 echo ""
 
 # ---------- Summary ----------------------------------------------------------
