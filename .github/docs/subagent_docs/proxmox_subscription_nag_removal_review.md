@@ -66,11 +66,9 @@ were used instead, per FORBIDDEN COMMANDS.
 
 **PASS** — no CRITICAL or RECOMMENDED issues found. No refinement cycle needed.
 
-## Caveat (carried from spec, not a review finding)
+## Runtime Verification (post-merge)
 
-Runtime behavior (whether `pveproxy` actually serves the bind-mounted patched file, and
-whether the nag dialog is actually suppressed in the browser) has not been verified on
-real Proxmox hardware — this project has no running Proxmox host accessible from this
-environment. Evaluation/build correctness is fully verified; end-to-end behavior should
-be confirmed after the user deploys this to an actual `vexos-server-*`/`vexos-headless-server-*`
-host with `vexos.server.proxmox.enable = true`.
+Confirmed by the user on a real Proxmox host running `proxmox-nix`: after rebuilding and
+updating, the "No valid subscription" nag no longer appears on web UI login. The
+`BindReadOnlyPaths` bind mount is confirmed effective end-to-end, not just at the
+evaluation level.
