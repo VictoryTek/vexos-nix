@@ -58,6 +58,27 @@ in
   config = lib.mkIf cfg.enable {
     vexos.server.backup.servicePaths.proxmox = [ "/var/lib/pve-cluster" "/etc/pve" ];
 
+    # ── Subscription nag removal ─────────────────────────────────────────────
+    # The web UI's "No valid subscription" popup is a client-side check in
+    # proxmoxlib.js (part of proxmox-widget-toolkit). pve-http-server — the
+    # package that actually serves the file at runtime — symlinks to it rather
+    # than copying it, so the served bytes always resolve back to
+    # proxmox-widget-toolkit's own store path, no matter which package serves
+    # the request. Patching proxmox-widget-toolkit (or pve-manager/proxmox-ve)
+    # directly via override would change pve-manager's input hash, forcing a
+    # full from-source rebuild and dropping off cache.saumon.network. Instead,
+    # bind-mount a patched copy over the real path, scoped to pveproxy's own
+    # mount namespace only — proxmox-widget-toolkit/pve-manager/pve-http-server
+    # stay untouched and cached; only this tiny sed derivation builds locally.
+    systemd.services.pveproxy.serviceConfig.BindReadOnlyPaths =
+      let
+        patchedProxmoxLib = pkgs.runCommand "proxmoxlib-no-nag.js" { } ''
+          sed -e "/data\.status/ s/!//" -e "/data\.status/ s/active/NoMoreNagging/" \
+            ${pkgs.proxmox-widget-toolkit}/share/javascript/proxmox-widget-toolkit/proxmoxlib.js > $out
+        '';
+      in
+      [ "${patchedProxmoxLib}:${pkgs.proxmox-widget-toolkit}/share/javascript/proxmox-widget-toolkit/proxmoxlib.js" ];
+
     assertions = [
       {
         assertion = cfg.ipAddress != "";
