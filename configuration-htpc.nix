@@ -29,7 +29,7 @@
     ./modules/appimage.nix
     ./modules/asus-opt.nix
     ./modules/boot-discovery.nix
-    ./modules/network-killswitch-service.nix  # toggleable VPN kill switch (just enable-kill-switch)
+    ./modules/vpn.nix               # PIA VPN + toggleable kill switch (vexos-vpn / just vpn-*)
     ./modules/gaming.nix             # optional: vexos.features.gaming.enable (bundles gpu-gaming + system-gaming)
     ./modules/development.nix        # optional: vexos.features.development.enable
     ./modules/3d-print.nix           # optional: vexos.features.print3d.enable

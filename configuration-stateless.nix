@@ -26,7 +26,8 @@
     ./modules/users.nix
     ./modules/asus-opt.nix
     ./modules/boot-discovery.nix
-    ./modules/network-killswitch-stateless.nix  # VPN kill switch + IPv6 disable
+    ./modules/vpn.nix               # PIA VPN (WireGuard/OpenVPN) + nftables kill switch
+    ./modules/vpn-stateless.nix     # auto-connect, kill switch always on, persist /var/lib/vexos-vpn
   ];
 
   # ---------- Branding ----------
@@ -58,9 +59,10 @@
   # Run scripts/bare-metal-install.sh to format the disk before first deploy.
   vexos.impermanence.enable = true;
 
-  # Persist NetworkManager VPN connection profiles across reboots so the user
-  # only needs to import .ovpn files and enter credentials once.
-  # Credentials live in /persistent/etc/NetworkManager/system-connections/ —
+  # Persist NetworkManager connection profiles (Wi-Fi networks, any ad-hoc
+  # connections) across reboots. The PIA VPN is not an NM profile — it is
+  # managed by modules/vpn.nix and persists /var/lib/vexos-vpn itself.
+  # Profiles live in /persistent/etc/NetworkManager/system-connections/ —
   # user-controlled, never in git.
   vexos.impermanence.extraPersistDirs = [ "/etc/NetworkManager/system-connections" ];
 

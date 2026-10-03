@@ -1304,35 +1304,62 @@ setup-tailscale:
     echo "Connecting to Tailscale..."
     tailscale up
 
-# Enable the VPN kill switch — blocks all clearnet egress when no VPN tunnel is active.
-# Desktop and HTPC roles only. On the stateless role the kill switch is always active.
+# PIA VPN (desktop, htpc, stateless) — thin wrappers around the vexos-vpn CLI
+# (modules/vpn.nix). Run `vexos-vpn help` for the full command list.
+
+# Store PIA credentials (root-only file; prompts, never echoed). Run once.
+[group('VPN')]
+vpn-login:
+    @command -v vexos-vpn >/dev/null || { echo "error: vexos-vpn is not installed on this role." >&2; exit 1; }
+    sudo vexos-vpn login
+
+# Check the PIA login works — prints OK/FAILED only, never the credentials or token.
+[group('VPN')]
+vpn-selftest:
+    @command -v vexos-vpn >/dev/null || { echo "error: vexos-vpn is not installed on this role." >&2; exit 1; }
+    sudo vexos-vpn selftest
+
+# Connect the PIA VPN.
+[group('VPN')]
+vpn-up:
+    vexos-vpn up && vexos-vpn status
+
+# Disconnect the PIA VPN (with the kill switch on, this leaves you offline).
+[group('VPN')]
+vpn-down:
+    vexos-vpn down && vexos-vpn status
+
+# Show VPN and kill switch state.
+[group('VPN')]
+vpn-status:
+    vexos-vpn status
+
+# List PIA regions (latency shown after an auto connect).
+[group('VPN')]
+vpn-regions:
+    vexos-vpn regions
+
+# Choose a PIA region, or "auto" for the fastest. Reconnects if connected.
+[group('VPN')]
+vpn-region region:
+    vexos-vpn region {{region}}
+
+# Switch protocol: wireguard (default) or openvpn (backup). Reconnects if connected.
+[group('VPN')]
+vpn-protocol protocol:
+    vexos-vpn protocol {{protocol}}
+
+# Turn the kill switch on — blocks all internet traffic outside the PIA tunnel.
 [group('VPN')]
 enable-kill-switch:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
-    if [[ "$variant" == *stateless* ]]; then
-        echo "Kill switch is always active on the stateless role — no toggle needed."
-        exit 0
-    fi
-    systemctl start vpn-kill-switch.service
-    echo "✓ VPN kill switch enabled — all clearnet egress blocked outside the VPN tunnel."
-    echo "  Disable with: just disable-kill-switch"
+    vexos-vpn killswitch on
+    @echo "✓ Kill switch on — internet only through the PIA tunnel. Disable with: just disable-kill-switch"
 
-# Disable the VPN kill switch — restores normal clearnet egress.
-# Desktop and HTPC roles only. On the stateless role the kill switch cannot be disabled.
+# Turn the kill switch off. On stateless this asks for your password and lasts until reboot.
 [group('VPN')]
 disable-kill-switch:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
-    if [[ "$variant" == *stateless* ]]; then
-        echo "error: the kill switch cannot be disabled on the stateless role — always active by design." >&2
-        exit 1
-    fi
-    systemctl stop vpn-kill-switch.service
-    echo "✓ VPN kill switch disabled — clearnet egress restored."
-    echo "  Re-enable with: just enable-kill-switch"
+    vexos-vpn killswitch off
+    @echo "✓ Kill switch off — normal internet access restored. Re-enable with: just enable-kill-switch"
 
 # ── Desktop Feature Toggles ──────────────────────────────────────────────────
 # Run `just features` to see available features and their status.

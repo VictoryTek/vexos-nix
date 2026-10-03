@@ -15,6 +15,7 @@ final: prev: {
     kiji-proxy           = final.callPackage ./kiji-proxy { };
     # ── System ──────────────────────────────────────────────────────────────
     vexos-update         = final.callPackage ./vexos-update { };
+    vexos-vpn            = final.callPackage ./vexos-vpn { };     # PIA WireGuard/OpenVPN + kill switch CLI
     # ── Utilities ───────────────────────────────────────────────────────────
     tmog                 = final.callPackage ./tmog { };
     # ── Kernels ─────────────────────────────────────────────────────────────
