@@ -82,3 +82,18 @@ Kill-switch suite highlights:
 **Overall Grade: A- (93%)**
 
 Functionality is capped below an A because the end-to-end connect (token → addKey → handshake, and the OpenVPN backup) can only be proven on the user's machine with their credentials. See the acceptance steps in spec §6.6.
+
+## Addendum: revision 4 review (2026-10-03)
+
+| Check | Result |
+|---|---|
+| `writeShellApplication` build (shellcheck) with `login --stdin` / `logout` / new status fields | pass |
+| `login --stdin` with a password containing spaces, `"` and `\` | round-trips byte-exact; file mode 0400 |
+| Empty password | rejected (exit 1) |
+| sops-style `credentialsFile` | `login` and `logout` refuse; `credentials_editable: false` |
+| `status --json` `logged_in` before / after login / after logout | false / true / false |
+| `/etc/vexos-vpn/config` on stateless / desktop / htpc | `AUTOCONNECT=true/false/false`, modes `always/manual/manual` |
+| `pkexec` path used by the GUI prompt | `/run/wrappers/bin/pkexec` exists (setuid wrapper) |
+| One-off gitleaks full-history scan | 1,280 commits, no leaks |
+
+Verdict: **PASS**.

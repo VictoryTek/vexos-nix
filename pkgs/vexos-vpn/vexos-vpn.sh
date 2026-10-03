@@ -26,6 +26,7 @@ DEFAULT_REGION=auto
 DEFAULT_PROTOCOL=wireguard
 CREDENTIALS_FILE=$STATE_DIR/credentials
 KILLSWITCH_MODE=manual
+AUTOCONNECT=false
 # shellcheck source=/dev/null
 [ -r "$CONFIG_FILE" ] && . "$CONFIG_FILE"
 
@@ -415,10 +416,15 @@ cmd_status() {
   if [ -n "$iface" ] && [ -r "/sys/class/net/$iface/statistics/rx_bytes" ]; then
     rx=$(cat "/sys/class/net/$iface/statistics/rx_bytes"); tx=$(cat "/sys/class/net/$iface/statistics/tx_bytes")
   fi
+  local logged_in=false editable=false
+  [ -e "$CREDENTIALS_FILE" ] && logged_in=true   # existence only; the file is root-only
+  creds_editable && editable=true
   json=$(jq -c --arg ks "$ks_state" --arg mode "$KILLSWITCH_MODE" --argjson rx "$rx" --argjson tx "$tx" \
            --arg pr "$(state_get protocol "$DEFAULT_PROTOCOL")" --arg rs "$(state_get region "$DEFAULT_REGION")" \
+           --argjson li "$logged_in" --argjson ce "$editable" --argjson ac "$AUTOCONNECT" \
            '. + {killswitch: ($ks == "active"), killswitch_mode: $mode, rx_bytes: $rx, tx_bytes: $tx,
-                 protocol_setting: $pr, region_setting: $rs}' <<<"$json")
+                 protocol_setting: $pr, region_setting: $rs,
+                 logged_in: $li, credentials_editable: $ce, autoconnect: $ac}' <<<"$json")
   if [ "${1:-}" = --json ]; then printf '%s\n' "$json"; return; fi
   jq -r '"VPN:          \(.state // "disconnected")\(if .state == "connected" then " — \(.region_name) (\(.server_cn)) via \(.protocol)" else "" end)",
          "Region:       \(.region_setting)",
@@ -464,11 +470,25 @@ cmd_protocol() {
   log "protocol set to $1"
 }
 
+# Credentials are only writable when they live in the default root-only file;
+# a sops-nix (or other declarative) credentialsFile is managed by NixOS.
+creds_editable() { [ "$CREDENTIALS_FILE" = "$STATE_DIR/credentials" ]; }
+
+# `login`         — interactive terminal prompt
+# `login --stdin` — username on line 1, password on line 2 of stdin; for the
+#                   GUI via `pkexec vexos-vpn login --stdin`, so the secrets
+#                   never appear on a command line.
 cmd_login() {
   need_root login
-  local user pass
-  read -r -p "PIA username: " user
-  read -r -s -p "PIA password: " pass; echo
+  creds_editable || die "credentials are managed by the NixOS config (vexos.vpn.credentialsFile = $CREDENTIALS_FILE)"
+  local user="" pass=""
+  if [ "${1:-}" = --stdin ]; then
+    IFS= read -r user || true
+    IFS= read -r pass || true
+  else
+    read -r -p "PIA username: " user
+    read -r -s -p "PIA password: " pass; echo
+  fi
   [ -n "$user" ] && [ -n "$pass" ] || die "username and password are required"
   mkdir -p "$(dirname "$CREDENTIALS_FILE")"
   ( umask 077; printf '%s\n%s\n' "$user" "$pass" > "$CREDENTIALS_FILE.tmp" )
@@ -477,6 +497,14 @@ cmd_login() {
   rm -f "$STATE_DIR/token"
   log "credentials saved to $CREDENTIALS_FILE (root-only)"
   systemctl try-restart vexos-vpn.service
+}
+
+cmd_logout() {
+  need_root logout
+  creds_editable || die "credentials are managed by the NixOS config (vexos.vpn.credentialsFile = $CREDENTIALS_FILE)"
+  rm -f "$CREDENTIALS_FILE" "$STATE_DIR/token"
+  log "credentials removed"
+  systemctl stop vexos-vpn.service
 }
 
 # Verifies credentials against PIA without printing them or the token.
@@ -514,7 +542,8 @@ vexos-vpn — PIA VPN (WireGuard / OpenVPN) with kill switch
   (status/up/down/region/protocol/killswitch work without sudo for the
    users group; turning the kill switch off asks for a password when it is
    in "always" mode)
-  vexos-vpn login                    store PIA credentials (root-only file) [root]
+  vexos-vpn login [--stdin]          store PIA credentials (root-only file) [root]
+  vexos-vpn logout                   remove stored credentials, disconnect   [root]
   vexos-vpn selftest                 verify login without showing secrets   [root]
   vexos-vpn refresh                  re-download the PIA server list        [root]
   vexos-vpn killswitch <on|off|status>
@@ -530,7 +559,8 @@ case "${1:-}" in
   regions)  shift; cmd_regions "$@" ;;
   region)   shift; cmd_region "$@" ;;
   protocol) shift; cmd_protocol "$@" ;;
-  login)    cmd_login ;;
+  login)    shift; cmd_login "$@" ;;
+  logout)   cmd_logout ;;
   selftest) cmd_selftest ;;
   refresh)  need_root refresh; serverlist_fetch && log "server list refreshed" ;;
   killswitch) shift; cmd_killswitch "$@" ;;

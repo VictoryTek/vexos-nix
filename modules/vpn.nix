@@ -149,6 +149,7 @@ in
         DEFAULT_PROTOCOL=${lib.escapeShellArg cfg.protocol}
         CREDENTIALS_FILE=${lib.escapeShellArg cfg.credentialsFile}
         KILLSWITCH_MODE=${lib.escapeShellArg cfg.killSwitch.mode}
+        AUTOCONNECT=${lib.boolToString cfg.autoConnect}
       '';
 
       # PIA tunnels IPv4 only; an active IPv6 stack would bypass the tunnel.
@@ -173,10 +174,10 @@ in
           Restart = "always";
           RestartSec = 10;
           StateDirectory = "vexos-vpn";
-          StateDirectoryMode = "0755";      # state.json/serverlist readable; credentials/token are 0400/0600
+          StateDirectoryMode = "0755"; # state.json/serverlist readable; credentials/token are 0400/0600
           RuntimeDirectory = "vexos-vpn";
-          RuntimeDirectoryMode = "0755";    # status.json is read by unprivileged `vexos-vpn status`
-          RuntimeDirectoryPreserve = "restart";  # keep last_error visible between retries
+          RuntimeDirectoryMode = "0755"; # status.json is read by unprivileged `vexos-vpn status`
+          RuntimeDirectoryPreserve = "restart"; # keep last_error visible between retries
           ProtectSystem = "strict";
           ProtectHome = true;
           PrivateTmp = true;

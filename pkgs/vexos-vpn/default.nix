@@ -28,8 +28,19 @@
 writeShellApplication {
   name = "vexos-vpn";
   runtimeInputs = [
-    coreutils curl jq wireguard-tools openvpn iproute2 nftables systemd
-    dnsutils gnugrep util-linux gawk findutils
+    coreutils
+    curl
+    jq
+    wireguard-tools
+    openvpn
+    iproute2
+    nftables
+    systemd
+    dnsutils
+    gnugrep
+    util-linux
+    gawk
+    findutils
   ];
   text = ''
     PIA_CA="${./ca.rsa.4096.crt}"

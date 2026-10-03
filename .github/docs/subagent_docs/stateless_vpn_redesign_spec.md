@@ -239,3 +239,20 @@ All in nixpkgs (locked, no new flake inputs): `wireguard-tools`, `openvpn` (2.6.
 - OpenVPN runs as root (SO_MARK on reconnect).
 - Region/protocol changes go through polkit-gated `vexos-vpn-region@` / `vexos-vpn-protocol@` template units, so CLI and GUI need no sudo.
 - A DNS-guard table (`inet vexos_vpn_dns`) is active whenever the tunnel is up, even with the kill switch off.
+
+## 10. Revision 4: GUI-driven credentials and GUI delivery (2026-10-03)
+
+User requirement: full control from the GUI, **including entering the PIA username and password**, with the CLI/justfile as backup. The GUI ships via flake and is installed on every role that imports `modules/vpn.nix`.
+
+Backend additions (vexos-nix):
+- `vexos-vpn login --stdin` reads username and password from stdin (for `pkexec vexos-vpn login --stdin`), so the secrets never touch argv, the environment, or the disk outside the root-only credentials file.
+- `vexos-vpn logout` removes credentials and token, and stops the VPN.
+- Both refuse when `credentialsFile` is not the default path (sops-managed).
+- `status --json` gains `logged_in` (file existence only), `credentials_editable` and `autoconnect` (`AUTOCONNECT` written to `/etc/vexos-vpn/config`).
+
+GUI delivery (follow-up, in vexos-nix, once vex-vpn is reworked per `vex_vpn_gui_rework_prompt.md`):
+- Add flake input `vex-vpn` (`inputs.nixpkgs.follows = "nixpkgs"`).
+- In `modules/vpn.nix`, import `inputs.vex-vpn.nixosModules.default` and set `programs.vex-vpn.enable = true`.
+- Done in vexos-nix, not in the vex-vpn session, because the input can't be added until vex-vpn's new flake outputs exist.
+
+Also: `scripts/preflight.sh` stage 7e now always runs gitleaks (fetched via `nix shell` when not installed), and it is a hard failure.

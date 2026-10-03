@@ -426,17 +426,19 @@ else
   fi
 
   echo ""
-  echo "  --- 7e: gitleaks deep secret scan (WARN when not installed) ---"
+  echo "  --- 7e: gitleaks deep secret scan (HARD) ---"
+  # Always runs: uses an installed gitleaks if present, otherwise fetches it
+  # via nix shell (cached in the store after the first run). Scans full history.
   if command -v gitleaks &>/dev/null; then
-    if gitleaks detect --source . --no-banner --redact --verbose --exit-code 1; then
-      pass "gitleaks: no secrets detected"
-    else
-      fail "gitleaks: secrets detected — review output above"
-      EXIT_CODE=1
-    fi
+    GITLEAKS=(gitleaks)
   else
-    warn "gitleaks not installed — skipping deep secret scan"
-    warn "Install: nix shell nixpkgs#gitleaks  or add to environment.systemPackages"
+    GITLEAKS=(nix shell nixpkgs#gitleaks -c gitleaks)
+  fi
+  if "${GITLEAKS[@]}" detect --source . --no-banner --redact --verbose --exit-code 1; then
+    pass "gitleaks: no secrets detected"
+  else
+    fail "gitleaks: secrets detected (or gitleaks could not run) — review output above"
+    EXIT_CODE=1
   fi
 fi
 echo ""
