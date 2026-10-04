@@ -24,10 +24,14 @@
 #   vexos-vpn killswitch on|off   — off asks for a password in "always" mode
 #   sudo vexos-vpn login          — store PIA credentials (root-only file)
 #
+# Everything here is gated by vexos.features.vpn.enable (default off). Desktop
+# and htpc opt in via /etc/nixos/features.nix (`just enable-feature vpn`);
+# stateless forces it on in modules/vpn-stateless.nix.
+#
 # The vex-vpn GUI + tray (flake input `vex-vpn`; its module is imported by
-# flake.nix as vexVpnModule) is installed alongside, so
-# every role with the VPN also has full GUI control: connect, region, protocol,
-# kill switch, and PIA sign-in. The CLI above is the backup.
+# flake.nix as vexVpnModule) is installed alongside when the VPN is enabled, so
+# the VPN has full GUI control: connect, region, protocol, kill switch, and PIA
+# sign-in. The CLI above is the backup.
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.vpn;
@@ -96,6 +100,8 @@ let
   '';
 in
 {
+  options.vexos.features.vpn.enable = lib.mkEnableOption "PIA VPN (WireGuard/OpenVPN) with nftables kill switch and the vex-vpn GUI";
+
   options.vexos.vpn = {
     protocol = lib.mkOption {
       type = lib.types.enum [ "wireguard" "openvpn" ];
@@ -145,12 +151,11 @@ in
     };
   };
 
-  config = lib.mkMerge [
+  config = lib.mkIf config.vexos.features.vpn.enable (lib.mkMerge [
     {
       environment.systemPackages = [ vpn ];
 
-      # GUI + tray autostart. Unconditional: the VPN module being imported is
-      # what turns the VPN on, so the GUI always accompanies it.
+      # GUI + tray autostart; only present while the VPN itself is enabled.
       programs.vex-vpn.enable = true;
 
       environment.etc."vexos-vpn/config".text = ''
@@ -257,5 +262,5 @@ in
         serviceConfig.ExecStartPre = [ "${pkgs.nftables}/bin/nft list table inet vexos_killswitch" ];
       };
     })
-  ];
+  ]);
 }

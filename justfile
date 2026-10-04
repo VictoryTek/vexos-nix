@@ -1305,18 +1305,18 @@ setup-tailscale:
     tailscale up
 
 # PIA VPN (desktop, htpc, stateless) — thin wrappers around the vexos-vpn CLI
-# (modules/vpn.nix). Run `vexos-vpn help` for the full command list.
+# (modules/vpn.nix). On desktop/htpc: `just enable-feature vpn` first; always on in stateless. Run `vexos-vpn help` for the full command list.
 
 # Store PIA credentials (root-only file; prompts, never echoed). Run once.
 [group('VPN')]
 vpn-login:
-    @command -v vexos-vpn >/dev/null || { echo "error: vexos-vpn is not installed on this role." >&2; exit 1; }
+    @command -v vexos-vpn >/dev/null || { echo "error: vexos-vpn is not installed — run 'just enable-feature vpn' and rebuild." >&2; exit 1; }
     sudo vexos-vpn login
 
 # Check the PIA login works — prints OK/FAILED only, never the credentials or token.
 [group('VPN')]
 vpn-selftest:
-    @command -v vexos-vpn >/dev/null || { echo "error: vexos-vpn is not installed on this role." >&2; exit 1; }
+    @command -v vexos-vpn >/dev/null || { echo "error: vexos-vpn is not installed — run 'just enable-feature vpn' and rebuild." >&2; exit 1; }
     sudo vexos-vpn selftest
 
 # Connect the PIA VPN.
@@ -1420,7 +1420,7 @@ fix-flake:
 
 
 # Available optional feature names (desktop, server, htpc, and vanilla roles).
-_feature_names := "gaming development print3d virtualization sunshine kernel"
+_feature_names := "gaming development print3d virtualization sunshine vpn kernel"
 
 # Guard: abort if the current host is stateless or headless-server (features not
 # supported there — neither role wires /etc/nixos/features.nix into its module set).
@@ -1465,6 +1465,7 @@ features: _require-desktop-role
     _check print3d
     _check virtualization
     _check sunshine on
+    _check vpn
     echo ""
     echo "Use 'just enable-feature <feature>' / 'just disable-feature <feature>' to toggle."
     echo ""
@@ -1570,6 +1571,14 @@ enable-feature feature: _require-desktop-role
             echo "    1. Create the WebUI admin account (first run only): https://$TS_IP:47990"
             echo "    2. In Moonlight, add this host by IP ($TS_IP), then enter the PIN"
             echo "       shown under the WebUI's PIN tab to pair the client."
+            ;;
+        vpn)
+            echo "  What this adds:"
+            echo "    Services   PIA VPN tunnel (WireGuard, OpenVPN backup) + nftables kill switch"
+            echo "    Apps       vexos-vpn CLI, vex-vpn GUI + tray (autostarts with the session)"
+            echo ""
+            echo "  Off until you connect: sign in with 'just vpn-login' (or the GUI), then"
+            echo "  'just vpn-up'. The kill switch is available but stopped by default."
             ;;
         kernel)
             echo "  What this adds:"

@@ -12,6 +12,8 @@
 #   sunshine      — Self-hosted Moonlight game-stream host (KMS capture).
 #                   On by default on desktop/server/htpc (the project's remote-access
 #                   story); off by default on vanilla. Set to false below to opt out.
+#   vpn           — PIA VPN (WireGuard/OpenVPN) + nftables kill switch + vex-vpn
+#                   GUI/tray. Off by default; always on in the stateless role.
 #
 # Desktop environment (desktop role only) — set via `just switch` or the
 # installer's desktop-environment prompt. Values: gnome (default), cosmic,
@@ -35,6 +37,7 @@
   # vexos.features.print3d.enable        = false;
   # vexos.features.virtualization.enable = false;
   # vexos.features.sunshine.enable       = true;   # default on desktop/server/htpc; set false to opt out
+  # vexos.features.vpn.enable            = false;
   # vexos.desktop.environment            = "gnome";
   # vexos.vm.platform                    = "qemu";
 }

@@ -135,8 +135,8 @@
     };
 
     # vex-vpn — GTK4/libadwaita GUI + tray for the vexos-vpn PIA backend
-    # (modules/vpn.nix). Installed on every role that imports modules/vpn.nix
-    # (desktop, htpc, stateless). Not in nixpkgs or any binary cache, so it is
+    # (modules/vpn.nix). Installed only where vexos.features.vpn.enable is set
+    # (always on stateless; opt-in on desktop/htpc). Not in nixpkgs or any binary cache, so it is
     # a cargo release build on first install — same class as `up`/`vexportal`.
     # Its own nixpkgs input is overridden so it builds against this flake's
     # 26.05 pin; crane (its only other input) has no inputs to follow.
@@ -186,7 +186,8 @@
     };
 
     # vex-vpn GUI + tray NixOS module — desktop, htpc, stateless (the roles that
-    # import modules/vpn.nix, which sets programs.vex-vpn.enable). Imported here
+    # import modules/vpn.nix, which sets programs.vex-vpn.enable only when
+    # vexos.features.vpn.enable is on). Imported here
     # rather than from modules/vpn.nix: `imports` cannot reference the `inputs`
     # module arg, and the /etc/nixos wrapper flake does not pass it as a
     # specialArg for every role (infinite recursion on `inputs`).
