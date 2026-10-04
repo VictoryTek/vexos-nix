@@ -97,3 +97,18 @@ Functionality is capped below an A because the end-to-end connect (token → add
 | One-off gitleaks full-history scan | 1,280 commits, no leaks |
 
 Verdict: **PASS**.
+
+## Addendum: vex-vpn GUI hookup review (2026-10-03)
+
+Upstream review (vex-vpn `0691d4e`): 20/20 tests pass; crane clippy (`--all-targets -D warnings`), fmt and package build clean; credentials only on `pkexec … login --stdin` stdin (fake-pkexec test proves not in argv/env); every item of the full-control checklist present. Minor upstream findings (not blocking): `.gitignore` lists the tracked `flake.lock`; no confirmation when enabling the kill switch while disconnected; pkexec exit 127 is always shown as "cancelled".
+
+Hookup checks in this repo:
+
+| Check | Result |
+|---|---|
+| `programs.vex-vpn.enable` | true on stateless, desktop, htpc; option absent on server and vanilla |
+| `vex-vpn-tray` user service | `wantedBy graphical-session.target`, `ExecStart …/bin/vex-vpn --tray` |
+| `flake.lock` change | +37 lines, additive only (vex-vpn, crane; nixpkgs follows) |
+| dry-build: desktop-amd, desktop-nvidia, desktop-vm, stateless-amd, htpc-amd, vanilla-amd | OK (vanilla builds no vex-vpn) |
+
+Verdict: **PASS** (final build and preflight results below / in the delivery message).

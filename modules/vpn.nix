@@ -23,7 +23,11 @@
 #   vexos-vpn status | up | down | region <id|auto> | protocol <wg|openvpn>
 #   vexos-vpn killswitch on|off   — off asks for a password in "always" mode
 #   sudo vexos-vpn login          — store PIA credentials (root-only file)
-{ config, lib, pkgs, ... }:
+#
+# The vex-vpn GUI + tray (flake input `vex-vpn`) is installed alongside, so
+# every role with the VPN also has full GUI control: connect, region, protocol,
+# kill switch, and PIA sign-in. The CLI above is the backup.
+{ config, lib, pkgs, inputs, ... }:
 let
   cfg = config.vexos.vpn;
   vpn = pkgs.vexos.vexos-vpn;
@@ -91,6 +95,8 @@ let
   '';
 in
 {
+  imports = [ inputs.vex-vpn.nixosModules.default ];
+
   options.vexos.vpn = {
     protocol = lib.mkOption {
       type = lib.types.enum [ "wireguard" "openvpn" ];
@@ -143,6 +149,10 @@ in
   config = lib.mkMerge [
     {
       environment.systemPackages = [ vpn ];
+
+      # GUI + tray autostart. Unconditional: the VPN module being imported is
+      # what turns the VPN on, so the GUI always accompanies it.
+      programs.vex-vpn.enable = true;
 
       environment.etc."vexos-vpn/config".text = ''
         DEFAULT_REGION=${lib.escapeShellArg cfg.region}

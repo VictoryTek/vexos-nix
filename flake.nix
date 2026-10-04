@@ -133,6 +133,17 @@
     noctalia = {
       url = "github:noctalia-dev/noctalia-shell/v5.1.0";
     };
+
+    # vex-vpn — GTK4/libadwaita GUI + tray for the vexos-vpn PIA backend
+    # (modules/vpn.nix). Installed on every role that imports modules/vpn.nix
+    # (desktop, htpc, stateless). Not in nixpkgs or any binary cache, so it is
+    # a cargo release build on first install — same class as `up`/`vexportal`.
+    # Its own nixpkgs input is overridden so it builds against this flake's
+    # 26.05 pin; crane (its only other input) has no inputs to follow.
+    vex-vpn = {
+      url = "github:victorytek/vex-vpn";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, impermanence, sops-nix, up, ... }@inputs:

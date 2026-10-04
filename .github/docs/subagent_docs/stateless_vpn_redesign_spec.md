@@ -256,3 +256,9 @@ GUI delivery (follow-up, in vexos-nix, once vex-vpn is reworked per `vex_vpn_gui
 - Done in vexos-nix, not in the vex-vpn session, because the input can't be added until vex-vpn's new flake outputs exist.
 
 Also: `scripts/preflight.sh` stage 7e now always runs gitleaks (fetched via `nix shell` when not installed), and it is a hard failure.
+
+## 11. Revision 5: vex-vpn GUI hooked up (2026-10-03)
+
+- `flake.nix`: new input `vex-vpn` (`github:victorytek/vex-vpn`, `inputs.nixpkgs.follows = "nixpkgs"`; its only other input, crane, has no inputs). `flake.lock` pins it to `0691d4e`; the lock change is purely additive.
+- `modules/vpn.nix` imports `inputs.vex-vpn.nixosModules.default` and sets `programs.vex-vpn.enable = true` unconditionally, so every role that imports `vpn.nix` (desktop, htpc, stateless) gets the GUI and the tray autostart, and roles without the VPN (server, headless-server, vanilla) do not. Tray autostart is a systemd user service bound to `graphical-session.target` (GNOME; Hyprland via UWSM, which this repo already requires).
+- The GUI is not in any binary cache, so it is a cargo release build on a fresh install, in the same class as `up`/`vexportal` (~2 min, ~1.9 GiB peak). `--max-jobs 1` stays as chosen; publishing it to a cache is the lever if install time matters.
