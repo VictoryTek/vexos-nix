@@ -24,10 +24,11 @@
 #   vexos-vpn killswitch on|off   — off asks for a password in "always" mode
 #   sudo vexos-vpn login          — store PIA credentials (root-only file)
 #
-# The vex-vpn GUI + tray (flake input `vex-vpn`) is installed alongside, so
+# The vex-vpn GUI + tray (flake input `vex-vpn`; its module is imported by
+# flake.nix as vexVpnModule) is installed alongside, so
 # every role with the VPN also has full GUI control: connect, region, protocol,
 # kill switch, and PIA sign-in. The CLI above is the backup.
-{ config, lib, pkgs, inputs, ... }:
+{ config, lib, pkgs, ... }:
 let
   cfg = config.vexos.vpn;
   vpn = pkgs.vexos.vexos-vpn;
@@ -95,8 +96,6 @@ let
   '';
 in
 {
-  imports = [ inputs.vex-vpn.nixosModules.default ];
-
   options.vexos.vpn = {
     protocol = lib.mkOption {
       type = lib.types.enum [ "wireguard" "openvpn" ];

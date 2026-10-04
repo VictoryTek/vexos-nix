@@ -185,6 +185,13 @@
       programs.vexportal.enable = true;
     };
 
+    # vex-vpn GUI + tray NixOS module — desktop, htpc, stateless (the roles that
+    # import modules/vpn.nix, which sets programs.vex-vpn.enable). Imported here
+    # rather than from modules/vpn.nix: `imports` cannot reference the `inputs`
+    # module arg, and the /etc/nixos wrapper flake does not pass it as a
+    # specialArg for every role (infinite recursion on `inputs`).
+    vexVpnModule = { imports = [ inputs.vex-vpn.nixosModules.default ]; };
+
     # Proxmox VE overlay — exposes pkgs.proxmox-ve (and related Proxmox packages).
     # Required by services.proxmox-ve.package (lazy default in the proxmox NixOS module).
     # The proxmox NixOS module does NOT auto-apply its own overlay; this must be
@@ -332,19 +339,19 @@
     roles = {
       desktop = {
         homeFile         = ./home-desktop.nix;
-        baseModules      = commonBase ++ [ upModule vexportalModule ] ++ dmsBase;
+        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule ] ++ dmsBase;
         extraModules     = [];
         hostLocalModules = featuresModule ++ storageRemoteModule;
       };
       htpc = {
         homeFile         = ./home-htpc.nix;
-        baseModules      = commonBase ++ [ upModule vexportalModule ];
+        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule ];
         extraModules     = [];
         hostLocalModules = featuresModule ++ storageRemoteModule;
       };
       stateless = {
         homeFile         = ./home-stateless.nix;
-        baseModules      = commonBase ++ [ upModule vexportalModule ];
+        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule ];
         extraModules     = [ impermanence.nixosModules.impermanence ];
         hostLocalModules = statelessUserOverrideModule ++ statelessVmPlatformModule;
       };
