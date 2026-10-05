@@ -18,9 +18,13 @@
     ./seerr.nix
     # ── Media Automation (Arr Stack) ─────────────────────────────────────────
     ./arr.nix
+    ./mediamanager.nix
+    ./sportarr.nix
+    ./tdarr.nix
     # ── Books & Comics ───────────────────────────────────────────────────────
     ./grimmory.nix
     ./bookshelf.nix
+    ./listenarr.nix
     # ── Game Servers ─────────────────────────────────────────────────────────
     ./papermc.nix
     # ── Cloud & Files ────────────────────────────────────────────────────────

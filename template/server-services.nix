@@ -64,9 +64,14 @@
   # vexos.server.arr.qbittorrent.enable = false;        # Port 8081 — torrent client
   # vexos.server.arr.bazarr.enable = false;              # Port 6767 — subtitle manager
   # vexos.server.arr.maintainerr.enable = false;         # Port 6246 — automated library cleanup
+  # vexos.server.mediamanager.enable = false;           # Port 8000 — TV/movie request & download manager
+  # vexos.server.mediamanager.adminEmails = [ "you@example.com" ]; # REQUIRED — registering with these becomes admin
+  # vexos.server.sportarr.enable = false;               # Port 1867 — sports PVR
+  # vexos.server.tdarr.enable = false;                  # Port 8265 — transcode automation (server + local node)
 
   # ── Books & Comics ───────────────────────────────────────────────────────
   # vexos.server.grimmory.enable = false;               # Port 6060 — ebook/comic/audiobook library
+  # vexos.server.listenarr.enable = false;              # Port 4545 — audiobook collection manager
   #   No further config needed: MariaDB credentials auto-generate on first activation.
   # vexos.server.grimmory.libraryDir = "/mnt/pool/books";    # Override to point at existing storage
   # vexos.server.grimmory.bookdropDir = "/mnt/pool/bookdrop"; # (e.g. a mergerfs/storage-remote pool)
