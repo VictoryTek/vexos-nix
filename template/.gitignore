@@ -7,12 +7,12 @@ secrets/
 # Host-generated — produced by nixos-generate-config, unique per machine
 hardware-configuration.nix
 
-# Host-generated — written by `just create-mergerfs-pool` / `just attach-remote-storage`.
+# Host-generated — written by `just mergerfs-pool create` / `just remote-storage attach`.
 # Contains per-machine disk UUIDs and mount layout; not portable between hosts.
 storage-pool.nix
 storage-remote.nix
 
-# Host-generated — written by `just create-zfs-pool`.
+# Host-generated — written by `just zfs-pool create`.
 # Contains per-machine ZFS pool names; not portable between hosts.
 zfs-pools.nix
 

@@ -11,7 +11,7 @@
 #
 # How a build is triggered:
 #   - nightly by systemd timer (vexos.server.kernelBuilder.schedule)
-#   - manually with `just kernel-build-now [name]`
+#   - manually with `just kernel now [name]`
 #
 # The service is a no-op when the currently-pinned kernel is already built, so
 # running it often is cheap. It deliberately evaluates *what the repo currently
@@ -87,7 +87,7 @@ in
           The builder only puts kernels into this host's /nix/store; Harmonia is
           what serves that store to the rest of the fleet. Building without
           serving accomplishes nothing.
-          Fix: just enable harmonia
+          Fix: just service enable harmonia
         '';
       }
     ];

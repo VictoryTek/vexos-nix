@@ -5,7 +5,7 @@
 # Purpose: Attach a storage pool exported by ANOTHER host (NFS or CIFS/SMB) so
 #          local services can consume it. Non-destructive — client mount only.
 #          Emits/updates a declarative /etc/nixos/storage-remote.nix.
-# Usage:   sudo bash scripts/attach-remote-storage.sh  (via `just attach-remote-storage`)
+# Usage:   sudo bash scripts/attach-remote-storage.sh  (via `just remote-storage attach`)
 #
 # Steps:
 #   [1/6] Preconditions (root)
@@ -33,7 +33,7 @@ END_MARK="# <<< vexos-remote-entries <<<"
 
 # ---------- [1/6] Preconditions ---------------------------------------------
 hdr "[1/6] Preconditions"
-[ "$(id -u)" -eq 0 ] || die "must be run as root (use 'just attach-remote-storage', which calls sudo)"
+[ "$(id -u)" -eq 0 ] || die "must be run as root (use 'just remote-storage attach', which calls sudo)"
 ok "running as root"
 
 # ---------- [2/6] Protocol ---------------------------------------------------
@@ -80,7 +80,7 @@ case "$MNT" in /*) ;; *) die "mountpoint must be an absolute path" ;; esac
 if [ -f "$REMOTE_NIX" ] && grep -qF "mountPoint = \"${MNT}\";" "$REMOTE_NIX"; then
     die "mountpoint $MNT is already claimed by an entry in $REMOTE_NIX.
        Choose a different mountpoint, or drop the existing entry first with
-       'just detach-remote-storage'."
+       'just remote-storage detach'."
 fi
 ok "will mount ${SERVER}:${EXPORT} → $MNT"
 

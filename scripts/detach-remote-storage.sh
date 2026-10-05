@@ -5,7 +5,7 @@
 # Purpose: Remove a remote NFS/CIFS share attached earlier by
 #          attach-remote-storage.sh. Interactive companion to that script.
 #          Non-destructive to data — client unmount + declarative cleanup only.
-# Usage:   sudo bash scripts/detach-remote-storage.sh  (via `just detach-remote-storage`)
+# Usage:   sudo bash scripts/detach-remote-storage.sh  (via `just remote-storage detach`)
 #
 # Steps:
 #   [1/5] Preconditions (root, config present)
@@ -31,7 +31,7 @@ END_MARK="# <<< vexos-remote-entries <<<"
 
 # ---------- [1/5] Preconditions --------------------------------------------
 hdr "[1/5] Preconditions"
-[ "$(id -u)" -eq 0 ] || die "must be run as root (use 'just detach-remote-storage', which calls sudo)"
+[ "$(id -u)" -eq 0 ] || die "must be run as root (use 'just remote-storage detach', which calls sudo)"
 ok "running as root"
 
 if [ ! -f "$REMOTE_NIX" ]; then

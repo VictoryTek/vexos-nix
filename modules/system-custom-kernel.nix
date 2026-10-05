@@ -3,7 +3,7 @@
 # instead of the role's default kernel.
 #
 # Enable via the standard feature toggle:
-#   just enable-feature kernel && just rebuild
+#   just feature enable kernel && just rebuild
 # (equivalent to /etc/nixos/features.nix: vexos.features.kernel.enable = true;)
 #
 # These kernels are NOT on cache.nixos.org — they are built by a host running

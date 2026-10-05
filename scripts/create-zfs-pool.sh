@@ -3,7 +3,7 @@
 # create-zfs-pool.sh — vexos-nix interactive ZFS pool creator
 # Project: vexos-nix — Personal NixOS Flake (NixOS 25.11)
 # Purpose: Create a ZFS pool on a server-role host for Proxmox VE VM/container
-#          backing storage. Invoked by `just create-zfs-pool`.
+#          backing storage. Invoked by `just zfs-pool create`.
 # Usage:   sudo bash scripts/create-zfs-pool.sh
 #
 # Steps:
@@ -31,7 +31,7 @@ hdr()  { echo ""; echo -e "${BOLD}── $* ────────────
 
 # ---------- [1/8] Preconditions ---------------------------------------------
 hdr "[1/8] Preconditions"
-[ "$(id -u)" -eq 0 ] || die "must be run as root (use 'just create-zfs-pool', which calls sudo)"
+[ "$(id -u)" -eq 0 ] || die "must be run as root (use 'just zfs-pool create', which calls sudo)"
 command -v zpool  >/dev/null 2>&1 || die "zpool not found — modules/zfs-server.nix not active"
 command -v zfs    >/dev/null 2>&1 || die "zfs not found — modules/zfs-server.nix not active"
 command -v sgdisk >/dev/null 2>&1 || die "sgdisk not found — gptfdisk missing from systemPackages"
@@ -310,7 +310,7 @@ fi
 {
     echo "# /etc/nixos/zfs-pools.nix"
     echo "# GENERATED/updated by scripts/create-zfs-pool.sh on $(date '+%Y-%m-%d %H:%M:%S')."
-    echo "# Registers ZFS pools created via 'just create-zfs-pool' so NixOS generates a"
+    echo "# Registers ZFS pools created via 'just zfs-pool create' so NixOS generates a"
     echo "# zfs-import-<pool>.service unit for each and imports them automatically on"
     echo "# every boot. Without this, pools created imperatively never auto-import —"
     echo "# see modules/zfs-server.nix for why boot.zfs.extraPools must list them."

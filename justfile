@@ -15,19 +15,12 @@ default:
     if [[ "$variant" == *server* ]]; then
         echo ""
         echo "Available recipes (GUI Server / Headless Server roles):"
-        echo "    available-services         List all available server service modules"
-        echo "    service-info [service]     Show ports and URLs for enabled (or specified) services"
-        echo "    services                   List enabled server services and how to access them"
-        echo "    status <service>           Show systemctl status and HTTP reachability for a service"
-        echo "    restart <service>          Restart a service's systemd unit(s), clearing any start-limit-hit"
-        echo "    enable <service>           Enable a server service module"
-        echo "    disable <service>          Disable a server service module"
-        echo "    enable-plex-pass           Enable Plex Pass hardware transcoding"
-        echo "    disable-plex-pass          Disable Plex Pass hardware transcoding"
-        echo "    create-zfs-pool            Create a ZFS pool for Proxmox VM storage (interactive)"
-        echo "    create-mergerfs-pool       Create a mergerfs+SnapRAID bulk pool from mixed drives (interactive)"
-        echo "    attach-remote-storage      Attach a remote NFS/SMB storage pool from another host (interactive)"
-        echo "    detach-remote-storage      Remove a remote NFS/SMB storage pool attached earlier (interactive)"
+        echo "    service [action]           Server services: list, available, info, status, restart, enable, disable"
+        echo "    plex-pass [action]         Plex Pass hardware transcoding: enable, disable"
+        echo "    zfs-pool [action]          ZFS pools: create, destroy, import, replace/add disks, scrub (interactive)"
+        echo "    mergerfs-pool [action]     mergerfs+SnapRAID bulk pool: create, add/remove disk, destroy, sync (interactive)"
+        echo ""
+        echo "    Run any of these with no action for a menu, e.g. 'just service' or 'just zfs-pool'."
     elif [[ "$variant" == *stateless* ]]; then
         echo ""
         echo "Active role: stateless (ephemeral / tmpfs root)"
@@ -148,7 +141,7 @@ switch role="" variant="" flake="" de="" vmp="":
     # Ensures /etc/nixos/features.nix exists (seeded from template/features.nix),
     # then replaces the option if already present (commented or not) or appends
     # it before the closing brace. Mirrors the replace-or-append sed pattern
-    # `just enable-feature` uses, so the file stays editable by both paths.
+    # `just feature enable` uses, so the file stays editable by both paths.
     # Shared by the desktop-environment and VM-platform blocks below.
     _features_set() {
         local _key="$1" _val="$2" _key_re
@@ -435,15 +428,15 @@ switch role="" variant="" flake="" de="" vmp="":
 # Non-destructive: patches /etc/nixos/flake.nix, rebuilds, and reorders
 # BootOrder, but leaves the existing systemd-boot NVRAM entry and ESP files
 # in place as a fallback. Reboot and confirm Limine actually boots, THEN run
-# `just switch-bootloader-cleanup` to remove the old entry and files.
-# Example: just switch-bootloader limine
-[group('System Build & Deploy')]
-switch-bootloader target="limine":
+# `just bootloader cleanup` to remove the old entry and files.
+# Example: just bootloader switch limine
+[private]
+_bootloader-switch target="limine":
     #!/usr/bin/env bash
     set -euo pipefail
 
     if [ "$(uname -s 2>/dev/null || echo unknown)" != "Linux" ]; then
-        echo "error: just switch-bootloader must be run on the target NixOS host." >&2
+        echo "error: just bootloader switch must be run on the target NixOS host." >&2
         exit 1
     fi
     if ! command -v efibootmgr >/dev/null 2>&1; then
@@ -493,7 +486,7 @@ switch-bootloader target="limine":
     echo "  3. Reorder the UEFI BootOrder to put Limine first"
     echo ""
     echo "Nothing is removed by this step. Once you've rebooted and confirmed"
-    echo "Limine boots correctly, run: just switch-bootloader-cleanup"
+    echo "Limine boots correctly, run: just bootloader cleanup"
     echo ""
     if [ "$(just _confirm 'Continue? [y/N]: ')" != "true" ]; then
         echo "Aborted."
@@ -521,7 +514,7 @@ switch-bootloader target="limine":
     bash "{{justfile_directory()}}/scripts/upgrade-wrapper.sh"
     printf '%s\n' \
         '# /etc/nixos/bootloader.nix' \
-        '# Written by just switch-bootloader — Limine instead of systemd-boot.' \
+        '# Written by just bootloader switch — Limine instead of systemd-boot.' \
         '{' \
         '  vexos.bootloader = "limine";' \
         '}' | sudo tee /etc/nixos/bootloader.nix >/dev/null
@@ -556,15 +549,15 @@ switch-bootloader target="limine":
     echo ""
     echo "✓ Limine installed. The old systemd-boot entry and /boot files are"
     echo "  still in place as a fallback. Reboot now and confirm Limine boots"
-    echo "  correctly, THEN run: just switch-bootloader-cleanup"
+    echo "  correctly, THEN run: just bootloader cleanup"
 
-# Finish a Limine migration started with `just switch-bootloader limine`.
+# Finish a Limine migration started with `just bootloader switch limine`.
 # Destructive: removes the old systemd-boot NVRAM entry and orphaned ESP
 # files. Refuses to run unless the CURRENT boot session actually used the
 # Limine NVRAM entry — proof the machine really did boot into it — so it
 # cannot be run before a successful reboot has actually happened.
-[group('System Build & Deploy')]
-switch-bootloader-cleanup:
+[private]
+_bootloader-cleanup:
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -696,8 +689,8 @@ _kernel-cache-guard:
     echo "" >&2
     echo "  The build host has not produced this version yet. Either:" >&2
     echo "    - wait for its nightly build, or" >&2
-    echo "    - run 'just kernel-build-now' on the build host, or" >&2
-    echo "    - disable the custom kernel: just disable-feature kernel" >&2
+    echo "    - run 'just kernel now' on the build host, or" >&2
+    echo "    - disable the custom kernel: just feature disable kernel" >&2
     echo "" >&2
     echo "  To compile locally anyway, run nixos-rebuild directly." >&2
     echo "" >&2
@@ -1312,64 +1305,64 @@ setup-tailscale:
     tailscale up
 
 # PIA VPN (desktop, htpc, stateless) — thin wrappers around the vexos-vpn CLI
-# (modules/vpn.nix). On desktop/htpc: `just enable-feature vpn` first; always on in stateless. Run `vexos-vpn help` for the full command list.
+# (modules/vpn.nix). On desktop/htpc: `just feature enable vpn` first; always on in stateless. Run `vexos-vpn help` for the full command list.
 
 # Store PIA credentials (root-only file; prompts, never echoed). Run once.
-[group('VPN')]
-vpn-login:
-    @command -v vexos-vpn >/dev/null || { echo "error: vexos-vpn is not installed — run 'just enable-feature vpn' and rebuild." >&2; exit 1; }
+[private]
+_vpn-login:
+    @command -v vexos-vpn >/dev/null || { echo "error: vexos-vpn is not installed — run 'just feature enable vpn' and rebuild." >&2; exit 1; }
     sudo vexos-vpn login
 
 # Check the PIA login works — prints OK/FAILED only, never the credentials or token.
-[group('VPN')]
-vpn-selftest:
-    @command -v vexos-vpn >/dev/null || { echo "error: vexos-vpn is not installed — run 'just enable-feature vpn' and rebuild." >&2; exit 1; }
+[private]
+_vpn-selftest:
+    @command -v vexos-vpn >/dev/null || { echo "error: vexos-vpn is not installed — run 'just feature enable vpn' and rebuild." >&2; exit 1; }
     sudo vexos-vpn selftest
 
 # Connect the PIA VPN.
-[group('VPN')]
-vpn-up:
+[private]
+_vpn-up:
     vexos-vpn up && vexos-vpn status
 
 # Disconnect the PIA VPN (with the kill switch on, this leaves you offline).
-[group('VPN')]
-vpn-down:
+[private]
+_vpn-down:
     vexos-vpn down && vexos-vpn status
 
 # Show VPN and kill switch state.
-[group('VPN')]
-vpn-status:
+[private]
+_vpn-status:
     vexos-vpn status
 
 # List PIA regions (latency shown after an auto connect).
-[group('VPN')]
-vpn-regions:
+[private]
+_vpn-regions:
     vexos-vpn regions
 
 # Choose a PIA region, or "auto" for the fastest. Reconnects if connected.
-[group('VPN')]
-vpn-region region:
+[private]
+_vpn-region region:
     vexos-vpn region {{region}}
 
 # Switch protocol: wireguard (default) or openvpn (backup). Reconnects if connected.
-[group('VPN')]
-vpn-protocol protocol:
+[private]
+_vpn-protocol protocol:
     vexos-vpn protocol {{protocol}}
 
 # Turn the kill switch on — blocks all internet traffic outside the PIA tunnel.
-[group('VPN')]
-enable-kill-switch:
+[private]
+_kill-switch-on:
     vexos-vpn killswitch on
-    @echo "✓ Kill switch on — internet only through the PIA tunnel. Disable with: just disable-kill-switch"
+    @echo "✓ Kill switch on — internet only through the PIA tunnel. Disable with: just kill-switch off"
 
 # Turn the kill switch off. On stateless this asks for your password and lasts until reboot.
-[group('VPN')]
-disable-kill-switch:
+[private]
+_kill-switch-off:
     vexos-vpn killswitch off
-    @echo "✓ Kill switch off — normal internet access restored. Re-enable with: just enable-kill-switch"
+    @echo "✓ Kill switch off — normal internet access restored. Re-enable with: just kill-switch on"
 
 # ── Desktop Feature Toggles ──────────────────────────────────────────────────
-# Run `just features` to see available features and their status.
+# Run `just feature list` to see available features and their status.
 
 # Patch /etc/nixos/flake.nix to load features.nix on every rebuild.
 # Required once on systems where the thin wrapper predates feature toggle support.
@@ -1426,11 +1419,11 @@ fix-flake:
     fi
 
 
-# Requires the ai feature: just enable-feature ai
+# Requires the ai feature: just feature enable ai
 # Open your AI assistant (Claude Code or OpenCode) in /etc/nixos.
 [group('AI Assistant')]
 agent:
-    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just enable-feature ai && just rebuild"; exit 1; }
+    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
     @vexos-ai
 
 # No argument: failed units and this boot's errors. A unit name: that service.
@@ -1438,7 +1431,7 @@ agent:
 # Have your AI assistant explain a problem: just diagnose [unit|rebuild]
 [group('AI Assistant')]
 diagnose target="":
-    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just enable-feature ai && just rebuild"; exit 1; }
+    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
     @vexos-ai diagnose {{target}}
 
 # Available optional feature names (desktop, server, htpc, and vanilla roles;
@@ -1459,8 +1452,8 @@ _require-desktop-role:
     fi
 
 # List all optional features and their enabled/disabled status.
-[group('Optional Feature Toggles')]
-features: _require-desktop-role
+[private]
+_feature-list: _require-desktop-role
     #!/usr/bin/env bash
     set -euo pipefail
     FEAT_FILE="/etc/nixos/features.nix"
@@ -1491,20 +1484,20 @@ features: _require-desktop-role
     _check vpn
     _check ai
     echo ""
-    echo "Use 'just enable-feature <feature>' / 'just disable-feature <feature>' to toggle."
+    echo "Use 'just feature enable <feature>' / 'just feature disable <feature>' to toggle."
     echo ""
 
-# Enable an optional feature module.  Usage: just enable-feature gaming
-# Use 'just enable-feature all' to enable every feature.
-[group('Optional Feature Toggles')]
-enable-feature feature: _require-desktop-role
+# Enable an optional feature module.  Usage: just feature enable gaming
+# Use 'just feature enable all' to enable every feature.
+[private]
+_feature-enable feature: _require-desktop-role
     #!/usr/bin/env bash
     set -euo pipefail
     FEATURE="{{feature}}"
 
     if [ "$FEATURE" = "all" ]; then
         for f in {{_feature_names}}; do
-            just enable-feature "$f"
+            just feature enable "$f"
         done
         exit 0
     fi
@@ -1520,7 +1513,7 @@ enable-feature feature: _require-desktop-role
 
     # modules/ai.nix is imported by desktop, htpc and server only; on vanilla
     # the option does not exist and setting it would fail evaluation. Exit 0
-    # so `just enable-feature all` carries on past it.
+    # so `just feature enable all` carries on past it.
     if [ "$FEATURE" = "ai" ] && [[ "$(cat /etc/nixos/vexos-variant 2>/dev/null)" == *vanilla* ]]; then
         echo "ai: not available on the vanilla role — skipped."
         exit 0
@@ -1609,8 +1602,8 @@ enable-feature feature: _require-desktop-role
             echo "    Services   PIA VPN tunnel (WireGuard, OpenVPN backup) + nftables kill switch"
             echo "    Apps       vexos-vpn CLI, vex-vpn GUI + tray (autostarts with the session)"
             echo ""
-            echo "  Off until you connect: sign in with 'just vpn-login' (or the GUI), then"
-            echo "  'just vpn-up'. The kill switch is available but stopped by default."
+            echo "  Off until you connect: sign in with 'just vpn login' (or the GUI), then"
+            echo "  'just vpn up'. The kill switch is available but stopped by default."
             ;;
         kernel)
             echo "  What this adds:"
@@ -1655,17 +1648,17 @@ enable-feature feature: _require-desktop-role
         echo "    Run 'just fix-flake' then 'just rebuild' to resolve."
     fi
 
-# Disable an optional feature module.  Usage: just disable-feature gaming
-# Use 'just disable-feature all' to disable every feature.
-[group('Optional Feature Toggles')]
-disable-feature feature: _require-desktop-role
+# Disable an optional feature module.  Usage: just feature disable gaming
+# Use 'just feature disable all' to disable every feature.
+[private]
+_feature-disable feature: _require-desktop-role
     #!/usr/bin/env bash
     set -euo pipefail
     FEATURE="{{feature}}"
 
     if [ "$FEATURE" = "all" ]; then
         for f in {{_feature_names}}; do
-            just disable-feature "$f"
+            just feature disable "$f"
         done
         exit 0
     fi
@@ -1700,7 +1693,7 @@ disable-feature feature: _require-desktop-role
     fi
 
 # ── Server Services Management ───────────────────────────────────────────────
-# Run `just services` to see available modules and their status.
+# Run `just service list` to see available modules and their status.
 
 # Available server service module names.
 # Keep in sync with _service_catalog below, modules/server/default.nix, and
@@ -1708,7 +1701,7 @@ disable-feature feature: _require-desktop-role
 _server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy mealie nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism plex podman portainer prometheus proxmox scrutiny searxng seerr syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
 
 # Server service catalog — single source of truth for both `just
-# available-services` (catalog view) and `just services` (per-host status).
+# available-services` (catalog view) and `just service list` (per-host status).
 # One line per module: group|name|description. Groups and order are rendered
 # verbatim by both recipes. Descriptions must not contain a '|'.
 # Keep in sync with _server_service_names above, modules/server/default.nix,
@@ -1785,6 +1778,154 @@ _confirm prompt:
         y|yes) echo "true" ;;
         *)     echo "false" ;;
     esac
+
+# Shared menu + dispatcher behind the grouped recipes (vpn, feature, service, ...).
+#   $1 group   $2 menu title   $3 action ("" = show the menu)
+#   $4 extra arguments as ONE string (forwarded to the action)
+#   $5.. items, each "key|description" or "key|description|prompt" — a prompt marks
+#        an action that needs an argument and asks for it when none was given.
+# Runs the hidden recipe _<group>-<key>, so `just vpn up` == `just _vpn-up`.
+[positional-arguments]
+[private]
+_menu group title action argstr *items:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    group="$1"; title="$2"; action="${3:-}"; argstr="${4:-}"
+    shift 4
+    keys=(); descs=(); prompts=()
+    for item in "$@"; do
+        IFS='|' read -r k d p <<< "$item"
+        keys+=("$k"); descs+=("$d"); prompts+=("${p:-}")
+    done
+
+    usage() {
+        echo "usage: just $group <action> [args]" >&2
+        for i in "${!keys[@]}"; do
+            printf "  %-14s %s\n" "${keys[$i]}" "${descs[$i]}" >&2
+        done
+    }
+
+    if [ -z "$action" ]; then
+        [ -t 0 ] || { usage; exit 1; }
+        echo ""
+        echo "── $title ──────────────────────────────────────────"
+        for i in "${!keys[@]}"; do
+            printf "  %2d) %-14s %s\n" "$((i+1))" "${keys[$i]}" "${descs[$i]}"
+        done
+        echo "   0) Quit"
+        echo ""
+        while true; do
+            read -r -p "Choice [0-${#keys[@]}]: " sel || exit 0
+            [ "$sel" = "0" ] && exit 0
+            if [[ "$sel" =~ ^[0-9]+$ ]] && [ "$sel" -ge 1 ] && [ "$sel" -le "${#keys[@]}" ]; then
+                action="${keys[$((sel-1))]}"
+                break
+            fi
+            echo "  invalid"
+        done
+    fi
+
+    idx=-1
+    for i in "${!keys[@]}"; do
+        [ "${keys[$i]}" = "$action" ] && idx=$i
+    done
+    if [ "$idx" -lt 0 ]; then
+        echo "error: unknown action '$action'" >&2
+        usage
+        exit 1
+    fi
+
+    args=()
+    [ -z "$argstr" ] || read -r -a args <<< "$argstr"
+    if [ -n "${prompts[$idx]}" ] && [ "${#args[@]}" -eq 0 ]; then
+        [ -t 0 ] || { echo "error: '$action' needs an argument: ${prompts[$idx]}" >&2; usage; exit 1; }
+        read -r -p "${prompts[$idx]}: " a || exit 1
+        [ -n "$a" ] || { echo "cancelled" >&2; exit 1; }
+        args=("$a")
+    fi
+
+    exec just "_${group}-${action}" "${args[@]}"
+
+# ── Grouped menus ────────────────────────────────────────────────────────────
+# Each recipe below shows a numbered menu when run with no action, or runs an
+# action directly:  `just vpn`  /  `just vpn up`  /  `just vpn region auto`.
+# The actions themselves are the hidden _<group>-<action> recipes.
+
+# Bootloader: migrate to Limine (UEFI, opt-in), then clean up the old entries.
+[group('System Build & Deploy')]
+bootloader action="" *args:
+    @just _menu bootloader "Bootloader" "{{action}}" "{{args}}" \
+        "switch|Migrate to Limine, keeping the old entry as a fallback (optional: target)" \
+        "cleanup|Remove the old boot entries once you have booted into Limine"
+
+# Remote storage: attach or detach an NFS/SMB share from another host (apply with `just rebuild`).
+[group('System Administration')]
+remote-storage action="" *args: _require-remote-storage-role
+    @just _menu remote-storage "Remote storage (NFS / SMB)" "{{action}}" "{{args}}" \
+        "attach|Mount a share exported by another host" \
+        "detach|Remove a share attached earlier"
+
+# Optional feature modules (desktop roles): list, enable, disable.
+[group('Optional Feature Toggles')]
+feature action="" *args: _require-desktop-role
+    @just _menu feature "Optional features" "{{action}}" "{{args}}" \
+        "list|Show every feature and whether it is enabled" \
+        "enable|Enable a feature, or 'all'|Feature to enable (or all)" \
+        "disable|Disable a feature, or 'all'|Feature to disable (or all)"
+
+# PIA VPN (desktop, htpc, stateless): thin wrappers around the vexos-vpn CLI.
+[group('VPN')]
+vpn action="" *args:
+    @just _menu vpn "VPN (PIA)" "{{action}}" "{{args}}" \
+        "login|Store PIA credentials (run once)" \
+        "selftest|Check the PIA login works" \
+        "up|Connect the VPN" \
+        "down|Disconnect the VPN" \
+        "status|Show VPN and kill switch state" \
+        "regions|List PIA regions" \
+        "region|Choose a region, or auto for the fastest|Region (e.g. auto)" \
+        "protocol|Switch protocol: wireguard or openvpn|Protocol (wireguard or openvpn)"
+
+# VPN kill switch: block all traffic outside the PIA tunnel (on) or restore normal access (off).
+[group('VPN')]
+kill-switch action="" *args:
+    @just _menu kill-switch "VPN kill switch" "{{action}}" "{{args}}" \
+        "on|Block all internet traffic outside the PIA tunnel" \
+        "off|Restore normal internet access"
+
+# Binary caches: Attic (push/bootstrap) and Harmonia (status and client config).
+[group('Binary Cache')]
+cache action="" *args:
+    @just _menu cache "Binary cache" "{{action}}" "{{args}}" \
+        "push|Build this repo's custom packages and push them to Attic (optional: cache)" \
+        "bootstrap|One-time Attic setup: create the cache and mint tokens (optional: cache)" \
+        "harmonia|Check Harmonia is live and print the client configuration"
+
+# Custom kernel builder (server): build now, check status, follow the log.
+kernel action="" *args:
+    @just _menu kernel "Custom kernel builder" "{{action}}" "{{args}}" \
+        "now|Build the kernel now instead of waiting for the nightly timer (optional: name)" \
+        "status|Show build status and the pinned kernel version" \
+        "log|Follow a build log live (optional: name)"
+
+# Server services (server roles): list, catalog, info, status, restart, enable, disable.
+[private]
+service action="" *args:
+    @just _menu service "Server services" "{{action}}" "{{args}}" \
+        "list|List enabled services and how to access them" \
+        "available|Show the catalog of available service modules" \
+        "info|Ports, URLs and notes for all enabled services, or one (optional: service)" \
+        "status|systemd status and HTTP reachability of a service|Service name" \
+        "restart|Restart a service, clearing any start-limit failure|Service name" \
+        "enable|Enable a service module|Service name" \
+        "disable|Disable a service module|Service name"
+
+# Plex Pass hardware transcoding (server): enable or disable.
+[private]
+plex-pass action="" *args: _require-server-role
+    @just _menu plex-pass "Plex Pass" "{{action}}" "{{args}}" \
+        "enable|Turn on hardware transcoding for an enabled Plex" \
+        "disable|Turn hardware transcoding off"
 
 # Guard: abort if the current host is not running a server variant.
 [private]
@@ -1871,7 +2012,7 @@ backup-now: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
     if ! systemctl list-unit-files restic-backups-main.service &>/dev/null; then
-        echo "error: restic-backups-main.service not found — enable it first with 'just enable backup && just rebuild'."
+        echo "error: restic-backups-main.service not found — enable it first with 'just service enable backup && just rebuild'."
         exit 1
     fi
     sudo systemctl start restic-backups-main.service --wait
@@ -1920,7 +2061,7 @@ backup-plex dest="": _require-server-role
     set -euo pipefail
 
     if ! systemctl list-unit-files plex.service &>/dev/null; then
-        echo "error: plex.service not found — enable it first with 'just enable plex'." >&2
+        echo "error: plex.service not found — enable it first with 'just service enable plex'." >&2
         exit 1
     fi
 
@@ -1942,7 +2083,7 @@ backup-plex dest="": _require-server-role
     echo "  Move this file to the new server, then run: just restore-plex $DEST"
 
 # Restore a Plex data directory backup created by `just backup-plex` onto a
-# freshly enabled Plex install (run 'just enable plex && just rebuild' on the
+# freshly enabled Plex install (run 'just service enable plex && just rebuild' on the
 # new server first). Destructive — overwrites /var/lib/plex after a typed
 # confirmation; the previous contents are preserved as a timestamped .bak
 # directory rather than deleted. Usage: just restore-plex <tarball>
@@ -1957,7 +2098,7 @@ restore-plex tarball: _require-server-role
     fi
 
     if ! systemctl list-unit-files plex.service &>/dev/null; then
-        echo "error: plex.service not found — enable it first with 'just enable plex && just rebuild'." >&2
+        echo "error: plex.service not found — enable it first with 'just service enable plex && just rebuild'." >&2
         exit 1
     fi
 
@@ -2012,7 +2153,7 @@ restore-service name snapshot="latest": _require-server-role
 
     RESTIC="$(command -v restic-main || true)"
     if [ -z "$RESTIC" ]; then
-        echo "error: restic-main wrapper not found — enable backups with 'just enable backup && just rebuild'." >&2
+        echo "error: restic-main wrapper not found — enable backups with 'just service enable backup && just rebuild'." >&2
         exit 1
     fi
     if [ ! -f "$MANIFEST" ]; then
@@ -2075,73 +2216,11 @@ restore-service name snapshot="latest": _require-server-role
         echo "  Check status with: systemctl status $UNIT"
     fi
 
-# Interactively create a ZFS pool for use as Proxmox VM/container backing storage.
-# Server roles only.  Requires modules/zfs-server.nix in the active build.
-# All work runs as root via sudo. The recipe:
-#   • lists block devices by /dev/disk/by-id/ path,
-#   • prompts for pool name, topology, and disks,
-#   • requires typed confirmation (the pool name) before destroying data,
-#   • runs wipefs + sgdisk --zap-all + zpool create with VM-tuned defaults
-#     (ashift=12, compression=lz4, atime=off, xattr=sa, acltype=posixacl),
-#   • prints the `pvesm add zfspool` command to register the pool with Proxmox.
-#
-# Safe to abort with Ctrl-C at any prompt — destructive actions only run after
-# the typed-name confirmation step.
-[private]
-create-zfs-pool: _require-server-role
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    if ! command -v zpool >/dev/null 2>&1 || ! command -v zfs >/dev/null 2>&1; then
-        echo "error: zpool/zfs not found — ZFS userland is not installed in this build." >&2
-        echo "       Ensure modules/zfs-server.nix is imported by your active configuration-*.nix" >&2
-        echo "       and rebuild:  just switch <role> <gpu>" >&2
-        exit 1
-    fi
-
-    # Locate scripts/create-zfs-pool.sh.
-    # justfile_directory() / justfile() can resolve into the read-only nix store
-    # when the justfile is a nix-store symlink.  Walk up from $PWD first.
-    _jf_raw="{{justfile_directory()}}"
-    _jf_real=$(readlink -f "{{justfile()}}" 2>/dev/null || echo "{{justfile()}}")
-    _jf_dir=$(dirname "$_jf_real")
-
-    SCRIPT=""
-    _walk="$PWD"
-    while [ "$_walk" != "/" ] && [ -z "$SCRIPT" ]; do
-        if [ -f "$_walk/scripts/create-zfs-pool.sh" ]; then
-            SCRIPT="$_walk/scripts/create-zfs-pool.sh"
-        fi
-        _walk=$(dirname "$_walk")
-    done
-    for _candidate in "$_jf_raw/scripts" "$_jf_dir/scripts" "/etc/nixos/scripts" "$HOME/Projects/vexos-nix/scripts"; do
-        [ -n "$SCRIPT" ] && break
-        if [ -f "$_candidate/create-zfs-pool.sh" ]; then
-            SCRIPT="$_candidate/create-zfs-pool.sh"
-        fi
-    done
-    # Last resort: find the vexos-nix source in the nix store via /etc/nixos flake input.
-    if [ -z "$SCRIPT" ] && [ -f /etc/nixos/flake.nix ]; then
-        _vexos_store=$(nix eval --raw --expr '(builtins.getFlake "git+file:///etc/nixos").inputs.vexos-nix.outPath' 2>/dev/null || true)
-        if [ -n "$_vexos_store" ] && [ -f "$_vexos_store/scripts/create-zfs-pool.sh" ]; then
-            SCRIPT="$_vexos_store/scripts/create-zfs-pool.sh"
-        fi
-    fi
-    if [ -z "$SCRIPT" ]; then
-        echo "error: scripts/create-zfs-pool.sh not found in any known location." >&2
-        echo "       searched up from: $PWD" >&2
-        echo "       also checked: $_jf_raw/scripts $_jf_dir/scripts /etc/nixos/scripts $HOME/Projects/vexos-nix/scripts" >&2
-        echo "       also tried: nix store path via /etc/nixos flake input" >&2
-        exit 1
-    fi
-
-    sudo bash "$SCRIPT"
-
 # Locate a script under scripts/ (walking up from $PWD, then known checkout
 # locations, then the nix-store flake input) and run it as root. Shared by the
-# storage-pool recipes below.
+# storage-pool recipes below. Extra arguments are passed to the script.
 [private]
-_run-storage-script script:
+_run-storage-script script *args:
     #!/usr/bin/env bash
     set -euo pipefail
     SCRIPT_NAME="{{script}}"
@@ -2163,38 +2242,54 @@ _run-storage-script script:
         [ -n "$_vexos_store" ] && [ -f "$_vexos_store/scripts/$SCRIPT_NAME" ] && SCRIPT="$_vexos_store/scripts/$SCRIPT_NAME"
     fi
     [ -n "$SCRIPT" ] || { echo "error: scripts/$SCRIPT_NAME not found in any known location." >&2; exit 1; }
-    sudo bash "$SCRIPT"
+    sudo bash "$SCRIPT" {{args}}
 
-# Interactively build a mergerfs + SnapRAID "bulk" storage pool from mixed-
-# capacity drives (media / general bulk storage). Server roles only.
-# Formats the selected disks, mounts them, and writes a declarative
-# /etc/nixos/storage-pool.nix. Requires vexos.server.nas.backend = "mergerfs"
-# (or vexos.server.storage.mergerfs.enable) so the mergerfs userland is present.
-# Destructive actions only run after a typed-keyword confirmation.
+# Menu for managing ZFS pools on a server role: show pool health, create a pool,
+# destroy a pool (also removes its Proxmox storage entry and boot-time import),
+# import an existing pool, replace a disk, add disks, attach/detach mirror disks,
+# scrub, and clear errors. "Create" launches scripts/create-zfs-pool.sh.
+# Requires modules/zfs-server.nix in the active build. Destructive actions require
+# typing the pool name; safe to abort with Ctrl-C at any prompt.
+# Usage: just zfs-pool            — menu
+#        just zfs-pool status     — run one action (status, create, destroy, import,
+#                                   replace, add, attach, detach, scrub, clear)
 [private]
-create-mergerfs-pool: _require-server-role
-    @just _run-storage-script create-mergerfs-pool.sh
+zfs-pool *args: _require-server-role
+    @just _run-storage-script zfs-pool.sh {{args}}
+
+# Menu for managing the mergerfs + SnapRAID "bulk" storage pool (media / general
+# bulk storage on mixed-capacity drives). Server roles only: show pool status,
+# create the pool, add or remove a disk, destroy the pool, and run the SnapRAID
+# parity sync/scrub. "Create" launches scripts/create-mergerfs-pool.sh.
+# Needs vexos.server.nas.backend = "mergerfs" (or vexos.server.storage.mergerfs.enable)
+# so the mergerfs userland is present. Destructive actions require typed confirmation.
+# Usage: just mergerfs-pool           — menu
+#        just mergerfs-pool status    — run one action (status, create, add, remove,
+#                                       destroy, sync, scrub)
+[private]
+mergerfs-pool *args: _require-server-role
+    @just _run-storage-script mergerfs-pool.sh {{args}}
 
 # Attach a NAS share exported by ANOTHER host (NFS or CIFS/SMB) declaratively,
 # without hand-editing /etc/fstab. Available on desktop, htpc, server and
 # headless-server. Non-destructive — client mount only. Writes/updates a
 # declarative /etc/nixos/storage-remote.nix; apply with `just rebuild`.
-[group('System Administration')]
-attach-remote-storage: _require-remote-storage-role
+[private]
+_remote-storage-attach: _require-remote-storage-role
     @just _run-storage-script attach-remote-storage.sh
 
-# Detach a NAS share attached earlier by `just attach-remote-storage`. Interactive:
+# Detach a NAS share attached earlier by `just remote-storage attach`. Interactive:
 # lists the configured shares, removes the selected entry (or all) from the
 # declarative /etc/nixos/storage-remote.nix, unmounts it, removes the empty
 # mountpoint, and drops an orphaned CIFS credentials file. Applies nothing —
 # apply with `just rebuild`.
-[group('System Administration')]
-detach-remote-storage: _require-remote-storage-role
+[private]
+_remote-storage-detach: _require-remote-storage-role
     @just _run-storage-script detach-remote-storage.sh
 
 # List all available server service modules (catalog view, no role required).
 [private]
-available-services:
+_service-available:
     #!/usr/bin/env bash
     echo ""
     echo "Available server service modules:"
@@ -2208,15 +2303,15 @@ available-services:
         printf "    \033[36m%-22s\033[0m  %s\n" "$name" "$desc"
     done <<< '{{ replace(_service_catalog, "'", "'\\''") }}'
     echo ""
-    echo "Use 'just enable <service>' to enable a module on a server host."
+    echo "Use 'just service enable <service>' to enable a module on a server host."
     echo ""
 
 # Show access info for server services — ports, URLs, and key notes.
 # With no argument shows all currently enabled services; with a name shows that service.
-# Usage:  just service-info            — all enabled services
-#         just service-info jellyfin   — specific service
+# Usage:  just service info            — all enabled services
+#         just service info jellyfin   — specific service
 [private]
-service-info service="":
+_service-info service="":
     #!/usr/bin/env bash
     set -euo pipefail
     SERVICE="{{service}}"
@@ -2258,7 +2353,7 @@ service-info service="":
         dockhand)        printf "  %-18s  Web UI  http://<server-ip>:8073   (Docker/Podman container manager)\n"      "$1" ;;
         forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000\n"                                           "$1" ;;
         harmonia)        printf "  %-18s  HTTP    http://<server-ip>:5000   (Nix binary cache)\n"                      "$1" ;;
-        kernel-builder)  printf "  %-18s  No web UI — nightly timer; see 'just kernel-build-status'\n"            "$1" ;;
+        kernel-builder)  printf "  %-18s  No web UI — nightly timer; see 'just kernel status'\n"            "$1" ;;
         grimmory)        printf "  %-18s  Web UI  http://<server-ip>:6060\n"                                           "$1" ;;
         headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
         home-registry)   printf "  %-18s  Web UI  http://<server-ip>:8210\n"                                           "$1" ;;
@@ -2327,7 +2422,7 @@ service-info service="":
     else
         if [ ! -f "$SVC_FILE" ]; then
             echo ""
-            echo "No services enabled yet — run 'just enable <service>' to get started."
+            echo "No services enabled yet — run 'just service enable <service>' to get started."
             echo ""
             exit 0
         fi
@@ -2413,9 +2508,9 @@ _service-units service:
     esac
 
 # Show systemctl status and HTTP reachability for a server service.
-# Usage: just status jellyfin
+# Usage: just service status jellyfin
 [private]
-status service: _require-server-role
+_service-status service: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
     SERVICE="{{service}}"
@@ -2513,9 +2608,9 @@ status service: _require-server-role
     echo ""
 
 # Restart a server service (all its systemd units), clearing any prior
-# start-limit-hit failure first. Usage: just restart joplin
+# start-limit-hit failure first. Usage: just service restart joplin
 [private]
-restart service: _require-server-role
+_service-restart service: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
     SERVICE="{{service}}"
@@ -2552,12 +2647,12 @@ restart service: _require-server-role
 
 # List enabled server services and how to access them.
 [private]
-services: _require-server-role
-    @just service-info
+_service-list: _require-server-role
+    @just service info
 
-# Enable a server service module.  Usage: just enable docker
+# Enable a server service module.  Usage: just service enable docker
 [private]
-enable service: _require-server-role
+_service-enable service: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
     SVC_FILE="/etc/nixos/server-services.nix"
@@ -2612,8 +2707,8 @@ enable service: _require-server-role
             if [ "$_storage_tier" = "zfs-vm" ]; then
                 read -r -p "  Create a local ZFS pool now? [y/N]: " _sp
                 case "${_sp,,}" in
-                    y|yes) just create-zfs-pool ;;
-                    *)     echo "  Skipped — run 'just create-zfs-pool' before starting VMs." ;;
+                    y|yes) just zfs-pool create ;;
+                    *)     echo "  Skipped — run 'just zfs-pool create' before starting VMs." ;;
                 esac
             else
                 echo "  Where should its storage live?"
@@ -2623,10 +2718,10 @@ enable service: _require-server-role
                 echo "    4) Skip — configure later"
                 read -r -p "  Choice [1-4]: " _sp
                 case "$_sp" in
-                    1) just create-mergerfs-pool ;;
-                    2) just create-zfs-pool ;;
-                    3) just attach-remote-storage ;;
-                    *) echo "  Skipped — run 'just create-mergerfs-pool', 'just create-zfs-pool', or 'just attach-remote-storage' later." ;;
+                    1) just mergerfs-pool create ;;
+                    2) just zfs-pool create ;;
+                    3) just remote-storage attach ;;
+                    *) echo "  Skipped — run 'just mergerfs-pool create', 'just zfs-pool create', or 'just remote-storage attach' later." ;;
                 esac
             fi
         fi
@@ -2674,7 +2769,7 @@ enable service: _require-server-role
     if [ "$SERVICE" = "arr" ]; then
         ARR_COMPONENTS="sabnzbd sonarr radarr lidarr prowlarr qbittorrent bazarr maintainerr"
         if grep -qP '^\s*vexos\.server\.arr\.(enable|\w+\.enable)\s*=\s*true' "$SVC_FILE" 2>/dev/null; then
-            echo "arr is already enabled (or has enabled components). Use 'just disable arr' first to reconfigure."
+            echo "arr is already enabled (or has enabled components). Use 'just service disable arr' first to reconfigure."
             exit 0
         fi
         echo "  Enable the full *arr stack, or select individual components?"
@@ -2731,7 +2826,7 @@ enable service: _require-server-role
 
     # `backup` is exempt from the "already enabled" early-exit: it may have been
     # auto-enabled with local defaults alongside another service (see the
-    # auto-enable block below), and running `just enable backup` explicitly must
+    # auto-enable block below), and running `just service enable backup` explicitly must
     # still let the user re-point the repository / passwordFile via the
     # interactive prompt block rather than silently no-op.
     if [ "$SERVICE" != "backup" ] && grep -q "${OPTION}\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
@@ -2904,7 +2999,7 @@ enable service: _require-server-role
         fi
     }
 
-    # Explicit `just enable vexboard` — ensure secret is generated.
+    # Explicit `just service enable vexboard` — ensure secret is generated.
     if [ "$SERVICE" = "vexboard" ]; then
         _ensure_vexboard_secret "$SVC_FILE"
     fi
@@ -2945,7 +3040,7 @@ enable service: _require-server-role
 
     # Auto-enable declarative backups alongside the first service enabled on this
     # host, with non-interactive local defaults. The interactive
-    # `just enable backup` path (above) still owns custom repository / passwordFile
+    # `just service enable backup` path (above) still owns custom repository / passwordFile
     # configuration for anyone pointing backups at a NAS or remote target.
     if [ "$SERVICE" != "backup" ]; then
         BK_OPTION="vexos.server.backup.enable"
@@ -2973,7 +3068,7 @@ enable service: _require-server-role
         echo "  Web UI:    http://<server-ip>:3552"
         echo "  Login:     Default arcane / arcane-admin — you are prompted to change the password on first login."
         echo "  About:     Modern container management UI — browse containers, images, volumes, and networks from a browser."
-        echo "  Backend:   vexos.server.arcane.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just enable podman' first)."
+        echo "  Backend:   vexos.server.arcane.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just service enable podman' first)."
         echo "  appUrl and environmentFile (ENCRYPTION_KEY/JWT_SECRET) were configured above."
         ;;
       attic)
@@ -2981,7 +3076,7 @@ enable service: _require-server-role
         echo "  HTTP:     http://<server-ip>:8400"
         echo "  About:    Modern, purpose-built Nix binary cache server. Push derivations from any machine; pull on rebuild."
         echo "  Note:     Credentials and the 'attic' CLI are set up automatically on rebuild."
-        echo "  Next:     Run 'just attic-bootstrap' after rebuilding to create the cache and mint tokens."
+        echo "  Next:     Run 'just cache bootstrap' after rebuilding to create the cache and mint tokens."
         ;;
       backup)
         echo "  Service:  restic-backups-main.service"
@@ -3026,7 +3121,7 @@ enable service: _require-server-role
         echo "  Container: dockhand (NixOS OCI container, Docker or Podman backend)"
         echo "  Web UI:    http://<server-ip>:8073"
         echo "  About:     Modern container management UI — browse containers, Compose stacks, logs, and terminals from a browser."
-        echo "  Backend:   vexos.server.dockhand.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just enable podman' first)."
+        echo "  Backend:   vexos.server.dockhand.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just service enable podman' first)."
         echo "  Note:      Port remapped from upstream default 3000 — Forgejo also uses 3000."
         ;;
       forgejo)
@@ -3041,7 +3136,7 @@ enable service: _require-server-role
         echo "            there is no upload API. Paths appear by being built here, or"
         echo "            copied in with: nix copy --to ssh-ng://<this-host> <path>"
         echo "  Note:     The signing key is generated automatically on rebuild."
-        echo "  Next:     Run 'just harmonia-info' to verify it is live and print"
+        echo "  Next:     Run 'just cache harmonia' to verify it is live and print"
         echo "            the client settings for your other machines."
         echo "  Warning:  Serves every store path on this host. Keep it on the LAN."
         ;;
@@ -3051,9 +3146,9 @@ enable service: _require-server-role
         echo "  About:    Builds the custom kernels in pkgs/kernels/ so other machines"
         echo "            can download them from this host instead of compiling."
         echo "  Requires: Harmonia — building without serving accomplishes nothing."
-        echo "  First run: just kernel-build-now      (takes hours; safe to leave)"
-        echo "  Watch:     just kernel-build-log"
-        echo "  Status:    just kernel-build-status"
+        echo "  First run: just kernel now      (takes hours; safe to leave)"
+        echo "  Watch:     just kernel log"
+        echo "  Status:    just kernel status"
         ;;
       grimmory)
         echo "  Services: docker-grimmory.service  docker-grimmory-db.service"
@@ -3180,7 +3275,7 @@ enable service: _require-server-role
         if [ "$PLEX_PASS_ENABLED" = "true" ]; then
             echo "  Plex Pass: Hardware transcoding enabled (vexos.server.plex.plexPass = true)."
         else
-            echo "  Plex Pass: Disabled. Re-enable with: just enable-plex-pass"
+            echo "  Plex Pass: Disabled. Re-enable with: just plex-pass enable"
         fi
         ;;
       scrutiny)
@@ -3284,7 +3379,7 @@ enable service: _require-server-role
         echo "  Service:  podman.socket"
         echo "  No web UI — manage containers via 'podman' / 'podman compose' on the CLI."
         echo "  About:    Daemonless OCI container engine with a Docker-compatible socket at /run/podman/podman.sock."
-        echo "  Note:     Enable dockhand for a browser-based management UI (just enable dockhand)."
+        echo "  Note:     Enable dockhand for a browser-based management UI (just service enable dockhand)."
         ;;
       proxmox)
         echo "  Service:  pve-manager.service (+ pvedaemon, pveproxy, pvestatd)"
@@ -3340,12 +3435,12 @@ enable service: _require-server-role
         echo "  Web UI:   https://<server-ip>:9443"
         echo "  Login:    No default credentials — create the admin account on first visit (Portainer locks setup after ~5 minutes; restart the container if it does)."
         echo "  About:    Web UI for managing containers, images, volumes, and networks."
-        echo "  Backend:  vexos.server.portainer.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just enable podman' first)."
+        echo "  Backend:  vexos.server.portainer.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just service enable podman' first)."
         ;;
       vexboard)
         echo "  Service:  vexboard.service"
         echo "  Web UI:   http://<server-ip>:7280"
-        echo "  About:    VexOS Server dashboard — enable explicitly with 'just enable vexboard'."
+        echo "  About:    VexOS Server dashboard — enable explicitly with 'just service enable vexboard'."
         echo "  Note:     To disable: set 'vexos.server.vexboard.enable = false;' in server-services.nix."
         echo "  Secret:   Set VEXBOARD_AUTH__SECRET via vexos.server.vexboard.secretFile for production use."
         echo "            Generate a secret:  openssl rand -base64 48"
@@ -3386,15 +3481,15 @@ enable service: _require-server-role
     echo ""
 
 # Toggle Plex Pass hardware transcoding on/off for an already-enabled Plex installation.
-# Usage: just enable-plex-pass   /   just disable-plex-pass
+# Usage: just plex-pass enable   /   just plex-pass disable
 [private]
-enable-plex-pass: _require-server-role
+_plex-pass-enable: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
     SVC_FILE="/etc/nixos/server-services.nix"
     PP_OPTION="vexos.server.plex.plexPass"
     if ! grep -q "vexos.server.plex.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
-        echo "error: Plex is not enabled. Run 'just enable plex' first." >&2
+        echo "error: Plex is not enabled. Run 'just service enable plex' first." >&2
         exit 1
     fi
     if grep -qP "^\s*#?\s*${PP_OPTION//./\\.}" "$SVC_FILE" 2>/dev/null; then
@@ -3407,7 +3502,7 @@ enable-plex-pass: _require-server-role
     echo ""
 
 [private]
-disable-plex-pass: _require-server-role
+_plex-pass-disable: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
     SVC_FILE="/etc/nixos/server-services.nix"
@@ -3437,9 +3532,9 @@ prune-services: _require-server-role
     sudo nix --extra-experimental-features "nix-command flakes" \
         run "github:VictoryTek/vexos-nix#prune-services" -- --apply
 
-# Disable a server service module.  Usage: just disable docker
+# Disable a server service module.  Usage: just service disable docker
 [private]
-disable service: _require-server-role
+_service-disable service: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
     SVC_FILE="/etc/nixos/server-services.nix"
@@ -3498,22 +3593,22 @@ disable service: _require-server-role
 
 # Build this repo's custom pkgs/* packages and push them to a configured Attic
 # cache. Requires `attic login <cache> <url> <token>` to have already been run
-# once (see `just enable attic`'s setup guidance). Usage: just attic-push [cache]
-[group('Binary Cache')]
-attic-push cache="vexos":
+# once (see `just service enable attic`'s setup guidance). Usage: just cache push [cache]
+[private]
+_cache-push cache="vexos":
     #!/usr/bin/env bash
     set -euo pipefail
 
     if ! command -v attic &>/dev/null; then
         echo "error: 'attic' CLI not found on PATH." >&2
         echo "  Install it, then run: attic login {{cache}} <url> <token>" >&2
-        echo "  See 'just enable attic' for setup guidance." >&2
+        echo "  See 'just service enable attic' for setup guidance." >&2
         exit 1
     fi
 
     PACKAGES="cockpit-navigator cockpit-file-sharing cockpit-identities brave-origin kiji-proxy vexos-update"
 
-    # Some packages (kiji-proxy) use a placeholder hash until `just enable
+    # Some packages (kiji-proxy) use a placeholder hash until `just service enable
     # kiji-proxy` patches it in locally, so a single package failing to build
     # shouldn't abort the whole push — build/push each independently and
     # report a summary at the end.
@@ -3531,7 +3626,7 @@ attic-push cache="vexos":
                 FAILED="$FAILED $pkg"
             fi
         else
-            echo "  ✗ build failed: ${pkg} (skipping — run 'just enable ${pkg}' first if it needs a one-time setup step)" >&2
+            echo "  ✗ build failed: ${pkg} (skipping — run 'just service enable ${pkg}' first if it needs a one-time setup step)" >&2
             tail -5 "$BUILD_LOG" >&2
             FAILED="$FAILED $pkg"
         fi
@@ -3546,17 +3641,17 @@ attic-push cache="vexos":
 
 # One-time Attic cache bootstrap: mint an admin token, create the cache if it
 # doesn't exist, print the public key for client substituter config, and mint
-# a push-only token for CI (e.g. GitHub Actions). Run once after `just enable
+# a push-only token for CI (e.g. GitHub Actions). Run once after `just service enable
 # attic && just rebuild`. Safe to re-run — cache creation is idempotent.
-# Usage: just attic-bootstrap [cache]
-[group('Binary Cache')]
-attic-bootstrap cache="vexos":
+# Usage: just cache bootstrap [cache]
+[private]
+_cache-bootstrap cache="vexos":
     #!/usr/bin/env bash
     set -euo pipefail
 
     if ! systemctl is-active --quiet atticd; then
         echo "error: atticd.service is not running." >&2
-        echo "  Run 'just enable attic && just rebuild' first." >&2
+        echo "  Run 'just service enable attic && just rebuild' first." >&2
         exit 1
     fi
 
@@ -3609,8 +3704,9 @@ attic-bootstrap cache="vexos":
 # Harmonia has no bootstrap step — the signing key is generated automatically
 # on rebuild and there are no tokens or logins — so this recipe exists purely
 # to answer "is it ready?" and "what do I paste on the other machines?".
-# Usage: just harmonia-info
-harmonia-info:
+# Usage: just cache harmonia
+[private]
+_cache-harmonia:
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -3635,7 +3731,7 @@ harmonia-info:
     # that's what determines whether the cache is actually ready to serve.
     if ! systemctl is-active --quiet harmonia.socket; then
         echo "error: harmonia.socket is not running." >&2
-        echo "  Run 'just enable harmonia && just rebuild' first." >&2
+        echo "  Run 'just service enable harmonia && just rebuild' first." >&2
         echo "  Then check: systemctl status harmonia.socket" >&2
         exit 1
     fi
@@ -3693,8 +3789,9 @@ harmonia-info:
 
 # Build a custom kernel now instead of waiting for the nightly timer.
 # Takes hours and runs in the background — safe to disconnect.
-# Usage: just kernel-build-now [name]
-kernel-build-now name="ogc":
+# Usage: just kernel now [name]
+[private]
+_kernel-now name="ogc":
     #!/usr/bin/env bash
     set -euo pipefail
     UNIT="kernel-build-{{name}}"
@@ -3702,12 +3799,12 @@ kernel-build-now name="ogc":
     if ! systemctl list-unit-files "${UNIT}.service" &>/dev/null \
        || ! systemctl cat "${UNIT}.service" &>/dev/null; then
         echo "error: ${UNIT}.service does not exist." >&2
-        echo "  Enable the builder first: just enable kernel-builder && just rebuild" >&2
+        echo "  Enable the builder first: just service enable kernel-builder && just rebuild" >&2
         exit 1
     fi
 
     if systemctl is-active --quiet "$UNIT"; then
-        echo "A build is already running. Watch it with: just kernel-build-log {{name}}"
+        echo "A build is already running. Watch it with: just kernel log {{name}}"
         exit 0
     fi
 
@@ -3715,12 +3812,13 @@ kernel-build-now name="ogc":
     sudo systemctl start --no-block "$UNIT"
     echo ""
     echo "Build started in the background. It takes hours on modest hardware."
-    echo "  Watch:  just kernel-build-log {{name}}"
-    echo "  Status: just kernel-build-status"
+    echo "  Watch:  just kernel log {{name}}"
+    echo "  Status: just kernel status"
 
 # Show custom kernel build status: running or not, how long, last result,
 # and which version is currently pinned and served.
-kernel-build-status:
+[private]
+_kernel-status:
     #!/usr/bin/env bash
     set -euo pipefail
     shopt -s nullglob
@@ -3745,7 +3843,7 @@ kernel-build-status:
                     "${last:+, $last}"
             else
                 printf "  State:    \033[31midle (last run: %s)\033[0m\n" "$result"
-                echo   "  Logs:     just kernel-build-log ${name#kernel-build-}"
+                echo   "  Logs:     just kernel log ${name#kernel-build-}"
             fi
         fi
 
@@ -3755,7 +3853,7 @@ kernel-build-status:
 
     if [ "$found" = "0" ]; then
         echo "No kernel build units found."
-        echo "  Enable the builder: just enable kernel-builder && just rebuild"
+        echo "  Enable the builder: just service enable kernel-builder && just rebuild"
         exit 0
     fi
 
@@ -3767,6 +3865,7 @@ kernel-build-status:
     done
 
 # Follow a custom kernel build's log output live.
-# Usage: just kernel-build-log [name]
-kernel-build-log name="ogc":
+# Usage: just kernel log [name]
+[private]
+_kernel-log name="ogc":
     journalctl -fu kernel-build-{{name}}

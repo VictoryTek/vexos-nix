@@ -81,7 +81,7 @@
 #                          { vexos.bootloader = "grub"; vexos.grub.device = "/dev/sda"; }
 #                          { vexos.bootloader = "limine"; }
 #                        Do not switch an installed machine to Limine by hand —
-#                        use `just switch-bootloader limine`, which also handles
+#                        use `just bootloader switch limine`, which also handles
 #                        the systemd-boot NVRAM entry and ESP file cleanup.
 #     hardware-local.nix ASUS ROG/TUF options (or OpenRGB for ASUS desktops)
 #                          { vexos.hardware.asus.enable = true; }
@@ -113,7 +113,7 @@
     # ── Bootloader ──────────────────────────────────────────────────────────
     # Default is systemd-boot, set by modules/system.nix (vanilla: its own
     # mkDefault), so nothing is declared here. Written by install.sh for
-    # BIOS/GRUB or opt-in Limine, and by `just switch-bootloader`.
+    # BIOS/GRUB or opt-in Limine, and by `just bootloader switch`.
     # Boot entry title cleanup (strip kernel version, codename, date) is
     # handled automatically by modules/branding.nix in the upstream config.
     bootloaderFile = ./bootloader.nix;
@@ -184,7 +184,7 @@
     hasKernelOverride  = builtins.pathExists kernelOverrideFile;
 
     # ── Optional per-host feature toggles ──────────────────────────────────────
-    # Written by `just enable-feature <feature>` / `just disable-feature <feature>`.
+    # Written by `just feature enable <feature>` / `just feature disable <feature>`.
     # Covers gaming, development, print3d, and virtualization opt-in toggles.
     # Not applicable to stateless, headless-server, or vanilla roles.
     featuresFile = ./features.nix;
@@ -192,9 +192,9 @@
 
     # ── Optional generated storage config ─────────────────────────────────────
     # storage-pool.nix — mergerfs branches + SnapRAID parity, server roles only,
-    #   written by `just create-mergerfs-pool`.
+    #   written by `just mergerfs-pool create`.
     # storage-remote.nix — remote NFS/CIFS mounts, written by
-    #   `just attach-remote-storage`; wired on desktop, htpc, server and
+    #   `just remote-storage attach`; wired on desktop, htpc, server and
     #   headless-server (the remote-mount module is universal).
     storagePoolFile = ./storage-pool.nix;
     hasStoragePool  = builtins.pathExists storagePoolFile;
@@ -202,7 +202,7 @@
     hasStorageRemote  = builtins.pathExists storageRemoteFile;
 
     # ── Optional generated ZFS pool registration (server roles) ────────────────
-    # Written by `just create-zfs-pool`: declares boot.zfs.extraPools so NixOS
+    # Written by `just zfs-pool create`: declares boot.zfs.extraPools so NixOS
     # generates a zfs-import-<pool>.service unit and the pool auto-imports on boot.
     zfsPoolsFile = ./zfs-pools.nix;
     hasZfsPools  = builtins.pathExists zfsPoolsFile;
@@ -356,7 +356,7 @@
       modules =
         let
           modules     = if builtins.isList gpuModule then gpuModule else [ gpuModule ];
-          # Optional per-machine service toggles — written by `just enable <service>`.
+          # Optional per-machine service toggles — written by `just service enable <service>`.
           servicesFile = ./server-services.nix;
           hasServices  = builtins.pathExists servicesFile;
         in

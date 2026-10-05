@@ -68,7 +68,7 @@ writeShellApplication {
       exit 0
     fi
 
-    # Textual removal is only safe for the flat form that `just enable` writes
+    # Textual removal is only safe for the flat form that `just service enable` writes
     # (vexos.server.<name>.<attr> = ...;). Refuse on a hand-written nested set
     # rather than risk mangling it.
     if grep -qE '^[[:space:]]*vexos(\.server)?[[:space:]]*=[[:space:]]*\{' "$FILE"; then
@@ -100,7 +100,7 @@ writeShellApplication {
     done < "$DEAD"
     echo
     echo "If one of these is a typo rather than a removed service, fix the name"
-    echo "instead — 'just enable' rejects names that are not real services."
+    echo "instead — 'just service enable' rejects names that are not real services."
 
     if [ "$MODE" = "check" ]; then
       echo

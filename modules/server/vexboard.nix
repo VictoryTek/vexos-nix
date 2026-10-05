@@ -1,6 +1,6 @@
 # modules/server/vexboard.nix
 # VexBoard — self-hosted server dashboard for VexOS Server.
-# Opt-in: enabled automatically by `just enable <service>` when the first service is enabled.
+# Opt-in: enabled automatically by `just service enable <service>` when the first service is enabled.
 # Enable/disable in /etc/nixos/server-services.nix:
 #   vexos.server.vexboard.enable = true;   # or false to suppress
 #

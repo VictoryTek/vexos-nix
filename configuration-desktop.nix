@@ -20,14 +20,14 @@
     ./modules/flatpak-desktop.nix   # desktop-only Flatpak apps via extraApps
     ./modules/network.nix
     ./modules/network-desktop.nix   # samba CLI
-    ./modules/storage-remote.nix    # attach a NAS share (NFS/CIFS) via `just attach-remote-storage`; inert until one is declared
+    ./modules/storage-remote.nix    # attach a NAS share (NFS/CIFS) via `just remote-storage attach`; inert until one is declared
     ./modules/packages-common.nix
     ./modules/packages-desktop.nix
     ./modules/branding.nix
     ./modules/branding-display.nix  # wallpapers, GDM logo/dconf (GDM logo gated to gnome/hyprland)
     ./modules/system.nix
     ./modules/system-latest-kernel.nix  # Linux 7.x (linuxPackages_latest)
-    ./modules/system-custom-kernel.nix  # optional: `just enable-feature kernel` (overrides the above)
+    ./modules/system-custom-kernel.nix  # optional: `just feature enable kernel` (overrides the above)
     ./modules/system-nosleep.nix    # disable sleep/suspend/hibernate on desktop
     ./modules/security.nix          # AppArmor MAC baseline (all roles)
     ./modules/security-desktop.nix  # fail2ban SSH brute-force protection

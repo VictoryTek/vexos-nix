@@ -25,7 +25,7 @@
 #   sudo vexos-vpn login          — store PIA credentials (root-only file)
 #
 # Everything here is gated by vexos.features.vpn.enable (default off). Desktop
-# and htpc opt in via /etc/nixos/features.nix (`just enable-feature vpn`);
+# and htpc opt in via /etc/nixos/features.nix (`just feature enable vpn`);
 # stateless forces it on in modules/vpn-stateless.nix.
 #
 # The vex-vpn GUI + tray (flake input `vex-vpn`; its module is imported by

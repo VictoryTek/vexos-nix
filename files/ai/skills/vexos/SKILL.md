@@ -43,7 +43,7 @@ editing the running system**. A change takes effect only when the user runs
 
 ```bash
 cat /etc/nixos/vexos-variant          # e.g. vexos-desktop-amd  (role-gpu)
-just features                         # optional features and their state
+just feature list                     # optional features and their state
 just --list                           # every recipe the user can run
 ls /etc/nixos                         # which side-files exist
 nixos-rebuild list-generations | tail -5
@@ -69,8 +69,8 @@ find what an option does before suggesting it.
 1. **A `just` recipe, if one exists.** It knows the right file and format.
    Run it only if it merely edits files. If it also rebuilds (most do not; read
    the recipe with `just --show <name>` first), tell the user to run it instead.
-   Examples: `just enable-feature gaming`, `just set-hostname <name>`,
-   `just enable <service>` (server roles), `just switch-bootloader`.
+   Examples: `just feature enable gaming`, `just set-hostname <name>`,
+   `just service enable <service>` (server roles), `just bootloader switch`.
 2. **The side-file that owns the setting:**
 
    | File | Holds |

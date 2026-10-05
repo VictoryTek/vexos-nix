@@ -40,7 +40,7 @@
   boot.kernelPackages = lib.mkOverride 75 pkgs.linuxPackages;
 
 
-  # Pools created via `just create-zfs-pool` are registered here declaratively by
+  # Pools created via `just zfs-pool create` are registered here declaratively by
   # scripts/create-zfs-pool.sh, which writes/updates /etc/nixos/zfs-pools.nix
   # (imported by template/etc-nixos-flake.nix when present). Without an entry in
   # boot.zfs.extraPools, NixOS generates no zfs-import-<pool>.service unit and the

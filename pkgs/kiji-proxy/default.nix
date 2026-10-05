@@ -2,7 +2,7 @@
 # Pre-built kiji-proxy Linux binary package.
 # Source: https://github.com/dataiku/kiji-proxy/releases
 #
-# The hash placeholder below is replaced automatically by `just enable kiji-proxy`.
+# The hash placeholder below is replaced automatically by `just service enable kiji-proxy`.
 # To set it manually:
 #   HASH=$(nix-prefetch-url --unpack \
 #     https://github.com/dataiku/kiji-proxy/releases/download/v1.0.0/kiji-privacy-proxy-1.0.0-linux-amd64.tar.gz)

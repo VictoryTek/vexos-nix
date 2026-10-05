@@ -47,7 +47,7 @@
                           Unlike systemd-boot, Limine's own menu can list
                           OSes on other physical disks — see
                           modules/boot-discovery.nix. Switch a host to
-                          this with `just switch-bootloader limine`
+                          this with `just bootloader switch limine`
                           rather than setting it directly; see that
                           recipe for the required cleanup steps.
       '';

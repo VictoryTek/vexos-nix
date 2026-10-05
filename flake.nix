@@ -231,15 +231,15 @@
     # Optional generated storage config, written by the storage recipes. Two
     # independently-owned files so local and remote configs never clobber each
     # other: storage-pool.nix (mergerfs branches + SnapRAID parity + backend,
-    # from `just create-mergerfs-pool`, server-only) and storage-remote.nix
-    # (remote NFS/CIFS mounts, from `just attach-remote-storage`, universal —
+    # from `just mergerfs-pool create`, server-only) and storage-remote.nix
+    # (remote NFS/CIFS mounts, from `just remote-storage attach`, universal —
     # see storageRemoteModule below). Absent files ⇒ empty list, so outputs stay
     # buildable on hosts that never created a pool — same pattern as
     # serverServicesModule.
     storagePoolModule =
       let p = /etc/nixos/storage-pool.nix; in if builtins.pathExists p then [ p ] else [];
 
-    # storage-remote.nix (remote NFS/CIFS mounts, from `just attach-remote-storage`).
+    # storage-remote.nix (remote NFS/CIFS mounts, from `just remote-storage attach`).
     # Split out from storagePoolModule because the remote-mount module is now
     # universal (modules/storage-remote.nix) — attached to desktop/htpc as well
     # as server/headless-server. Absent file ⇒ empty list.
@@ -248,7 +248,7 @@
 
     # Optional per-host feature toggles for the desktop role.
     # Empty list when absent so desktop outputs stay buildable on machines that
-    # haven't run `just enable-feature` yet.
+    # haven't run `just feature enable` yet.
     featuresModule =
       let path = /etc/nixos/features.nix;
       in if builtins.pathExists path then [ path ] else [];
@@ -389,7 +389,7 @@
         # Optional feature toggles (gaming, development, print3d, virtualization,
         # sunshine) are available on vanilla too — same /etc/nixos/features.nix
         # mechanism as desktop/server/htpc. Empty list when absent so vanilla
-        # outputs stay buildable on machines that haven't run `just enable-feature`.
+        # outputs stay buildable on machines that haven't run `just feature enable`.
         hostLocalModules = featuresModule;
       };
     };

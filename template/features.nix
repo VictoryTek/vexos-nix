@@ -1,6 +1,6 @@
 # /etc/nixos/features.nix
 # Optional feature toggles for this VexOS host.
-# Managed by `just enable-feature <feature>` / `just disable-feature <feature>`.
+# Managed by `just feature enable <feature>` / `just feature disable <feature>`.
 # After editing, run `just rebuild` to apply.
 #
 # Available features (desktop, server, htpc, and vanilla roles):

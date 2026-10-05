@@ -506,7 +506,7 @@ fi
 # features_set <nix.option.path> <string-value>
 # Creates features.nix if absent, replaces the option if already present
 # (commented or not), appends it before the closing brace otherwise. Mirrors
-# the replace-or-append sed pattern `just enable-feature` uses, so the file
+# the replace-or-append sed pattern `just feature enable` uses, so the file
 # stays editable by both paths.
 features_set() {
   _key="$1"
@@ -518,7 +518,7 @@ features_set() {
     sudo tee /etc/nixos/features.nix > /dev/null << FEATURESNIX
 # /etc/nixos/features.nix
 # Optional feature toggles for this VexOS host.
-# Managed by \`just enable-feature <feature>\` / \`just disable-feature <feature>\`.
+# Managed by \`just feature enable <feature>\` / \`just feature disable <feature>\`.
 # After editing, run \`just rebuild\` to apply.
 {
   ${_key} = "${_val}";
@@ -535,7 +535,7 @@ FEATURESNIX
 # Removes an active assignment of the option, if any. Counterpart to
 # features_set: a re-run of this installer must not leave the previous run's
 # answers behind (features.nix survives across runs, and also holds toggles from
-# `just enable-feature` that this installer must not touch — so only the keys
+# `just feature enable` that this installer must not touch — so only the keys
 # the installer itself manages are ever unset). Commented-out lines have no
 # effect and are left alone. No-op when features.nix does not exist.
 features_unset() {

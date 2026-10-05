@@ -82,7 +82,7 @@ in
       description = ''
         Dedicated parity disks (NOT part of the mergerfs union). Each must be
         >= the largest content disk. Up to 6 (tolerating up to 6 simultaneous
-        content-disk failures). Populated by `just create-mergerfs-pool`.
+        content-disk failures). Populated by `just mergerfs-pool create`.
       '';
     };
 
@@ -114,7 +114,7 @@ in
         message = ''
           vexos.server.storage.snapraid.enable = true but no parity disks are
           defined. SnapRAID needs at least one parity disk >= the largest
-          content disk. Run `just create-mergerfs-pool`.
+          content disk. Run `just mergerfs-pool create`.
         '';
       }
     ];

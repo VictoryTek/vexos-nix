@@ -33,13 +33,13 @@ in
       description = ''
         Which LOCAL storage pool recipe this host uses for NAS/bulk storage:
           • "zfs"      — the existing ZFS pool (modules/zfs-server.nix +
-                         `just create-zfs-pool`). Best for matched disks and
+                         `just zfs-pool create`). Best for matched disks and
                          realtime redundancy; also the Proxmox VM tier.
           • "mergerfs" — a mergerfs union pool (+ optional SnapRAID parity) for
                          mixed-capacity, add-one-at-a-time bulk/media storage.
                          Enables vexos.server.storage.mergerfs; the actual disk
                          list and SnapRAID config are written to
-                         /etc/nixos/storage-pool.nix by `just create-mergerfs-pool`.
+                         /etc/nixos/storage-pool.nix by `just mergerfs-pool create`.
         This is orthogonal to vexos.storage.remote (attaching a pool
         from another host), which can be used with either backend or on its own.
       '';

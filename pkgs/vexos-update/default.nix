@@ -101,7 +101,7 @@ GITIGNORE
     # Earlier versions of this migration excluded hardware-configuration.nix,
     # kernel-install-override.nix, and stateless-user-override.nix from git,
     # which caused git+file:// builds to fail (file absent from store).
-    # server-services.nix is created by `just enable` after the initial git
+    # server-services.nix is created by `just service enable` after the initial git
     # init, so it is typically untracked.  git+file:// silently excludes
     # untracked files, which drops ALL enabled services after every update.
     # Force-add all host-local config files so they are tracked regardless of

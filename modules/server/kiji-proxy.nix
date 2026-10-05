@@ -19,7 +19,7 @@
 #   localhost-only (openFirewall = false), matching the documented usage above.
 #
 # ⚠ The package hash in pkgs/kiji-proxy/default.nix is set automatically by
-#   `just enable kiji-proxy`.  See that file if you need to set it manually.
+#   `just service enable kiji-proxy`.  See that file if you need to set it manually.
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.kiji-proxy;

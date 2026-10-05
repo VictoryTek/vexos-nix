@@ -5,7 +5,7 @@
 # Purpose: Build the "bulk NAS" storage tier — a mergerfs union pool from
 #          mixed-capacity drives, with optional SnapRAID parity. Emits a
 #          declarative /etc/nixos/storage-pool.nix consumed by the flake.
-# Usage:   sudo bash scripts/create-mergerfs-pool.sh   (via `just create-mergerfs-pool`)
+# Usage:   sudo bash scripts/create-mergerfs-pool.sh   (via `just mergerfs-pool create`)
 #
 # Steps:
 #   [1/9] Preconditions (root, mergerfs, mkfs, blkid)
@@ -37,7 +37,7 @@ STORAGE_POOL_NIX="/etc/nixos/storage-pool.nix"
 
 # ---------- [1/9] Preconditions ---------------------------------------------
 hdr "[1/9] Preconditions"
-[ "$(id -u)" -eq 0 ] || die "must be run as root (use 'just create-mergerfs-pool', which calls sudo)"
+[ "$(id -u)" -eq 0 ] || die "must be run as root (use 'just mergerfs-pool create', which calls sudo)"
 command -v mergerfs   >/dev/null 2>&1 || die "mergerfs not found — set vexos.server.nas.backend = \"mergerfs\" (or vexos.server.storage.mergerfs.enable) and rebuild first"
 command -v mkfs.ext4  >/dev/null 2>&1 || die "mkfs.ext4 not found — e2fsprogs missing"
 command -v wipefs     >/dev/null 2>&1 || die "wipefs not found — util-linux missing"

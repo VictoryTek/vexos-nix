@@ -9,10 +9,10 @@
 # secrets-sops.nix supplies the file instead.
 # Permissions enforced at boot by modules/secrets.nix (0700 dir, 0600 files).
 # The `attic` CLI is installed automatically when this module is enabled.
-# After enabling and rebuilding, run `just attic-bootstrap` to create the
+# After enabling and rebuilding, run `just cache bootstrap` to create the
 # cache, mint tokens, and print client/CI setup values.
 # To push this repo's own custom pkgs/* packages (cockpit-navigator,
-# vexos-update, etc.) after logging in, run: just attic-push [cache-name]
+# vexos-update, etc.) after logging in, run: just cache push [cache-name]
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.attic;

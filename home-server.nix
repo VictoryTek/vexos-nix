@@ -55,6 +55,7 @@
   # ── Justfile ───────────────────────────────────────────────────────────────
   home.file."justfile".source = ./justfile;
   home.file."scripts/create-zfs-pool.sh".source = ./scripts/create-zfs-pool.sh;
+  home.file."scripts/zfs-pool.sh".source = ./scripts/zfs-pool.sh;
   home.file."template/server-services.nix".source = ./template/server-services.nix;
 
   # ── Hidden app grid entries ────────────────────────────────────────────────

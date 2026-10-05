@@ -66,7 +66,7 @@ in
   #   vexos.harmonia.publicKey = "cache-1:AbCdEf...=";
   #
   # "cache" is a Tailscale MagicDNS name pointed at whichever host currently
-  # runs Harmonia; both values are printed by `just harmonia-info` on that host.
+  # runs Harmonia; both values are printed by `just cache harmonia` on that host.
   options.vexos.harmonia = {
     cacheUrl = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
@@ -86,7 +86,7 @@ in
       example = "cache-1:AbCdEf1234567890AAAAAAA==";
       description = ''
         Ed25519 public key for the Harmonia cache, as printed by
-        `just harmonia-info` (or read from <signKeyPath>.pub on the cache host).
+        `just cache harmonia` (or read from <signKeyPath>.pub on the cache host).
         Required when vexos.harmonia.cacheUrl is set. Not a secret — safe to
         commit alongside the matching cacheUrl on the hosts that opt in.
       '';
@@ -115,7 +115,7 @@ in
       vexos.harmonia.publicKey is empty, so the cache is being ignored.
       Custom kernels and other locally-built packages will be compiled from
       source instead of downloaded.
-      Fix: run `just harmonia-info` on the cache host and commit the printed
+      Fix: run `just cache harmonia` on the cache host and commit the printed
       publicKey into modules/nix.nix.
     '';
 

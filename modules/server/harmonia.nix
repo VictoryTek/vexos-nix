@@ -15,7 +15,7 @@
 #
 # The signing keypair is generated automatically on first activation (see the
 # harmoniaKey activationScript below); there are no tokens, logins, or
-# bootstrap steps. After enabling and rebuilding, run `just harmonia-info` to
+# bootstrap steps. After enabling and rebuilding, run `just cache harmonia` to
 # confirm the service is live and print the client configuration.
 #
 # Note on garbage collection: Harmonia only serves what is currently in the
@@ -71,7 +71,7 @@ in
     # The private key stays root-owned 0600: the upstream NixOS module passes it
     # to the service via systemd LoadCredential, which systemd reads as root
     # before dropping to the unit's DynamicUser. The public half is 0644, and
-    # the directory is 0711 (traverse, no listing) so `just harmonia-info` can
+    # the directory is 0711 (traverse, no listing) so `just cache harmonia` can
     # read it without sudo while the private key stays unreadable.
     #
     # Under the sops backend, modules/secrets-sops.nix supplies the key file

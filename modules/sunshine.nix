@@ -6,7 +6,7 @@
 # remote-access story, not an optional extra. Opt out on a per-host basis via
 # /etc/nixos/features.nix:
 #   vexos.features.sunshine.enable = false;
-# Toggle with `just enable-feature sunshine` / `just disable-feature sunshine`.
+# Toggle with `just feature enable sunshine` / `just feature disable sunshine`.
 #
 # Imported unconditionally by: configuration-desktop.nix, configuration-server.nix,
 # configuration-htpc.nix, configuration-vanilla.nix (matching modules/gaming.nix's
@@ -21,7 +21,7 @@
 # automatically with the auto-login session. No keyring dependency, no root
 # service, no credential file: pairing is a one-time PIN exchange via the WebUI
 # (https://<host>:47990), which has no declarative/scriptable equivalent — see
-# `just enable-feature sunshine`'s printed instructions.
+# `just feature enable sunshine`'s printed instructions.
 #
 # capture = "kms": on GNOME/Mutter (non-wlroots) Wayland, KMS is the only
 # reliably-working capture path — the portal-based path has multiple open

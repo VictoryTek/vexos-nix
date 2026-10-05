@@ -4,7 +4,7 @@
 # GNOME desktop selection produces. Does NOT include, by default: custom kernel,
 # performance tuning, ZRAM, AppArmor, gaming, Flatpak, branding, or custom packages.
 # Optional features (gaming, development, print3d, virtualization, sunshine) are
-# available via /etc/nixos/features.nix — see `just enable-feature` — but none are
+# available via /etc/nixos/features.nix — see `just feature enable` — but none are
 # enabled unless explicitly opted into; vanilla stays stock until then.
 { config, pkgs, lib, ... }:
 

@@ -1,6 +1,6 @@
 # /etc/nixos/server-services.nix
 # Local feature toggles for the VexOS server role.
-# Managed by `just enable <service>` / `just disable <service>`.
+# Managed by `just service enable <service>` / `just service disable <service>`.
 # After editing, run `just rebuild` or `just switch server <gpu>` to apply.
 #
 # Available services:
@@ -33,7 +33,7 @@
   #   attic-server-token-rs256-secret-base64
 
   # ── Dashboard ────────────────────────────────────────────────────────────
-  # VexBoard (port 7280) is enabled only via `just enable vexboard`.
+  # VexBoard (port 7280) is enabled only via `just service enable vexboard`.
   # vexos.server.vexboard.secretFile = "/etc/nixos/secrets/vexboard-secret";
 
   # ── Container Runtime ────────────────────────────────────────────────────
@@ -54,7 +54,7 @@
 
   # ── Media Automation (Arr Stack) ─────────────────────────────────────────
   # vexos.server.arr.enable = false;                    # Full stack: SABnzbd:8080 Sonarr:8989 Radarr:7878 Lidarr:8686 Prowlarr:9696
-  # Or enable components individually (via `just enable arr` → individual mode,
+  # Or enable components individually (via `just service enable arr` → individual mode,
   # or by setting these directly):
   # vexos.server.arr.sabnzbd.enable = false;            # Port 8080
   # vexos.server.arr.sonarr.enable = false;             # Port 8989
@@ -130,9 +130,9 @@
   # vexos.server.nas.backend = "zfs";                   # "zfs" (default) or "mergerfs" (mixed-capacity bulk pool).
   #   Storage pools are built with interactive recipes (they write
   #   /etc/nixos/storage-pool.nix and /etc/nixos/storage-remote.nix — do not edit by hand):
-  #     just create-zfs-pool          — matched-disk ZFS pool (Proxmox VM / realtime redundancy)
-  #     just create-mergerfs-pool     — mergerfs+SnapRAID pool from any mix of drives (media/bulk)
-  #     just attach-remote-storage    — mount a pool exported by another host (NFS/SMB)
+  #     just zfs-pool create          — matched-disk ZFS pool (Proxmox VM / realtime redundancy)
+  #     just mergerfs-pool create     — mergerfs+SnapRAID pool from any mix of drives (media/bulk)
+  #     just remote-storage attach    — mount a pool exported by another host (NFS/SMB)
   # vexos.server.cockpit.enable = false;                # Port 9090
   # vexos.server.cockpit.navigator.enable = true;       # 45Drives file browser plugin
   # vexos.server.cockpit.fileSharing.enable = true;     # 45Drives Samba + NFS share manager (requires cockpit.enable = true)
@@ -173,7 +173,7 @@
   # vexos.server.kiji-proxy.enable = false;           # Port 8080 — PII-masking proxy for AI APIs
   # vexos.server.kiji-proxy.port = 8080;              # Forward proxy + health API port
   # vexos.server.kiji-proxy.environmentFile = "";    # Optional: path to env file with OPENAI_API_KEY etc.
-  #   (package hash auto-fetched by `just enable kiji-proxy`)
+  #   (package hash auto-fetched by `just service enable kiji-proxy`)
 
   # ── Virtualisation ────────────────────────────────────────────────────────────
   # vexos.server.proxmox.enable = false;              # Web UI https://<ip>:8006 — ⚠ experimental

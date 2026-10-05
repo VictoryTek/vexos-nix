@@ -17,7 +17,7 @@
 # Persistence: branch mounts and the union mount are declared here from the
 # `branches` option, because NixOS generates /etc/fstab (a hand-edited fstab
 # would not survive a rebuild). The option values themselves are written to
-# /etc/nixos/storage-pool.nix by `just create-mergerfs-pool`.
+# /etc/nixos/storage-pool.nix by `just mergerfs-pool create`.
 #
 # Per the Option B module pattern: this file only declares options + their
 # config, gated by the module's own `enable` (the standard toggleable-subsystem
@@ -82,7 +82,7 @@ in
       default = [ ];
       description = ''
         Content disks unioned into the pool. Populated by
-        `just create-mergerfs-pool` into /etc/nixos/storage-pool.nix.
+        `just mergerfs-pool create` into /etc/nixos/storage-pool.nix.
       '';
     };
 
@@ -108,7 +108,7 @@ in
         assertion = cfg.branches != [ ];
         message = ''
           vexos.server.storage.mergerfs.enable = true but no branches are defined.
-          Run `just create-mergerfs-pool` to build the pool and populate
+          Run `just mergerfs-pool create` to build the pool and populate
           /etc/nixos/storage-pool.nix.
         '';
       }
