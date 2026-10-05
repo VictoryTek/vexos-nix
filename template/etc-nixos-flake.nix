@@ -93,6 +93,10 @@
 #                        bare-metal install (scripts/bare-metal-install.sh) —
 #                        not used by the stateless role, which has its own
 #                        stateless-user-override.nix instead
+#     local.nix          anything else for this machine: extra packages, udev
+#                        rules, services. A normal NixOS module, owned by you
+#                        (and the AI assistant, vexos.features.ai) — never
+#                        overwritten. Starter: template/local.nix
 #
 {
   inputs = {
@@ -154,10 +158,17 @@
     userOverrideFile = ./user-override.nix;
     hasUserOverride  = builtins.pathExists userOverrideFile;
 
+    # ── Optional free-form host config ─────────────────────────────────────────
+    # Everything that is not a feature toggle or one of the files above. Never
+    # written by the installer or updater; vexos-update only git-tracks it.
+    localFile = ./local.nix;
+    hasLocal  = builtins.pathExists localFile;
+
     # Side-files every role loads when present. host.nix is added separately by
     # the two server builders — ZFS hostId is meaningless elsewhere.
     localFiles =
-      lib.optional hasBootloader    bootloaderFile
+      lib.optional hasLocal         localFile
+      ++ lib.optional hasBootloader    bootloaderFile
       ++ lib.optional hasHardwareLocal hardwareLocalFile
       ++ lib.optional hasHostname   hostnameFile
       ++ lib.optional hasVmPlatform vmPlatformFile

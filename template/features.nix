@@ -14,6 +14,9 @@
 #                   story); off by default on vanilla. Set to false below to opt out.
 #   vpn           — PIA VPN (WireGuard/OpenVPN) + nftables kill switch + vex-vpn
 #                   GUI/tray. Off by default; always on in the stateless role.
+#   ai            — AI assistant (Claude Code or OpenCode) that can change and
+#                   troubleshoot VexOS; you apply its changes with `just rebuild`.
+#                   Desktop, server and htpc roles only.
 #
 # Desktop environment (desktop role only) — set via `just switch` or the
 # installer's desktop-environment prompt. Values: gnome (default), cosmic,
@@ -38,6 +41,7 @@
   # vexos.features.virtualization.enable = false;
   # vexos.features.sunshine.enable       = true;   # default on desktop/server/htpc; set false to opt out
   # vexos.features.vpn.enable            = false;
+  # vexos.features.ai.enable             = false;   # desktop/server/htpc only
   # vexos.desktop.environment            = "gnome";
   # vexos.vm.platform                    = "qemu";
 }

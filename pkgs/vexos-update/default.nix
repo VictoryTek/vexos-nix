@@ -83,6 +83,20 @@ GITIGNORE
       fi
     fi
 
+    # ── Auto-heal stale thin wrapper: ensure local.nix is loaded ─────────
+    # Same reason as above, for the free-form /etc/nixos/local.nix side-file
+    # (template/local.nix; written by the user or the AI assistant). Only
+    # wrappers with the side-file layout (a `localFiles =` list) are patched;
+    # older layouts are left for scripts/upgrade-wrapper.sh.
+    # Match "./local.nix" exactly: "./hardware-local.nix" also ends in local.nix.
+    if ! grep -q '\./local\.nix' /etc/nixos/flake.nix 2>/dev/null \
+       && grep -qE '^[[:space:]]*localFiles[[:space:]]*=[[:space:]]*$' /etc/nixos/flake.nix; then
+      sed -i -E \
+        '0,/^([[:space:]]*)localFiles[[:space:]]*=[[:space:]]*$/s||&\n      lib.optional (builtins.pathExists ./local.nix) ./local.nix ++|' \
+        /etc/nixos/flake.nix
+      echo "✓ Wrapper now loads /etc/nixos/local.nix when present."
+    fi
+
     # ── Repair repos initialised with old gitignore ──────────────────────
     # Earlier versions of this migration excluded hardware-configuration.nix,
     # kernel-install-override.nix, and stateless-user-override.nix from git,
@@ -94,7 +108,7 @@ GITIGNORE
     # when they were created.  flake.nix is included here too so a wrapper
     # patched by the auto-heal step above is committed before the
     # git+file:// dry-build/switch below.
-    for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix server-services.nix features.nix bootloader.nix hardware-local.nix host.nix hostname.nix vm-platform.nix user-override.nix flake.nix; do
+    for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix server-services.nix features.nix bootloader.nix hardware-local.nix host.nix hostname.nix vm-platform.nix user-override.nix local.nix flake.nix; do
       if [ -f "/etc/nixos/$_f" ]; then
         git -C /etc/nixos add -f "$_f" 2>/dev/null || true
       fi

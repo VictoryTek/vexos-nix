@@ -712,7 +712,14 @@ rebuild: _kernel-cache-guard
     echo ""
     echo "Rebuilding ${target}..."
     echo ""
-    sudo nixos-rebuild switch --impure --flake "path:/etc/nixos#${target}"
+    sudo nixos-rebuild switch --impure --flake "path:/etc/nixos#${target}" || {
+        _rc=$?
+        if command -v vexos-ai >/dev/null; then
+            echo ""
+            echo "Tip: run 'just diagnose rebuild' to have your AI assistant explain this failure."
+        fi
+        exit $_rc
+    }
 
 # Update all flake inputs, then rebuild and switch using the current variant.
 # role/variant: only consulted when /etc/nixos/vexos-variant is absent (stateless
@@ -1419,8 +1426,24 @@ fix-flake:
     fi
 
 
-# Available optional feature names (desktop, server, htpc, and vanilla roles).
-_feature_names := "gaming development print3d virtualization sunshine vpn kernel"
+# Requires the ai feature: just enable-feature ai
+# Open your AI assistant (Claude Code or OpenCode) in /etc/nixos.
+[group('AI Assistant')]
+agent:
+    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just enable-feature ai && just rebuild"; exit 1; }
+    @vexos-ai
+
+# No argument: failed units and this boot's errors. A unit name: that service.
+# "rebuild": reproduce a failed rebuild with a dry-build. Read-only.
+# Have your AI assistant explain a problem: just diagnose [unit|rebuild]
+[group('AI Assistant')]
+diagnose target="":
+    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just enable-feature ai && just rebuild"; exit 1; }
+    @vexos-ai diagnose {{target}}
+
+# Available optional feature names (desktop, server, htpc, and vanilla roles;
+# ai is desktop, server and htpc only).
+_feature_names := "gaming development print3d virtualization sunshine vpn kernel ai"
 
 # Guard: abort if the current host is stateless or headless-server (features not
 # supported there — neither role wires /etc/nixos/features.nix into its module set).
@@ -1466,6 +1489,7 @@ features: _require-desktop-role
     _check virtualization
     _check sunshine on
     _check vpn
+    _check ai
     echo ""
     echo "Use 'just enable-feature <feature>' / 'just disable-feature <feature>' to toggle."
     echo ""
@@ -1492,6 +1516,14 @@ enable-feature feature: _require-desktop-role
         echo "error: unknown feature '$FEATURE'"
         echo "available: $VALID_FEATURES"
         exit 1
+    fi
+
+    # modules/ai.nix is imported by desktop, htpc and server only; on vanilla
+    # the option does not exist and setting it would fail evaluation. Exit 0
+    # so `just enable-feature all` carries on past it.
+    if [ "$FEATURE" = "ai" ] && [[ "$(cat /etc/nixos/vexos-variant 2>/dev/null)" == *vanilla* ]]; then
+        echo "ai: not available on the vanilla role — skipped."
+        exit 0
     fi
 
     if [ ! -f "$FEAT_FILE" ]; then
@@ -1595,6 +1627,20 @@ enable-feature feature: _require-desktop-role
             echo "  Harmonia. If that host has not built the current pin yet, this"
             echo "  machine would compile the kernel locally (hours) — 'just update'"
             echo "  checks the cache first and stops you before that happens."
+            ;;
+        ai)
+            echo "  What this adds:"
+            echo "    Apps       Claude Code + OpenCode, and 'VexOS Assistant' in the app menu"
+            echo "               (Super+Shift+A; 'just agent' from a terminal)"
+            echo "    Skills     Teaches the assistant how VexOS is configured: it edits"
+            echo "               /etc/nixos side-files and dry-builds; you apply with 'just rebuild'"
+            echo "    Diagnose   'just diagnose [unit|rebuild]', plus a 'Diagnose with AI'"
+            echo "               notification when a program crashes"
+            echo "    Accounts   Several Claude accounts, usage warnings near a limit, optional"
+            echo "               auto-switch ('vexos-ai panel')"
+            echo ""
+            echo "  On first launch you choose Claude Code or OpenCode and sign in"
+            echo "  through the tool's own browser login."
             ;;
     esac
     echo ""

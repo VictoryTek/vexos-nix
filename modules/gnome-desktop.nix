@@ -50,7 +50,20 @@ in
         # events hit a locked fd and exit; only one wpctl call fires per
         # physical keypress.  canberra-gtk-play gives XDG sound feedback.
         "org/gnome/settings-daemon/plugins/media-keys" = {
-          custom-keybindings = [ "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/mute-mic/" ];
+          custom-keybindings = [
+            "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/mute-mic/"
+            "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vexos-ai/"
+          ];
+        };
+        # ── VexOS Assistant (vexos.features.ai) ─────────────────────────
+        # Listed here rather than in modules/ai.nix: custom-keybindings is
+        # one list, and a second dconf database setting it would replace this
+        # one. The command is looked up on PATH, so the key does nothing
+        # while the feature is off.
+        "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vexos-ai" = {
+          name    = "VexOS Assistant";
+          binding = "<Shift><Super>a";
+          command = "vexos-ai";
         };
         "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/mute-mic" = {
           name    = "Toggle microphone mute";

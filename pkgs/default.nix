@@ -13,6 +13,7 @@ final: prev: {
     brave-origin         = final.callPackage ./brave-origin { };
     # ── AI & Privacy ────────────────────────────────────────────────────────
     kiji-proxy           = final.callPackage ./kiji-proxy { };
+    vexos-ai             = final.callPackage ./vexos-ai { };      # AI assistant launcher (modules/ai.nix)
     # ── System ──────────────────────────────────────────────────────────────
     vexos-update         = final.callPackage ./vexos-update { };
     vexos-vpn            = final.callPackage ./vexos-vpn { };     # PIA WireGuard/OpenVPN + kill switch CLI
