@@ -1,7 +1,7 @@
 name: Flake Update — Daily (stable inputs)
 
 # Runs every day at 04:00 UTC. Updates only the stable-tracked inputs
-# (nixpkgs 26.05, up, vexboard). Safe to trigger manually at any time —
+# (nixpkgs 26.05, up, vexboard, vexportal). Safe to trigger manually at any time —
 # this workflow never touches nixpkgs-unstable or the other weekly-only
 # inputs; see update-flake-lock-weekly-monday.yml for those.
 
@@ -28,8 +28,8 @@ jobs:
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update nixpkgs stable, up, and vexboard
-        run: nix flake update nixpkgs up vexboard
+      - name: Update nixpkgs stable, up, vexboard, and vexportal
+        run: nix flake update nixpkgs up vexboard vexportal
 
       - name: Commit updated flake.lock
         run: |
