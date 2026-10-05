@@ -429,7 +429,7 @@
         # For the other roles the host file already imports the same path; the
         # module system deduplicates path imports, so this is a no-op there.
         # legacy_580 tracks the role's normal kernel — its 580.x closed modules
-        # are patched for Linux 7.2 in modules/gpu/nvidia.nix, so no kernel pin.
+        # build on Linux 7.2 unpatched, so no kernel pin.
         legacyExtra = lib.optional (nvidiaVariant != null) {
           imports = [ ./modules/gpu/nvidia.nix ];
           vexos.gpu.nvidiaDriverVariant = nvidiaVariant;

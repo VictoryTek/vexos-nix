@@ -43,31 +43,19 @@ let
     hash = "sha256-K5T7xBWxl2I5Pw/GyHumi4Iq/i6M2jcshI80nSXf/AE=";
   };
 
-  # Kernel 7.2 compatibility patch for the legacy_580 closed kernel modules.
-  #
-  # 580.173.02 is the last NVIDIA branch supporting Maxwell/Pascal/Volta, and it
-  # still calls strncpy() — which 7.2 removed from the kernel string API — in
-  # five places in its OS-glue layer. Vendored patch (call sites verified against
-  # the 580.173.02 source tree); replaces strncpy() with strscpy(), which has
-  # existed since 4.3, so the patched driver still builds on older kernels too.
-  # Attached to the driver's `patches` list, so it reaches the closed module
-  # build (generic.nix applies `patches` to the shared source before the module
-  # derivation consumes it).
-  #
-  # REMOVE THIS once nixpkgs ships a 580.x build that works on 7.2, or once the
-  # legacy_580 variant is dropped. Fails loudly at patch time if the driver
-  # version moves underneath it.
-  kernel_7_2_strncpy_patch = ./nvidia-580-kernel-7.2-strncpy.patch;
-
   stable = config.boot.kernelPackages.nvidiaPackages.stable;
-  legacy580 = config.boot.kernelPackages.nvidiaPackages.legacy_580;
 
   # Map variant string to the correct driver package.
   #
-  # The patch is attached by overriding the `.open` derivation directly rather
-  # than via `.override { patchesOpen = ...; }` — patchesOpen is an argument to
-  # nvidia-x11's generic.nix, consumed before callPackage, so it is not an
-  # overridable argument on the finished package.
+  # The "latest" patch is attached by overriding the `.open` derivation directly
+  # rather than via `.override { patchesOpen = ...; }` — patchesOpen is an
+  # argument to nvidia-x11's generic.nix, consumed before callPackage, so it is
+  # not an overridable argument on the finished package.
+  #
+  # legacy_580 needs no patch: since 580.178.04 NVIDIA's own source no longer
+  # calls strncpy(), so the closed modules build on 7.2 as shipped. (A vendored
+  # strncpy->strscpy patch written for 580.173.02 was removed — it fails to apply
+  # to 580.178.04.)
   driverPackage =
     if variant == "latest" then
       stable // {
@@ -76,9 +64,7 @@ let
         });
       }
     else
-      legacy580.overrideAttrs (old: {
-        patches = (old.patches or [ ]) ++ [ kernel_7_2_strncpy_patch ];
-      });
+      config.boot.kernelPackages.nvidiaPackages.legacy_580;
 
   # Open kernel modules require Turing (RTX 20xx / GTX 16xx) or newer.
   # legacy_580 targets Maxwell/Pascal/Volta and must use proprietary closed modules.
@@ -101,9 +87,9 @@ in
                        is the last to support these architectures — 590 and newer
                        dropped them — and the open kernel modules used by "latest"
                        require Turing or newer, so these GPUs cannot run "latest".
-                       The 580.x closed modules are patched for Linux 7.2 by
-                       kernel_7_2_strncpy_patch above, so this variant tracks the
-                       role's normal kernel like every other GPU.
+                       The 580.x closed modules build on Linux 7.2 unpatched, so
+                       this variant tracks the role's normal kernel like every
+                       other GPU.
     '';
   };
 
