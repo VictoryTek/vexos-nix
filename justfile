@@ -1648,6 +1648,18 @@ _feature-enable feature: _require-desktop-role
         echo "    Run 'just fix-flake' then 'just rebuild' to resolve."
     fi
 
+    # The AI assistant's launcher, keybinding and crash-notification hooks load
+    # at login, so a rebuild alone isn't enough — offer rebuild + reboot.
+    if [ "$FEATURE" = "ai" ]; then
+        echo ""
+        if [ "$(just _confirm 'Rebuild and reboot now to finish enabling the AI assistant? [y/N]: ')" = "true" ]; then
+            just rebuild
+            echo "Rebooting..."; sudo systemctl reboot
+        else
+            echo "Skipped — run 'just rebuild', then reboot, when ready."
+        fi
+    fi
+
 # Disable an optional feature module.  Usage: just feature disable gaming
 # Use 'just feature disable all' to disable every feature.
 [private]
