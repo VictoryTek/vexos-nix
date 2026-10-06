@@ -258,5 +258,21 @@ in
       '';
     };
 
+    # The bind mount of /persistent/etc/nixos over /etc/nixos hides the
+    # environment.etc."nixos/justfile" symlink, so `just` (and the bash alias
+    # that points at /etc/nixos/justfile) fails with "no such file". Link the
+    # justfile into the persistent dir; a real file there (e.g. a repo
+    # checkout) is left alone.
+    system.activationScripts.vexosJustfile = {
+      deps = [ "etc" ];
+      text = ''
+        JF="${cfg.persistentPath}/etc/nixos/justfile"
+        if [ ! -e "$JF" ] || [ -L "$JF" ]; then
+          ${pkgs.coreutils}/bin/mkdir -p "${cfg.persistentPath}/etc/nixos"
+          ${pkgs.coreutils}/bin/ln -sfn ${../justfile} "$JF"
+        fi
+      '';
+    };
+
   };
 }
