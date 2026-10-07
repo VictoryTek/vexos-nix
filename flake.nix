@@ -307,7 +307,22 @@
     # modules/server/default.nix which includes modules/server/vexboard.nix;
     # the NixOS module must be in scope for services.vexboard to be a valid option.
     vexboardBase = [
-      { nixpkgs.overlays = [ inputs.vexboard.overlays.default ]; }
+      {
+        nixpkgs.overlays = [
+          inputs.vexboard.overlays.default
+          # trunk's libdeflate-sys 1.23.1 uses the `no-evex512` target attribute,
+          # which GCC 16 rejects. Build trunk's C code with clang until nixpkgs
+          # ships a fixed trunk, then drop this override.
+          (final: prev: {
+            vexboard = prev.vexboard.override {
+              trunk = final.unstable.trunk.overrideAttrs (o: {
+                nativeBuildInputs = o.nativeBuildInputs ++ [ final.unstable.clang ];
+                env.CC_x86_64_unknown_linux_gnu = "clang";
+              });
+            };
+          })
+        ];
+      }
       inputs.vexboard.nixosModules.vexboard
     ];
 
