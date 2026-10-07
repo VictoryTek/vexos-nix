@@ -144,6 +144,15 @@
       url = "github:victorytek/vex-vpn";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # vexos-ai — the VexOS AI assistant (Claude Code / OpenCode launcher, skills,
+    # agent deny policy). Install-only NixOS module (programs.vexos-ai); the
+    # feature toggle lives in modules/ai.nix. Pure shell package, so it is cheap
+    # to build.
+    vexos-ai = {
+      url = "github:VictoryTek/vexos-ai";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, impermanence, sops-nix, up, ... }@inputs:
@@ -192,6 +201,12 @@
     # module arg, and the /etc/nixos wrapper flake does not pass it as a
     # specialArg for every role (infinite recursion on `inputs`).
     vexVpnModule = { imports = [ inputs.vex-vpn.nixosModules.default ]; };
+
+    # vexos-ai NixOS module — desktop, htpc, server (the roles that import
+    # modules/ai.nix, which sets programs.vexos-ai.enable only when
+    # vexos.features.ai.enable is on). Imported here for the same reason as
+    # vexVpnModule: `imports` cannot reference the `inputs` module arg.
+    vexosAiModule = { imports = [ inputs.vexos-ai.nixosModules.default ]; };
 
     # Proxmox VE overlay — exposes pkgs.proxmox-ve (and related Proxmox packages).
     # Required by services.proxmox-ve.package (lazy default in the proxmox NixOS module).
@@ -340,13 +355,13 @@
     roles = {
       desktop = {
         homeFile         = ./home-desktop.nix;
-        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule ] ++ dmsBase;
+        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule vexosAiModule ] ++ dmsBase;
         extraModules     = [];
         hostLocalModules = featuresModule ++ storageRemoteModule;
       };
       htpc = {
         homeFile         = ./home-htpc.nix;
-        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule ];
+        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule vexosAiModule ];
         extraModules     = [];
         hostLocalModules = featuresModule ++ storageRemoteModule;
       };
@@ -363,7 +378,7 @@
         # modules/server/proxmox.nix) to avoid infinite recursion — `imports`
         # cannot safely reference _module.args.
         # vexboardBase: overlay + NixOS module for the default server dashboard.
-        baseModules      = commonBase ++ [ upModule vexportalModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
+        baseModules      = commonBase ++ [ upModule vexportalModule vexosAiModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
         extraModules     = [];
         hostLocalModules = serverServicesModule ++ featuresModule ++ storagePoolModule ++ storageRemoteModule;
       };
