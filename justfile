@@ -1434,6 +1434,44 @@ diagnose target="":
     @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
     @vexos-ai diagnose {{target}}
 
+# The ai-* recipes are VexPortal's AI Assistant page controls; each wraps a
+# non-interactive vexos-ai command (github:VictoryTek/vexos-ai docs/contract.md).
+# Choose your AI assistant: just ai-pick [claude|opencode]
+[group('AI Assistant')]
+ai-pick agent="":
+    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
+    @vexos-ai pick {{quote(agent)}}
+
+# Sign in an extra Claude account: just ai-account-add <label>
+[group('AI Assistant')]
+ai-account-add label:
+    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
+    @vexos-ai account add {{quote(label)}}
+
+# Account for new Claude sessions: just ai-account-use <label|next>
+[group('AI Assistant')]
+ai-account-use target:
+    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
+    @vexos-ai account use {{quote(target)}}
+
+# Remove an extra Claude account: just ai-account-remove <label>
+[group('AI Assistant')]
+ai-account-remove label:
+    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
+    @vexos-ai account remove {{quote(label)}}
+
+# Warn only, or also switch, near a limit: just ai-account-mode <manual|auto> [pct]
+[group('AI Assistant')]
+ai-account-mode mode pct="":
+    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
+    @vexos-ai account mode {{quote(mode)}} {{quote(pct)}}
+
+# Mute, unmute or list crash notifications: just ai-crash-mute [name] [off]
+[group('AI Assistant')]
+ai-crash-mute name="" state="":
+    @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
+    @vexos-ai crash-mute {{quote(name)}} {{quote(state)}}
+
 # Available optional feature names (desktop, server, htpc, and vanilla roles;
 # ai is desktop, server and htpc only).
 _feature_names := "gaming development print3d virtualization sunshine vpn kernel ai"
