@@ -1748,7 +1748,7 @@ _feature-disable feature: _require-desktop-role
 # Available server service module names.
 # Keep in sync with _service_catalog below, modules/server/default.nix, and
 # template/server-services.nix.
-_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy mealie nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism plex podman portainer prometheus proxmox scrutiny searxng seerr syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard zigbee2mqtt"
+_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy mealie nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism plex podman portainer prometheus proxmox scrutiny searxng seerr syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
 
 # Server service catalog — single source of truth for both `just
 # available-services` (catalog view) and `just service list` (per-host status).
@@ -1802,6 +1802,7 @@ _service_catalog := '''
     Productivity|joplin|Self-hosted Joplin Server note sync backend
     Productivity|mealie|Self-hosted recipe manager & meal planner
     Productivity|paperless|Document scanning, OCR, tagging & archival
+    Productivity|wishlist|Self-hosted wishlist & gift registry
     Smart Home & Notifications|ntfy|Simple HTTP-based push notification server
     Smart Home & Notifications|zigbee2mqtt|Zigbee → MQTT bridge (no proprietary hub needed)
     AI & Privacy|kiji-proxy|Privacy-first OpenAI-compatible AI API proxy
@@ -2464,6 +2465,7 @@ _service-info service="":
         uptime-kuma)     printf "  %-18s  Web UI  http://<server-ip>:3001\n"                                           "$1" ;;
         vaultwarden)     printf "  %-18s  Web UI  http://<server-ip>:8222   |  Admin .../admin\n"                      "$1" ;;
         vexboard)        printf "  %-18s  Web UI  http://<server-ip>:7280   (server dashboard)\n" "$1" ;;
+        wishlist)        printf "  %-18s  Web UI  http://<server-ip>:3280\n"                                          "$1" ;;
         authelia)        printf "  %-18s  Web UI  http://<server-ip>:9091\n"                                                   "$1" ;;
         code-server)     printf "  %-18s  Web UI  http://<server-ip>:4444\n"                                                   "$1" ;;
         netdata)         printf "  %-18s  Web UI  http://<server-ip>:19999\n"                                                  "$1" ;;
@@ -2563,6 +2565,7 @@ _service-units service:
       uptime-kuma)    echo "docker-uptime-kuma" ;;
       vaultwarden)    echo "vaultwarden" ;;
       vexboard)       echo "vexboard" ;;
+      wishlist)       echo "docker-wishlist" ;;
       authelia)       echo "docker-authelia" ;;
       code-server)    echo "docker-code-server" ;;
       netdata)        echo "netdata" ;;
@@ -2636,6 +2639,7 @@ _service-status service: _require-server-role
       uptime-kuma)    URLS="http://localhost:3001" ;;
       vaultwarden)    URLS="http://localhost:8222" ;;
       vexboard)       URLS="http://localhost:7280" ;;
+      wishlist)       URLS="http://localhost:3280" ;;
       authelia)       URLS="http://localhost:9091" ;;
       code-server)    URLS="http://localhost:4444" ;;
       netdata)        URLS="http://localhost:19999" ;;
@@ -3514,6 +3518,13 @@ _service-enable service: _require-server-role
         echo "  Note:     To disable: set 'vexos.server.vexboard.enable = false;' in server-services.nix."
         echo "  Secret:   Set VEXBOARD_AUTH__SECRET via vexos.server.vexboard.secretFile for production use."
         echo "            Generate a secret:  openssl rand -base64 48"
+        ;;
+      wishlist)
+        echo "  Service:  docker-wishlist.service"
+        echo "  Web UI:   http://<server-ip>:3280"
+        echo "  About:    Self-hosted wishlist / gift registry (cmintey/wishlist) — single container, SQLite under vexos.server.wishlist.dataDir."
+        echo "  Login:    Create the first account on first visit (it becomes the admin) — no default credentials."
+        echo "  Note:     If sign-in or uploads fail, set vexos.server.wishlist.origin to the exact URL you browse to (ORIGIN is validated)."
         ;;
       prometheus)
         echo "  Service:  prometheus.service"

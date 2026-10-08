@@ -12,7 +12,7 @@
 #   nginx, caddy, traefik, adguard, headscale, unbound, nginx-proxy-manager,
 #   cockpit, uptime-kuma, homepage, scrutiny, prometheus, netdata,
 #   portainer, ntfy, mealie, humidor, home-registry,
-#   zigbee2mqtt, kiji-proxy, proxmox
+#   wishlist, zigbee2mqtt, kiji-proxy, proxmox
 {
   # ── Secrets Backend (phased migration) ───────────────────────────────────
   # Default is plaintext compatibility via /etc/nixos/secrets/*.
@@ -158,6 +158,7 @@
 
   # ── Food & Home ──────────────────────────────────────────────────────────
   # vexos.server.mealie.enable = false;                 # Port 9010 — recipe manager
+  # vexos.server.wishlist.enable = false;               # Port 3280 — wishlist / gift registry
 
   # ── Inventory ─────────────────────────────────────────────────────
   # vexos.server.humidor.enable = false;                # Port 9898 — cigar/humidor collection tracker
