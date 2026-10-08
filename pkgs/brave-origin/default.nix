@@ -62,11 +62,11 @@
 
 stdenv.mkDerivation rec {
   pname   = "brave-origin";
-  version = "1.97.53";
+  version = "1.97.56";
 
   src = fetchzip {
     url    = "https://github.com/brave/brave-browser/releases/download/v${version}/brave-origin-${version}-linux-amd64.zip";
-    hash   = "sha256-3QJ4ruz/Zj0ZCTKrm4XNsfrSP3+7TioF+vzmlqoruo8=";
+    hash   = "sha256-f7v5reyNxBtn4XerwvQkdzoklnXNeoHjcvdQFgiRERw=";
     # The zip extracts to a flat directory (no top-level subdirectory).
     stripRoot = false;
   };
