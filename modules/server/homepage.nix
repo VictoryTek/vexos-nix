@@ -36,7 +36,12 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    vexos.server.backup.servicePaths.homepage = [ "/var/lib/homepage" ];
+    # Named Docker/Podman volume, not a /var/lib bind mount.
+    vexos.server.backup.servicePaths.homepage = [
+      (if config.virtualisation.oci-containers.backend == "podman"
+       then "/var/lib/containers/storage/volumes/homepage-config/_data"
+       else "/var/lib/docker/volumes/homepage-config/_data")
+    ];
 
     virtualisation.docker.enable = lib.mkDefault true;
     virtualisation.oci-containers.backend = lib.mkDefault "docker";

@@ -98,7 +98,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.wishlist = {
-      image = "ghcr.io/cmintey/wishlist:v0.66.0";
+      image = "ghcr.io/cmintey/wishlist:v0.67.1";
       ports = [ "${toString cfg.port}:3280" ];
       environment = {
         ORIGIN     = cfg.origin;

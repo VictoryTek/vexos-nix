@@ -129,7 +129,7 @@ in
     };
 
     # STOPGAP for the DATABASE_URL-only image generation. The currently
-    # published ghcr.io/victorytek/home-registry:beta image reads only a
+    # published ghcr.io/victorytek/home-registry:0.1.0-beta.3 image reads only a
     # single composed DATABASE_URL and ignores discrete POSTGRES_* vars. Its
     # parser requires the literal postgres:// prefix, splits on '@', ':' and
     # '/', and does NOT percent-decode — so the password is used verbatim
@@ -196,7 +196,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.home-registry-db = {
-      image = "postgres:17";
+      image = "postgres:17.11";
       environment = {
         POSTGRES_USER = "postgres";
         POSTGRES_DB   = "home_inventory";
@@ -209,7 +209,7 @@ in
     };
 
     virtualisation.oci-containers.containers.home-registry = {
-      image = "ghcr.io/victorytek/home-registry:beta";
+      image = "ghcr.io/victorytek/home-registry:0.1.0-beta.3";
       ports = [ "${toString cfg.port}:8210" ];
       environment = {
         PORT     = "8210";

@@ -87,6 +87,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.listenarr = {
+      # intentionally floating; not in the weekly bump workflow
       image = "ghcr.io/listenarrs/listenarr:canary";
       ports = [ "${toString cfg.port}:4545" ];
       environment = {

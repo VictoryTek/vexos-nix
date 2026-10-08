@@ -1,11 +1,15 @@
 name: Container Image Pins — Weekly Wednesday
 
-# Checks the 12 OCI-container services in modules/server/*.nix (portainer, homepage,
-# authelia, nginx-proxy-manager, dockhand, arcane, maintainerr,
-# joplin-db, joplin-server, grimmory-db, grimmory, uptime-kuma) for a newer version tag
+# Checks every pinned OCI-container image in modules/server/*.nix (see the
+# SERVICES array below for the authoritative list) for a newer version tag
 # and rewrites the pin in place. These services are pinned (not :latest)
 # so nixos-rebuild stays reproducible between runs of this workflow — see MASTER_PLAN
-# M-22/M-35. Always bumps to the newest matching tag, including major releases. Mirrors update-flake-lock-daily.yml's direct-commit-to-main style (no PR).
+# M-22/M-35. App images always bump to the newest matching tag, INCLUDING major
+# releases; the commit message flags those with "(MAJOR)". Database images
+# (postgres, mariadb) are major-locked and only warn when a newer major exists.
+# Mirrors update-flake-lock-daily.yml's direct-commit-to-main style (no PR).
+# Deliberately NOT covered: images on floating tags (cloudflare-ddns:latest,
+# listenarr:canary, bookshelf:hardcover, humidor:latest) — there is no version to bump.
 # No separate "pull and restart" recipe exists or is needed — the next
 # `just update`/`update-all`/`deploy` on any host pulls whatever pin this workflow
 # committed and applies it via the normal nixos-rebuild switch path.
@@ -34,8 +38,12 @@ jobs:
           set -euo pipefail
 
           # file:image-repo:registry:tag-regex
-          # registry: dockerhub | ghcr
+          # registry: dockerhub | ghcr | quay
+          # App regexes accept any major but only real releases (no rc/beta/dev/
+          # nightly/arch-suffixed tags). The one exception is home-registry, which
+          # only publishes X.Y.Z-beta.N tags.
           SERVICES=(
+            # App images — newest release, any major
             "modules/server/portainer.nix:portainer/portainer-ce:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/authelia.nix:authelia/authelia:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/nginx-proxy-manager.nix:jc21/nginx-proxy-manager:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
@@ -44,10 +52,35 @@ jobs:
             "modules/server/arcane.nix:getarcaneapp/manager:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/arr.nix:maintainerr/maintainerr:ghcr:^[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/joplin.nix:joplin/server:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
-            "modules/server/joplin.nix:postgres:dockerhub:^16\.[0-9]+\$"
-            "modules/server/grimmory.nix:linuxserver/mariadb:dockerhub:^11\.4\.[0-9]+\$"
             "modules/server/grimmory.nix:grimmory/grimmory:dockerhub:^v[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/uptime-kuma.nix:louislam/uptime-kuma:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/wishlist.nix:cmintey/wishlist:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/mealie.nix:mealie-recipes/mealie:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/tautulli.nix:tautulli/tautulli:ghcr:^v[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/code-server.nix:codercom/code-server:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/photoprism.nix:photoprism/photoprism:dockerhub:^[0-9]{6}\$"
+            "modules/server/mediamanager.nix:maxdorninger/mediamanager:quay:^[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/sportarr.nix:sportarr/sportarr:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/home-registry.nix:victorytek/home-registry:ghcr:^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+\$"
+            # Database images — locked to the current major (mariadb: major.minor).
+            # A newer major only produces a ::warning::, never a bump (see DB_* below).
+            "modules/server/joplin.nix:postgres:dockerhub:^16\.[0-9]+\$"
+            "modules/server/humidor.nix:postgres:dockerhub:^17\.[0-9]+\$"
+            "modules/server/home-registry.nix:postgres:dockerhub:^17\.[0-9]+\$"
+            "modules/server/mediamanager.nix:postgres:dockerhub:^17\.[0-9]+\$"
+            "modules/server/grimmory.nix:linuxserver/mariadb:dockerhub:^11\.4\.[0-9]+\$"
+          )
+
+          # Database repos: how to list tags across ALL majors (to detect a newer
+          # one) and how many leading dot-separated fields make up the locked
+          # "major" (postgres: 17; mariadb: 11.4).
+          declare -A DB_ANY_MAJOR=(
+            ["postgres"]='^[0-9]+\.[0-9]+$'
+            ["linuxserver/mariadb"]='^[0-9]+\.[0-9]+\.[0-9]+$'
+          )
+          declare -A DB_MAJOR_FIELDS=(
+            ["postgres"]=1
+            ["linuxserver/mariadb"]=2
           )
 
           # Both helpers print every tag matching the pattern, one per line. They
@@ -83,43 +116,99 @@ jobs:
             rm -f "$headers"
           }
 
+          # Quay's tag API is paginated with a page counter; filter server-side to tags
+          # containing a dot so sha-*/pr-* tags (which dominate the repo) are skipped.
+          quay_tags() {
+            local repo="$1" pattern="$2" page=1 body
+            while :; do
+              body=$(curl -fsS "https://quay.io/api/v1/repository/${repo}/tag/?limit=100&page=${page}&onlyActiveTags=true&filter_tag_name=like:.")
+              jq -r '.tags[].name' <<< "$body" | grep -E "$pattern" || true
+              [ "$(jq -r '.has_additional' <<< "$body")" = "true" ] || break
+              page=$((page + 1))
+            done
+          }
+
+          list_tags() {
+            local registry="$1" repo="$2" pattern="$3"
+            case "$registry" in
+              quay)      quay_tags      "$repo" "$pattern" ;;
+              dockerhub) dockerhub_tags "$repo" "$pattern" ;;
+              *)         ghcr_tags      "$repo" "$pattern" ;;
+            esac
+          }
+
+          # Leading major number of a tag ("v3.28.0" -> 3). Empty for tags with no
+          # dot (e.g. photoprism's 261007 date tags), which have no major to flag.
+          major_of() {
+            local tag="${1#v}"
+            [[ "$tag" == *.* ]] && echo "${tag%%.*}" || true
+          }
+
           CHANGED_FILES=""
+          SUMMARY=""
           for entry in "${SERVICES[@]}"; do
             IFS=':' read -r file repo registry pattern <<< "$entry"
-            # Scoped to the specific repo (not just the file) because joplin.nix and
-            # grimmory.nix each declare two tracked images — a file-wide grep would
+            # Scoped to the specific repo (not just the file) because several modules
+            # declare two tracked images (app + database) — a file-wide grep would
             # match both "image = ..." lines and garble the extracted tag.
             current=$(grep -oP "image\s*=\s*\"[^\"]*${repo}:\K[^\"]+" "$file" || true)
             if [ -z "$current" ]; then
               echo "warning: could not find current tag for $repo in $file — skipping"
               continue
             fi
-            if [ "$registry" = "dockerhub" ]; then
-              tags=$(dockerhub_tags "$repo" "$pattern" | sort -V -u || true)
-            else
-              tags=$(ghcr_tags "$repo" "$pattern" | sort -V -u || true)
-            fi
+            tags=$(list_tags "$registry" "$repo" "$pattern" | sort -V -u || true)
             if [ -z "$tags" ]; then
               echo "::warning::could not list tags for $repo — skipping"
               continue
             fi
             latest=$(tail -1 <<< "$tags")
+            # Display name: the image's last path component; databases also name
+            # the module since several modules pin the same database image.
+            name="${repo##*/}"
+            [ -n "${DB_ANY_MAJOR[$repo]:-}" ] && name="$name [${file##*/}]"
+
             if [ "$latest" != "$current" ]; then
-              echo "Bumping $repo: $current -> $latest"
+              line="$name: $current -> $latest"
+              if [ -z "${DB_ANY_MAJOR[$repo]:-}" ]; then
+                old_major=$(major_of "$current"); new_major=$(major_of "$latest")
+                if [ -n "$old_major" ] && [ -n "$new_major" ] && [ "$old_major" != "$new_major" ]; then
+                  line="$line (MAJOR)"
+                fi
+              fi
+              echo "Bumping $line"
               sed -i "s|${repo}:${current}|${repo}:${latest}|" "$file"
               CHANGED_FILES="$CHANGED_FILES $file"
+              SUMMARY="${SUMMARY}${line}"$'\n'
             else
               echo "$repo already at latest ($current)"
+            fi
+
+            # Databases never bump across majors; surface a newer one for a manual look.
+            if [ -n "${DB_ANY_MAJOR[$repo]:-}" ]; then
+              fields="${DB_MAJOR_FIELDS[$repo]}"
+              top=$(list_tags "$registry" "$repo" "${DB_ANY_MAJOR[$repo]}" | sort -V -u | tail -1 || true)
+              if [ -n "$top" ] \
+                 && [ "$(cut -d. -f1-"$fields" <<< "$top")" != "$(cut -d. -f1-"$fields" <<< "$latest")" ] \
+                 && [ "$(printf '%s\n%s\n' "$latest" "$top" | sort -V | tail -1)" = "$top" ]; then
+                echo "::warning file=${file}::newer ${repo} major available ($top; pinned line is $latest) — not bumped, upgrade manually"
+              fi
             fi
           done
 
           echo "changed_files=$CHANGED_FILES" >> "$GITHUB_OUTPUT"
+          {
+            echo "summary<<__SUMMARY_EOF__"
+            printf '%s' "$SUMMARY"
+            echo "__SUMMARY_EOF__"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Commit updated image pins
         if: steps.check.outputs.changed_files != ''
+        env:
+          SUMMARY: ${{ steps.check.outputs.summary }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ${{ steps.check.outputs.changed_files }}
-          git commit -m "chore: bump pinned container image versions"
+          git commit -m "chore: bump pinned container image versions" -m "$SUMMARY"
           git push

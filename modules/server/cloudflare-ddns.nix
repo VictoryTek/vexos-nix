@@ -90,6 +90,7 @@ in
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
     virtualisation.oci-containers.containers.cloudflare-ddns = {
+      # intentionally floating; not in the weekly bump workflow
       image = "oznu/cloudflare-ddns:latest";
       environment = {
         ZONE    = cfg.zone;

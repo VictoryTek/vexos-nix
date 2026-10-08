@@ -1834,6 +1834,9 @@ _confirm prompt:
 #   $4 extra arguments as ONE string (forwarded to the action)
 #   $5.. items, each "key|description" or "key|description|prompt" — a prompt marks
 #        an action that needs an argument and asks for it when none was given.
+#        A 4th field ("key|description|prompt|stay", prompt may be empty) marks a
+#        read-only action: picked from the menu it returns to the menu afterwards
+#        instead of exiting. Direct calls (`just vpn status`) always just run.
 # Runs the hidden recipe _<group>-<key>, so `just vpn up` == `just _vpn-up`.
 [positional-arguments]
 [private]
@@ -1842,10 +1845,10 @@ _menu group title action argstr *items:
     set -euo pipefail
     group="$1"; title="$2"; action="${3:-}"; argstr="${4:-}"
     shift 4
-    keys=(); descs=(); prompts=()
+    keys=(); descs=(); prompts=(); stays=()
     for item in "$@"; do
-        IFS='|' read -r k d p <<< "$item"
-        keys+=("$k"); descs+=("$d"); prompts+=("${p:-}")
+        IFS='|' read -r k d p s <<< "$item"
+        keys+=("$k"); descs+=("$d"); prompts+=("${p:-}"); stays+=("${s:-}")
     done
 
     usage() {
@@ -1855,46 +1858,63 @@ _menu group title action argstr *items:
         done
     }
 
-    if [ -z "$action" ]; then
-        [ -t 0 ] || { usage; exit 1; }
-        echo ""
-        echo "── $title ──────────────────────────────────────────"
+    picked=0
+    while true; do
+        if [ -z "$action" ]; then
+            [ -t 0 ] || { usage; exit 1; }
+            echo ""
+            echo "── $title ──────────────────────────────────────────"
+            for i in "${!keys[@]}"; do
+                printf "  %2d) %-14s %s\n" "$((i+1))" "${keys[$i]}" "${descs[$i]}"
+            done
+            echo "   0) Quit"
+            echo ""
+            while true; do
+                read -r -p "Choice [0-${#keys[@]}]: " sel || exit 0
+                [ "$sel" = "0" ] && exit 0
+                if [[ "$sel" =~ ^[0-9]+$ ]] && [ "$sel" -ge 1 ] && [ "$sel" -le "${#keys[@]}" ]; then
+                    action="${keys[$((sel-1))]}"
+                    picked=1
+                    break
+                fi
+                echo "  invalid"
+            done
+        fi
+
+        idx=-1
         for i in "${!keys[@]}"; do
-            printf "  %2d) %-14s %s\n" "$((i+1))" "${keys[$i]}" "${descs[$i]}"
+            [ "${keys[$i]}" = "$action" ] && idx=$i
         done
-        echo "   0) Quit"
-        echo ""
-        while true; do
-            read -r -p "Choice [0-${#keys[@]}]: " sel || exit 0
-            [ "$sel" = "0" ] && exit 0
-            if [[ "$sel" =~ ^[0-9]+$ ]] && [ "$sel" -ge 1 ] && [ "$sel" -le "${#keys[@]}" ]; then
-                action="${keys[$((sel-1))]}"
-                break
+        if [ "$idx" -lt 0 ]; then
+            echo "error: unknown action '$action'" >&2
+            usage
+            exit 1
+        fi
+
+        # Only a read-only item picked from the menu keeps the menu open.
+        stay=""
+        [ "$picked" -eq 1 ] && stay="${stays[$idx]}"
+
+        args=()
+        [ -z "$argstr" ] || read -r -a args <<< "$argstr"
+        if [ -n "${prompts[$idx]}" ] && [ "${#args[@]}" -eq 0 ]; then
+            [ -t 0 ] || { echo "error: '$action' needs an argument: ${prompts[$idx]}" >&2; usage; exit 1; }
+            read -r -p "${prompts[$idx]}: " a || a=""
+            if [ -z "$a" ]; then
+                echo "cancelled" >&2
+                if [ -n "$stay" ]; then action=""; continue; fi
+                exit 1
             fi
-            echo "  invalid"
-        done
-    fi
+            args=("$a")
+        fi
 
-    idx=-1
-    for i in "${!keys[@]}"; do
-        [ "${keys[$i]}" = "$action" ] && idx=$i
+        if [ -n "$stay" ]; then
+            just "_${group}-${action}" "${args[@]}" || true
+            action=""
+            continue
+        fi
+        exec just "_${group}-${action}" "${args[@]}"
     done
-    if [ "$idx" -lt 0 ]; then
-        echo "error: unknown action '$action'" >&2
-        usage
-        exit 1
-    fi
-
-    args=()
-    [ -z "$argstr" ] || read -r -a args <<< "$argstr"
-    if [ -n "${prompts[$idx]}" ] && [ "${#args[@]}" -eq 0 ]; then
-        [ -t 0 ] || { echo "error: '$action' needs an argument: ${prompts[$idx]}" >&2; usage; exit 1; }
-        read -r -p "${prompts[$idx]}: " a || exit 1
-        [ -n "$a" ] || { echo "cancelled" >&2; exit 1; }
-        args=("$a")
-    fi
-
-    exec just "_${group}-${action}" "${args[@]}"
 
 # ── Grouped menus ────────────────────────────────────────────────────────────
 # Each recipe below shows a numbered menu when run with no action, or runs an
@@ -1919,7 +1939,7 @@ remote-storage action="" *args: _require-remote-storage-role
 [group('Optional Feature Toggles')]
 feature action="" *args: _require-desktop-role
     @just _menu feature "Optional features" "{{action}}" "{{args}}" \
-        "list|Show every feature and whether it is enabled" \
+        "list|Show every feature and whether it is enabled||stay" \
         "enable|Enable a feature, or 'all'|Feature to enable (or all)" \
         "disable|Disable a feature, or 'all'|Feature to disable (or all)"
 
@@ -1928,11 +1948,11 @@ feature action="" *args: _require-desktop-role
 vpn action="" *args:
     @just _menu vpn "VPN (PIA)" "{{action}}" "{{args}}" \
         "login|Store PIA credentials (run once)" \
-        "selftest|Check the PIA login works" \
+        "selftest|Check the PIA login works||stay" \
         "up|Connect the VPN" \
         "down|Disconnect the VPN" \
-        "status|Show VPN and kill switch state" \
-        "regions|List PIA regions" \
+        "status|Show VPN and kill switch state||stay" \
+        "regions|List PIA regions||stay" \
         "region|Choose a region, or auto for the fastest|Region (e.g. auto)" \
         "protocol|Switch protocol: wireguard or openvpn|Protocol (wireguard or openvpn)"
 
@@ -1949,23 +1969,23 @@ cache action="" *args:
     @just _menu cache "Binary cache" "{{action}}" "{{args}}" \
         "push|Build this repo's custom packages and push them to Attic (optional: cache)" \
         "bootstrap|One-time Attic setup: create the cache and mint tokens (optional: cache)" \
-        "harmonia|Check Harmonia is live and print the client configuration"
+        "harmonia|Check Harmonia is live and print the client configuration||stay"
 
 # Custom kernel builder (server): build now, check status, follow the log.
 kernel action="" *args:
     @just _menu kernel "Custom kernel builder" "{{action}}" "{{args}}" \
         "now|Build the kernel now instead of waiting for the nightly timer (optional: name)" \
-        "status|Show build status and the pinned kernel version" \
+        "status|Show build status and the pinned kernel version||stay" \
         "log|Follow a build log live (optional: name)"
 
 # Server services (server roles): list, catalog, info, status, restart, enable, disable.
 [private]
 service action="" *args:
     @just _menu service "Server services" "{{action}}" "{{args}}" \
-        "list|List enabled services and how to access them" \
-        "available|Show the catalog of available service modules" \
-        "info|Ports, URLs and notes for all enabled services, or one (optional: service)" \
-        "status|systemd status and HTTP reachability of a service|Service name" \
+        "list|List enabled services and how to access them||stay" \
+        "available|Show the catalog of available service modules||stay" \
+        "info|Ports, URLs and notes for all enabled services, or one (optional: service)||stay" \
+        "status|systemd status and HTTP reachability of a service|Service name|stay" \
         "restart|Restart a service, clearing any start-limit failure|Service name" \
         "enable|Enable a service module|Service name" \
         "disable|Disable a service module|Service name"
@@ -2411,7 +2431,7 @@ _service-info service="":
         humidor)         printf "  %-18s  Web UI  http://<server-ip>:9898\n"                                           "$1" ;;
         immich)          printf "  %-18s  Web UI  http://<server-ip>:2283\n"                                           "$1" ;;
         jellyfin)        printf "  %-18s  Web UI  http://<server-ip>:8096\n"                                           "$1" ;;
-        joplin)          printf "  %-18s  Web UI  http://<tailnet-host>:22300   (Tailscale-only)\n"                     "$1" ;;
+        joplin)          printf "  %-18s  Web UI  http://<tailnet-host>:22300   (also reachable from the LAN)\n"                     "$1" ;;
         kiji-proxy)      printf "  %-18s  Proxy   http://127.0.0.1:8080   |  Health: http://localhost:8080/health\n"    "$1" ;;
         mealie)          printf "  %-18s  Web UI  http://<server-ip>:9010\n"                                           "$1" ;;
         nextcloud)       printf "  %-18s  Web UI  http://nextcloud.local     (Nginx frontend)\n"                       "$1" ;;
@@ -2538,17 +2558,17 @@ _service-units service:
       scrutiny)       echo "scrutiny" ;;
       searxng)        echo "uwsgi" ;;
       syncthing)      echo "syncthing" ;;
-      tautulli)       echo "tautulli" ;;
+      tautulli)       echo "docker-tautulli" ;;
       traefik)        echo "traefik" ;;
       uptime-kuma)    echo "docker-uptime-kuma" ;;
       vaultwarden)    echo "vaultwarden" ;;
       vexboard)       echo "vexboard" ;;
       authelia)       echo "docker-authelia" ;;
-      code-server)    echo "code-server" ;;
+      code-server)    echo "docker-code-server" ;;
       netdata)        echo "netdata" ;;
       nginx-proxy-manager) echo "docker-nginx-proxy-manager" ;;
       paperless)      echo "paperless" ;;
-      photoprism)     echo "photoprism" ;;
+      photoprism)     echo "docker-photoprism" ;;
       portainer)      echo "docker-portainer podman-portainer" ;;
       prometheus)     echo "prometheus" ;;
       proxmox)        echo "pve-cluster pvedaemon pveproxy pvestatd pvescheduler" ;;
@@ -3244,7 +3264,7 @@ _service-enable service: _require-server-role
         ;;
       joplin)
         echo "  Services: docker-joplin-server.service  docker-joplin-db.service"
-        echo "  Web UI:   http://<tailnet-host>:22300   (Tailscale-only — see networking.firewall.interfaces.tailscale0)"
+        echo "  Web UI:   http://<tailnet-host>:22300   (also reachable from the LAN regardless of openFirewall; bind the port to 127.0.0.1 or the Tailscale IP to restrict it)"
         echo "  About:    Self-hosted sync server for Joplin desktop/mobile clients (two-container stack: app + dedicated Postgres)."
         echo "  Login:    admin@localhost / admin — change from the web UI after first boot."
         echo "  Note:     If clients get 'invalid origin' sync errors, set vexos.server.joplin.baseUrl to your tailnet's fully-qualified MagicDNS name."
@@ -3351,7 +3371,7 @@ _service-enable service: _require-server-role
         echo "  Note:     Add remote devices by exchanging device IDs in the web UI."
         ;;
       tautulli)
-        echo "  Service:  tautulli.service"
+        echo "  Service:  docker-tautulli.service"
         echo "  Web UI:   http://<server-ip>:8181"
         echo "  About:    Monitoring, statistics, and notification service for Plex — tracks play history and usage analytics."
         echo "  Note:     Connect to Plex by entering your Plex token in Settings → Plex Media Server."
@@ -3449,7 +3469,7 @@ _service-enable service: _require-server-role
         echo "            See https://www.authelia.com/configuration/prologue/introduction/ for config reference."
         ;;
       code-server)
-        echo "  Service:  code-server.service"
+        echo "  Service:  docker-code-server.service"
         echo "  Web UI:   http://<server-ip>:4444"
         echo "  About:    Visual Studio Code running in the browser — develop from any device without a local install."
         echo "  Note:     Set vexos.server.code-server.hashedPassword to your argon2 hash string."
@@ -3475,7 +3495,7 @@ _service-enable service: _require-server-role
         echo "  Note:     Drop documents into the consume folder — Paperless OCRs and indexes them automatically."
         ;;
       photoprism)
-        echo "  Service:  photoprism.service"
+        echo "  Service:  docker-photoprism.service"
         echo "  Web UI:   http://<server-ip>:2342"
         echo "  About:    AI-powered self-hosted photo library with face recognition, geo-tagging, and album organisation."
         echo "  Login:    Default admin / insecure — change immediately after first login."

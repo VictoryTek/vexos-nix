@@ -9,11 +9,11 @@
 # other native-Postgres consumer for. See:
 #   .github/docs/subagent_docs/joplin_server_spec.md
 #
-# Exposure: Tailscale tailnet only. The firewall rule is scoped to the
-# tailscale0 interface (services.tailscale is enabled unconditionally in
-# modules/network.nix), not the global allowed-ports list. There is no
-# reverse proxy / TLS in front of this service — Tailscale's WireGuard
-# tunnel is the transport security boundary.
+# Exposure: the firewall rule below is scoped to the tailscale0 interface, but
+# that does NOT restrict access. Published container ports are reachable from
+# the LAN regardless of openFirewall. To restrict one, bind it to 127.0.0.1 or
+# the Tailscale IP in the ports entry. There is no reverse proxy / TLS in front
+# of this service; over Tailscale, the WireGuard tunnel is the transport security.
 #
 # No required configuration — vexos.server.joplin.enable = true; is enough:
 #   - The Postgres password is generated automatically on first activation
@@ -27,8 +27,8 @@
 #     it if your tailnet needs the fully-qualified name instead.
 #
 # First login: admin@localhost / admin (Joplin's published defaults) — the
-# service is Tailscale-only, but changing this from the web UI after first
-# boot is still recommended.
+# port is reachable from the LAN (see Exposure above), so change this from the
+# web UI right after first boot.
 #
 # Backup: the live Postgres data directory is not file-backup-safe, so a
 # nightly `pg_dump` writes a plain SQL dump to dataDir/dump, which is what
@@ -94,8 +94,10 @@ in
       type = lib.types.bool;
       default = true;
       description = ''
-        Open Joplin Server's port on the tailscale0 interface only (not the
-        global allowed-ports list) — this service is Tailscale-only by design.
+        Open Joplin Server's port on the tailscale0 interface (not the global
+        allowed-ports list). Published container ports are reachable from the
+        LAN regardless of openFirewall. To restrict one, bind it to 127.0.0.1
+        or the Tailscale IP in the ports entry.
       '';
     };
   };

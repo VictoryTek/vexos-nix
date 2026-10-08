@@ -93,7 +93,7 @@
   # vexos.server.syncthing.enable = false;
   # vexos.server.immich.enable = false;
   # vexos.server.photoprism.enable = false;              # Port 2342 — photo management
-  # vexos.server.joplin.enable = false;                  # Port 22300 — Joplin note sync (Tailscale-only)
+  # vexos.server.joplin.enable = false;                  # Port 22300 — Joplin note sync (reachable from the LAN)
   #   No further config needed: Postgres password auto-generates on first activation,
   #   baseUrl defaults to http://<hostname>:22300 (works with Tailscale MagicDNS).
   # vexos.server.joplin.baseUrl = "http://myhost.tailnet-name.ts.net:22300"; # Override only if bare hostname doesn't resolve on your tailnet

@@ -180,7 +180,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.humidor-db = {
-      image = "postgres:17";
+      image = "postgres:17.11";
       environment = {
         POSTGRES_USER = "humidor_user";
         POSTGRES_DB   = "humidor_db";
@@ -193,6 +193,7 @@ in
     };
 
     virtualisation.oci-containers.containers.humidor = {
+      # intentionally floating; not in the weekly bump workflow
       image = "ghcr.io/victorytek/humidor:latest";
       ports = [ "${toString cfg.port}:9898" ];
       environment = {

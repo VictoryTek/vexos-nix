@@ -88,7 +88,15 @@ in
 
     services.nextcloud = {
       enable = true;
-      package = pkgs.nextcloud30;
+      # TODO: set services.nextcloud.config.dbtype (sqlite/pgsql/mysql) — 26.05
+      # requires it explicitly and this module does not set it yet, so enabling
+      # Nextcloud fails evaluation until it is chosen.
+      # Nextcloud 30 is EOL and pkgs.nextcloud30 no longer exists (31 was
+      # removed too, and 32 is flagged EOL/insecure on 26.05 and refuses to
+      # evaluate). Nextcloud cannot upgrade across multiple majors, so
+      # existing data written by 30 cannot be upgraded in place to 35 — it
+      # needs a fresh install or a manual upgrade path.
+      package = pkgs.nextcloud35;
       hostName = cfg.hostName;
       config.adminpassFile = cfg.adminPassFile;
       https = cfg.https;

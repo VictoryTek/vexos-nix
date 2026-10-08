@@ -90,6 +90,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.bookshelf = {
+      # intentionally floating; not in the weekly bump workflow
       image = "ghcr.io/pennydreadful/bookshelf:hardcover";
       ports = [ "${toString cfg.port}:8787" ];
       environment = {
