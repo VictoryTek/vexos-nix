@@ -1748,7 +1748,7 @@ _feature-disable feature: _require-desktop-role
 # Available server service module names.
 # Keep in sync with _service_catalog below, modules/server/default.nix, and
 # template/server-services.nix.
-_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy mealie nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism plex podman portainer prometheus proxmox scrutiny searxng seerr syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
+_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy chaptarr cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy mealie nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism plex podman portainer prometheus proxmox scrutiny searxng seerr syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
 
 # Server service catalog — single source of truth for both `just
 # available-services` (catalog view) and `just service list` (per-host status).
@@ -1757,6 +1757,7 @@ _server_service_names := "adguard arcane arr attic audiobookshelf authelia backu
 # Keep in sync with _server_service_names above, modules/server/default.nix,
 # and template/server-services.nix.
 _service_catalog := '''
+    Books & Reading|chaptarr|Audiobook & ebook collection manager (Readarr successor)
     Books & Reading|grimmory|Self-hosted ebook/comic/audiobook library
     Files & Storage|immich|Self-hosted photo & video backup
     Files & Storage|nextcloud|File sync, sharing & collaboration suite
@@ -2425,6 +2426,7 @@ _service-info service="":
         forgejo)         printf "  %-18s  Web UI  http://<server-ip>:3000\n"                                           "$1" ;;
         harmonia)        printf "  %-18s  HTTP    http://<server-ip>:5000   (Nix binary cache)\n"                      "$1" ;;
         kernel-builder)  printf "  %-18s  No web UI — nightly timer; see 'just kernel status'\n"            "$1" ;;
+        chaptarr)        printf "  %-18s  Web UI  http://<server-ip>:8789\n"                                           "$1" ;;
         grimmory)        printf "  %-18s  Web UI  http://<server-ip>:6060\n"                                           "$1" ;;
         headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
         home-registry)   printf "  %-18s  Web UI  http://<server-ip>:8210\n"                                           "$1" ;;
@@ -2540,6 +2542,7 @@ _service-units service:
       forgejo)        echo "forgejo" ;;
       harmonia)       echo "harmonia" ;;
       kernel-builder) echo "kernel-build-ogc" ;;
+      chaptarr)       echo "docker-chaptarr" ;;
       grimmory)       echo "docker-grimmory docker-grimmory-db" ;;
       headscale)      echo "headscale" ;;
       home-registry)  echo "docker-home-registry docker-home-registry-db" ;;
@@ -2614,6 +2617,7 @@ _service-status service: _require-server-role
       forgejo)        URLS="http://localhost:3000" ;;
       harmonia)       URLS="http://localhost:5000" ;;
       kernel-builder) URLS="" ;;
+      chaptarr)       URLS="http://localhost:8789" ;;
       grimmory)       URLS="http://localhost:6060" ;;
       headscale)      URLS="http://localhost:8085" ;;
       home-registry)  URLS="http://localhost:8210" ;;
@@ -3223,6 +3227,13 @@ _service-enable service: _require-server-role
         echo "  First run: just kernel now      (takes hours; safe to leave)"
         echo "  Watch:     just kernel log"
         echo "  Status:    just kernel status"
+        ;;
+      chaptarr)
+        echo "  Service:  docker-chaptarr.service"
+        echo "  Web UI:   http://<server-ip>:8789"
+        echo "  About:    Audiobook & ebook collection manager (re-work of Readarr) — single container, SQLite under vexos.server.chaptarr.dataDir."
+        echo "  Prowlarr: Add it as a Readarr-type application (the API is compatible)."
+        echo "  Note:     Beta upstream. Put root folders and downloads under /data (vexos.server.chaptarr.libraryDir) so imports can hardlink."
         ;;
       grimmory)
         echo "  Services: docker-grimmory.service  docker-grimmory-db.service"

@@ -61,6 +61,7 @@ jobs:
             "modules/server/photoprism.nix:photoprism/photoprism:dockerhub:^[0-9]{6}\$"
             "modules/server/mediamanager.nix:maxdorninger/mediamanager:quay:^[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/sportarr.nix:sportarr/sportarr:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\$"
+            "modules/server/chaptarr.nix:chaptarr/chaptarr:dockerhub:^[0-9]+\.[0-9]+\.[0-9]+\$"
             "modules/server/home-registry.nix:victorytek/home-registry:ghcr:^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+\$"
             # Database images — locked to the current major (mariadb: major.minor).
             # A newer major only produces a ::warning::, never a bump (see DB_* below).

@@ -72,6 +72,7 @@
   # ── Books & Comics ───────────────────────────────────────────────────────
   # vexos.server.grimmory.enable = false;               # Port 6060 — ebook/comic/audiobook library
   # vexos.server.listenarr.enable = false;              # Port 4545 — audiobook collection manager
+  # vexos.server.chaptarr.enable = false;               # Port 8789 — audiobook & ebook collection manager
   #   No further config needed: MariaDB credentials auto-generate on first activation.
   # vexos.server.grimmory.libraryDir = "/mnt/pool/books";    # Override to point at existing storage
   # vexos.server.grimmory.bookdropDir = "/mnt/pool/bookdrop"; # (e.g. a mergerfs/storage-remote pool)

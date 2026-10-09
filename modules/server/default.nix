@@ -25,6 +25,7 @@
     ./grimmory.nix
     ./bookshelf.nix
     ./listenarr.nix
+    ./chaptarr.nix
     # ── Game Servers ─────────────────────────────────────────────────────────
     ./papermc.nix
     # ── Cloud & Files ────────────────────────────────────────────────────────
