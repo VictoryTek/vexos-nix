@@ -10,8 +10,11 @@
 # Steps:
 #   [1/6] Preconditions (root)
 #   [2/6] Protocol (nfs / cifs)
-#   [3/6] Server / export / mountpoint
-#   [4/6] Credentials (cifs only — written to /etc/nixos/secrets, never inlined)
+#   [3/6] Server — discovered over mDNS (avahi) and offered as a menu, typed
+#         address as fallback (+ CIFS username/password, needed to list shares)
+#   [4/6] Share / mountpoint — shares are probed from the server and offered as a
+#         menu (showmount / smbclient); typed entry is the fallback. CIFS
+#         credentials are written to /etc/nixos/secrets, never inlined.
 #   [5/6] Optional test-mount
 #   [6/6] Merge the entry into /etc/nixos/storage-remote.nix
 #
@@ -52,19 +55,144 @@ while [ -z "$PROTO" ]; do
 done
 ok "protocol: $PROTO"
 
-# ---------- [3/6] Server / export / mountpoint -------------------------------
-hdr "[3/6] Remote location"
-printf "Storage server host or IP: "
-read -r SERVER
+# pick_from <label>... — numbered menu with a "type it manually" entry.
+# Sets PICKED to the chosen 0-based index, or "" when manual entry was chosen.
+pick_from() {
+    local n=$# i c
+    PICKED=""
+    for ((i = 1; i <= n; i++)); do printf "    %d) %s\n" "$i" "${!i}"; done
+    echo "    m) type it manually"
+    while :; do
+        printf "Choice [1-%d/m]: " "$n"
+        read -r c || die "no input"
+        case "$c" in
+            m|M) return 0 ;;
+            ''|*[!0-9]*) ;;
+            *) if [ "$c" -ge 1 ] && [ "$c" -le "$n" ]; then PICKED=$((c - 1)); return 0; fi ;;
+        esac
+        echo "  invalid"
+    done
+}
+
+# Print "<ipv4>\t<label>" for each host on the LAN advertising the chosen
+# protocol over mDNS (avahi is enabled on every role). This host's own
+# addresses are skipped. Avahi escapes bytes in service names as \DDD (decimal).
+discover_hosts() {
+    command -v avahi-browse >/dev/null 2>&1 || return 0
+    local svc="_smb._tcp" self
+    [ "$PROTO" = "nfs" ] && svc="_nfs._tcp"
+    self=$(ip -4 -o addr show 2>/dev/null | awk '{ sub(/\/.*/, "", $4); print $4 }')
+    timeout 10 avahi-browse -t -r -p "$svc" 2>/dev/null </dev/null | awk -F';' -v self="$self" '
+        BEGIN { n = split(self, s, "\n"); for (i = 1; i <= n; i++) mine[s[i]] = 1 }
+        $1 == "=" && $3 == "IPv4" && !($8 in mine) && !($8 in seen) {
+            seen[$8] = 1
+            name = $4
+            while (match(name, /\\[0-9][0-9][0-9]/))
+                name = substr(name, 1, RSTART - 1) sprintf("%c", substr(name, RSTART + 1, 3) + 0) substr(name, RSTART + RLENGTH)
+            printf "%s\t%s (%s)\n", $8, name, $8
+        }'
+}
+
+# ---------- [3/6] Server (+ CIFS credentials) --------------------------------
+hdr "[3/6] Storage server"
+echo "  Looking for servers on the network..."
+HOST_ADDR=(); HOST_LABEL=()
+while IFS=$'\t' read -r _addr _label; do
+    [ -n "$_addr" ] && { HOST_ADDR+=("$_addr"); HOST_LABEL+=("$_label"); }
+done < <(discover_hosts)
+
+SERVER=""
+if [ "${#HOST_ADDR[@]}" -gt 0 ]; then
+    echo "  Found:"
+    pick_from "${HOST_LABEL[@]}"
+    [ -n "$PICKED" ] && SERVER="${HOST_ADDR[$PICKED]}"
+else
+    warn "no servers advertised over mDNS — enter the address manually"
+fi
+if [ -z "$SERVER" ]; then
+    printf "Storage server host or IP: "
+    read -r SERVER
+fi
 [ -n "$SERVER" ] || die "server cannot be empty"
+ok "server: $SERVER"
+
+# Throw-away 0700 dir for the probe's credentials file and stderr capture.
+PROBE_DIR=$(mktemp -d)
+trap 'rm -rf "$PROBE_DIR"' EXIT
+
+# CIFS credentials are collected before the share is chosen: most NAS units
+# refuse to list shares to guests, and the mount needs them regardless. The
+# real credentials file is named after the mountpoint, so it is written in [4/6].
+SMB_USER=""; SMB_PASS=""
+if [ "$PROTO" = "cifs" ]; then
+    printf "SMB username: "
+    read -r SMB_USER
+    [ -n "$SMB_USER" ] || die "username cannot be empty"
+    printf "SMB password: "
+    IFS= read -rs SMB_PASS; echo ""
+fi
+
+# ---------- [4/6] Share / mountpoint -----------------------------------------
+hdr "[4/6] Share and mountpoint"
 
 if [ "$PROTO" = "nfs" ]; then
-    printf "NFS export path (e.g. /tank/media): "
+    PROBE_BIN="showmount"; PROBE_PKG="nfs-utils"; KIND="exports"
 else
-    printf "CIFS share name (e.g. media): "
+    PROBE_BIN="smbclient"; PROBE_PKG="samba";     KIND="shares"
 fi
-read -r EXPORT
-[ -n "$EXPORT" ] || die "export/share cannot be empty"
+
+# Run the probe tool; nfs-utils/samba only land on rebuild, so fall back to a
+# one-off `nix shell` when it is not installed yet.
+probe() {
+    if command -v "$PROBE_BIN" >/dev/null 2>&1; then
+        timeout 30 "$PROBE_BIN" "$@" </dev/null
+    else
+        timeout 180 nix shell "nixpkgs#${PROBE_PKG}" -c "$PROBE_BIN" "$@" </dev/null
+    fi
+}
+
+# Print one share/export name per line. Exit status of the tool is ignored:
+# smbclient exits non-zero after listing when its SMB1 workgroup-listing
+# reconnect fails. stderr goes to $PROBE_DIR/err for the caller to report.
+list_shares() {
+    local out
+    if [ "$PROTO" = "nfs" ]; then
+        out=$(probe -e --no-headers "$SERVER" 2>"$PROBE_DIR/err")
+        # "<export>   <clients>" — keep the path; skip anything else.
+        printf '%s\n' "$out" | awk '$1 ~ /^\// { print $1 }'
+    else
+        ( umask 077; printf 'username = %s\npassword = %s\n' "$SMB_USER" "$SMB_PASS" > "$PROBE_DIR/auth" )
+        out=$(probe -L "//${SERVER}" -g -A "$PROBE_DIR/auth" 2>"$PROBE_DIR/err")
+        # Grepable form is "Disk|<name>|<comment>"; hide admin shares (IPC$, ADMIN$, ...).
+        printf '%s\n' "$out" | awk -F'|' '$1 == "Disk" && $2 !~ /\$$/ { print $2 }'
+    fi
+}
+
+echo "  Querying $SERVER for available $KIND..."
+command -v "$PROBE_BIN" >/dev/null 2>&1 \
+    || echo "  ($PROBE_BIN not installed yet — fetching $PROBE_PKG via nix shell; needs network)"
+FOUND=()
+mapfile -t FOUND < <(list_shares)
+
+EXPORT=""
+if [ "${#FOUND[@]}" -gt 0 ]; then
+    echo "  Found on $SERVER:"
+    pick_from "${FOUND[@]}"
+    [ -n "$PICKED" ] && EXPORT="${FOUND[$PICKED]}"
+else
+    PROBE_ERR=$(grep -v '^[[:space:]]*$' "$PROBE_DIR/err" 2>/dev/null | tail -n1)
+    warn "could not list $KIND on $SERVER${PROBE_ERR:+ ($PROBE_ERR)} — enter it manually"
+fi
+
+if [ -z "$EXPORT" ]; then
+    if [ "$PROTO" = "nfs" ]; then
+        printf "NFS export path (e.g. /tank/media): "
+    else
+        printf "CIFS share name (e.g. media): "
+    fi
+    read -r EXPORT
+    [ -n "$EXPORT" ] || die "export/share cannot be empty"
+fi
 EXPORT="${EXPORT#/}"; [ "$PROTO" = "nfs" ] && EXPORT="/$EXPORT"   # NFS needs leading /
 
 DEFAULT_MNT="/mnt/nas-$(basename "$EXPORT")"
@@ -84,23 +212,13 @@ if [ -f "$REMOTE_NIX" ] && grep -qF "mountPoint = \"${MNT}\";" "$REMOTE_NIX"; th
 fi
 ok "will mount ${SERVER}:${EXPORT} → $MNT"
 
-# ---------- [4/6] Credentials (cifs only) ------------------------------------
 CRED_FILE=""
 if [ "$PROTO" = "cifs" ]; then
-    hdr "[4/6] CIFS credentials"
     CRED_FILE="$SECRET_DIR/remote-$(basename "$MNT")-credentials"
-    printf "SMB username: "
-    read -r SMB_USER
-    printf "SMB password: "
-    IFS= read -rs SMB_PASS; echo ""
-    [ -n "$SMB_USER" ] || die "username cannot be empty"
     mkdir -p "$SECRET_DIR"; chmod 700 "$SECRET_DIR"
     printf 'username=%s\npassword=%s\n' "$SMB_USER" "$SMB_PASS" > "$CRED_FILE"
     chmod 600 "$CRED_FILE"; chown root:root "$CRED_FILE"
     ok "credentials written to $CRED_FILE (0600 root:root — not in the Nix store)"
-else
-    hdr "[4/6] Credentials"
-    echo "  (none — NFS uses host-based export permissions)"
 fi
 
 # ---------- [5/6] Optional test-mount ----------------------------------------
