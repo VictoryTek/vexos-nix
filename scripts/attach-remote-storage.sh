@@ -13,7 +13,8 @@
 #   [3/6] Server — discovered over mDNS (avahi) and offered as a menu, typed
 #         address as fallback (+ CIFS username/password, needed to list shares)
 #   [4/6] Share / mountpoint — shares are probed from the server and offered as a
-#         menu (showmount / smbclient); typed entry is the fallback. CIFS
+#         menu (showmount / smbclient); typed entry is the fallback. The local
+#         mountpoint is derived as /mnt/<server-name>/<share-name>. CIFS
 #         credentials are written to /etc/nixos/secrets, never inlined.
 #   [5/6] Optional test-mount
 #   [6/6] Merge the entry into /etc/nixos/storage-remote.nix
@@ -74,7 +75,7 @@ pick_from() {
     done
 }
 
-# Print "<ipv4>\t<label>" for each host on the LAN advertising the chosen
+# Print "<ipv4>\t<label>\t<hostname>" for each host on the LAN advertising the chosen
 # protocol over mDNS (avahi is enabled on every role). This host's own
 # addresses are skipped. Avahi escapes bytes in service names as \DDD (decimal).
 discover_hosts() {
@@ -89,16 +90,25 @@ discover_hosts() {
             name = $4
             while (match(name, /\\[0-9][0-9][0-9]/))
                 name = substr(name, 1, RSTART - 1) sprintf("%c", substr(name, RSTART + 1, 3) + 0) substr(name, RSTART + RLENGTH)
-            printf "%s\t%s (%s)\n", $8, name, $8
+            host = $7; sub(/\..*/, "", host)
+            printf "%s\t%s (%s)\t%s\n", $8, name, $8, host
         }'
+}
+
+# slug <text> — reduce to [A-Za-z0-9._-] for use in a path / file name.
+slug() {
+    local s
+    s=$(printf '%s' "$1" | tr -cs 'A-Za-z0-9._' '-')
+    s="${s#-}"; s="${s%-}"
+    printf '%s' "${s:-share}"
 }
 
 # ---------- [3/6] Server (+ CIFS credentials) --------------------------------
 hdr "[3/6] Storage server"
 echo "  Looking for servers on the network..."
-HOST_ADDR=(); HOST_LABEL=()
-while IFS=$'\t' read -r _addr _label; do
-    [ -n "$_addr" ] && { HOST_ADDR+=("$_addr"); HOST_LABEL+=("$_label"); }
+HOST_ADDR=(); HOST_LABEL=(); HOST_NAME=()
+while IFS=$'\t' read -r _addr _label _name; do
+    [ -n "$_addr" ] && { HOST_ADDR+=("$_addr"); HOST_LABEL+=("$_label"); HOST_NAME+=("$_name"); }
 done < <(discover_hosts)
 
 SERVER=""
@@ -115,6 +125,19 @@ if [ -z "$SERVER" ]; then
 fi
 [ -n "$SERVER" ] || die "server cannot be empty"
 ok "server: $SERVER"
+
+# Short name for the mountpoint: the discovered mDNS hostname when the address
+# is a known host, else the typed hostname (domain dropped), else nas-<ip>.
+SERVER_NAME=""
+for i in "${!HOST_ADDR[@]}"; do
+    [ "${HOST_ADDR[$i]}" = "$SERVER" ] && SERVER_NAME="${HOST_NAME[$i]}"
+done
+if [ -z "$SERVER_NAME" ]; then
+    case "$SERVER" in
+        *[!0-9.]*) SERVER_NAME="${SERVER%%.*}" ;;
+        *)         SERVER_NAME="nas-${SERVER//./-}" ;;
+    esac
+fi
 
 # Throw-away 0700 dir for the probe's credentials file and stderr capture.
 PROBE_DIR=$(mktemp -d)
@@ -195,26 +218,33 @@ if [ -z "$EXPORT" ]; then
 fi
 EXPORT="${EXPORT#/}"; [ "$PROTO" = "nfs" ] && EXPORT="/$EXPORT"   # NFS needs leading /
 
-DEFAULT_MNT="/mnt/nas-$(basename "$EXPORT")"
-printf "Local mountpoint [%s]: " "$DEFAULT_MNT"
-read -r MNT
-MNT="${MNT:-$DEFAULT_MNT}"
-case "$MNT" in /*) ;; *) die "mountpoint must be an absolute path" ;; esac
+# Mountpoint is derived, not asked: /mnt/<server-name>/<share-name>, so several
+# shares from several servers never collide and group by server.
+MNT="/mnt/$(slug "$SERVER_NAME")/$(slug "$(basename "$EXPORT")")"
 
 # Each mountpoint keys a fileSystems.<mountPoint> attribute in
 # modules/storage-remote.nix; a duplicate key is silently collapsed by
 # builtins.listToAttrs (first entry wins), so a second share on the same
-# mountpoint would never mount. Reject it here.
-if [ -f "$REMOTE_NIX" ] && grep -qF "mountPoint = \"${MNT}\";" "$REMOTE_NIX"; then
-    die "mountpoint $MNT is already claimed by an entry in $REMOTE_NIX.
-       Choose a different mountpoint, or drop the existing entry first with
-       'just remote-storage detach'."
-fi
+# mountpoint would never mount. Only when the derived path is already taken
+# (e.g. the same share attached twice) do we ask for a different one.
+claimed() { [ -f "$REMOTE_NIX" ] && grep -qF "mountPoint = \"$1\";" "$REMOTE_NIX"; }
+while claimed "$MNT"; do
+    warn "mountpoint $MNT is already claimed by an entry in $REMOTE_NIX"
+    echo "  (drop the existing entry first with 'just remote-storage detach', or pick another path)"
+    while :; do
+        printf "Local mountpoint (absolute path): "
+        read -r MNT || die "no input"
+        case "$MNT" in /*) break ;; esac
+        echo "  must be an absolute path"
+    done
+done
 ok "will mount ${SERVER}:${EXPORT} → $MNT"
 
 CRED_FILE=""
 if [ "$PROTO" = "cifs" ]; then
-    CRED_FILE="$SECRET_DIR/remote-$(basename "$MNT")-credentials"
+    # Named after the full mountpoint (not its basename) so same-named shares
+    # on different servers do not share a credentials file.
+    CRED_FILE="$SECRET_DIR/remote-$(slug "$MNT")-credentials"
     mkdir -p "$SECRET_DIR"; chmod 700 "$SECRET_DIR"
     printf 'username=%s\npassword=%s\n' "$SMB_USER" "$SMB_PASS" > "$CRED_FILE"
     chmod 600 "$CRED_FILE"; chown root:root "$CRED_FILE"

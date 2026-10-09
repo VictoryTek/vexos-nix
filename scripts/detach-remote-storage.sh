@@ -140,6 +140,9 @@ for i in "${SELECT[@]}"; do
     if [ -d "$MNT" ]; then
         if rmdir "$MNT" 2>/dev/null; then
             ok "removed empty mountpoint $MNT"
+            # attach nests mountpoints as /mnt/<server>/<share>; tidy the now-empty
+            # <server> dir (never /mnt itself).
+            case "$(dirname "$MNT")" in /mnt/*) rmdir "$(dirname "$MNT")" 2>/dev/null ;; esac
         else
             warn "$MNT is not empty or could not be removed — left in place"
         fi

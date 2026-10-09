@@ -46,8 +46,24 @@ Design decisions:
 - Steps renumbered `[3/6] Server (+ CIFS credentials)` and
   `[4/6] Share / mountpoint` so the 6-step layout is preserved.
 
+## Derived mountpoint (added at user request)
+The "Local mountpoint" prompt is gone. The mountpoint is
+`/mnt/<server-name>/<share-name>`:
+- `<server-name>`: mDNS hostname when the address was discovered, else the typed
+  hostname with its domain dropped, else `nas-<ip with dashes>`.
+- `<share-name>`: `basename` of the share/export.
+- Both pass through `slug` (non `[A-Za-z0-9._]` runs → `-`).
+- The prompt only reappears when the derived path is already claimed in
+  `storage-remote.nix` (same share attached twice).
+- CIFS credentials file is now `remote-<slug of full mountpoint>-credentials`
+  (was `basename`, which would collide for `goliath/data` vs `other/data`).
+  Existing entries are unaffected: they carry an explicit `credentialsFile`.
+- `detach-remote-storage.sh` additionally `rmdir`s the empty `/mnt/<server>`
+  parent after removing the share's mountpoint (never `/mnt` itself).
+
 ## Files
-- `scripts/attach-remote-storage.sh` — only file modified.
+- `scripts/attach-remote-storage.sh`
+- `scripts/detach-remote-storage.sh` (parent-dir tidy only)
 
 No flake input, module, or option changes; the Option B module pattern is not
 affected.

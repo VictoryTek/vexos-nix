@@ -1,6 +1,7 @@
 # ATTACH_STORAGE_SHARE_PROBE — review
 
-Modified: `scripts/attach-remote-storage.sh` (only file). Spec:
+Modified: `scripts/attach-remote-storage.sh`, `scripts/detach-remote-storage.sh`
+(parent-dir tidy only; see "Derived mountpoint" in the spec). Spec:
 `ATTACH_STORAGE_SHARE_PROBE_spec.md`.
 
 Scope note: the spec was extended mid-flight at the user's request to include
@@ -20,7 +21,15 @@ of the share probe. Discovery needs no new package: avahi is enabled in
 | `hardware-configuration.nix` tracked | no |
 | `system.stateVersion` | untouched |
 
+Derived-mountpoint harness cases (all as expected): discovered NFS →
+`/mnt/theannex/media`; discovered CIFS `Backups` → `/mnt/theannex/Backups` with
+`remote-mnt-theannex-Backups-credentials`; typed IP + `/srv/my data` →
+`/mnt/nas-10-9-9-9/my-data`; typed FQDN → `/mnt/nas/media`; already-claimed
+path → warns, rejects a relative path, accepts `/mnt/other`. shellcheck and
+preflight re-run after this change: clean / exit 0.
+
 ## Not verified
+- The detach-side parent `rmdir` was not executed (needs root and a real mount).
 - Parsing of real `showmount` / `smbclient -L -g` output from an actual NAS
   (fake tools mirror the documented formats only).
 - The `nix shell nixpkgs#samba|nfs-utils` fallback when the tool is absent.
