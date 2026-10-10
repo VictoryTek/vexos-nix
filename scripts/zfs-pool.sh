@@ -235,6 +235,17 @@ write_registered_pools() {
         echo "  ];"
         echo "}"
     } > "$ZFS_POOLS_NIX" || die "could not write $ZFS_POOLS_NIX"
+
+    # git+file:// (used by `just update`) only sees tracked files, and this file
+    # is written after /etc/nixos was git-initialised — track it so an update
+    # does not silently drop the pool import. vexos-update commits the staged
+    # file. Skipped when the file's directory is not a git repo.
+    local dir base
+    dir=$(dirname "$ZFS_POOLS_NIX"); base=$(basename "$ZFS_POOLS_NIX")
+    if git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
+        git -C "$dir" add -f "$base" \
+            || warn "could not 'git add' $base — 'just update' would not see the change"
+    fi
 }
 
 register_pool() {

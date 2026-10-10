@@ -207,6 +207,20 @@ if [ "${#KEEP[@]}" -eq 0 ]; then
     esac
 fi
 
+# git+file:// (used by `just update`) only sees tracked files — keep the git
+# index in step with the file written/removed above so an update neither drops
+# the remaining shares nor resurrects the detached ones. vexos-update commits
+# the staged change. Skipped when /etc/nixos is not a git repo.
+if git -C /etc/nixos rev-parse --git-dir >/dev/null 2>&1; then
+    if [ -f "$REMOTE_NIX" ]; then
+        git -C /etc/nixos add -f storage-remote.nix \
+            || warn "could not 'git add' storage-remote.nix — 'just update' would not see the change"
+    elif git -C /etc/nixos ls-files --error-unmatch storage-remote.nix >/dev/null 2>&1; then
+        git -C /etc/nixos rm -q --cached storage-remote.nix \
+            || warn "could not untrack storage-remote.nix — 'just update' may still see the old copy"
+    fi
+fi
+
 echo ""
 echo "  Apply with:"
 echo -e "     ${BOLD}just rebuild${RESET}"

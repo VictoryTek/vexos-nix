@@ -456,6 +456,15 @@ fi
 
 ok "wrote $REMOTE_NIX"
 
+# git+file:// (used by `just update`) only sees tracked files, and this file is
+# written after /etc/nixos was git-initialised — track it so an update does not
+# silently drop the share. vexos-update commits the staged file. Skipped when
+# /etc/nixos is not a git repo yet (vexos-update initialises it on first run).
+if git -C /etc/nixos rev-parse --git-dir >/dev/null 2>&1; then
+    git -C /etc/nixos add -f storage-remote.nix \
+        || warn "could not 'git add' storage-remote.nix — 'just update' would not see it"
+fi
+
 echo ""
 echo "  Apply with:"
 echo -e "     ${BOLD}just rebuild${RESET}"

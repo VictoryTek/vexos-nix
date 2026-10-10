@@ -260,6 +260,15 @@ hdr "[8/9] Writing $STORAGE_POOL_NIX"
 
 ok "wrote $STORAGE_POOL_NIX"
 
+# git+file:// (used by `just update`) only sees tracked files, and this file is
+# written after /etc/nixos was git-initialised — track it so an update does not
+# silently drop the pool. vexos-update commits the staged file. Skipped when
+# /etc/nixos is not a git repo.
+if git -C /etc/nixos rev-parse --git-dir >/dev/null 2>&1; then
+    git -C /etc/nixos add -f storage-pool.nix \
+        || warn "could not 'git add' storage-pool.nix — 'just update' would not see it"
+fi
+
 # ---------- [9/9] Next steps -------------------------------------------------
 hdr "[9/9] Next steps"
 echo ""

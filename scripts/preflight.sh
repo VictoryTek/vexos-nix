@@ -7,19 +7,20 @@
 # Usage:   Run from repository root: bash scripts/preflight.sh
 #
 # Stages:
-#   [0/11]  Nix + jq availability
-#   [1/11]  nix flake show (structure validation — safe, low RAM)
+#   [0/12]  Nix + jq availability
+#   [1/12]  nix flake show (structure validation — safe, low RAM)
 #           + ci.yml matrix matches the flake's nixosConfigurations
-#   [2/11]  Dry-build current machine variant only (full CI validation handled by GitHub Actions)
-#   [3/11]  hardware-configuration.nix not tracked
-#   [4/11]  system.stateVersion (all 6 configuration-*.nix files)
-#   [5/11]  flake.lock validation (committed, pinned, freshness)
-#   [6/11]  Nix formatting
-#   [7/11]  Secret scan
-#   [8/11]  vexos-update package builds (shellcheck runs at build time)
-#   [9/11]  shellcheck over scripts/*.sh and scripts/lib/*.sh (installer code)
-#   [10/11] Server service name list derives from the option declarations
-#   [11/11] justfile: parses, shellcheck over recipes, service tables in sync
+#   [2/12]  Dry-build current machine variant only (full CI validation handled by GitHub Actions)
+#   [3/12]  hardware-configuration.nix not tracked
+#   [4/12]  system.stateVersion (all 6 configuration-*.nix files)
+#   [5/12]  flake.lock validation (committed, pinned, freshness)
+#   [6/12]  Nix formatting
+#   [7/12]  Secret scan
+#   [8/12]  vexos-update package builds (shellcheck runs at build time)
+#   [9/12]  shellcheck over scripts/*.sh and scripts/lib/*.sh (installer code)
+#   [10/12] Server service name list derives from the option declarations
+#   [11/12] justfile: parses, shellcheck over recipes, service tables in sync
+#   [12/12] Every host-local /etc/nixos file is in vexos-update's git force-add list
 #
 # NOTE (Windows users): This script must be made executable on the NixOS host.
 #   Option A — chmod:
@@ -50,7 +51,7 @@ echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================================"
 echo ""
 # ---------- CHECK 0: Nix + jq availability (HARD for nix, WARN for jq) ------
-echo "[0/11] Checking for required tools..."
+echo "[0/12] Checking for required tools..."
 if ! command -v nix &>/dev/null; then
   echo ""
   fail "nix is not installed or not in PATH"
@@ -81,7 +82,7 @@ else
 fi
 echo ""
 # ---------- CHECK 1: flake structure + CI matrix coverage --------------------
-echo "[1/11] Validating flake structure..."
+echo "[1/12] Validating flake structure..."
 
 echo "  --- 1a: nix flake show (structure validation — safe, low RAM) ---"
 # NOTE: nix flake check is FORBIDDEN in this project — it evaluates all 30+
@@ -155,7 +156,7 @@ fi
 echo ""
 
 # ---------- CHECK 2: nixos-rebuild dry-build (current variant only) ----------
-echo "[2/11] Verifying system closure (dry-build current machine variant)..."
+echo "[2/12] Verifying system closure (dry-build current machine variant)..."
 # NOTE: Dry-building all 30 variants in a loop is FORBIDDEN in this project.
 # Each evaluation loads a full nixpkgs closure into RAM. Running 30 sequentially
 # still risks OOM on a 32GB machine and takes 30+ minutes.
@@ -197,7 +198,7 @@ fi
 echo ""
 
 # ---------- CHECK 3: hardware-configuration.nix not tracked (HARD) -----------
-echo "[3/11] Checking hardware-configuration.nix is not tracked in git..."
+echo "[3/12] Checking hardware-configuration.nix is not tracked in git..."
 if git ls-files hardware-configuration.nix | grep -q .; then
   fail "hardware-configuration.nix is tracked in git — remove it immediately"
   EXIT_CODE=1
@@ -207,7 +208,7 @@ fi
 echo ""
 
 # ---------- CHECK 4: system.stateVersion present (HARD) ----------------------
-echo "[4/11] Verifying system.stateVersion in all configuration files..."
+echo "[4/12] Verifying system.stateVersion in all configuration files..."
 STATEVER_FAIL=0
 for CFG in \
   configuration-desktop.nix \
@@ -241,7 +242,7 @@ if [ "$EXIT_CODE" -ne 0 ]; then
 fi
 
 # ---------- CHECK 5: flake.lock validation (WARN / HARD for pinning) ---------
-echo "[5/11] Validating flake.lock..."
+echo "[5/12] Validating flake.lock..."
 echo "  --- 5a: flake.lock committed ---"
 if ! test -f flake.lock; then
   warn "flake.lock does not exist — run: nix flake lock"
@@ -319,7 +320,7 @@ fi
 echo ""
 
 # ---------- CHECK 6: Nix formatting (WARN) -----------------------------------
-echo "[6/11] Checking Nix formatting..."
+echo "[6/12] Checking Nix formatting..."
 if command -v nixpkgs-fmt &>/dev/null; then
   if nixpkgs-fmt --check . 2>&1; then
     pass "Nix formatting OK"
@@ -332,7 +333,7 @@ fi
 echo ""
 
 # ---------- CHECK 7: Secret hygiene + backend consistency --------------------
-echo "[7/11] Secret hygiene and backend consistency checks..."
+echo "[7/12] Secret hygiene and backend consistency checks..."
 TRACKED_NIX=$(git ls-files '*.nix' 2>/dev/null || true)
 if [ -z "$TRACKED_NIX" ]; then
   warn "No tracked .nix files found — skipping secret scan"
@@ -446,7 +447,7 @@ fi
 echo ""
 
 # ---------- CHECK 8: vexos-update package builds --------------------------
-echo "[8/11] Building pkgs.vexos.vexos-update (shellcheck runs at build time)..."
+echo "[8/12] Building pkgs.vexos.vexos-update (shellcheck runs at build time)..."
 # writeShellApplication (pkgs/vexos-update/default.nix) shellchecks the script
 # as part of the build — this is a fast, standalone way to catch shellcheck
 # regressions even when CHECK 2's full dry-build is skipped (no sudo, no
@@ -461,7 +462,7 @@ fi
 echo ""
 
 # ---------- CHECK 9: shellcheck on installer scripts (HARD, WARN if no tool) -
-echo "[9/11] Running shellcheck on scripts/*.sh and scripts/lib/*.sh..."
+echo "[9/12] Running shellcheck on scripts/*.sh and scripts/lib/*.sh..."
 # These scripts run as root and partition disks, but are not built by Nix, so
 # nothing else lints them. Uses a local shellcheck if present, otherwise fetches
 # one via `nix shell`. Findings fail the run; a missing tool only warns.
@@ -482,7 +483,7 @@ fi
 echo ""
 
 # ---------- CHECK 10: server service name derivation (HARD) ------------------
-echo "[10/11] Verifying the server service name list still derives..."
+echo "[10/12] Verifying the server service name list still derives..."
 # lib/server-service-names.nix reads the service names out of the option
 # declarations so that removing a service needs no bookkeeping anywhere. If a
 # refactor breaks that derivation it must fail here, in CI — an empty list on a
@@ -518,7 +519,7 @@ rm -f "$PRUNE_ERR"
 echo ""
 
 # ---------- CHECK 11: justfile (HARD) ---------------------------------------
-echo "[11/11] Validating the justfile..."
+echo "[11/12] Validating the justfile..."
 # The justfile and just/*.just are bash that runs as root on every host, but no
 # build step touches them, so lint them here. A missing tool only warns.
 if ! command -v just &>/dev/null; then
@@ -584,6 +585,52 @@ else
       diff <(echo "$DERIVED") <(echo "$NAMES") | grep '^[<>]' | sed 's/^/    /'
       echo "    Add the service to the justfile tables, or to JUST_NOT_SERVICES here."
       EXIT_CODE=1
+    fi
+  fi
+fi
+echo ""
+
+# ---------- CHECK 12: host-local files are git-tracked on update (HARD) ------
+echo "[12/12] Checking vexos-update force-adds every host-local /etc/nixos file..."
+# vexos-update builds from git+file:///etc/nixos, which only sees tracked files.
+# A host-local file written after the initial `git init` that is missing from the
+# `for _f in ...` force-add loop silently drops out of every `just update` — NAS
+# mounts, storage pools and the media group disappear. Plain greps, no Nix
+# parsing: the loop is a single line, the wrapper names its side-files as
+# ./<file>.nix, and each script that writes a generated config assigns its
+# /etc/nixos path to a *_NIX variable (REMOTE_NIX, STORAGE_POOL_NIX, ...).
+UPDATE_PKG="pkgs/vexos-update/default.nix"
+WRAPPER_TEMPLATE="template/etc-nixos-flake.nix"
+# Always checked, even if the greps below stop finding them.
+KNOWN_SIDE_FILES="storage-remote.nix storage-pool.nix zfs-pools.nix"
+
+if [ ! -f "$UPDATE_PKG" ] || [ ! -f "$WRAPPER_TEMPLATE" ]; then
+  fail "${UPDATE_PKG} or ${WRAPPER_TEMPLATE} not found"
+  EXIT_CODE=1
+else
+  TRACKED_FILES=$(grep -E '^[[:space:]]*for _f in ' "$UPDATE_PKG" \
+    | sed -E 's/^.*for _f in //; s/;[[:space:]]*do.*$//' \
+    | tr ' ' '\n' | sed '/^$/d' | LC_ALL=C sort -u)
+  WRITTEN_FILES=$( {
+      tr ' ' '\n' <<<"$KNOWN_SIDE_FILES"
+      grep -ohE '\./[A-Za-z0-9_-]+\.nix' "$WRAPPER_TEMPLATE" | sed 's|^\./||'
+      grep -hE '^[A-Z_]+_NIX=' scripts/*.sh \
+        | grep -oE '/etc/nixos/[A-Za-z0-9_-]+\.nix' | sed 's|.*/||'
+    } | sed '/^$/d' | LC_ALL=C sort -u)
+
+  if [ -z "$TRACKED_FILES" ]; then
+    fail "no 'for _f in ...' force-add loop found in ${UPDATE_PKG} — update this check"
+    EXIT_CODE=1
+  else
+    UNTRACKED=$(LC_ALL=C comm -23 <(echo "$WRITTEN_FILES") <(echo "$TRACKED_FILES"))
+    if [ -n "$UNTRACKED" ]; then
+      fail "written into /etc/nixos but not force-added by vexos-update:"
+      echo "$UNTRACKED" | sed 's/^/         /'
+      echo "         \`just update\` would silently drop these. Add them to the"
+      echo "         'for _f in ...' loop in ${UPDATE_PKG}."
+      EXIT_CODE=1
+    else
+      pass "vexos-update force-adds all $(echo "$WRITTEN_FILES" | wc -l | tr -d ' ') host-local files"
     fi
   fi
 fi

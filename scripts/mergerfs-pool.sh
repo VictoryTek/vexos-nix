@@ -77,6 +77,23 @@ load_pool() {
     done < <(parse_entries 'parityDisks = [[]')
 }
 
+# git+file:// (used by `just update`) only sees tracked files — keep the git
+# index in step with the file written/removed, so an update neither drops the
+# pool nor resurrects a destroyed one. vexos-update commits the staged change.
+# Skipped when the file's directory is not a git repo.
+git_track_pool() {
+    local dir base
+    dir=$(dirname "$STORAGE_POOL_NIX"); base=$(basename "$STORAGE_POOL_NIX")
+    git -C "$dir" rev-parse --git-dir >/dev/null 2>&1 || return 0
+    if [ -f "$STORAGE_POOL_NIX" ]; then
+        git -C "$dir" add -f "$base" \
+            || warn "could not 'git add' $base — 'just update' would not see the change"
+    elif git -C "$dir" ls-files --error-unmatch "$base" >/dev/null 2>&1; then
+        git -C "$dir" rm -q --cached "$base" \
+            || warn "could not untrack $base — 'just update' may still see the old copy"
+    fi
+}
+
 # Same output format as create-mergerfs-pool.sh, from the B_*/P_* arrays.
 write_pool() {
     local j
@@ -115,6 +132,7 @@ write_pool() {
         echo "}"
     } > "$STORAGE_POOL_NIX" || die "could not write $STORAGE_POOL_NIX"
     ok "wrote $STORAGE_POOL_NIX"
+    git_track_pool
 }
 
 require_pool() {
@@ -467,6 +485,7 @@ action_destroy() {
         cp -a "$STORAGE_POOL_NIX" "${STORAGE_POOL_NIX}.bak"
         rm -f "$STORAGE_POOL_NIX"
         ok "removed $STORAGE_POOL_NIX (copy kept as ${STORAGE_POOL_NIX}.bak)"
+        git_track_pool
     fi
     rebuild_reminder
     echo "Until you rebuild, the old mounts are still declared and return at the next boot."

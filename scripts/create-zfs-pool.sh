@@ -328,6 +328,15 @@ fi
 } > "$ZFS_POOLS_NIX"
 ok "wrote $ZFS_POOLS_NIX (pools: ${POOL_NAMES[*]})"
 
+# git+file:// (used by `just update`) only sees tracked files, and this file is
+# written after /etc/nixos was git-initialised — track it so an update does not
+# silently drop the pool import. vexos-update commits the staged file. Skipped
+# when /etc/nixos is not a git repo.
+if git -C /etc/nixos rev-parse --git-dir >/dev/null 2>&1; then
+    git -C /etc/nixos add -f zfs-pools.nix \
+        || warn "could not 'git add' zfs-pools.nix — 'just update' would not see it"
+fi
+
 echo ""
 echo "── Register with Proxmox VE ──────────────────────────────────"
 PVE_STOR_CFG="/etc/pve/storage.cfg"

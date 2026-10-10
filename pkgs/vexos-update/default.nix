@@ -108,7 +108,11 @@ GITIGNORE
     # when they were created.  flake.nix is included here too so a wrapper
     # patched by the auto-heal step above is committed before the
     # git+file:// dry-build/switch below.
-    for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix server-services.nix features.nix bootloader.nix hardware-local.nix host.nix hostname.nix vm-platform.nix user-override.nix local.nix flake.nix; do
+    # storage-pool.nix, storage-remote.nix and zfs-pools.nix are likewise
+    # written by the storage recipes after the initial git init; left
+    # untracked they vanish from the build, unmounting the NAS shares and
+    # dropping the shared `media` group on every update.
+    for _f in hardware-configuration.nix kernel-install-override.nix stateless-user-override.nix server-services.nix features.nix bootloader.nix hardware-local.nix host.nix hostname.nix vm-platform.nix user-override.nix local.nix storage-pool.nix storage-remote.nix zfs-pools.nix flake.nix; do
       if [ -f "/etc/nixos/$_f" ]; then
         git -C /etc/nixos add -f "$_f" 2>/dev/null || true
       fi
