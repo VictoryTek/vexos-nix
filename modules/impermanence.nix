@@ -262,7 +262,8 @@ in
     # environment.etc."nixos/justfile" symlink, so `just` (and the bash alias
     # that points at /etc/nixos/justfile) fails with "no such file". Link the
     # justfile into the persistent dir; a real file there (e.g. a repo
-    # checkout) is left alone.
+    # checkout) is left alone. The justfile imports just/*.just relative to
+    # its own location, so the just/ directory is linked alongside it.
     system.activationScripts.vexosJustfile = {
       deps = [ "etc" ];
       text = ''
@@ -270,6 +271,10 @@ in
         if [ ! -e "$JF" ] || [ -L "$JF" ]; then
           ${pkgs.coreutils}/bin/mkdir -p "${cfg.persistentPath}/etc/nixos"
           ${pkgs.coreutils}/bin/ln -sfn ${../justfile} "$JF"
+        fi
+        JD="${cfg.persistentPath}/etc/nixos/just"
+        if [ ! -e "$JD" ] || [ -L "$JD" ]; then
+          ${pkgs.coreutils}/bin/ln -sfn ${../just} "$JD"
         fi
       '';
     };

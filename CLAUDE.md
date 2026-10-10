@@ -180,6 +180,9 @@ Package Manager(s): **Nix (nix CLI / nix flake)**
   - `home/` — shared home-manager sub-modules
   - `pkgs/` — custom packages not available in nixpkgs (overlays applied inline in `flake.nix` and `pkgs/default.nix`)
   - `scripts/` — utility and validation scripts, including `scripts/preflight.sh`
+  - `just/` — the justfile's recipes (`*.just`, imported by the root `justfile`) and
+    `lib.sh` shared shell helpers; deployed beside `/etc/nixos/justfile`. Recipe names
+    and parameter order are a contract with VexPortal (`just --dump`)
   - `files/` — static assets (backgrounds, pixmaps, Plymouth themes per role)
   - `wallpapers/` — wallpaper files per role
   - `template/` — template configs for new host bootstrapping

@@ -7,17 +7,19 @@
 # Usage:   Run from repository root: bash scripts/preflight.sh
 #
 # Stages:
-#   [0/9] Nix + jq availability
-#   [1/9] nix flake show (structure validation — safe, low RAM)
-#         + ci.yml matrix matches the flake's nixosConfigurations
-#   [2/9] Dry-build current machine variant only (full CI validation handled by GitHub Actions)
-#   [3/9] hardware-configuration.nix not tracked
-#   [4/9] system.stateVersion (all 6 configuration-*.nix files)
-#   [5/9] flake.lock validation (committed, pinned, freshness)
-#   [6/9] Nix formatting
-#   [7/9] Secret scan
-#   [8/9] vexos-update package builds (shellcheck runs at build time)
-#   [9/9] shellcheck over scripts/*.sh and scripts/lib/*.sh (installer code)
+#   [0/11]  Nix + jq availability
+#   [1/11]  nix flake show (structure validation — safe, low RAM)
+#           + ci.yml matrix matches the flake's nixosConfigurations
+#   [2/11]  Dry-build current machine variant only (full CI validation handled by GitHub Actions)
+#   [3/11]  hardware-configuration.nix not tracked
+#   [4/11]  system.stateVersion (all 6 configuration-*.nix files)
+#   [5/11]  flake.lock validation (committed, pinned, freshness)
+#   [6/11]  Nix formatting
+#   [7/11]  Secret scan
+#   [8/11]  vexos-update package builds (shellcheck runs at build time)
+#   [9/11]  shellcheck over scripts/*.sh and scripts/lib/*.sh (installer code)
+#   [10/11] Server service name list derives from the option declarations
+#   [11/11] justfile: parses, shellcheck over recipes, service tables in sync
 #
 # NOTE (Windows users): This script must be made executable on the NixOS host.
 #   Option A — chmod:
@@ -48,7 +50,7 @@ echo "  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "========================================================"
 echo ""
 # ---------- CHECK 0: Nix + jq availability (HARD for nix, WARN for jq) ------
-echo "[0/10] Checking for required tools..."
+echo "[0/11] Checking for required tools..."
 if ! command -v nix &>/dev/null; then
   echo ""
   fail "nix is not installed or not in PATH"
@@ -79,7 +81,7 @@ else
 fi
 echo ""
 # ---------- CHECK 1: flake structure + CI matrix coverage --------------------
-echo "[1/10] Validating flake structure..."
+echo "[1/11] Validating flake structure..."
 
 echo "  --- 1a: nix flake show (structure validation — safe, low RAM) ---"
 # NOTE: nix flake check is FORBIDDEN in this project — it evaluates all 30+
@@ -153,7 +155,7 @@ fi
 echo ""
 
 # ---------- CHECK 2: nixos-rebuild dry-build (current variant only) ----------
-echo "[2/10] Verifying system closure (dry-build current machine variant)..."
+echo "[2/11] Verifying system closure (dry-build current machine variant)..."
 # NOTE: Dry-building all 30 variants in a loop is FORBIDDEN in this project.
 # Each evaluation loads a full nixpkgs closure into RAM. Running 30 sequentially
 # still risks OOM on a 32GB machine and takes 30+ minutes.
@@ -195,7 +197,7 @@ fi
 echo ""
 
 # ---------- CHECK 3: hardware-configuration.nix not tracked (HARD) -----------
-echo "[3/10] Checking hardware-configuration.nix is not tracked in git..."
+echo "[3/11] Checking hardware-configuration.nix is not tracked in git..."
 if git ls-files hardware-configuration.nix | grep -q .; then
   fail "hardware-configuration.nix is tracked in git — remove it immediately"
   EXIT_CODE=1
@@ -205,7 +207,7 @@ fi
 echo ""
 
 # ---------- CHECK 4: system.stateVersion present (HARD) ----------------------
-echo "[4/10] Verifying system.stateVersion in all configuration files..."
+echo "[4/11] Verifying system.stateVersion in all configuration files..."
 STATEVER_FAIL=0
 for CFG in \
   configuration-desktop.nix \
@@ -239,7 +241,7 @@ if [ "$EXIT_CODE" -ne 0 ]; then
 fi
 
 # ---------- CHECK 5: flake.lock validation (WARN / HARD for pinning) ---------
-echo "[5/10] Validating flake.lock..."
+echo "[5/11] Validating flake.lock..."
 echo "  --- 5a: flake.lock committed ---"
 if ! test -f flake.lock; then
   warn "flake.lock does not exist — run: nix flake lock"
@@ -317,7 +319,7 @@ fi
 echo ""
 
 # ---------- CHECK 6: Nix formatting (WARN) -----------------------------------
-echo "[6/10] Checking Nix formatting..."
+echo "[6/11] Checking Nix formatting..."
 if command -v nixpkgs-fmt &>/dev/null; then
   if nixpkgs-fmt --check . 2>&1; then
     pass "Nix formatting OK"
@@ -330,7 +332,7 @@ fi
 echo ""
 
 # ---------- CHECK 7: Secret hygiene + backend consistency --------------------
-echo "[7/10] Secret hygiene and backend consistency checks..."
+echo "[7/11] Secret hygiene and backend consistency checks..."
 TRACKED_NIX=$(git ls-files '*.nix' 2>/dev/null || true)
 if [ -z "$TRACKED_NIX" ]; then
   warn "No tracked .nix files found — skipping secret scan"
@@ -444,7 +446,7 @@ fi
 echo ""
 
 # ---------- CHECK 8: vexos-update package builds --------------------------
-echo "[8/10] Building pkgs.vexos.vexos-update (shellcheck runs at build time)..."
+echo "[8/11] Building pkgs.vexos.vexos-update (shellcheck runs at build time)..."
 # writeShellApplication (pkgs/vexos-update/default.nix) shellchecks the script
 # as part of the build — this is a fast, standalone way to catch shellcheck
 # regressions even when CHECK 2's full dry-build is skipped (no sudo, no
@@ -459,7 +461,7 @@ fi
 echo ""
 
 # ---------- CHECK 9: shellcheck on installer scripts (HARD, WARN if no tool) -
-echo "[9/10] Running shellcheck on scripts/*.sh and scripts/lib/*.sh..."
+echo "[9/11] Running shellcheck on scripts/*.sh and scripts/lib/*.sh..."
 # These scripts run as root and partition disks, but are not built by Nix, so
 # nothing else lints them. Uses a local shellcheck if present, otherwise fetches
 # one via `nix shell`. Findings fail the run; a missing tool only warns.
@@ -480,7 +482,7 @@ fi
 echo ""
 
 # ---------- CHECK 10: server service name derivation (HARD) ------------------
-echo "[10/10] Verifying the server service name list still derives..."
+echo "[10/11] Verifying the server service name list still derives..."
 # lib/server-service-names.nix reads the service names out of the option
 # declarations so that removing a service needs no bookkeeping anywhere. If a
 # refactor breaks that derivation it must fail here, in CI — an empty list on a
@@ -513,6 +515,78 @@ else
   EXIT_CODE=1
 fi
 rm -f "$PRUNE_ERR"
+echo ""
+
+# ---------- CHECK 11: justfile (HARD) ---------------------------------------
+echo "[11/11] Validating the justfile..."
+# The justfile and just/*.just are bash that runs as root on every host, but no
+# build step touches them, so lint them here. A missing tool only warns.
+if ! command -v just &>/dev/null; then
+  warn "just not available — skipping justfile checks"
+elif ! JUST_DUMP=$(just --justfile justfile --dump --dump-format json 2>&1); then
+  fail "justfile does not parse:"
+  echo "$JUST_DUMP"
+  EXIT_CODE=1
+else
+  pass "justfile parses ($(jq '.recipes | length' <<<"$JUST_DUMP") recipes)"
+
+  # 11a: shellcheck every shebang recipe. Each body becomes a script with
+  # just's {{...}} interpolations replaced by an exported placeholder variable.
+  if [ "${#SHELLCHECK_CMD[@]}" -eq 0 ]; then
+    warn "shellcheck not available — skipping recipe lint"
+  else
+    RECIPE_DIR=$(mktemp -d)
+    jq -r '.recipes | to_entries[] | select(.value.shebang) | .key' <<<"$JUST_DUMP" |
+      while read -r r; do
+        jq -r --arg r "$r" '.recipes[$r].body
+            | map(map(if type == "string" then . else "${JUST_INTERP}" end) | join(""))
+            | join("\n")' <<<"$JUST_DUMP" |
+          sed '1a export JUST_INTERP="x y"' > "$RECIPE_DIR/$r.sh"
+      done
+    if (cd "$RECIPE_DIR" && "${SHELLCHECK_CMD[@]}" -S warning ./*.sh) &&
+       "${SHELLCHECK_CMD[@]}" -S warning just/lib.sh; then
+      pass "shellcheck -S warning clean ($(find "$RECIPE_DIR" -name '*.sh' | wc -l) recipes + just/lib.sh)"
+    else
+      fail "shellcheck reported findings in justfile recipes — see output above"
+      EXIT_CODE=1
+    fi
+    rm -rf "$RECIPE_DIR"
+  fi
+
+  # 11b: the hand-kept server service tables must name the same services.
+  just_var() { jq -r --arg n "$1" '.assignments[$n].value' <<<"$JUST_DUMP"; }
+  NAMES=$(just_var _server_service_names | tr ' ' '\n' | sed '/^$/d' | sort)
+  CATALOG=$(just_var _service_catalog | awk -F'|' 'NF >= 2 { print $2 }' | sort)
+  RUNTIME=$(just_var _service_runtime | awk -F'|' 'NF >= 2 { sub(/^[ \t]+/, "", $1); print $1 }' | sort)
+  if [ "$NAMES" = "$CATALOG" ] && [ "$NAMES" = "$RUNTIME" ]; then
+    pass "_server_service_names, _service_catalog and _service_runtime agree ($(wc -l <<<"$NAMES") services)"
+  else
+    fail "server service tables disagree (< _server_service_names, > other table):"
+    echo "  _service_catalog:"; diff <(echo "$NAMES") <(echo "$CATALOG") | grep '^[<>]' | sed 's/^/    /'
+    echo "  _service_runtime:"; diff <(echo "$NAMES") <(echo "$RUNTIME") | grep '^[<>]' | sed 's/^/    /'
+    EXIT_CODE=1
+  fi
+
+  # 11c: …and must cover every service module. Option roots under
+  # vexos.server that `just service` deliberately does not manage are listed
+  # here; anything else missing from the justfile is drift.
+  JUST_NOT_SERVICES="alertmanager bookshelf cloudflare-ddns fluent-bit nasSync proxy storage"
+  if [ -z "${PRUNE_BIN:-}" ] || [ ! -f "${PRUNE_BIN:-}" ]; then
+    warn "derived service list unavailable (check 10 failed) — skipping module coverage check"
+  else
+    DERIVED=$(sed -n 's/^VALID="\(.*\)"$/\1/p' "$PRUNE_BIN" | head -1 | tr ' ' '\n' |
+      sed 's/^kernelBuilder$/kernel-builder/' |
+      grep -vxF -f <(tr ' ' '\n' <<<"$JUST_NOT_SERVICES") | sed '/^$/d' | sort)
+    if [ "$DERIVED" = "$NAMES" ]; then
+      pass "justfile manages every server module (excluding: $JUST_NOT_SERVICES)"
+    else
+      fail "justfile service list does not match modules/server (< modules, > justfile):"
+      diff <(echo "$DERIVED") <(echo "$NAMES") | grep '^[<>]' | sed 's/^/    /'
+      echo "    Add the service to the justfile tables, or to JUST_NOT_SERVICES here."
+      EXIT_CODE=1
+    fi
+  fi
+fi
 echo ""
 
 # ---------- Summary ----------------------------------------------------------

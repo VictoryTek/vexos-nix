@@ -345,6 +345,36 @@ drift test passes.
   done together with the helper refactor), `[confirm]` on reboot/shutdown (needs
   VexPortal coordination), and `[arg(help/pattern)]`.
 
+**Tier 3 — decisions taken during implementation**
+- D1: VexPortal parses `_service_catalog` as exactly `group|name|description` and reads
+  `_feature_names` as a literal string, so neither can change shape and the name list cannot
+  be computed. Instead, the units and health-URL `case` blocks merge into one
+  `_service_runtime` table (generated from the old cases, verified identical for all 56
+  names), and preflight stage 11 enforces that names = catalog = runtime = modules
+  (minus an explicit `JUST_NOT_SERVICES` list). That check turns Tier 1's B4 drift into a
+  build failure. `_service-info` text stays hand-written because it is prose with special cases.
+- D2: `_require-ai`, `_require-nixos`, `_require-known-service`, `_confirm-typed`, and
+  `_pick-target` (private recipes), plus `just/lib.sh` (`nix_set`, `nix_is_set`,
+  `seed_from_template`) replacing 14 replace-or-append `sed` blocks and 3 template-seeding
+  copies. Left as-is because they are different operations: `fix-flake` (patches Nix code),
+  `_feature-disable` (comments a line out), `_service-disable` (exact true→false), and
+  `set-hostname` (multi-file). A sandbox harness (temp `/etc/nixos`, stub sudo, pty answers)
+  compared the old and new enable flows for 12 services and feature/plex-pass/disable. All
+  evaluate to identical Nix values; the one difference is a fix: a `|` or `&` in a typed
+  value no longer crashes `sed` mid-write.
+- D3: `import` (not `mod`) into `just/*.just`. `just` resolves imports relative to the
+  symlink, not its store target, so `/etc/nixos/just` is deployed via `environment.etc` and
+  relinked for stateless in `modules/impermanence.nix`. Root-file recipes list first and then
+  each import in order, so the root holds only private infrastructure and the imports follow
+  group order. The full `--dump` and `--list` output was verified identical before and after the move.
+- D4: every raw `{{param}}` was replaced with `quote()`, or with positional arguments for
+  `_run-storage-script`. An injected `$(…)` that HEAD executed is now inert. `[arg(pattern)]` was
+  added on 25 recipes; each pattern is a superset of VexPortal's own validators, and optional
+  parameters include the empty alternative because patterns also apply to defaults.
+- D5: all 37 nested calls use `_just` (`just_executable()` + `--justfile justfile()`).
+- Still not done: unified `✓/⚠/✗` output vocabulary (~300 lines of user-visible text for
+  little gain), and `[confirm]` on reboot/shutdown (VexPortal's daemon would have to pass `--yes`).
+
 **Tier 3 — Structure (larger)**
 Single service catalog (D1), shared helpers (D2), `import` split (D3),
 `positional-arguments`/`quote()` + `[arg pattern]` (D4), `just_executable()` (D5),

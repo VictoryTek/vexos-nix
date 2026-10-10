@@ -6,6 +6,9 @@
   # Expose the justfile at /etc/nixos/justfile so the `just` alias in
   # bash-common.nix works on all roles regardless of working directory.
   environment.etc."nixos/justfile".source = ../justfile;
+  # The justfile imports just/*.just relative to its own path (/etc/nixos),
+  # not to the store file it links to — so the directory must sit beside it.
+  environment.etc."nixos/just".source = ../just;
   environment.etc."nixos/scripts".source = ../scripts;
   environment.etc."nixos/template/server-services.nix".source = ../template/server-services.nix;
   environment.etc."nixos/template/features.nix".source = ../template/features.nix;
