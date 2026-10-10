@@ -399,8 +399,11 @@ switch role="" variant="" flake="" de="" vmp="":
         exit 0
     fi
 
-    if ! sudo nixos-rebuild switch --impure --flake "path:${_flake_dir}#${TARGET}"; then
-        _rc=$?
+    # `cmd || _rc=$?`, not `if ! cmd; then _rc=$?` — inside that `if`, $? is
+    # the status of the negation (always 0), which made a failed switch exit 0.
+    _rc=0
+    sudo nixos-rebuild switch --impure --flake "path:${_flake_dir}#${TARGET}" || _rc=$?
+    if [ $_rc -ne 0 ]; then
         if [ $_rc -eq 4 ]; then
             echo ""
             echo "Note: nixos-rebuild exited $_rc — one or more units could not be stopped or restarted."
@@ -614,7 +617,7 @@ _bootloader-cleanup:
     sudo rm -rf /boot/EFI/systemd /boot/loader
     echo "✓ Cleanup complete."
 
-# Dry-run build without switching — useful for testing config changes.
+# Build a target without activating it — useful for testing config changes.
 # Example: just build desktop amd
 [group('System Build & Deploy')]
 build role variant flake="":
@@ -741,16 +744,18 @@ update role="" variant="": _kernel-cache-guard
             echo "  2) stateless"
             echo "  3) htpc"
             echo "  4) server  (GUI or Headless)"
+            echo "  5) vanilla"
             echo ""
             while [ -z "$ROLE" ]; do
-                printf "Choice [1-4] or name: "
+                printf "Choice [1-5] or name: "
                 read -r INPUT
                 case "${INPUT,,}" in
                     1|desktop)   ROLE="desktop"   ;;
                     2|stateless) ROLE="stateless" ;;
                     3|htpc)      ROLE="htpc"      ;;
                     4|server)    ROLE="server"    ;;
-                    *) echo "Invalid — enter 1-4 or desktop/stateless/htpc/server" ;;
+                    5|vanilla)   ROLE="vanilla"   ;;
+                    *) echo "Invalid — enter 1-5 or desktop/stateless/htpc/server/vanilla" ;;
                 esac
             done
 
@@ -816,6 +821,11 @@ update role="" variant="": _kernel-cache-guard
         fi
 
         target="vexos-${ROLE}-${VARIANT}"
+
+        # vexos-update takes no target argument — it reads this stamp and stops
+        # if it is missing. Restore it so the update can run; the next
+        # activation rewrites it with its own copy.
+        printf '%s\n' "$target" | sudo tee /etc/nixos/vexos-variant >/dev/null
     fi
 
     echo ""
@@ -1748,17 +1758,17 @@ _feature-disable feature: _require-desktop-role
 # Available server service module names.
 # Keep in sync with _service_catalog below, modules/server/default.nix, and
 # template/server-services.nix.
-_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy chaptarr cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy mealie nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism plex podman portainer prometheus proxmox scrutiny searxng seerr syncthing tautulli traefik unbound uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
+_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy chaptarr cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy listenarr mealie mediamanager nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism plex podman portainer prometheus proxmox scrutiny searxng seerr sportarr syncthing tautulli tdarr traefik unbound uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
 
-# Server service catalog — single source of truth for both `just
-# available-services` (catalog view) and `just service list` (per-host status).
+# Server service catalog — the source for `just service available` (catalog view).
 # One line per module: group|name|description. Groups and order are rendered
-# verbatim by both recipes. Descriptions must not contain a '|'.
+# verbatim. Descriptions must not contain a '|'.
 # Keep in sync with _server_service_names above, modules/server/default.nix,
 # and template/server-services.nix.
 _service_catalog := '''
     Books & Reading|chaptarr|Audiobook & ebook collection manager (Readarr successor)
     Books & Reading|grimmory|Self-hosted ebook/comic/audiobook library
+    Books & Reading|listenarr|Audiobook collection manager (Sonarr/Radarr-style)
     Files & Storage|immich|Self-hosted photo & video backup
     Files & Storage|nextcloud|File sync, sharing & collaboration suite
     Files & Storage|photoprism|AI-powered photo management & sharing
@@ -1783,8 +1793,11 @@ _service_catalog := '''
     Media|jellyfin|Open-source media streaming server
     Media|plex|Personal media library & streaming server
     Media|tautulli|Monitoring & analytics for Plex Media Server
+    Media|tdarr|Distributed transcode automation (FFmpeg/HandBrake)
     Media Requests & Automation|arr|*arr suite — Sonarr, Radarr, Lidarr, Prowlarr, SABnzbd, Maintainerr
+    Media Requests & Automation|mediamanager|TV/movie request & download manager
     Media Requests & Automation|seerr|Media request manager (Jellyfin, Plex, Emby)
+    Media Requests & Automation|sportarr|Sonarr-style PVR for sports events
     Monitoring & Admin|cockpit|Web-based Linux server management console
     Monitoring & Admin|nas|Cockpit + NAS plugins (Samba, NFS, ZFS)
     Monitoring & Admin|netdata|Real-time performance & health monitoring
@@ -2140,8 +2153,11 @@ backup-plex dest="": _require-server-role
 
     DEST="{{dest}}"
     if [ -z "$DEST" ]; then
-        DEST="./plex-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+        DEST="plex-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
     fi
+    # Recipes run in /etc/nixos (the `just` alias's --working-directory), so
+    # resolve a relative path against the directory the command was typed in.
+    case "$DEST" in /*) ;; *) DEST="{{invocation_directory()}}/$DEST" ;; esac
 
     echo "Stopping plex.service..."
     sudo systemctl stop plex.service
@@ -2165,6 +2181,8 @@ restore-plex tarball: _require-server-role
     set -euo pipefail
 
     TARBALL="{{tarball}}"
+    # Relative to where the command was typed, not /etc/nixos (see backup-plex).
+    case "$TARBALL" in /*) ;; *) TARBALL="{{invocation_directory()}}/$TARBALL" ;; esac
     if [ ! -f "$TARBALL" ]; then
         echo "error: '$TARBALL' not found." >&2
         exit 1
@@ -2444,6 +2462,10 @@ _service-info service="":
         joplin)          printf "  %-18s  Web UI  http://<tailnet-host>:22300   (also reachable from the LAN)\n"                     "$1" ;;
         kiji-proxy)      printf "  %-18s  Proxy   http://127.0.0.1:8080   |  Health: http://localhost:8080/health\n"    "$1" ;;
         mealie)          printf "  %-18s  Web UI  http://<server-ip>:9010\n"                                           "$1" ;;
+        listenarr)       printf "  %-18s  Web UI  http://<server-ip>:4545\n"                                           "$1" ;;
+        mediamanager)    printf "  %-18s  Web UI  http://<server-ip>:8000\n"                                           "$1" ;;
+        sportarr)        printf "  %-18s  Web UI  http://<server-ip>:1867\n"                                           "$1" ;;
+        tdarr)           printf "  %-18s  Web UI  http://<server-ip>:8265\n"                                           "$1" ;;
         nextcloud)       printf "  %-18s  Web UI  http://nextcloud.local     (Nginx frontend)\n"                       "$1" ;;
         nginx)           printf "  %-18s  Ports :80, :443\n"                                                           "$1" ;;
         ntfy)            printf "  %-18s  Web UI  http://<server-ip>:2586\n"                                           "$1" ;;
@@ -2527,12 +2549,16 @@ _service-info service="":
     fi
 
 # Map a service name to its systemd unit(s) — shared by status and restart.
+# Only units that exist on this host are printed: some services list both a
+# docker- and a podman- unit, or an optional one (tdarr's local node), and
+# `systemctl restart` fails outright if any unit it is given does not exist.
 # Prints space-separated unit names (without .service) to stdout.
 [private]
 _service-units service:
     #!/usr/bin/env bash
     set -euo pipefail
     SERVICE="{{service}}"
+    _candidates() {
     case "$SERVICE" in
       adguard)        echo "adguardhome" ;;
       arcane)         echo "docker-arcane podman-arcane" ;;
@@ -2559,10 +2585,12 @@ _service-units service:
       jellyfin)       echo "jellyfin" ;;
       joplin)         echo "docker-joplin-server docker-joplin-db" ;;
       kiji-proxy)     echo "kiji-proxy" ;;
-      mealie)         echo "mealie" ;;
+      listenarr)      echo "docker-listenarr" ;;
+      mealie)         echo "docker-mealie" ;;
+      mediamanager)   echo "docker-mediamanager docker-mediamanager-db" ;;
       nextcloud)      echo "phpfpm-nextcloud nginx" ;;
       nginx)          echo "nginx" ;;
-      ntfy)           echo "ntfy" ;;
+      ntfy)           echo "ntfy-sh" ;;
       seerr)          echo "seerr" ;;
       papermc)        echo "minecraft-server" ;;
       plex)           echo "plex" ;;
@@ -2580,15 +2608,23 @@ _service-units service:
       code-server)    echo "docker-code-server" ;;
       netdata)        echo "netdata" ;;
       nginx-proxy-manager) echo "docker-nginx-proxy-manager" ;;
-      paperless)      echo "paperless" ;;
+      paperless)      echo "paperless-web paperless-scheduler paperless-task-queue paperless-consumer" ;;
       photoprism)     echo "docker-photoprism" ;;
       portainer)      echo "docker-portainer podman-portainer" ;;
       prometheus)     echo "prometheus" ;;
       proxmox)        echo "pve-cluster pvedaemon pveproxy pvestatd pvescheduler" ;;
       unbound)        echo "unbound" ;;
       zigbee2mqtt)    echo "zigbee2mqtt" ;;
+      sportarr)       echo "docker-sportarr" ;;
+      tdarr)          echo "tdarr-server tdarr-node-local" ;;
       *)              echo "$SERVICE" ;;
     esac
+    }
+    _found=""
+    for unit in $(_candidates); do
+        systemctl list-unit-files "${unit}.service" &>/dev/null && _found="${_found:+$_found }$unit"
+    done
+    echo "$_found"
 
 # Show systemctl status and HTTP reachability for a server service.
 # Usage: just service status jellyfin
@@ -2606,6 +2642,10 @@ _service-status service: _require-server-role
     fi
 
     UNITS=$(just _service-units "$SERVICE")
+    if [ -z "$UNITS" ]; then
+        echo ""
+        echo "No systemd units for '$SERVICE' exist on this host — is it enabled and rebuilt?"
+    fi
 
     # Map service → HTTP check URL(s)
     # Format for URLS: space-separated http://localhost:<port> entries (empty = no HTTP check)
@@ -2635,6 +2675,10 @@ _service-status service: _require-server-role
       joplin)         URLS="http://localhost:22300" ;;
       kiji-proxy)     URLS="http://localhost:8080/health" ;;
       mealie)         URLS="http://localhost:9010" ;;
+      listenarr)      URLS="http://localhost:4545" ;;
+      mediamanager)   URLS="http://localhost:8000" ;;
+      sportarr)       URLS="http://localhost:1867" ;;
+      tdarr)          URLS="http://localhost:8265" ;;
       nextcloud)      URLS="http://localhost:80" ;;
       nginx)          URLS="http://localhost:80" ;;
       ntfy)           URLS="http://localhost:2586" ;;
@@ -2708,6 +2752,10 @@ _service-restart service: _require-server-role
     fi
 
     UNITS=$(just _service-units "$SERVICE")
+    if [ -z "$UNITS" ]; then
+        echo "error: no systemd units for '$SERVICE' exist on this host — is it enabled and rebuilt?" >&2
+        exit 1
+    fi
     UNIT_SERVICES=""
     for unit in $UNITS; do
         UNIT_SERVICES="$UNIT_SERVICES ${unit}.service"
@@ -2748,6 +2796,19 @@ _service-enable service: _require-server-role
         echo "error: unknown service '$SERVICE'"
         echo "available: $VALID_SERVICES"
         exit 1
+    fi
+
+    # These services ask questions below. Without a terminal (VexPortal's
+    # daemon runs recipes with stdin closed) `read` hits EOF and set -e aborts
+    # AFTER the enable flag is already written, leaving server-services.nix
+    # half-configured — so refuse before writing anything.
+    if [ ! -t 0 ]; then
+        case "$SERVICE" in
+            arr|plex|proxmox|backup|zigbee2mqtt|mediamanager)
+                echo "error: enabling '$SERVICE' asks questions — run 'just service enable $SERVICE' in a terminal." >&2
+                exit 1
+                ;;
+        esac
     fi
 
     # ── Storage-tier advisory ────────────────────────────────────────────────
@@ -2814,9 +2875,9 @@ _service-enable service: _require-server-role
 
     if [ ! -f "$SVC_FILE" ]; then
         echo "Creating $SVC_FILE from template..."
-        # {{justfile_directory()}} is the unresolved symlink dir (~), so
-        # ~/template/server-services.nix is deployed by home-server.nix.
-        # Fall back to the repo checkout locations for dev machines.
+        # {{justfile_directory()}} is the unresolved symlink dir (/etc/nixos),
+        # where template/server-services.nix is deployed by
+        # modules/packages-common.nix. Fall back to the repo checkout for dev machines.
         _jf_dir="{{justfile_directory()}}"
         TEMPLATE_SRC=""
         for _candidate in "$_jf_dir" "/etc/nixos" "$HOME/Projects/vexos-nix"; do
@@ -3008,6 +3069,25 @@ _service-enable service: _require-server-role
             sudo sed -i -E "s|^(\s*)#?\s*(${PW_OPTION//./\\.})\s*=\s*\"[^\"]*\"\s*;|\1${PW_OPTION} = \"${_backup_pw_file}\";|" "$SVC_FILE"
         else
             sudo sed -i "s|${REPO_OPTION} = \"${_backup_repo}\";|${REPO_OPTION} = \"${_backup_repo}\";\n  ${PW_OPTION} = \"${_backup_pw_file}\";|" "$SVC_FILE"
+        fi
+    fi
+
+    # MediaManager admin e-mail — required by the build assertion (registering
+    # with one of these addresses is what makes an account admin).
+    if [ "$SERVICE" = "mediamanager" ]; then
+        MM_OPTION="vexos.server.mediamanager.adminEmails"
+        _mm_email=""
+        while [ -z "$_mm_email" ]; do
+            read -r -p "  Admin e-mail (register with this address to become admin): " _mm_email
+            if ! echo "$_mm_email" | grep -qP '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
+                echo "  Invalid e-mail address."
+                _mm_email=""
+            fi
+        done
+        if grep -qP "^\s*#?\s*${MM_OPTION//./\\.}\s*=" "$SVC_FILE" 2>/dev/null; then
+            sudo sed -i -E "s|^(\s*)#?\s*(${MM_OPTION//./\\.})\s*=.*;.*$|\1${MM_OPTION} = [ \"${_mm_email}\" ];|" "$SVC_FILE"
+        else
+            sudo sed -i "s|${OPTION} = true;|${OPTION} = true;\n  ${MM_OPTION} = [ \"${_mm_email}\" ];|" "$SVC_FILE"
         fi
     fi
 
@@ -3292,10 +3372,33 @@ _service-enable service: _require-server-role
         echo "  Note:     If clients get 'invalid origin' sync errors, set vexos.server.joplin.baseUrl to your tailnet's fully-qualified MagicDNS name."
         ;;
       mealie)
-        echo "  Service:  mealie.service"
+        echo "  Service:  docker-mealie.service"
         echo "  Web UI:   http://<server-ip>:9010"
         echo "  About:    Self-hosted recipe manager and meal planner with ingredient parsing and recipe import from URLs."
         echo "  Login:    Default changeme@example.com / MyPassword — change immediately after first login."
+        ;;
+      listenarr)
+        echo "  Service:  docker-listenarr.service"
+        echo "  Web UI:   http://<server-ip>:4545"
+        echo "  About:    Audiobook collection manager (Sonarr/Radarr-style, for audiobooks) — single container."
+        echo "  Note:     Upstream publishes only rolling canary builds."
+        ;;
+      mediamanager)
+        echo "  Services: docker-mediamanager.service  docker-mediamanager-db.service"
+        echo "  Web UI:   http://<server-ip>:8000"
+        echo "  About:    TV/movie request and download manager (two-container stack: app + dedicated Postgres)."
+        echo "  Login:    Register with the admin e-mail entered above — that account becomes admin."
+        ;;
+      sportarr)
+        echo "  Service:  docker-sportarr.service"
+        echo "  Web UI:   http://<server-ip>:1867"
+        echo "  About:    Sonarr-style PVR for sports — events, leagues and fights."
+        ;;
+      tdarr)
+        echo "  Services: tdarr-server.service  tdarr-node-local.service"
+        echo "  Web UI:   http://<server-ip>:8265   (node API on :8266)"
+        echo "  About:    Distributed transcode automation (FFmpeg/HandBrake), with a local worker node by default."
+        echo "  Warning:  Tdarr rewrites files in place by default — test on a copy of a library first."
         ;;
       nextcloud)
         echo "  Service:  phpfpm-nextcloud.service (fronted by Nginx)"
@@ -3510,7 +3613,7 @@ _service-enable service: _require-server-role
         echo "  Login:    Default admin@example.com / changeme — change immediately after first login."
         ;;
       paperless)
-        echo "  Service:  paperless.service"
+        echo "  Services: paperless-web.service (+ paperless-scheduler, -consumer, -task-queue)"
         echo "  Web UI:   http://<server-ip>:28981"
         echo "  Login:    No default password — create the admin first: sudo paperless-manage createsuperuser"
         echo "  About:    Document management system with OCR, tagging, full-text search, and automatic consumption."
@@ -3533,7 +3636,7 @@ _service-enable service: _require-server-role
         echo "  Service:  vexboard.service"
         echo "  Web UI:   http://<server-ip>:7280"
         echo "  About:    VexOS Server dashboard — enable explicitly with 'just service enable vexboard'."
-        echo "  Note:     To disable: set 'vexos.server.vexboard.enable = false;' in server-services.nix."
+        echo "  Note:     To disable: just service disable vexboard"
         echo "  Secret:   Set VEXBOARD_AUTH__SECRET via vexos.server.vexboard.secretFile for production use."
         echo "            Generate a secret:  openssl rand -base64 48"
         ;;
@@ -3567,10 +3670,8 @@ _service-enable service: _require-server-role
         else
           sudo sed -i "s|${OPTION} = true;|${OPTION} = true;\n  ${Z2M_OPTION} = \"${Z2M_PORT}\";|" "$SVC_FILE"
         fi
-        echo "✓ Enabled: zigbee2mqtt (serial port: ${Z2M_PORT})"
-        echo "  → Run 'just rebuild' to apply."
-        echo ""
         echo "  Service:  zigbee2mqtt.service"
+        echo "  Serial:   ${Z2M_PORT}"
         echo "  Web UI:   http://<server-ip>:8088"
         echo "  About:    Bridges Zigbee devices to MQTT, enabling control without vendor clouds."
         echo "  Note:     Set vexos.server.zigbee2mqtt.serialPort to your coordinator device (default: /dev/ttyUSB0)."
@@ -3957,8 +4058,18 @@ _kernel-status:
     fi
 
     echo ""
+    # pkgs/ is not deployed next to /etc/nixos/justfile, so fall back to the
+    # locked vexos-nix flake input — the pins this host actually builds.
+    PKGS_DIR="{{justfile_directory()}}/pkgs"
+    if [ ! -d "$PKGS_DIR/kernels" ]; then
+        _src=$(nix eval --impure --raw --expr \
+            '(builtins.getFlake "git+file:///etc/nixos").inputs.vexos-nix.outPath' 2>/dev/null || true)
+        PKGS_DIR="${_src}/pkgs"
+    fi
     echo "Pinned kernel versions (pkgs/kernels/*/version.json):"
-    for f in {{justfile_directory()}}/pkgs/kernels/*/version.json; do
+    _pins=("$PKGS_DIR"/kernels/*/version.json)
+    [ "${#_pins[@]}" -gt 0 ] || echo "  (could not locate pkgs/kernels)"
+    for f in "${_pins[@]}"; do
         k=$(basename "$(dirname "$f")")
         printf "  %-10s %s\n" "$k" "$(grep -oP '\"tag\"\s*:\s*\"\K[^\"]+' "$f" 2>/dev/null || echo '?')"
     done
