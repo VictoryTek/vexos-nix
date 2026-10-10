@@ -326,6 +326,25 @@ public with real groups, `--list --unsorted` default, `_menu` colour/width/name-
 output helpers, `just pick`. Verify: `just --list` screenshot before/after; VexPortal
 drift test passes.
 
+**Tier 2 — decisions taken during implementation**
+- VexPortal reads only `private`, `doc`, and `parameters` from the dump (not `group`), and uses
+  `doc` only in drift messages. It reports any *public* recipe that its catalog neither
+  starts nor excludes as drift ("VexPortal is out of step"). Therefore:
+  - `service`, `plex-pass`, `zfs-pool`, `mergerfs-pool` become public: the catalog already starts all four.
+  - `prune-services` stays private (not in the catalog).
+  - The new `pick` chooser is **private**, callable by name and advertised in the list heading.
+- Existing group names are kept (renaming is churn with no reader benefit). New groups:
+  `Server` (the formerly ungrouped server recipes, plus `service`, `plex-pass`) and `Storage`
+  (`remote-storage`, `zfs-pool`, `mergerfs-pool`). `kernel` joins `Binary Cache`.
+- Every public recipe gets a one-line `[doc]`, with signature usage removed (the list already
+  shows parameters) and a "(menu)" suffix on commands that open a menu when run bare.
+- `_menu`: a 4th item field `warn` marks disruptive actions (⚠). Read-only `stay` actions
+  are left unmarked as the safe default. Colour only when stdout is a TTY and `NO_COLOR` is unset.
+  Non-TTY output (VexPortal) is byte-identical.
+- Deferred to Tier 3: unifying `✓/⚠/✗` output across all recipes (~300 echo lines, best
+  done together with the helper refactor), `[confirm]` on reboot/shutdown (needs
+  VexPortal coordination), and `[arg(help/pattern)]`.
+
 **Tier 3 — Structure (larger)**
 Single service catalog (D1), shared helpers (D2), `import` split (D3),
 `positional-arguments`/`quote()` + `[arg pattern]` (D4), `just_executable()` (D5),

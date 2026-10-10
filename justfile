@@ -10,18 +10,12 @@ export SYSTEMD_PAGER := ""
 [private]
 default:
     #!/usr/bin/env bash
-    just --list
     variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
-    if [[ "$variant" == *server* ]]; then
-        echo ""
-        echo "Available recipes (GUI Server / Headless Server roles):"
-        echo "    service [action]           Server services: list, available, info, status, restart, enable, disable"
-        echo "    plex-pass [action]         Plex Pass hardware transcoding: enable, disable"
-        echo "    zfs-pool [action]          ZFS pools: create, destroy, import, replace/add disks, scrub (interactive)"
-        echo "    mergerfs-pool [action]     mergerfs+SnapRAID bulk pool: create, add/remove disk, destroy, sync (interactive)"
-        echo ""
-        echo "    Run any of these with no action for a menu, e.g. 'just service' or 'just zfs-pool'."
-    elif [[ "$variant" == *stateless* ]]; then
+    # --unsorted keeps groups and recipes in file order (most-used first).
+    heading="VexOS commands — ${variant:-variant unknown}"$'\n'
+    heading+="Commands marked (menu) open a menu when run on their own. Search everything: just pick"$'\n\n'
+    just --list --unsorted --list-heading "$heading"
+    if [[ "$variant" == *stateless* ]]; then
         echo ""
         echo "Active role: stateless (ephemeral / tmpfs root)"
         echo ""
@@ -34,10 +28,28 @@ default:
         echo ""
     fi
 
+# Fuzzy-search every command and run the one you pick (needs fzf). Private so
+# VexPortal's catalog does not report it as an unknown recipe; the default
+# listing's heading advertises it instead. Recipes that need an argument are
+# left out by `just --choose` itself.
+[private]
+pick:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v fzf >/dev/null 2>&1; then
+        echo "error: fzf is not installed — run 'just' for the full list." >&2
+        exit 1
+    fi
+    JUST="{{just_executable()}}"
+    JF="{{justfile()}}"
+    exec "$JUST" --justfile "$JF" --choose --chooser \
+        "fzf --height=60% --reverse --prompt='just › ' --header='Type to filter · Enter to run · Esc to cancel' --preview='\"$JUST\" --justfile \"$JF\" --show {} 2>/dev/null | sed -n \"1,/^[^[]/p\"' --preview-window=down,5,wrap"
+
 # ── System Build & Deploy ────────────────────────────────────────────────────
 
 # Print the active role and GPU variant (e.g. vexos-desktop-amd).
 [group('System Build & Deploy')]
+[doc('Show the active role and GPU variant (e.g. vexos-desktop-amd)')]
 variant:
     @cat /etc/nixos/vexos-variant 2>/dev/null || echo "unknown (run a build first)"
 
@@ -114,6 +126,7 @@ _resolve-flake-dir target flake_override="":
 #   just switch desktop amd "" hyprland — desktop environment, default flake
 #   just switch desktop vm "" "" virtualbox — VM hypervisor (qemu / virtualbox)
 [group('System Build & Deploy')]
+[doc('Switch role, GPU, desktop or hypervisor — prompts for anything not given')]
 switch role="" variant="" flake="" de="" vmp="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -620,6 +633,7 @@ _bootloader-cleanup:
 # Build a target without activating it — useful for testing config changes.
 # Example: just build desktop amd
 [group('System Build & Deploy')]
+[doc('Build a role/GPU target without activating it')]
 build role variant flake="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -701,6 +715,7 @@ _kernel-cache-guard:
 
 # Rebuild the system using the current variant.
 [group('System Build & Deploy')]
+[doc('Rebuild and switch using the current variant')]
 rebuild: _kernel-cache-guard
     #!/usr/bin/env bash
     set -euo pipefail
@@ -726,6 +741,7 @@ rebuild: _kernel-cache-guard
 # still advance to whatever revision the update resolved, since they are
 # never the cause of the block. See pkgs/vexos-update/default.nix.
 [group('System Build & Deploy')]
+[doc('Update flake inputs and rebuild (stops before a long kernel compile)')]
 update role="" variant="": _kernel-cache-guard
     #!/usr/bin/env bash
     set -euo pipefail
@@ -852,6 +868,7 @@ update role="" variant="": _kernel-cache-guard
 # WARNING: may compile large packages from source (Rust, LLVM, kernels, etc.)
 # and take a long time.  For normal daily use, run 'just update' instead.
 [group('System Build & Deploy')]
+[doc('Update and rebuild with no cache check (may compile for hours)')]
 update-all:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -884,6 +901,7 @@ update-all:
 # whatever revision the new vexos-nix commit resolves, since they build in
 # seconds and are never the cause of a cache block.
 [group('System Build & Deploy')]
+[doc('Pull the latest vexos-nix config without moving nixpkgs')]
 deploy:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -913,6 +931,7 @@ deploy:
 #   just upgrade-analysis 26.05    — analyse upgrade to 26.05
 #   just upgrade-analysis 26.11    — analyse upgrade to 26.11
 [group('System Upgrades & Rollbacks')]
+[doc('Check whether this config is ready for a new NixOS release (read-only)')]
 upgrade-analysis target_version:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1088,6 +1107,7 @@ upgrade-analysis target_version:
 
 # Roll back to the previous NixOS generation and set it as the boot default.
 [group('System Upgrades & Rollbacks')]
+[doc('Roll back to the previous generation and make it the boot default')]
 rollback:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1101,6 +1121,7 @@ rollback:
 
 # Roll forward to the next (newer) NixOS generation and set it as the boot default.
 [group('System Upgrades & Rollbacks')]
+[doc('Roll forward to the next generation and make it the boot default')]
 rollforward:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1121,11 +1142,13 @@ rollforward:
 
 # Reboot the system immediately.
 [group('System Administration')]
+[doc('Reboot now')]
 reboot:
     sudo systemctl reboot
 
 # Shut down the system immediately.
 [group('System Administration')]
+[doc('Power off now')]
 shutdown:
     sudo systemctl poweroff
 
@@ -1138,6 +1161,7 @@ shutdown:
 # Run in a terminal (NOT inside a GNOME session) or log out first for best
 # results, since GNOME may re-write some keys while running.
 [group('System Administration')]
+[doc('Reset all GNOME settings to the VexOS defaults')]
 reset-defaults:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1156,6 +1180,7 @@ reset-defaults:
 #   just set-hostname mypc       — direct
 #   just set-hostname            — interactive prompt
 [group('System Administration')]
+[doc('Change the hostname (applies now, persists across rebuilds)')]
 set-hostname name="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1256,6 +1281,7 @@ set-hostname name="":
 #   just ssh                     — interactive prompts
 #   just ssh nimda@10.35.1.50   — direct
 [group('System Administration')]
+[doc('Copy your SSH key to another machine (user@host)')]
 ssh target="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1291,6 +1317,7 @@ ssh target="":
 # Run once after enabling services.tailscale.enable = true in your NixOS config and rebuilding.
 # On first run, Tailscale will print a URL to authenticate — open it in a browser.
 [group('VPN')]
+[doc('First-time Tailscale setup: operator rights, then connect')]
 setup-tailscale:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1378,6 +1405,7 @@ _kill-switch-off:
 # Required once on systems where the thin wrapper predates feature toggle support.
 # Safe to re-run — exits immediately if the wrapper is already up to date.
 [group('Optional Feature Toggles')]
+[doc('Make an older /etc/nixos/flake.nix load features.nix (run once)')]
 fix-flake:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -1432,6 +1460,7 @@ fix-flake:
 # Requires the ai feature: just feature enable ai
 # Open your AI assistant (Claude Code or OpenCode) in /etc/nixos.
 [group('AI Assistant')]
+[doc('Open your AI assistant (Claude Code or OpenCode) in /etc/nixos')]
 agent:
     @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
     @vexos-ai
@@ -1440,6 +1469,7 @@ agent:
 # "rebuild": reproduce a failed rebuild with a dry-build. Read-only.
 # Have your AI assistant explain a problem: just diagnose [unit|rebuild]
 [group('AI Assistant')]
+[doc("Have your AI assistant explain a problem (a unit name, or 'rebuild')")]
 diagnose target="":
     @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
     @vexos-ai diagnose {{target}}
@@ -1448,36 +1478,42 @@ diagnose target="":
 # non-interactive vexos-ai command (github:VictoryTek/vexos-ai docs/contract.md).
 # Choose your AI assistant: just ai-pick [claude|opencode]
 [group('AI Assistant')]
+[doc('Choose your AI assistant (claude or opencode)')]
 ai-pick agent="":
     @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
     @vexos-ai pick {{quote(agent)}}
 
 # Sign in an extra Claude account: just ai-account-add <label>
 [group('AI Assistant')]
+[doc('Sign in an extra Claude account')]
 ai-account-add label:
     @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
     @vexos-ai account add {{quote(label)}}
 
 # Account for new Claude sessions: just ai-account-use <label|next>
 [group('AI Assistant')]
+[doc("Pick the Claude account for new sessions (a label, or 'next')")]
 ai-account-use target:
     @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
     @vexos-ai account use {{quote(target)}}
 
 # Remove an extra Claude account: just ai-account-remove <label>
 [group('AI Assistant')]
+[doc('Remove an extra Claude account')]
 ai-account-remove label:
     @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
     @vexos-ai account remove {{quote(label)}}
 
 # Warn only, or also switch, near a limit: just ai-account-mode <manual|auto> [pct]
 [group('AI Assistant')]
+[doc('Near a usage limit: warn only (manual) or also switch (auto)')]
 ai-account-mode mode pct="":
     @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
     @vexos-ai account mode {{quote(mode)}} {{quote(pct)}}
 
 # Mute, unmute or list crash notifications: just ai-crash-mute [name] [off]
 [group('AI Assistant')]
+[doc('Mute, unmute or list crash notifications')]
 ai-crash-mute name="" state="":
     @command -v vexos-ai >/dev/null || { echo "The AI assistant is not installed — run: just feature enable ai && just rebuild"; exit 1; }
     @vexos-ai crash-mute {{quote(name)}} {{quote(state)}}
@@ -1849,9 +1885,11 @@ _confirm prompt:
 #   $4 extra arguments as ONE string (forwarded to the action)
 #   $5.. items, each "key|description" or "key|description|prompt" — a prompt marks
 #        an action that needs an argument and asks for it when none was given.
-#        A 4th field ("key|description|prompt|stay", prompt may be empty) marks a
-#        read-only action: picked from the menu it returns to the menu afterwards
-#        instead of exiting. Direct calls (`just vpn status`) always just run.
+#        A 4th field (prompt may be empty) flags the action:
+#          "stay" — read-only: picked from the menu it returns to the menu
+#                   afterwards instead of exiting. Direct calls (`just vpn
+#                   status`) always just run.
+#          "warn" — disruptive or destructive: shown with a ⚠ in the menu.
 # Runs the hidden recipe _<group>-<key>, so `just vpn up` == `just _vpn-up`.
 [positional-arguments]
 [private]
@@ -1866,6 +1904,15 @@ _menu group title action argstr *items:
         keys+=("$k"); descs+=("$d"); prompts+=("${p:-}"); stays+=("${s:-}")
     done
 
+    # Colour only on a terminal that wants it (https://no-color.org); the
+    # non-TTY path (VexPortal, pipes) prints plain usage text to stderr.
+    B="" D="" C="" Y="" R=""
+    if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+        B=$'\e[1m' D=$'\e[2m' C=$'\e[36m' Y=$'\e[33m' R=$'\e[0m'
+    fi
+    cols=$(tput cols 2>/dev/null || echo 72)
+    [ "$cols" -le 72 ] || cols=72
+
     usage() {
         echo "usage: just $group <action> [args]" >&2
         for i in "${!keys[@]}"; do
@@ -1877,22 +1924,35 @@ _menu group title action argstr *items:
     while true; do
         if [ -z "$action" ]; then
             [ -t 0 ] || { usage; exit 1; }
+            fill=$(( cols - ${#title} - 4 ))
+            [ "$fill" -ge 3 ] || fill=3
+            rule=$(printf '%*s' "$fill" '' | sed 's/ /─/g')
             echo ""
-            echo "── $title ──────────────────────────────────────────"
+            printf '%s── %s %s%s\n\n' "$B" "$title" "$rule" "$R"
             for i in "${!keys[@]}"; do
-                printf "  %2d) %-14s %s\n" "$((i+1))" "${keys[$i]}" "${descs[$i]}"
+                kc="$C"; mark=" "
+                if [ "${stays[$i]}" = "warn" ]; then kc="$Y"; mark="${Y}⚠${R}"; fi
+                printf "  %s%2d%s  %s%-12s%s %s %s\n" "$B" "$((i+1))" "$R" "$kc" "${keys[$i]}" "$R" "$mark" "${descs[$i]}"
             done
-            echo "   0) Quit"
-            echo ""
+            printf "  %s%2d  quit%s\n\n" "$D" 0 "$R"
             while true; do
-                read -r -p "Choice [0-${#keys[@]}]: " sel || exit 0
-                [ "$sel" = "0" ] && exit 0
-                if [[ "$sel" =~ ^[0-9]+$ ]] && [ "$sel" -ge 1 ] && [ "$sel" -le "${#keys[@]}" ]; then
-                    action="${keys[$((sel-1))]}"
+                read -r -p "Choice [1-${#keys[@]}, a name, or 0 to quit]: " sel || exit 0
+                sel="${sel,,}"; sel="${sel// /}"
+                case "$sel" in 0|q|quit) exit 0 ;; esac
+                if [[ "$sel" =~ ^[0-9]+$ ]]; then
+                    if [ "$sel" -ge 1 ] && [ "$sel" -le "${#keys[@]}" ]; then
+                        action="${keys[$((sel-1))]}"
+                    fi
+                else
+                    for i in "${!keys[@]}"; do
+                        [ "${keys[$i]}" = "$sel" ] && action="$sel"
+                    done
+                fi
+                if [ -n "$action" ]; then
                     picked=1
                     break
                 fi
-                echo "  invalid"
+                echo "  Enter 1-${#keys[@]}, an action name, or 0 to quit."
             done
         fi
 
@@ -1908,7 +1968,7 @@ _menu group title action argstr *items:
 
         # Only a read-only item picked from the menu keeps the menu open.
         stay=""
-        [ "$picked" -eq 1 ] && stay="${stays[$idx]}"
+        if [ "$picked" -eq 1 ] && [ "${stays[$idx]}" = "stay" ]; then stay=1; fi
 
         args=()
         [ -z "$argstr" ] || read -r -a args <<< "$argstr"
@@ -1925,6 +1985,9 @@ _menu group title action argstr *items:
 
         if [ -n "$stay" ]; then
             just "_${group}-${action}" "${args[@]}" || true
+            # Hold the output on screen until the user is done reading it.
+            read -r -s -p "${D}Press Enter to return to the menu…${R}" _ || exit 0
+            echo ""
             action=""
             continue
         fi
@@ -1938,21 +2001,24 @@ _menu group title action argstr *items:
 
 # Bootloader: migrate to Limine (UEFI, opt-in), then clean up the old entries.
 [group('System Build & Deploy')]
+[doc('Migrate to the Limine bootloader (UEFI), then clean up (menu)')]
 bootloader action="" *args:
     @just _menu bootloader "Bootloader" "{{action}}" "{{args}}" \
         "switch|Migrate to Limine, keeping the old entry as a fallback (optional: target)" \
-        "cleanup|Remove the old boot entries once you have booted into Limine"
+        "cleanup|Remove the old boot entries once you have booted into Limine||warn"
 
 # Remote storage: attach, detach or list NFS/SMB shares from another host (apply with `just rebuild`).
-[group('System Administration')]
+[group('Storage')]
+[doc('Attach, detach or list NFS/SMB shares from another host (menu)')]
 remote-storage action="" *args: _require-remote-storage-role
     @just _menu remote-storage "Remote storage (NFS / SMB)" "{{action}}" "{{args}}" \
         "attach|Mount a share exported by another host" \
-        "detach|Remove a share attached earlier" \
+        "detach|Remove a share attached earlier||warn" \
         "list|Show the shares already attached and their status||stay"
 
 # Optional feature modules (desktop roles): list, enable, disable.
 [group('Optional Feature Toggles')]
+[doc('Optional features: list, enable, disable (menu)')]
 feature action="" *args: _require-desktop-role
     @just _menu feature "Optional features" "{{action}}" "{{args}}" \
         "list|Show every feature and whether it is enabled||stay" \
@@ -1961,6 +2027,7 @@ feature action="" *args: _require-desktop-role
 
 # PIA VPN (desktop, htpc, stateless): thin wrappers around the vexos-vpn CLI.
 [group('VPN')]
+[doc('PIA VPN: sign in, connect, choose region or protocol (menu)')]
 vpn action="" *args:
     @just _menu vpn "VPN (PIA)" "{{action}}" "{{args}}" \
         "login|Store PIA credentials (run once)" \
@@ -1974,6 +2041,7 @@ vpn action="" *args:
 
 # VPN kill switch: block all traffic outside the PIA tunnel (on) or restore normal access (off).
 [group('VPN')]
+[doc('VPN kill switch: block traffic outside the tunnel, or restore it (menu)')]
 kill-switch action="" *args:
     @just _menu kill-switch "VPN kill switch" "{{action}}" "{{args}}" \
         "on|Block all internet traffic outside the PIA tunnel" \
@@ -1981,6 +2049,7 @@ kill-switch action="" *args:
 
 # Binary caches: Attic (push/bootstrap) and Harmonia (status and client config).
 [group('Binary Cache')]
+[doc('Binary caches: Attic push/bootstrap, Harmonia status (menu)')]
 cache action="" *args:
     @just _menu cache "Binary cache" "{{action}}" "{{args}}" \
         "push|Build this repo's custom packages and push them to Attic (optional: cache)" \
@@ -1988,6 +2057,8 @@ cache action="" *args:
         "harmonia|Check Harmonia is live and print the client configuration||stay"
 
 # Custom kernel builder (server): build now, check status, follow the log.
+[group('Binary Cache')]
+[doc('Custom kernel builder: build now, status, follow the log (menu)')]
 kernel action="" *args:
     @just _menu kernel "Custom kernel builder" "{{action}}" "{{args}}" \
         "now|Build the kernel now instead of waiting for the nightly timer (optional: name)" \
@@ -1995,7 +2066,8 @@ kernel action="" *args:
         "log|Follow a build log live (optional: name)"
 
 # Server services (server roles): list, catalog, info, status, restart, enable, disable.
-[private]
+[group('Server')]
+[doc('Server services: list, catalog, status, enable, disable (menu)')]
 service action="" *args:
     @just _menu service "Server services" "{{action}}" "{{args}}" \
         "list|List enabled services and how to access them||stay" \
@@ -2007,7 +2079,8 @@ service action="" *args:
         "disable|Disable a service module|Service name"
 
 # Plex Pass hardware transcoding (server): enable or disable.
-[private]
+[group('Server')]
+[doc('Plex Pass hardware transcoding: enable or disable (menu)')]
 plex-pass action="" *args: _require-server-role
     @just _menu plex-pass "Plex Pass" "{{action}}" "{{args}}" \
         "enable|Turn on hardware transcoding for an enabled Plex" \
@@ -2050,6 +2123,8 @@ _require-remote-storage-role:
 # snippet to add to the repo. Does not create or encrypt the secrets file
 # itself — use the `sops <file>.yaml` edit workflow for that, it's already
 # the right tool for the job.
+[group('Server')]
+[doc("One-time sops-nix setup: create this host's age key")]
 secrets-init: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -2094,6 +2169,8 @@ secrets-init: _require-server-role
 
 # Manually trigger a restic backup run outside the daily timer.
 # Requires vexos.server.backup.enable = true.
+[group('Server')]
+[doc('Run the restic backup now instead of waiting for the timer')]
 backup-now: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -2108,6 +2185,8 @@ backup-now: _require-server-role
 # (vexos.server.nasSync.jobs.<name>). Job names are host-specific (set in
 # server-services.nix), so this discovers them from systemd rather than a
 # fixed list.
+[group('Server')]
+[doc('Show the schedule and last result of every nas-sync job')]
 nas-sync-status: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -2127,6 +2206,8 @@ nas-sync-status: _require-server-role
 
 # Manually trigger one nas-sync job outside its scheduled timer.
 # Usage: just nas-sync-now tv
+[group('Server')]
+[doc('Run one nas-sync job now')]
 nas-sync-now name: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -2142,6 +2223,8 @@ nas-sync-now name: _require-server-role
 
 # Snapshot Plex's data directory (/var/lib/plex) to a single portable tar.gz,
 # suitable for moving to a new server. Usage: just backup-plex [dest.tar.gz]
+[group('Server')]
+[doc("Archive Plex's data to a portable .tar.gz (for moving servers)")]
 backup-plex dest="": _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -2176,6 +2259,8 @@ backup-plex dest="": _require-server-role
 # new server first). Destructive — overwrites /var/lib/plex after a typed
 # confirmation; the previous contents are preserved as a timestamped .bak
 # directory rather than deleted. Usage: just restore-plex <tarball>
+[group('Server')]
+[doc('Restore a backup-plex archive over this Plex install')]
 restore-plex tarball: _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -2234,6 +2319,8 @@ restore-plex tarball: _require-server-role
 # tagged with the service name (or an explicit snapshot ID passed as the second
 # argument — see `restic-main snapshots`). Destructive: files are overwritten in
 # place after a typed confirmation. Usage: just restore-service <name> [snapshot]
+[group('Server')]
+[doc("Restore one service's data from the restic backups")]
 restore-service name snapshot="latest": _require-server-role
     #!/usr/bin/env bash
     set -euo pipefail
@@ -2344,7 +2431,8 @@ _run-storage-script script *args:
 # Usage: just zfs-pool            — menu
 #        just zfs-pool status     — run one action (status, create, destroy, import,
 #                                   replace, add, attach, detach, scrub, clear)
-[private]
+[group('Storage')]
+[doc('ZFS pools: create, import, replace disks, scrub (menu)')]
 zfs-pool *args: _require-server-role
     @just _run-storage-script zfs-pool.sh {{args}}
 
@@ -2357,7 +2445,8 @@ zfs-pool *args: _require-server-role
 # Usage: just mergerfs-pool           — menu
 #        just mergerfs-pool status    — run one action (status, create, add, remove,
 #                                       destroy, sync, scrub)
-[private]
+[group('Storage')]
+[doc('mergerfs + SnapRAID pool: create, add/remove disks, sync (menu)')]
 mergerfs-pool *args: _require-server-role
     @just _run-storage-script mergerfs-pool.sh {{args}}
 
