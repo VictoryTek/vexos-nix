@@ -29,15 +29,19 @@
       lib.optional (config.users.groups ? media) "media";`
    The guard sits in the *value* (not around `users.users`) so attribute names stay
    static → no evaluation recursion; when no `media` group exists it is `[]`.
-4. `attach-remote-storage.sh`: new step `[5/7]` asks for the NAS group id
-   (numeric, blank to skip); rejects non-numeric, rejects a gid already used by a
-   different local group (NixOS gid-uniqueness assertion would fail the rebuild),
-   and rejects a gid different from one already in `storage-remote.nix` (module
-   assertion). Writes `gid = N;` into the entry. NFS: prints the export-side note
-   (TrueNAS Mapall / dataset ACL). Final output notes `just rebuild` + restarting
-   the services (group membership is read at service start; unit files don't change
-   so `switch` won't restart them).
-   Old steps `[5/6]`,`[6/6]` renumber to `[6/7]`,`[7/7]`.
+4. `attach-remote-storage.sh`: new step `[6/7]` (after the test mount, so NFS can
+   read the share's owning group via `stat`). No raw-number prompt:
+   - CIFS: a Y/n question. The gid is only a local label (SMB access is decided by
+     the SMB account), so it is auto-picked: the existing gid if present, else the
+     first free gid from 1500.
+   - NFS: numbered menu. Option 1 (Enter) = the share's own group detected during
+     the test mount (or the existing shared gid); option 2 = type a number; last =
+     skip. Detected/typed gids are rejected if 0, different from an existing entry's
+     gid, or already used by a different local group (NixOS gid-uniqueness assertion).
+     Prints the export-side note (TrueNAS Mapall / dataset ACL).
+   Final output notes `just rebuild` + restarting the services (group membership is
+   read at service start; unit files don't change so `switch` won't restart them).
+   Steps: `[5/7]` test mount, `[6/7]` write access, `[7/7]` write the entry.
 5. `detach-remote-storage.sh` needs no change: its `_field` parser only reads
    quoted values, so `gid = N;` is ignored.
 

@@ -21,8 +21,10 @@ touches the media tree). Docker-based media modules already take PUID/PGID.
   - nfs+gid → NFS options unchanged, group + memberships present;
   - cifs without gid → options byte-identical to before;
   - mixed gids → module assertion fires with a clear message.
-- Script step 5 exercised in a harness: non-numeric rejected, blank skips, mismatch with
-  existing gid rejected, gid already used by a different local group rejected.
+- Script step 6 (Y/n for CIFS, menu for NFS) exercised in a harness: CIFS Enter → 1500,
+  CIFS no → skip, existing gid reused; NFS detected gid offered as default, detected 0 or
+  a locally-used gid (100 "users") not offered, no detection → manual/skip with Enter = skip,
+  manual entry rejects non-numeric / 0, existing gid wins over detected.
 - `scripts/preflight.sh` exit 0 (shellcheck clean). Formatting WARN is repo-wide, pre-existing.
 - `hardware-configuration.nix` untracked; `system.stateVersion` untouched.
 

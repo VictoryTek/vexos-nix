@@ -16,9 +16,10 @@
 #         menu (showmount / smbclient); typed entry is the fallback. The local
 #         mountpoint is derived as /mnt/<server-name>/<share-name>. CIFS
 #         credentials are written to /etc/nixos/secrets, never inlined.
-#   [5/7] Optional NAS group id — shared local `media` group so media services
-#         (sonarr, radarr, plex, ...) can write to the share
-#   [6/7] Optional test-mount
+#   [5/7] Optional test-mount (NFS: also reads the share's owning group)
+#   [6/7] Write access — yes/no for CIFS; for NFS the share's own group is offered.
+#         Declares a shared local `media` group so media services (sonarr,
+#         radarr, plex, ...) can write to the share
 #   [7/7] Merge the entry into /etc/nixos/storage-remote.nix
 #
 # Multiple remotes are supported: existing entries are preserved on re-run.
@@ -253,44 +254,10 @@ if [ "$PROTO" = "cifs" ]; then
     ok "credentials written to $CRED_FILE (0600 root:root — not in the Nix store)"
 fi
 
-# ---------- [5/7] NAS group id -----------------------------------------------
-hdr "[5/7] Write access for media services (optional)"
-# Services (sonarr, radarr, plex, ...) run as their own users, so a share that is
-# only writable by the NAS user fails with "is not writable by user 'sonarr'".
-# A numeric NAS group id becomes the local `media` group (modules/storage-remote.nix),
-# which every media service user joins; all entries share one gid.
-if [ "$PROTO" = "nfs" ]; then
-    echo "  NFS note: mount options cannot change ownership — the NAS decides. The"
-    echo "  export must let this group (or mapped users) write, e.g. TrueNAS: NFS share"
-    echo "  → Mapall User/Group, or a dataset ACL that grants the group write."
-fi
-# gid already used by an entry in storage-remote.nix (a single shared group).
-EXISTING_GID=""
-[ -f "$REMOTE_NIX" ] && EXISTING_GID=$(grep -oP '\bgid = \K[0-9]+' "$REMOTE_NIX" | head -n1)
-[ -n "$EXISTING_GID" ] && echo "  (existing entries already use gid $EXISTING_GID — all shares share one group)"
-GID=""
-while :; do
-    printf "Group ID on the NAS that should have write access (numeric, blank to skip): "
-    read -r GID || die "no input"
-    [ -z "$GID" ] && break
-    case "$GID" in *[!0-9]*) echo "  must be numeric"; continue ;; esac
-    GID=$((10#$GID))
-    if [ -n "$EXISTING_GID" ] && [ "$GID" != "$EXISTING_GID" ]; then
-        echo "  must match the existing gid $EXISTING_GID (one shared 'media' group), or leave blank"
-        continue
-    fi
-    LOCAL_GROUP=$(getent group "$GID" | cut -d: -f1)
-    if [ -n "$LOCAL_GROUP" ] && [ "$LOCAL_GROUP" != "media" ]; then
-        echo "  gid $GID is already used by the local group '$LOCAL_GROUP' — pick another"
-        continue
-    fi
-    break
-done
-if [ -n "$GID" ]; then ok "group: media (gid $GID)"; else echo "  skipped"; fi
-
-# ---------- [6/7] Optional test-mount ----------------------------------------
-hdr "[6/7] Test mount (optional)"
+# ---------- [5/7] Optional test-mount ----------------------------------------
+hdr "[5/7] Test mount (optional)"
 TESTDIR="/tmp/vexos-remote-test.$$"
+DETECTED_GID=""   # NFS: group that owns the share's root on the NAS (offered in [6/7])
 run_test=1
 if [ "$PROTO" = "nfs" ] && ! command -v mount.nfs >/dev/null 2>&1; then
     warn "mount.nfs not present yet (nfs-utils installs on rebuild) — skipping test"
@@ -313,6 +280,7 @@ if [ "$run_test" -eq 1 ]; then
             fi
             if mountpoint -q "$TESTDIR"; then
                 ok "test mount succeeded"
+                [ "$PROTO" = "nfs" ] && DETECTED_GID=$(stat -c %g "$TESTDIR" 2>/dev/null)
                 umount "$TESTDIR" 2>/dev/null || true
             else
                 warn "test mount failed: $(cat /tmp/vexos-mnt-err 2>/dev/null)"
@@ -325,6 +293,106 @@ if [ "$run_test" -eq 1 ]; then
             ;;
     esac
 fi
+
+# ---------- [6/7] Write access for media services ----------------------------
+hdr "[6/7] Write access for media services"
+# Services (sonarr, radarr, plex, ...) run as their own users, so a share that only
+# the NAS account can write fails with "is not writable by user 'sonarr'". Opting in
+# declares the shared local `media` group (modules/storage-remote.nix) that every
+# media service user joins; all entries share one gid.
+echo "  Media apps (Sonarr, Radarr, Plex, ...) run as their own users and need"
+echo "  permission to write to this share. They get put in a shared 'media' group."
+
+# gid already used by an entry in storage-remote.nix (a single shared group).
+EXISTING_GID=""
+[ -f "$REMOTE_NIX" ] && EXISTING_GID=$(grep -oP '\bgid = \K[0-9]+' "$REMOTE_NIX" | head -n1)
+
+# gid_problem <n> — print why <n> cannot be the media group's gid (nothing if fine).
+gid_problem() {
+    local g=$1 name
+    if [ "$g" -eq 0 ]; then echo "group 0 is root"; return 0; fi
+    if [ -n "$EXISTING_GID" ] && [ "$g" != "$EXISTING_GID" ]; then
+        echo "your other shares already use group $EXISTING_GID (all shares share one group)"
+        return 0
+    fi
+    name=$(getent group "$g" | cut -d: -f1)
+    if [ -n "$name" ] && [ "$name" != "media" ]; then
+        echo "group $g is already used on this machine by '$name'"
+    fi
+}
+
+GID=""
+if [ "$PROTO" = "cifs" ]; then
+    # CIFS: the kernel client fakes ownership from mount options, and real access is
+    # decided by the SMB account — so the number is only a local label. Pick one.
+    echo "  Nothing to look up here: SMB permissions come from the account you entered."
+    printf "Let media services write to this share? [Y/n]: "
+    read -r ANSWER || die "no input"
+    case "${ANSWER,,}" in
+        n|no) ;;
+        *)
+            if [ -n "$EXISTING_GID" ]; then
+                GID="$EXISTING_GID"
+            else
+                GID=1500
+                while getent group "$GID" >/dev/null 2>&1; do GID=$((GID + 1)); done
+            fi
+            ;;
+    esac
+else
+    # NFS: mount options cannot change ownership — the NAS decides — so the group
+    # number must match a group the NAS lets write. Offer the share's own group.
+    echo "  NFS note: the NAS decides who can write. It must allow this group (or map"
+    echo "  users to it) — e.g. TrueNAS: NFS share → Mapall User/Group, or a dataset"
+    echo "  ACL that grants the group write."
+    DEFAULT_GID=""; DEFAULT_WHY=""
+    if [ -n "$EXISTING_GID" ]; then
+        DEFAULT_GID="$EXISTING_GID"
+        DEFAULT_WHY="the group your other shares use (group number $EXISTING_GID)"
+    elif [ -n "$DETECTED_GID" ]; then
+        DEFAULT_GID="$DETECTED_GID"
+        DEFAULT_WHY="the group that owns this share on the NAS (group number $DETECTED_GID)"
+    else
+        echo "  (could not read the share's group — it was not test-mounted)"
+    fi
+    if [ -n "$DEFAULT_GID" ] && [ -n "$(gid_problem "$DEFAULT_GID")" ]; then
+        echo "  Cannot use $DEFAULT_WHY: $(gid_problem "$DEFAULT_GID")"
+        DEFAULT_GID=""
+    fi
+
+    KEYS=(); LABELS=()
+    if [ -n "$DEFAULT_GID" ]; then
+        KEYS+=(default); LABELS+=("Yes — use $DEFAULT_WHY (Recommended)")
+    fi
+    KEYS+=(manual skip)
+    LABELS+=("Yes — I'll type the group number" "No — skip (set up access on the NAS only)")
+    ENTER_CH=1; [ -z "$DEFAULT_GID" ] && ENTER_CH=${#KEYS[@]}
+    for i in "${!KEYS[@]}"; do printf "    %d) %s\n" $((i + 1)) "${LABELS[$i]}"; done
+    while :; do
+        printf "Choice [1-%d, Enter = %d]: " "${#KEYS[@]}" "$ENTER_CH"
+        read -r CH || die "no input"
+        CH="${CH:-$ENTER_CH}"
+        case "$CH" in ''|*[!0-9]*) echo "  invalid"; continue ;; esac
+        if [ "$CH" -ge 1 ] && [ "$CH" -le "${#KEYS[@]}" ]; then break; fi
+        echo "  invalid"
+    done
+    case "${KEYS[$((CH - 1))]}" in
+        default) GID="$DEFAULT_GID" ;;
+        manual)
+            while :; do
+                printf "Group number (blank to skip): "
+                read -r GID || die "no input"
+                [ -z "$GID" ] && break
+                case "$GID" in *[!0-9]*) echo "  must be a number"; continue ;; esac
+                GID=$((10#$GID))
+                PROBLEM=$(gid_problem "$GID")
+                [ -z "$PROBLEM" ] && break
+                echo "  cannot use $GID: $PROBLEM"
+            done
+            ;;
+    esac
+fi
+if [ -n "$GID" ]; then ok "media services can write via the 'media' group (group number $GID)"; else echo "  skipped"; fi
 
 # ---------- [7/7] Merge into storage-remote.nix ------------------------------
 hdr "[7/7] Writing $REMOTE_NIX"
@@ -372,7 +440,7 @@ echo "  The share mounts lazily on first access (x-systemd.automount), so a slow
 echo "  or offline storage server never blocks boot."
 if [ -n "$GID" ]; then
     echo ""
-    echo "  Group 'media' (gid $GID) is added to the media service users on rebuild."
+    echo "  Group 'media' (group number $GID) is added to the media service users on rebuild."
     echo "  Services read their groups only at start, so after 'just rebuild' restart"
     echo "  the ones you run, e.g.:"
     echo "     sudo systemctl restart sonarr radarr lidarr bazarr sabnzbd qbittorrent plex jellyfin audiobookshelf"
