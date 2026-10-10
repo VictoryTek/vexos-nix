@@ -17,7 +17,8 @@
 #         mountpoint is derived as /mnt/<server-name>/<share-name>. CIFS
 #         credentials are written to /etc/nixos/secrets, never inlined.
 #   [5/7] Optional test-mount (NFS: also reads the share's owning group)
-#   [6/7] Write access — yes/no for CIFS; for NFS the share's own group is offered.
+#   [6/7] Write access — CIFS: yes/no for the invoking user (owner of the mount),
+#         then yes/no for media services; for NFS the share's own group is offered.
 #         Declares a shared local `media` group so media services (sonarr,
 #         radarr, plex, ...) can write to the share
 #   [7/7] Merge the entry into /etc/nixos/storage-remote.nix
@@ -295,7 +296,28 @@ if [ "$run_test" -eq 1 ]; then
 fi
 
 # ---------- [6/7] Write access for media services ----------------------------
-hdr "[6/7] Write access for media services"
+hdr "[6/7] Write access"
+# CIFS only: the kernel mount is root-owned unless told otherwise, so the user who
+# ran this (not a service, and not in the media group) could read but not write —
+# unlike a GNOME/GVfs mount, which is made as that user. Opting in mounts the share
+# with uid=<that user>, independent of the media-services answer below.
+OWNER_UID=""
+if [ "$PROTO" = "cifs" ]; then
+    OWNER="${SUDO_USER:-}"
+    if [ -n "$OWNER" ] && [ "$OWNER" != "root" ] && id -u "$OWNER" >/dev/null 2>&1; then
+        echo "  Your own account ($OWNER) needs permission to write here too."
+        printf "Let %s write to this share? [Y/n]: " "$OWNER"
+        read -r ANSWER || die "no input"
+        case "${ANSWER,,}" in
+            n|no) echo "  skipped (the share stays read-only for $OWNER)" ;;
+            *)    OWNER_UID=$(id -u "$OWNER"); ok "$OWNER owns the mount (user number $OWNER_UID)" ;;
+        esac
+    else
+        warn "could not tell which user ran this (run it via 'just remote-storage attach'); skipping owner access"
+    fi
+    echo ""
+fi
+
 # Services (sonarr, radarr, plex, ...) run as their own users, so a share that only
 # the NAS account can write fails with "is not writable by user 'sonarr'". Opting in
 # declares the shared local `media` group (modules/storage-remote.nix) that every
@@ -399,6 +421,7 @@ hdr "[7/7] Writing $REMOTE_NIX"
 
 GID_ATTR=""
 [ -n "$GID" ] && GID_ATTR=" gid = ${GID};"
+[ -n "$OWNER_UID" ] && GID_ATTR="${GID_ATTR} uid = ${OWNER_UID};"
 if [ "$PROTO" = "nfs" ]; then
     ENTRY="      { type = \"nfs\"; server = \"${SERVER}\"; export = \"${EXPORT}\"; mountPoint = \"${MNT}\";${GID_ATTR} }"
 else
@@ -438,6 +461,11 @@ echo "  Apply with:"
 echo -e "     ${BOLD}just rebuild${RESET}"
 echo "  The share mounts lazily on first access (x-systemd.automount), so a slow"
 echo "  or offline storage server never blocks boot."
+if [ -n "$OWNER_UID" ]; then
+    echo ""
+    echo "  $OWNER owns the mount, so can write. The NAS account in the credentials file"
+    echo "  still decides what is really allowed — it must have write access on the NAS."
+fi
 if [ -n "$GID" ]; then
     echo ""
     echo "  Group 'media' (group number $GID) is added to the media service users on rebuild."

@@ -35,6 +35,7 @@ ENTRIES=("${_clean[@]}")
 
 _field() { printf '%s\n' "$1" | grep -oP "$2"' = "\K[^"]+' | head -n1; }
 _gid()   { printf '%s\n' "$1" | grep -oP '\bgid = \K[0-9]+' | head -n1; }
+_uid()   { printf '%s\n' "$1" | grep -oP '\buid = \K[0-9]+' | head -n1; }
 
 # status <mountpoint> — one line, without touching the mountpoint: a stat or
 # readdir on an automount path would mount it (and block on an offline NAS).
@@ -67,6 +68,7 @@ for i in "${!ENTRIES[@]}"; do
     mp=$(_field "$e" "mountPoint")
     cred=$(_field "$e" "credentialsFile")
     gid=$(_gid "$e")
+    uid=$(_uid "$e")
 
     echo ""
     printf "  %d) %s  %s\n" "$((i + 1))" "${type^^}" "$server:$export_"
@@ -77,6 +79,7 @@ for i in "${!ENTRIES[@]}"; do
     else
         printf "     %-9s %s\n" "writers" "no media group set up"
     fi
+    [ -n "$uid" ] && printf "     %-9s %s\n" "owner" "local user number $uid (can write)"
     [ -n "$cred" ] && printf "     %-9s %s\n" "login" "$cred"
 done
 

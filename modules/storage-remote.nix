@@ -73,8 +73,9 @@ let
         type = lib.types.nullOr lib.types.int;
         default = null;
         description = ''
-          CIFS only, applied together with `gid`: mount with uid=<uid> so files
-          appear owned by this local user id (default: root).
+          CIFS only: mount with uid=<uid> so files appear owned by this local
+          user id (default: root), with file_mode=0664/dir_mode=0775 so the
+          owner can write. Works with or without `gid`.
         '';
       };
       options = lib.mkOption {
@@ -96,8 +97,9 @@ let
 
   # Group-write ownership for CIFS (the kernel client fakes ownership from
   # mount options). NFS has no such options — ownership comes from the server.
-  cifsOwnership = r: lib.optionals (r.gid != null) (
-    [ "gid=${toString r.gid}" "file_mode=0664" "dir_mode=0775" ]
+  cifsOwnership = r: lib.optionals (r.gid != null || r.uid != null) (
+    lib.optional (r.gid != null) "gid=${toString r.gid}"
+    ++ [ "file_mode=0664" "dir_mode=0775" ]
     ++ lib.optional (r.uid != null) "uid=${toString r.uid}"
   );
 
