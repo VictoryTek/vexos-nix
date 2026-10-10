@@ -1930,12 +1930,13 @@ bootloader action="" *args:
         "switch|Migrate to Limine, keeping the old entry as a fallback (optional: target)" \
         "cleanup|Remove the old boot entries once you have booted into Limine"
 
-# Remote storage: attach or detach an NFS/SMB share from another host (apply with `just rebuild`).
+# Remote storage: attach, detach or list NFS/SMB shares from another host (apply with `just rebuild`).
 [group('System Administration')]
 remote-storage action="" *args: _require-remote-storage-role
     @just _menu remote-storage "Remote storage (NFS / SMB)" "{{action}}" "{{args}}" \
         "attach|Mount a share exported by another host" \
-        "detach|Remove a share attached earlier"
+        "detach|Remove a share attached earlier" \
+        "list|Show the shares already attached and their status||stay"
 
 # Optional feature modules (desktop roles): list, enable, disable.
 [group('Optional Feature Toggles')]
@@ -2358,6 +2359,12 @@ _remote-storage-attach: _require-remote-storage-role
 [private]
 _remote-storage-detach: _require-remote-storage-role
     @just _run-storage-script detach-remote-storage.sh
+
+# List the shares attached by `just remote-storage attach`: protocol, server:share,
+# mountpoint, live mount status and write group. Read-only — never mounts anything.
+[private]
+_remote-storage-list: _require-remote-storage-role
+    @just _run-storage-script list-remote-storage.sh
 
 # List all available server service modules (catalog view, no role required).
 [private]
