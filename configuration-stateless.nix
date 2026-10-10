@@ -80,9 +80,11 @@
     '';
   };
 
-  # The justfile at /etc/nixos/justfile is provided for all roles by
-  # modules/packages-common.nix via environment.etc."nixos/justfile". No
-  # stateless-specific handling is needed.
+  # The justfile, just/, scripts/ and templates under /etc/nixos are provided
+  # for all roles by modules/packages-common.nix via environment.etc. On
+  # stateless the /etc/nixos bind mount hides those links, so
+  # modules/impermanence.nix (vexosJustfile activation script) relinks them
+  # into the persistent directory.
 
   # ---------- System packages ----------
   # tor-browser: installed system-wide (not via Home Manager) so torbrowser.desktop

@@ -258,25 +258,29 @@ in
       '';
     };
 
-    # The bind mount of /persistent/etc/nixos over /etc/nixos hides the
-    # environment.etc."nixos/justfile" symlink, so `just` (and the bash alias
-    # that points at /etc/nixos/justfile) fails with "no such file". Link the
-    # justfile into the persistent dir; a real file there (e.g. a repo
-    # checkout) is left alone. The justfile imports just/*.just relative to
-    # its own location, so the just/ directory is linked alongside it.
+    # The bind mount of /persistent/etc/nixos over /etc/nixos hides every
+    # environment.etc."nixos/..." symlink modules/packages-common.nix deploys:
+    # the justfile and just/ (so `just` fails with "no such file"), scripts/
+    # (set-hostname and bootloader switch run scripts/upgrade-wrapper.sh) and
+    # the templates the feature/service recipes seed from. Link each one into
+    # the persistent dir, taking the target from that same environment.etc
+    # entry so the two lists cannot drift; a real file or directory there
+    # (e.g. a repo checkout) is left alone.
     system.activationScripts.vexosJustfile = {
       deps = [ "etc" ];
-      text = ''
-        JF="${cfg.persistentPath}/etc/nixos/justfile"
-        if [ ! -e "$JF" ] || [ -L "$JF" ]; then
-          ${pkgs.coreutils}/bin/mkdir -p "${cfg.persistentPath}/etc/nixos"
-          ${pkgs.coreutils}/bin/ln -sfn ${../justfile} "$JF"
+      text = lib.concatMapStrings (name: ''
+        T="${cfg.persistentPath}/etc/nixos/${name}"
+        if [ ! -e "$T" ] || [ -L "$T" ]; then
+          ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$T")"
+          ${pkgs.coreutils}/bin/ln -sfn ${config.environment.etc."nixos/${name}".source} "$T"
         fi
-        JD="${cfg.persistentPath}/etc/nixos/just"
-        if [ ! -e "$JD" ] || [ -L "$JD" ]; then
-          ${pkgs.coreutils}/bin/ln -sfn ${../just} "$JD"
-        fi
-      '';
+      '') [
+        "justfile"
+        "just"
+        "scripts"
+        "template/server-services.nix"
+        "template/features.nix"
+      ];
     };
 
   };
