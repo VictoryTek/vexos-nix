@@ -36,5 +36,9 @@ in
 
     # Allow the primary user to manage media directories alongside the jellyfin user.
     users.users.${config.vexos.user.name}.extraGroups = [ "jellyfin" ];
+
+    # Join the shared NAS-write group when vexos.storage.remote declares one.
+    users.users.${config.services.jellyfin.user}.extraGroups =
+      lib.optional (config.users.groups ? media) "media";
   };
 }

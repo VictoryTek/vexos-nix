@@ -54,6 +54,10 @@ in
           local_ranges = "100.64.0.0/10";
         };
       };
+
+      # Join the shared NAS-write group when vexos.storage.remote declares one.
+      users.users.${config.services.sabnzbd.user}.extraGroups =
+        lib.optional (config.users.groups ? media) "media";
     })
 
     (lib.mkIf cfg.sonarr.enable {
@@ -61,6 +65,9 @@ in
         enable = true;
         openFirewall = true; # Port 8989
       };
+
+      users.users.${config.services.sonarr.user}.extraGroups =
+        lib.optional (config.users.groups ? media) "media";
     })
 
     (lib.mkIf cfg.radarr.enable {
@@ -68,6 +75,9 @@ in
         enable = true;
         openFirewall = true; # Port 7878
       };
+
+      users.users.${config.services.radarr.user}.extraGroups =
+        lib.optional (config.users.groups ? media) "media";
     })
 
     (lib.mkIf cfg.lidarr.enable {
@@ -75,6 +85,9 @@ in
         enable = true;
         openFirewall = true; # Port 8686
       };
+
+      users.users.${config.services.lidarr.user}.extraGroups =
+        lib.optional (config.users.groups ? media) "media";
     })
 
     (lib.mkIf cfg.prowlarr.enable {
@@ -91,6 +104,9 @@ in
         webuiPort = 8081; # 8080 is SABnzbd's default; shifted to avoid conflict
         torrentingPort = 6881; # conventional BitTorrent port; fixed so openFirewall has a real port to open
       };
+
+      users.users.${config.services.qbittorrent.user}.extraGroups =
+        lib.optional (config.users.groups ? media) "media";
     })
 
     (lib.mkIf cfg.bazarr.enable {
@@ -98,6 +114,9 @@ in
         enable = true;
         openFirewall = true; # Port 6767
       };
+
+      users.users.${config.services.bazarr.user}.extraGroups =
+        lib.optional (config.users.groups ? media) "media";
     })
 
     (lib.mkIf cfg.maintainerr.enable {

@@ -38,6 +38,10 @@ in
 
     users.users.${config.vexos.user.name}.extraGroups = [ "plex" ];
 
+    # Join the shared NAS-write group when vexos.storage.remote declares one.
+    users.users.${config.services.plex.user}.extraGroups =
+      lib.optional (config.users.groups ? media) "media";
+
     # Without Plex Pass, hardware transcoding is unused. The NixOS plex module
     # unconditionally adds /run/opengl-driver/lib to the service LD_LIBRARY_PATH,
     # but the system libva there references __isoc23_sscanf (glibc >= 2.38) which

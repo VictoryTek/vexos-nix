@@ -27,6 +27,10 @@ in
       openFirewall = true;
     };
 
+    # Join the shared NAS-write group when vexos.storage.remote declares one.
+    users.users.${config.services.audiobookshelf.user}.extraGroups =
+      lib.optional (config.users.groups ? media) "media";
+
     # Order Audiobookshelf after its library storage is ready — local
     # (mergerfs/ZFS) or remote (storage-remote.nix, automount-based). See
     # mediaMounts above.

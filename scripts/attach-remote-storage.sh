@@ -8,16 +8,18 @@
 # Usage:   sudo bash scripts/attach-remote-storage.sh  (via `just remote-storage attach`)
 #
 # Steps:
-#   [1/6] Preconditions (root)
-#   [2/6] Protocol (nfs / cifs)
-#   [3/6] Server — discovered over mDNS (avahi) and offered as a menu, typed
+#   [1/7] Preconditions (root)
+#   [2/7] Protocol (nfs / cifs)
+#   [3/7] Server — discovered over mDNS (avahi) and offered as a menu, typed
 #         address as fallback (+ CIFS username/password, needed to list shares)
-#   [4/6] Share / mountpoint — shares are probed from the server and offered as a
+#   [4/7] Share / mountpoint — shares are probed from the server and offered as a
 #         menu (showmount / smbclient); typed entry is the fallback. The local
 #         mountpoint is derived as /mnt/<server-name>/<share-name>. CIFS
 #         credentials are written to /etc/nixos/secrets, never inlined.
-#   [5/6] Optional test-mount
-#   [6/6] Merge the entry into /etc/nixos/storage-remote.nix
+#   [5/7] Optional NAS group id — shared local `media` group so media services
+#         (sonarr, radarr, plex, ...) can write to the share
+#   [6/7] Optional test-mount
+#   [7/7] Merge the entry into /etc/nixos/storage-remote.nix
 #
 # Multiple remotes are supported: existing entries are preserved on re-run.
 # =============================================================================
@@ -35,13 +37,13 @@ SECRET_DIR="/etc/nixos/secrets"
 BEGIN_MARK="# >>> vexos-remote-entries >>>"
 END_MARK="# <<< vexos-remote-entries <<<"
 
-# ---------- [1/6] Preconditions ---------------------------------------------
-hdr "[1/6] Preconditions"
+# ---------- [1/7] Preconditions ---------------------------------------------
+hdr "[1/7] Preconditions"
 [ "$(id -u)" -eq 0 ] || die "must be run as root (use 'just remote-storage attach', which calls sudo)"
 ok "running as root"
 
-# ---------- [2/6] Protocol ---------------------------------------------------
-hdr "[2/6] Protocol"
+# ---------- [2/7] Protocol ---------------------------------------------------
+hdr "[2/7] Protocol"
 echo "  1) nfs    — Linux/Unix NAS export (e.g. another vexos ZFS/mergerfs host)"
 echo "  2) cifs   — SMB share (Windows, Samba, most consumer NAS units)"
 PROTO=""
@@ -103,8 +105,8 @@ slug() {
     printf '%s' "${s:-share}"
 }
 
-# ---------- [3/6] Server (+ CIFS credentials) --------------------------------
-hdr "[3/6] Storage server"
+# ---------- [3/7] Server (+ CIFS credentials) --------------------------------
+hdr "[3/7] Storage server"
 echo "  Looking for servers on the network..."
 HOST_ADDR=(); HOST_LABEL=(); HOST_NAME=()
 while IFS=$'\t' read -r _addr _label _name; do
@@ -145,7 +147,7 @@ trap 'rm -rf "$PROBE_DIR"' EXIT
 
 # CIFS credentials are collected before the share is chosen: most NAS units
 # refuse to list shares to guests, and the mount needs them regardless. The
-# real credentials file is named after the mountpoint, so it is written in [4/6].
+# real credentials file is named after the mountpoint, so it is written in [4/7].
 SMB_USER=""; SMB_PASS=""
 if [ "$PROTO" = "cifs" ]; then
     printf "SMB username: "
@@ -155,8 +157,8 @@ if [ "$PROTO" = "cifs" ]; then
     IFS= read -rs SMB_PASS; echo ""
 fi
 
-# ---------- [4/6] Share / mountpoint -----------------------------------------
-hdr "[4/6] Share and mountpoint"
+# ---------- [4/7] Share / mountpoint -----------------------------------------
+hdr "[4/7] Share and mountpoint"
 
 if [ "$PROTO" = "nfs" ]; then
     PROBE_BIN="showmount"; PROBE_PKG="nfs-utils"; KIND="exports"
@@ -251,8 +253,43 @@ if [ "$PROTO" = "cifs" ]; then
     ok "credentials written to $CRED_FILE (0600 root:root — not in the Nix store)"
 fi
 
-# ---------- [5/6] Optional test-mount ----------------------------------------
-hdr "[5/6] Test mount (optional)"
+# ---------- [5/7] NAS group id -----------------------------------------------
+hdr "[5/7] Write access for media services (optional)"
+# Services (sonarr, radarr, plex, ...) run as their own users, so a share that is
+# only writable by the NAS user fails with "is not writable by user 'sonarr'".
+# A numeric NAS group id becomes the local `media` group (modules/storage-remote.nix),
+# which every media service user joins; all entries share one gid.
+if [ "$PROTO" = "nfs" ]; then
+    echo "  NFS note: mount options cannot change ownership — the NAS decides. The"
+    echo "  export must let this group (or mapped users) write, e.g. TrueNAS: NFS share"
+    echo "  → Mapall User/Group, or a dataset ACL that grants the group write."
+fi
+# gid already used by an entry in storage-remote.nix (a single shared group).
+EXISTING_GID=""
+[ -f "$REMOTE_NIX" ] && EXISTING_GID=$(grep -oP '\bgid = \K[0-9]+' "$REMOTE_NIX" | head -n1)
+[ -n "$EXISTING_GID" ] && echo "  (existing entries already use gid $EXISTING_GID — all shares share one group)"
+GID=""
+while :; do
+    printf "Group ID on the NAS that should have write access (numeric, blank to skip): "
+    read -r GID || die "no input"
+    [ -z "$GID" ] && break
+    case "$GID" in *[!0-9]*) echo "  must be numeric"; continue ;; esac
+    GID=$((10#$GID))
+    if [ -n "$EXISTING_GID" ] && [ "$GID" != "$EXISTING_GID" ]; then
+        echo "  must match the existing gid $EXISTING_GID (one shared 'media' group), or leave blank"
+        continue
+    fi
+    LOCAL_GROUP=$(getent group "$GID" | cut -d: -f1)
+    if [ -n "$LOCAL_GROUP" ] && [ "$LOCAL_GROUP" != "media" ]; then
+        echo "  gid $GID is already used by the local group '$LOCAL_GROUP' — pick another"
+        continue
+    fi
+    break
+done
+if [ -n "$GID" ]; then ok "group: media (gid $GID)"; else echo "  skipped"; fi
+
+# ---------- [6/7] Optional test-mount ----------------------------------------
+hdr "[6/7] Test mount (optional)"
 TESTDIR="/tmp/vexos-remote-test.$$"
 run_test=1
 if [ "$PROTO" = "nfs" ] && ! command -v mount.nfs >/dev/null 2>&1; then
@@ -289,13 +326,15 @@ if [ "$run_test" -eq 1 ]; then
     esac
 fi
 
-# ---------- [6/6] Merge into storage-remote.nix ------------------------------
-hdr "[6/6] Writing $REMOTE_NIX"
+# ---------- [7/7] Merge into storage-remote.nix ------------------------------
+hdr "[7/7] Writing $REMOTE_NIX"
 
+GID_ATTR=""
+[ -n "$GID" ] && GID_ATTR=" gid = ${GID};"
 if [ "$PROTO" = "nfs" ]; then
-    ENTRY="      { type = \"nfs\"; server = \"${SERVER}\"; export = \"${EXPORT}\"; mountPoint = \"${MNT}\"; }"
+    ENTRY="      { type = \"nfs\"; server = \"${SERVER}\"; export = \"${EXPORT}\"; mountPoint = \"${MNT}\";${GID_ATTR} }"
 else
-    ENTRY="      { type = \"cifs\"; server = \"${SERVER}\"; export = \"${EXPORT}\"; mountPoint = \"${MNT}\"; credentialsFile = \"${CRED_FILE}\"; }"
+    ENTRY="      { type = \"cifs\"; server = \"${SERVER}\"; export = \"${EXPORT}\"; mountPoint = \"${MNT}\"; credentialsFile = \"${CRED_FILE}\";${GID_ATTR} }"
 fi
 
 # Preserve any existing entries between the markers.
@@ -331,5 +370,16 @@ echo "  Apply with:"
 echo -e "     ${BOLD}just rebuild${RESET}"
 echo "  The share mounts lazily on first access (x-systemd.automount), so a slow"
 echo "  or offline storage server never blocks boot."
+if [ -n "$GID" ]; then
+    echo ""
+    echo "  Group 'media' (gid $GID) is added to the media service users on rebuild."
+    echo "  Services read their groups only at start, so after 'just rebuild' restart"
+    echo "  the ones you run, e.g.:"
+    echo "     sudo systemctl restart sonarr radarr lidarr bazarr sabnzbd qbittorrent plex jellyfin audiobookshelf"
+    if [ "$PROTO" = "nfs" ]; then
+        echo "  NFS: the NAS export must also allow gid $GID to write (Mapall User/Group"
+        echo "  or a dataset ACL) — nothing on this side can grant that."
+    fi
+fi
 echo ""
 ok "done"
