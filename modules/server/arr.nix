@@ -52,6 +52,7 @@ in
           # Tailscale's CGNAT range isn't RFC1918/RFC4193, so SABnzbd otherwise treats
           # it as "internet" and denies access ("External internet access denied")
           local_ranges = "100.64.0.0/10";
+          cache_limit = "512M"; # module default is "" and is re-applied on every start, clobbering the UI value
         };
       };
 
