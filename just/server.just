@@ -6,7 +6,7 @@
 # Available server service module names.
 # Keep in sync with _service_catalog below, modules/server/default.nix, and
 # template/server-services.nix.
-_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy chaptarr cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy listenarr mealie mediamanager nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism plex podman portainer prometheus proxmox scrutiny searxng seerr sportarr syncthing tautulli tdarr traefik unbound uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
+_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy chaptarr cloudflare-ddns cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy listenarr mealie mediamanager nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism plex podman portainer prometheus proxmox scrutiny searxng seerr sportarr syncthing tautulli tdarr traefik unbound uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
 
 # Server service catalog — the source for `just service available` (catalog view).
 # One line per module: group|name|description. Groups and order are rendered
@@ -26,6 +26,7 @@ _service_catalog := '''
     Infrastructure|attic|Self-hosted Nix binary cache server
     Infrastructure|backup|Declarative restic backups of enabled services
     Infrastructure|caddy|Automatic HTTPS web server & reverse proxy
+    Infrastructure|cloudflare-ddns|Cloudflare dynamic DNS updater (keeps a record on this host's public IP)
     Infrastructure|docker|Container runtime (Docker Engine)
     Infrastructure|dockhand|Web UI for managing Docker/Podman containers
     Infrastructure|harmonia|Nix binary cache serving this host's store
@@ -87,6 +88,7 @@ _service_runtime := '''
     backup|restic-backups-main|
     caddy|caddy|http://localhost:8880
     chaptarr|docker-chaptarr|http://localhost:8789
+    cloudflare-ddns|docker-cloudflare-ddns|
     cockpit|cockpit|http://localhost:9090
     code-server|docker-code-server|http://localhost:4444
     docker|docker|
@@ -507,6 +509,7 @@ _service-info service="":
         harmonia)        printf "  %-18s  HTTP    http://<server-ip>:5000   (Nix binary cache)\n"                      "$1" ;;
         kernel-builder)  printf "  %-18s  No web UI — nightly timer; see 'just kernel status'\n"            "$1" ;;
         chaptarr)        printf "  %-18s  Web UI  http://<server-ip>:8789\n"                                           "$1" ;;
+        cloudflare-ddns) printf "  %-18s  No web UI — Cloudflare DNS updater (needs zone + API token)\n"               "$1" ;;
         grimmory)        printf "  %-18s  Web UI  http://<server-ip>:6060\n"                                           "$1" ;;
         headscale)       printf "  %-18s  Web UI  http://<server-ip>:8085\n"                                           "$1" ;;
         home-registry)   printf "  %-18s  Web UI  http://<server-ip>:8210\n"                                           "$1" ;;

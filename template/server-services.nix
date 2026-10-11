@@ -12,7 +12,7 @@
 #   nginx, caddy, traefik, adguard, headscale, unbound, nginx-proxy-manager,
 #   cockpit, uptime-kuma, homepage, scrutiny, prometheus, netdata,
 #   portainer, ntfy, mealie, humidor, home-registry,
-#   wishlist, zigbee2mqtt, kiji-proxy, proxmox
+#   wishlist, zigbee2mqtt, kiji-proxy, proxmox, cloudflare-ddns
 {
   # ── Secrets Backend (phased migration) ───────────────────────────────────
   # Default is plaintext compatibility via /etc/nixos/secrets/*.
@@ -122,6 +122,7 @@
   # vexos.server.adguard.enable = false;
   # vexos.server.headscale.enable = false;              # Port 8085 — Tailscale control server
   # vexos.server.unbound.enable = false;                 # Port 5335 — DNS resolver
+  # vexos.server.cloudflare-ddns.enable = false;       # No port — Cloudflare DNS updater (zone + API token prompted on enable)
   # vexos.server.nginx-proxy-manager.enable = false;     # Port 81 admin + 8881/8444
 
   # ── Monitoring & Management ──────────────────────────────────────────────

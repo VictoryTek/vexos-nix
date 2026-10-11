@@ -571,7 +571,7 @@ else
   # 11c: …and must cover every service module. Option roots under
   # vexos.server that `just service` deliberately does not manage are listed
   # here; anything else missing from the justfile is drift.
-  JUST_NOT_SERVICES="alertmanager bookshelf cloudflare-ddns fluent-bit nasSync proxy storage"
+  JUST_NOT_SERVICES="alertmanager bookshelf fluent-bit nasSync proxy storage"
   if [ -z "${PRUNE_BIN:-}" ] || [ ! -f "${PRUNE_BIN:-}" ]; then
     warn "derived service list unavailable (check 10 failed) — skipping module coverage check"
   else

@@ -18,7 +18,7 @@ _service-enable service: _require-server-role (_require-known-service service)
     # half-configured — so refuse before writing anything.
     if [ ! -t 0 ]; then
         case "$SERVICE" in
-            arr|plex|proxmox|backup|zigbee2mqtt|mediamanager)
+            arr|plex|proxmox|backup|zigbee2mqtt|mediamanager|cloudflare-ddns)
                 echo "error: enabling '$SERVICE' asks questions — run 'just service enable $SERVICE' in a terminal." >&2
                 exit 1
                 ;;
@@ -248,6 +248,56 @@ _service-enable service: _require-server-role (_require-known-service service)
         nix_set "$SVC_FILE" "${MM_OPTION}" "[ \"${_mm_email}\" ]"
     fi
 
+    # Cloudflare DDNS — zone and the API token are required by the module. The
+    # token is read silently (-s: not echoed) into a variable, never put on a
+    # command line or written to server-services.nix; only the path to the
+    # 0600 secret file is.
+    if [ "$SERVICE" = "cloudflare-ddns" ]; then
+        _cf_zone=""
+        while [ -z "$_cf_zone" ]; do
+            read -r -p "  Cloudflare zone to update (e.g. example.com): " _cf_zone
+            if ! echo "$_cf_zone" | grep -qP '^([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$'; then
+                echo "  Invalid zone. Enter a bare domain such as example.com."
+                _cf_zone=""
+            fi
+        done
+        nix_set "$SVC_FILE" vexos.server.cloudflare-ddns.zone "\"${_cf_zone}\""
+
+        _cf_sub=""
+        while true; do
+            read -r -p "  Subdomain to update (blank = the zone root): " _cf_sub
+            if [ -z "$_cf_sub" ] || echo "$_cf_sub" | grep -qP '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$'; then
+                break
+            fi
+            echo "  Invalid subdomain. Examples: home, vpn.lab"
+        done
+        if [ -n "$_cf_sub" ]; then
+            nix_set "$SVC_FILE" vexos.server.cloudflare-ddns.subdomain "\"${_cf_sub}\""
+        fi
+
+        read -r -p "  Proxy traffic through Cloudflare's CDN? (breaks non-HTTP protocols) [y/N] " _cf_proxied
+        if [[ "$_cf_proxied" =~ ^[Yy]$ ]]; then
+            nix_set "$SVC_FILE" vexos.server.cloudflare-ddns.proxied true
+        else
+            nix_set "$SVC_FILE" vexos.server.cloudflare-ddns.proxied false
+        fi
+
+        CF_SECRET_PATH="/etc/nixos/secrets/cloudflare-ddns-env"
+        echo "  The API token needs Zone:DNS:Edit on $_cf_zone (Cloudflare → My Profile → API Tokens)."
+        _cf_token=""
+        while [ -z "$_cf_token" ]; do
+            read -rs -p "  Cloudflare API token (input hidden): " _cf_token
+            echo ""
+        done
+        sudo mkdir -p /etc/nixos/secrets
+        sudo chmod 700 /etc/nixos/secrets
+        # Create the file 0600 before any secret is written into it.
+        sudo install -m 0600 /dev/null "$CF_SECRET_PATH"
+        printf 'API_KEY=%s\n' "$_cf_token" | sudo tee "$CF_SECRET_PATH" > /dev/null
+        unset _cf_token
+        nix_set "$SVC_FILE" vexos.server.cloudflare-ddns.environmentFile "\"${CF_SECRET_PATH}\""
+    fi
+
     echo "✓ Enabled: $SERVICE"
 
     # Ensure Arcane has environmentFile — required by the build assertion.
@@ -454,6 +504,11 @@ _service-enable service: _require-server-role (_require-known-service service)
         echo "  About:    Audiobook & ebook collection manager (re-work of Readarr) — single container, SQLite under vexos.server.chaptarr.dataDir."
         echo "  Prowlarr: Add it as a Readarr-type application (the API is compatible)."
         echo "  Note:     Beta upstream. Put root folders and downloads under /data (vexos.server.chaptarr.libraryDir) so imports can hardlink."
+        ;;
+      cloudflare-ddns)
+        echo "  Service:  docker-cloudflare-ddns.service"
+        echo "  About:    Keeps a Cloudflare DNS record pointed at this host's public IP (checked every 5 min by default)."
+        echo "  Secret:   API token stored in /etc/nixos/secrets/cloudflare-ddns-env (0600); zone, subdomain and proxied were set above."
         ;;
       grimmory)
         echo "  Services: docker-grimmory.service  docker-grimmory-db.service"
