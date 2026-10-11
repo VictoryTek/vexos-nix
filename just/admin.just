@@ -138,6 +138,142 @@ set-hostname name="":
         echo "Skipped — run 'just rebuild' when ready."
     fi
 
+# Set a static IPv4 address on the wired connection — persists across rebuilds.
+# Prompts for address, prefix length, gateway and DNS, writes them as
+# vexos.network.staticWired.* into /etc/nixos/local.nix (see modules/network.nix),
+# then offers a rebuild. Re-running updates the values in place. Not available on
+# the vanilla role, which does not load modules/network.nix.
+[group('System Administration')]
+[doc('Set a static IPv4 address for the wired connection (prompts)')]
+static-ip:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source "{{justfile_directory()}}/just/lib.sh"
+
+    variant=$(cat /etc/nixos/vexos-variant 2>/dev/null || echo "")
+    if [[ "$variant" == *vanilla* ]]; then
+        echo "error: static-ip is not available on the vanilla role." >&2
+        exit 1
+    fi
+
+    # Dotted-quad IPv4 with every octet 0-255.
+    _valid_ipv4() {
+        local -a _o
+        local _x
+        [[ "$1" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 1
+        IFS=. read -ra _o <<< "$1"
+        for _x in "${_o[@]}"; do
+            (( 10#$_x <= 255 )) || return 1
+        done
+    }
+
+    # Prompt until a valid IPv4 address is entered; EOF on stdin aborts.
+    _ask_ip() {
+        local _v=""
+        while true; do
+            printf '%s' "$1" >&2
+            read -r _v || { echo "" >&2; echo "Aborted." >&2; exit 1; }
+            _valid_ipv4 "$_v" && break
+            echo "  Invalid — enter a dotted IPv4 address." >&2
+        done
+        printf '%s' "$_v"
+    }
+
+    echo ""
+    echo "Configure a static IPv4 address for the wired connection."
+    echo ""
+
+    _ip=$(_ask_ip "IP address (e.g. 192.168.1.10): ")
+
+    while true; do
+        printf "Prefix length (e.g. 24): "
+        read -r _prefix || { echo ""; echo "Aborted."; exit 1; }
+        if [[ "$_prefix" =~ ^[0-9]{1,2}$ ]] && (( 10#$_prefix >= 1 && 10#$_prefix <= 32 )); then
+            _prefix=$(( 10#$_prefix ))
+            break
+        fi
+        echo "  Invalid — enter a number between 1 and 32."
+    done
+
+    _gw=$(_ask_ip "Default gateway (e.g. 192.168.1.1): ")
+    _dns1=$(_ask_ip "Primary DNS server (e.g. 1.1.1.1): ")
+
+    printf "Secondary DNS server (leave blank to skip): "
+    read -r _dns2 || _dns2=""
+    if [ -n "$_dns2" ] && ! _valid_ipv4 "$_dns2"; then
+        echo "  Invalid secondary DNS — ignoring it."
+        _dns2=""
+    fi
+
+    ADDR="${_ip}/${_prefix}"
+    DNS_LIST="\"${_dns1}\""
+    if [ -n "$_dns2" ]; then
+        DNS_LIST="${DNS_LIST} \"${_dns2}\""
+    fi
+
+    echo ""
+    echo "Settings to apply:"
+    echo "  Address : ${ADDR}"
+    echo "  Gateway : ${_gw}"
+    echo "  DNS     : ${_dns1}${_dns2:+, ${_dns2}}"
+    echo ""
+    if [ "$({{_just}} _confirm 'Write these to /etc/nixos/local.nix? [y/N]: ')" != "true" ]; then
+        echo "Aborted — nothing was changed."
+        exit 0
+    fi
+
+    LOCAL="/etc/nixos/local.nix"
+    OPT="vexos.network.staticWired"
+
+    # A wrapper from before the side-file layout never loads local.nix, so
+    # upgrade it first (no-op for a current wrapper).
+    bash "{{justfile_directory()}}/scripts/upgrade-wrapper.sh"
+
+    # The dotted sub-attribute lines written below would conflict with a
+    # hand-written whole-attrset definition.
+    if [ -f "$LOCAL" ] && grep -qE '^\s*vexos\.network\.staticWired\s*=' "$LOCAL"; then
+        echo "error: $LOCAL already defines ${OPT} as a single block." >&2
+        echo "       Edit it by hand there, or remove it and re-run this recipe." >&2
+        exit 1
+    fi
+
+    if [ ! -f "$LOCAL" ]; then
+        printf '%s\n' \
+            '# /etc/nixos/local.nix' \
+            '# Free-form configuration for this machine only. Loaded by /etc/nixos/flake.nix' \
+            '# when present; never overwritten by the installer or updater.' \
+            '{' \
+            '}' | sudo tee "$LOCAL" >/dev/null
+    fi
+
+    nix_set "$LOCAL" "${OPT}.address" "\"${ADDR}\""
+    nix_set "$LOCAL" "${OPT}.gateway" "\"${_gw}\""
+    nix_set "$LOCAL" "${OPT}.dns"     "[ ${DNS_LIST} ]"
+
+    for _k in address gateway dns; do
+        if ! grep -qP "^\s*vexos\.network\.staticWired\.${_k}\s*=" "$LOCAL"; then
+            echo "error: could not write ${OPT}.${_k} into $LOCAL — add it by hand." >&2
+            exit 1
+        fi
+    done
+    echo "✓ Wrote ${OPT} to $LOCAL"
+
+    if ! grep -q '\./local\.nix' /etc/nixos/flake.nix 2>/dev/null; then
+        echo ""
+        echo "warning: /etc/nixos/flake.nix does not load local.nix yet, so the setting will"
+        echo "         not apply. Run 'just update' (it patches the wrapper), then 'just rebuild'."
+        exit 0
+    fi
+
+    echo ""
+    echo "Note: applying a new address over SSH will drop the session."
+    echo "Undo: delete the three ${OPT} lines from $LOCAL and rebuild."
+    if [ "$({{_just}} _confirm 'Rebuild now to apply? [y/N]: ')" = "true" ]; then
+        {{_just}} rebuild
+    else
+        echo "Run 'just rebuild' when ready."
+    fi
+
 # Copy your SSH key to a remote machine so future connections need no password.
 # Usage:
 #   just ssh                     — interactive prompts
