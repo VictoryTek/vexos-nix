@@ -37,4 +37,20 @@ Modified: `just/admin.just` (new `static-ip` recipe). No `.nix` files changed.
 - Dead code noted, not touched: `scripts/configure-network.py` (target block no
   longer exists in `modules/network.nix`).
 
+## Revision 2 — menu + remove
+
+| Check | Result |
+|-------|--------|
+| `just --list` shows `static-ip action="" *args` (menu) | pass |
+| Non-TTY `just static-ip` prints usage, rc 1; unknown action rejected | pass |
+| Menu renders on a pty with options 1 set / 2 remove / 0 quit | pass |
+| `just static-ip remove` on this host (no `local.nix`) → "nothing to remove", rc 0 | pass |
+| Remove (scratch `/etc/nixos`): only the three lines deleted, other config kept, live profile dropped, `nmcli connection reload` called, rebuild offered | pass |
+| Remove declined → "Aborted", file unchanged | pass |
+| Hand-written whole-attrset → refused | pass |
+| Hand-written multi-line value → parse guard refuses, file untouched | pass |
+
+Not verified: removal against the real NetworkManager (the `rm` + `nmcli connection
+reload` were stubbed in the scratch run) and a real rebuild.
+
 **Result: PASS**

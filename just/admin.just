@@ -138,14 +138,20 @@ set-hostname name="":
         echo "Skipped — run 'just rebuild' when ready."
     fi
 
-# Set a static IPv4 address on the wired connection — persists across rebuilds.
+# Static IPv4 address for the wired connection: set one or remove it (menu).
+# Not available on the vanilla role, which does not load modules/network.nix.
+[group('System Administration')]
+[doc('Static IP: set or remove a static IPv4 address (menu)')]
+static-ip action="" *args:
+    @{{_just}} _menu static-ip "Static IP" {{quote(action)}} {{quote(args)}} \
+        "set|Set a static IPv4 address, gateway and DNS" \
+        "remove|Remove the static IP and go back to DHCP"
+
 # Prompts for address, prefix length, gateway and DNS, writes them as
 # vexos.network.staticWired.* into /etc/nixos/local.nix (see modules/network.nix),
-# then offers a rebuild. Re-running updates the values in place. Not available on
-# the vanilla role, which does not load modules/network.nix.
-[group('System Administration')]
-[doc('Set a static IPv4 address for the wired connection (prompts)')]
-static-ip:
+# then offers a rebuild. Re-running updates the values in place.
+[private]
+_static-ip-set:
     #!/usr/bin/env bash
     set -euo pipefail
     source "{{justfile_directory()}}/just/lib.sh"
@@ -267,8 +273,65 @@ static-ip:
 
     echo ""
     echo "Note: applying a new address over SSH will drop the session."
-    echo "Undo: delete the three ${OPT} lines from $LOCAL and rebuild."
+    echo "Undo: just static-ip remove"
     if [ "$({{_just}} _confirm 'Rebuild now to apply? [y/N]: ')" = "true" ]; then
+        {{_just}} rebuild
+    else
+        echo "Run 'just rebuild' when ready."
+    fi
+
+# Delete the three vexos.network.staticWired lines that `static-ip set` wrote to
+# /etc/nixos/local.nix. NetworkManager's ensure-profiles service only ever writes
+# its runtime profile (in /run), so a rebuild alone would leave the static profile
+# live until reboot — it is dropped here as well.
+[private]
+_static-ip-remove:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    LOCAL="/etc/nixos/local.nix"
+    RE='^\s*vexos\.network\.staticWired\.(address|gateway|dns)\s*='
+
+    if [ -f "$LOCAL" ] && grep -qE '^\s*vexos\.network\.staticWired\s*=' "$LOCAL"; then
+        echo "error: $LOCAL defines vexos.network.staticWired as a single block." >&2
+        echo "       Remove it by hand there, then run 'just rebuild'." >&2
+        exit 1
+    fi
+
+    if ! grep -qE "$RE" "$LOCAL" 2>/dev/null; then
+        echo "No static IP is configured in $LOCAL — nothing to remove."
+        exit 0
+    fi
+
+    echo ""
+    echo "Lines to remove from $LOCAL:"
+    grep -E "$RE" "$LOCAL" | sed 's/^/  /'
+    echo ""
+    if [ "$({{_just}} _confirm 'Remove the static IP and go back to DHCP? [y/N]: ')" != "true" ]; then
+        echo "Aborted — nothing was changed."
+        exit 0
+    fi
+
+    TMP=$(mktemp)
+    trap 'rm -f "$TMP"' EXIT
+    sed -E "/${RE}/d" "$LOCAL" > "$TMP"
+    if ! nix-instantiate --parse "$TMP" >/dev/null 2>&1; then
+        echo "error: removing those lines would leave $LOCAL invalid — edit it by hand." >&2
+        exit 1
+    fi
+    sudo cp "$TMP" "$LOCAL"
+    echo "✓ Removed the static IP from $LOCAL"
+
+    PROFILE="/run/NetworkManager/system-connections/wired-static.nmconnection"
+    if [ -e "$PROFILE" ]; then
+        sudo rm -f "$PROFILE"
+        sudo nmcli connection reload
+        echo "✓ Dropped the live static profile — the wired connection returns to DHCP."
+    fi
+
+    echo ""
+    echo "Rebuild so this survives a reboot — the running generation still declares the static IP."
+    if [ "$({{_just}} _confirm 'Rebuild now? [y/N]: ')" = "true" ]; then
         {{_just}} rebuild
     else
         echo "Run 'just rebuild' when ready."

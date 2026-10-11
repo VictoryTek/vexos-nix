@@ -80,3 +80,29 @@ no new flake input (no Context7 lookup needed).
 | Duplicate/conflicting definition with hand-written attrset | Guard in step 6 |
 | `just` parser trips on `{{` in recipe body | Body avoids literal `{{`; regex quantifiers are single-brace |
 | Bad input bricks networking | Strict IPv4/prefix validation; profile is a priority-10 NM profile, `wired-fallback` DHCP remains and `just rollback` undoes the rebuild |
+
+## Revision 2 — menu with set / remove
+
+User request: `just static-ip` should be a menu with one option to set a static IP
+and one to remove it.
+
+- `static-ip action="" *args` is now the public menu recipe, built on the shared
+  `_menu` helper like `vpn` / `kill-switch` / `bootloader` (option 1 `set`, option 2
+  `remove`; non-TTY callers get usage text, `just static-ip set|remove` runs directly).
+- The existing body moves unchanged (apart from the closing "Undo" hint) to the
+  private `_static-ip-set`.
+- New private `_static-ip-remove`:
+  1. refuse with a hand-edit hint if `local.nix` defines `staticWired` as one block;
+  2. "nothing to remove" if none of the three dotted lines are present;
+  3. show the lines, confirm `[y/N]`;
+  4. delete them into a temp copy, `nix-instantiate --parse` it (guards against
+     hand-written multi-line values leaving orphan lines), then `sudo cp` over
+     `local.nix`;
+  5. delete `/run/NetworkManager/system-connections/wired-static.nmconnection` and
+     `nmcli connection reload` — nixpkgs' `NetworkManager-ensure-profiles` start
+     script only *writes* profiles into `/run` (verified in the evaluated unit
+     script), so without this a rebuild would leave the static profile live until
+     reboot;
+  6. offer `just rebuild` (needed so a reboot into the current generation does not
+     bring the static IP back).
+- Files: `just/admin.just` only.
