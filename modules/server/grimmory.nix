@@ -231,7 +231,12 @@ in
   (lib.mkIf cfg.enable (dumpTimer.mkDumpTimer {
     name         = "grimmory";
     container    = "grimmory-db";
-    command      = ''mariadb-dump -u root -p"$MYSQL_ROOT_PASSWORD" grimmory'';
+    # Logs in as the app user, not root: the root login is rejected on real
+    # hosts (1045). Single-quoted so the host shell does not expand anything —
+    # the container shell reads MYSQL_PASSWORD from the container's own env
+    # (same envFile) and hands it to mariadb-dump via MYSQL_PWD, so the
+    # password never appears in `docker exec` argv, ps or the journal.
+    command      = ''sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mariadb-dump -u grimmory --single-transaction --no-tablespaces grimmory' '';
     outputPath   = "${cfg.dataDir}/dump/grimmory.sql";
     envFile      = effectiveEnvFile;
     offsetMinute = 15;
