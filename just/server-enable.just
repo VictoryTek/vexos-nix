@@ -101,7 +101,7 @@ _service-enable service: _require-server-role (_require-known-service service)
     # Arr stack: full-stack or individual-component selection.
     if [ "$SERVICE" = "arr" ]; then
         ARR_COMPONENTS="sabnzbd sonarr radarr lidarr prowlarr qbittorrent bazarr maintainerr"
-        if grep -qP '^\s*vexos\.server\.arr\.(enable|\w+\.enable)\s*=\s*true' "$SVC_FILE" 2>/dev/null; then
+        if arr_any_enabled "$SVC_FILE"; then
             echo "arr is already enabled (or has enabled components). Use 'just service disable arr' first to reconfigure."
             exit 0
         fi
@@ -346,7 +346,7 @@ _service-enable service: _require-server-role (_require-known-service service)
     # configuration for anyone pointing backups at a NAS or remote target.
     if [ "$SERVICE" != "backup" ]; then
         BK_OPTION="vexos.server.backup.enable"
-        if ! grep -qP "^\s*vexos\.server\.backup\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+        if ! nix_is_set "$SVC_FILE" vexos.server.backup.enable true; then
             nix_set "$SVC_FILE" "${BK_OPTION}" true
             _ensure_backup_defaults "$SVC_FILE"
             echo "  + Backups also enabled (restic → /var/lib/vexos-backup/restic-repo)"

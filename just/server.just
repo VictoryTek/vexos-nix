@@ -465,6 +465,7 @@ _service-available:
 _service-info service="":
     #!/usr/bin/env bash
     set -euo pipefail
+    source "{{justfile_directory()}}/just/lib.sh"
     SERVICE={{quote(service)}}
     SVC_FILE="/etc/nixos/server-services.nix"
 
@@ -473,10 +474,10 @@ _service-info service="":
         adguard)         printf "  %-18s  Web UI  http://<server-ip>:3080   |  DNS on :53\n"                           "$1" ;;
         arr)
             _arr_full=false
-            grep -qP '^\s*vexos\.server\.arr\.enable\s*=\s*true' "$SVC_FILE" 2>/dev/null && _arr_full=true
+            nix_is_set "$SVC_FILE" vexos.server.arr.enable true && _arr_full=true
             _arr_parts=""
             _arr_want() {
-                if $_arr_full || grep -qP "^\s*vexos\.server\.arr\.$1\.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+                if $_arr_full || nix_is_set "$SVC_FILE" "vexos.server.arr.$1.enable" true; then
                     _arr_parts="$_arr_parts $2"
                 fi
             }
@@ -588,10 +589,13 @@ _service-info service="":
         echo ""
         FOUND=0
         for svc in {{_server_service_names}}; do
-            if grep -qF "vexos.server.${svc}.enable = true;" "$SVC_FILE" 2>/dev/null; then
+            # kernel-builder's module declares the camelCase option kernelBuilder.
+            OPT_NAME="$svc"
+            [ "$svc" = "kernel-builder" ] && OPT_NAME="kernelBuilder"
+            if nix_is_set "$SVC_FILE" "vexos.server.${OPT_NAME}.enable" true; then
                 _info "$svc"
                 FOUND=1
-            elif [ "$svc" = "arr" ] && grep -qP '^\s*vexos\.server\.arr\.\w+\.enable\s*=\s*true' "$SVC_FILE" 2>/dev/null; then
+            elif [ "$svc" = "arr" ] && arr_any_enabled "$SVC_FILE"; then
                 _info "$svc"
                 FOUND=1
             fi
@@ -737,7 +741,7 @@ _plex-pass-enable: _require-server-role
     source "{{justfile_directory()}}/just/lib.sh"
     SVC_FILE="/etc/nixos/server-services.nix"
     PP_OPTION="vexos.server.plex.plexPass"
-    if ! grep -q "vexos.server.plex.enable\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+    if ! nix_is_set "$SVC_FILE" vexos.server.plex.enable true; then
         echo "error: Plex is not enabled. Run 'just service enable plex' first." >&2
         exit 1
     fi
@@ -753,7 +757,7 @@ _plex-pass-disable: _require-server-role
     source "{{justfile_directory()}}/just/lib.sh"
     SVC_FILE="/etc/nixos/server-services.nix"
     PP_OPTION="vexos.server.plex.plexPass"
-    if grep -qP "^\s*${PP_OPTION//./\\.}\s*=\s*true" "$SVC_FILE" 2>/dev/null; then
+    if nix_is_set "$SVC_FILE" "$PP_OPTION" true; then
         nix_set "$SVC_FILE" "$PP_OPTION" false
         echo "✓ Plex Pass hardware transcoding disabled."
         echo "  → Run 'just rebuild' to apply."
@@ -784,6 +788,7 @@ prune-services: _require-server-role
 _service-disable service: _require-server-role (_require-known-service service)
     #!/usr/bin/env bash
     set -euo pipefail
+    source "{{justfile_directory()}}/just/lib.sh"
     SVC_FILE="/etc/nixos/server-services.nix"
     SERVICE={{quote(service)}}
 
@@ -806,8 +811,7 @@ _service-disable service: _require-server-role (_require-known-service service)
                     vexos.server.arr.radarr.enable vexos.server.arr.lidarr.enable \
                     vexos.server.arr.prowlarr.enable vexos.server.arr.qbittorrent.enable \
                     vexos.server.arr.bazarr.enable vexos.server.arr.maintainerr.enable; do
-            if grep -qF "${_opt} = true;" "$SVC_FILE" 2>/dev/null; then
-                sudo sed -i "s/${_opt//./\\.} = true;/${_opt//./\\.} = false;/" "$SVC_FILE"
+            if nix_disable "$SVC_FILE" "$_opt"; then
                 ARR_FOUND=1
             fi
         done
@@ -820,12 +824,10 @@ _service-disable service: _require-server-role (_require-known-service service)
         exit 0
     fi
 
-    if ! grep -qF "${OPTION} = true;" "$SVC_FILE" 2>/dev/null; then
+    if ! nix_disable "$SVC_FILE" "$OPTION"; then
         echo "$SERVICE is already disabled."
         exit 0
     fi
-
-    sudo sed -i "s/${OPTION//./\\.} = true;/${OPTION//./\\.} = false;/" "$SVC_FILE"
 
     echo "✗ Disabled: $SERVICE"
     echo "  → Run 'just rebuild' to apply."

@@ -80,6 +80,7 @@ _require-desktop-role:
 _feature-list: _require-desktop-role
     #!/usr/bin/env bash
     set -euo pipefail
+    source "{{justfile_directory()}}/just/lib.sh"
     FEAT_FILE="/etc/nixos/features.nix"
     # $2 ("on"/"off", default "off") is the module's own default when the option is
     # absent/commented out in features.nix — sunshine defaults to true in
@@ -87,9 +88,9 @@ _feature-list: _require-desktop-role
     _check() {
         local feat="$1"
         local default="${2:-off}"
-        if grep -qP "vexos\.features\.${feat//./\\.}\.enable\s*=\s*true" "$FEAT_FILE" 2>/dev/null; then
+        if nix_is_set "$FEAT_FILE" "vexos.features.${feat}.enable" true; then
             printf "    \033[32m✓\033[0m %s\n" "$feat"
-        elif grep -qP "vexos\.features\.${feat//./\\.}\.enable\s*=\s*false" "$FEAT_FILE" 2>/dev/null; then
+        elif nix_is_set "$FEAT_FILE" "vexos.features.${feat}.enable" false; then
             printf "    \033[90m✗\033[0m %s\n" "$feat"
         elif [ "$default" = "on" ]; then
             printf "    \033[32m✓\033[0m %s (default)\n" "$feat"
