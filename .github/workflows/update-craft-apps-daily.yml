@@ -1,0 +1,133 @@
+name: Craft Apps Pins — Daily
+
+# Wordcraft, GridCraft, PdfCraft and PhotoCraft (storytold "Crafting Apps") are
+# distributed only as `.flatpak` bundles attached to GitHub releases — there is no
+# Flatpak remote, and a bundle carries no update URL, so `flatpak update` can never
+# move them. They are pinned in pkgs/craft-apps/pins.json (version + SRI hash) and
+# installed by modules/flatpak-bundles.nix. The apps are alpha and release every day
+# or two, so this workflow keeps the pins current without manual edits.
+#
+# For every app listed in pins.json it asks GitHub for the newest non-prerelease
+# release, prefetches the x86_64 bundle, and rewrites the pin in place. It then
+# BUILDS the fetched bundles and asserts each still declares its expected app ID
+# (app/ai.storyteller.<name>/x86_64/stable) — an upstream rename would otherwise
+# silently orphan the app-grid folder entries — and only commits if that passes.
+#
+# Mirrors update-brave-origin-weekly-thursday.yml's direct-commit-to-main style.
+# A commit here only updates the repo — hosts receive the new bundles on the next
+# `git pull` + `just update` / `sudo nixos-rebuild switch`; the flatpak-install-bundles
+# service then upgrades the installed apps in place.
+
+on:
+  schedule:
+    - cron: '30 4 * * *'   # Every day, 04:30 UTC (offset from the 03:00 kernels / 04:00 lock jobs)
+  workflow_dispatch:        # Manual trigger: same scope as the schedule
+
+permissions:
+  contents: write           # Required to commit and push the updated pins back to main
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for newer Craft app releases
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          PINS="pkgs/craft-apps/pins.json"
+          changed=""
+
+          for name in $(jq -r 'keys[]' "$PINS"); do
+            current=$(jq -r --arg n "$name" '.[$n].version' "$PINS")
+
+            # /releases/latest excludes drafts and prereleases.
+            tag=$(
+              curl -fsS -H "Authorization: Bearer $GH_TOKEN" \
+                "https://api.github.com/repos/storytold/${name}/releases/latest" \
+                | jq -r '.tag_name // empty'
+            ) || true
+
+            if [ -z "$tag" ]; then
+              echo "warning: could not determine the latest ${name} release (API limit, or"
+              echo "warning: repo renamed) — leaving its pin untouched."
+              continue
+            fi
+
+            latest="${tag#v}"
+            if [ "$latest" = "$current" ]; then
+              echo "${name} already at latest ($current)"
+              continue
+            fi
+
+            url="https://github.com/storytold/${name}/releases/download/${tag}/${name}-${latest}-linux-x86_64.flatpak"
+            raw=$(nix-prefetch-url "$url")
+            hash=$(nix hash convert --hash-algo sha256 --to sri "$raw")
+            echo "${name}: $current -> $latest ($hash)"
+
+            tmp=$(mktemp)
+            jq --arg n "$name" --arg v "$latest" --arg h "$hash" \
+              '.[$n] = { version: $v, hash: $h }' "$PINS" > "$tmp"
+            mv "$tmp" "$PINS"
+
+            changed="${changed:+$changed, }${name} ${latest}"
+          done
+
+          if [ -z "$changed" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "changed=true"      >> "$GITHUB_OUTPUT"
+          echo "summary=$changed"  >> "$GITHUB_OUTPUT"
+
+      # The bundles are only reachable through the vexos overlay inside each
+      # nixosConfiguration — there is no packages.<system> flake output — so build
+      # them against the flake's own pinned nixpkgs. Nix's dirty-tree evaluation
+      # picks up the modified (tracked) pins file without any staging step.
+      - name: Build the bumped bundles and verify app IDs
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          out=$(nix build --impure --no-link --print-out-paths --expr '
+            let
+              flake = builtins.getFlake (toString ./.);
+              pkgs  = import flake.inputs.nixpkgs {
+                system   = "x86_64-linux";
+                overlays = [ (import ./pkgs) ];
+              };
+            in pkgs.linkFarm "craft-bundles"
+              (pkgs.lib.mapAttrsToList
+                (name: app: { name = name + ".flatpak"; path = app.bundle; })
+                pkgs.vexos.craft-apps)')
+
+          for name in $(jq -r 'keys[]' pkgs/craft-apps/pins.json); do
+            if ! head -c 262144 "$out/${name}.flatpak" \
+                | grep -aq "app/ai.storyteller.${name}/x86_64/stable"; then
+              echo "error: ${name} bundle no longer declares app/ai.storyteller.${name}/x86_64/stable"
+              exit 1
+            fi
+          done
+
+      - name: Commit updated Craft app pins
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pkgs/craft-apps/pins.json
+          git commit -m "chore(craft-apps): bump ${{ steps.check.outputs.summary }}"
+          git push

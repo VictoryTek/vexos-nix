@@ -86,7 +86,7 @@ in
         };
 
         "org/gnome/desktop/app-folders" = {
-          folder-children = [ "Games" "Game Utilities" "Office" "Utilities" "System" ];
+          folder-children = [ "Games" "Game Utilities" "Office" "Graphics" "Utilities" "System" ];
         };
 
         "org/gnome/desktop/app-folders/folders/Games" = {
@@ -118,6 +118,17 @@ in
             "org.gnome.TextEditor.desktop"
             "org.gnome.Papers.desktop"
             "net.cozic.joplin_desktop.desktop"
+            "ai.storyteller.wordcraft.desktop"
+            "ai.storyteller.gridcraft.desktop"
+            "ai.storyteller.pdfcraft.desktop"
+          ];
+        };
+
+        "org/gnome/desktop/app-folders/folders/Graphics" = {
+          name = "Graphics";
+          apps = [
+            "org.gimp.GIMP.desktop"
+            "ai.storyteller.photocraft.desktop"
           ];
         };
 

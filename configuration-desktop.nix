@@ -18,6 +18,7 @@
     ./modules/gpu.nix
     ./modules/flatpak.nix
     ./modules/flatpak-desktop.nix   # desktop-only Flatpak apps via extraApps
+    ./modules/flatpak-bundles.nix   # installs release-asset .flatpak bundles (Craft apps) set by flatpak-desktop.nix
     ./modules/network.nix
     ./modules/network-desktop.nix   # samba CLI
     ./modules/storage-remote.nix    # attach a NAS share (NFS/CIFS) via `just remote-storage attach`; inert until one is declared

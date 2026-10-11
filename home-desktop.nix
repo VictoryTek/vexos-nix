@@ -208,13 +208,13 @@
       Type            = "oneshot";
       RemainAfterExit = true;
       ExecStart       = toString (pkgs.writeShellScript "vexos-init-app-folders-desktop" ''
-        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v5"
+        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v6"
         [ -f "$STAMP" ] && exit 0
 
         D="${pkgs.dconf}/bin/dconf"
 
         $D write /org/gnome/desktop/app-folders/folder-children \
-          "['Games', 'Game Utilities', 'Office', '3D', 'Utilities', 'System']"
+          "['Games', 'Game Utilities', 'Office', 'Graphics', '3D', 'Utilities', 'System']"
 
         $D write /org/gnome/desktop/app-folders/folders/Games/name  "'Games'"
         $D write /org/gnome/desktop/app-folders/folders/Games/apps \
@@ -226,7 +226,11 @@
 
         $D write /org/gnome/desktop/app-folders/folders/Office/name   "'Office'"
         $D write /org/gnome/desktop/app-folders/folders/Office/apps \
-          "['org.onlyoffice.desktopeditors.desktop', 'org.gnome.TextEditor.desktop', 'org.gnome.Papers.desktop', 'net.cozic.joplin_desktop.desktop']"
+          "['org.onlyoffice.desktopeditors.desktop', 'org.gnome.TextEditor.desktop', 'org.gnome.Papers.desktop', 'net.cozic.joplin_desktop.desktop', 'ai.storyteller.wordcraft.desktop', 'ai.storyteller.gridcraft.desktop', 'ai.storyteller.pdfcraft.desktop']"
+
+        $D write /org/gnome/desktop/app-folders/folders/Graphics/name "'Graphics'"
+        $D write /org/gnome/desktop/app-folders/folders/Graphics/apps \
+          "['org.gimp.GIMP.desktop', 'ai.storyteller.photocraft.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/"3D"/name "'3D'"
         $D write /org/gnome/desktop/app-folders/folders/"3D"/apps \

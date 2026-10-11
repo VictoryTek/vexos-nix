@@ -18,6 +18,12 @@ final: prev: {
     vexos-vpn            = final.callPackage ./vexos-vpn { };     # PIA WireGuard/OpenVPN + kill switch CLI
     # ── Utilities ───────────────────────────────────────────────────────────
     tmog                 = final.callPackage ./tmog { };
+    # ── Flatpak bundles (release assets, not on Flathub) ────────────────────
+    # pkgs.vexos.craft-apps.<name>.{appId,version,bundle}; installed by
+    # modules/flatpak-bundles.nix. Plain import (not callPackage) so the set is
+    # exactly the apps in pins.json — callPackage would add override attrs that
+    # break iteration (the update workflow maps over it).
+    craft-apps           = import ./craft-apps { inherit (final) lib fetchurl; };
     # ── Kernels ─────────────────────────────────────────────────────────────
     # Registry of custom kernels (pkgs.vexos.kernels.<name>). Built by the
     # opt-in kernel-builder service and served over Harmonia; see
