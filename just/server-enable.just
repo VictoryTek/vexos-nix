@@ -164,6 +164,9 @@ _service-enable service: _require-server-role (_require-known-service service)
     # interactive prompt block rather than silently no-op.
     if [ "$SERVICE" != "backup" ] && nix_is_set "$SVC_FILE" "$OPTION" true; then
         echo "$SERVICE is already enabled."
+        if _pu=$(public_url_info "$SERVICE") && [ -z "$(nix_get_str "$SVC_FILE" "vexos.server.${SERVICE}.${_pu%%|*}")" ]; then
+            echo "  Public URL not set — run 'just service set-url $SERVICE' if it is served behind a reverse proxy."
+        fi
         exit 0
     fi
 
@@ -298,15 +301,19 @@ _service-enable service: _require-server-role (_require-known-service service)
         nix_set "$SVC_FILE" vexos.server.cloudflare-ddns.environmentFile "\"${CF_SECRET_PATH}\""
     fi
 
+    # Public URL (wishlist origin, joplin baseUrl, arcane appUrl, ...) — Enter
+    # keeps the module default, so this never blocks first use. See
+    # prompt_public_url in lib.sh; `just service set-url` re-runs it later.
+    prompt_public_url "$SVC_FILE" "$SERVICE" || true
+
     echo "✓ Enabled: $SERVICE"
 
     # Ensure Arcane has environmentFile — required by the build assertion.
     # environmentFile (ENCRYPTION_KEY/JWT_SECRET) is auto-generated, mirroring
     # the SearXNG/VexBoard secret pattern below since there is no external
     # value for the user to supply. appUrl defaults to a working
-    # http://localhost:<port> value in modules/server/arcane.nix, so no
-    # prompt is needed for it — override vexos.server.arcane.appUrl directly
-    # in server-services.nix if Arcane is later placed behind a reverse proxy.
+    # http://localhost:<port> value in modules/server/arcane.nix; the public
+    # URL prompt above sets it when Arcane is behind a reverse proxy.
     if [ "$SERVICE" = "arcane" ]; then
         ARCANE_ENV_OPTION="vexos.server.arcane.environmentFile"
         ARCANE_SECRET_PATH="/etc/nixos/secrets/arcane-env"
@@ -417,7 +424,7 @@ _service-enable service: _require-server-role (_require-known-service service)
         echo "  Login:     Default arcane / arcane-admin — you are prompted to change the password on first login."
         echo "  About:     Modern container management UI — browse containers, images, volumes, and networks from a browser."
         echo "  Backend:   vexos.server.arcane.backend = \"docker\" (default, auto-enables Docker) or \"podman\" (requires 'just service enable podman' first)."
-        echo "  appUrl and environmentFile (ENCRYPTION_KEY/JWT_SECRET) were configured above."
+        echo "  environmentFile (ENCRYPTION_KEY/JWT_SECRET) was generated; behind a reverse proxy, set appUrl with 'just service set-url arcane'."
         ;;
       attic)
         echo "  Service:  atticd.service"
@@ -557,7 +564,7 @@ _service-enable service: _require-server-role (_require-known-service service)
         echo "  Web UI:   http://<tailnet-host>:22300   (also reachable from the LAN regardless of openFirewall; bind the port to 127.0.0.1 or the Tailscale IP to restrict it)"
         echo "  About:    Self-hosted sync server for Joplin desktop/mobile clients (two-container stack: app + dedicated Postgres)."
         echo "  Login:    admin@localhost / admin — change from the web UI after first boot."
-        echo "  Note:     If clients get 'invalid origin' sync errors, set vexos.server.joplin.baseUrl to your tailnet's fully-qualified MagicDNS name."
+        echo "  Note:     If clients get 'invalid origin' sync errors, run 'just service set-url joplin' with the URL clients use (e.g. your tailnet's fully-qualified MagicDNS name or reverse-proxy address)."
         ;;
       mealie)
         echo "  Service:  docker-mealie.service"
@@ -833,7 +840,7 @@ _service-enable service: _require-server-role (_require-known-service service)
         echo "  Web UI:   http://<server-ip>:3280"
         echo "  About:    Self-hosted wishlist / gift registry (cmintey/wishlist) — single container, SQLite under vexos.server.wishlist.dataDir."
         echo "  Login:    Create the first account on first visit (it becomes the admin) — no default credentials."
-        echo "  Note:     If sign-in or uploads fail, set vexos.server.wishlist.origin to the exact URL you browse to (ORIGIN is validated)."
+        echo "  Note:     If sign-in or uploads fail, run 'just service set-url wishlist' with the exact URL you browse to (ORIGIN is validated)."
         ;;
       prometheus)
         echo "  Service:  prometheus.service"

@@ -149,6 +149,7 @@ service action="" *args:
         "status|systemd status and HTTP reachability of a service|Service name|stay" \
         "restart|Restart a service, clearing any start-limit failure|Service name" \
         "enable|Enable a service module|Service name" \
+        "set-url|Set the public URL of a service behind a reverse proxy|Service name" \
         "disable|Disable a service module|Service name"
 
 # Plex Pass hardware transcoding (server): enable or disable.
@@ -784,6 +785,42 @@ prune-services: _require-server-role
     set -euo pipefail
     sudo nix --extra-experimental-features "nix-command flakes" \
         run "github:VictoryTek/vexos-nix#prune-services" -- --apply
+
+# Set the public URL (the address users type) of an enabled service that has
+# one — for services behind a reverse proxy, or enabled before the question was
+# asked. Same prompt as `just service enable`. Usage: just service set-url wishlist
+[private]
+[arg('service', pattern='[a-z0-9][a-z0-9-]*')]
+_service-set-url service: _require-server-role (_require-known-service service)
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source "{{justfile_directory()}}/just/lib.sh"
+    SVC_FILE="/etc/nixos/server-services.nix"
+    SERVICE={{quote(service)}}
+
+    if ! public_url_info "$SERVICE" > /dev/null; then
+        _with_url=""
+        for _s in {{_server_service_names}}; do
+            if public_url_info "$_s" > /dev/null; then _with_url="$_with_url $_s"; fi
+        done
+        echo "error: '$SERVICE' has no public-URL option. Services that do:$_with_url" >&2
+        exit 1
+    fi
+    if [ ! -f "$SVC_FILE" ] || ! nix_is_set "$SVC_FILE" "vexos.server.${SERVICE}.enable" true; then
+        echo "error: $SERVICE is not enabled — run 'just service enable $SERVICE' first." >&2
+        exit 1
+    fi
+    if [ ! -t 0 ]; then
+        echo "error: 'set-url' asks a question — run 'just service set-url $SERVICE' in a terminal." >&2
+        exit 1
+    fi
+
+    if prompt_public_url "$SVC_FILE" "$SERVICE"; then
+        echo "  → Run 'just rebuild' to apply."
+    else
+        echo "No change made."
+    fi
+    echo ""
 
 # Disable a server service module.  Usage: just service disable docker
 [private]
