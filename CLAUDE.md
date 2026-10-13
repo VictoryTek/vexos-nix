@@ -1,11 +1,12 @@
 # CLAUDE.md
-**vexos-nix** — Personal NixOS system configuration (Nix flake, 30 `nixosConfigurations`). Languages: Nix, Bash. Frameworks: NixOS 26.05, nixpkgs (stable + unstable overlay), home-manager, impermanence, disko, sops-nix. Package manager(s): Nix (flakes, `flake.lock`).
+**vexos-nix** — Personal NixOS system configuration (Nix flake, one `nixosConfiguration` per role and GPU variant). Languages: Nix, Bash. Frameworks: NixOS, nixpkgs (stable + unstable overlay), home-manager, impermanence, disko, sops-nix. Package manager(s): Nix (flakes, `flake.lock`).
 
 ## Commands
 
 Build:
 - `sudo nixos-rebuild dry-build --flake .#vexos-<role>-<gpu>` (outputs are listed in `hostList` in `flake.nix`)
 - `nix eval --impure ".#nixosConfigurations.<config>.config.system.build.toplevel.drvPath"` (full evaluation without building; what CI runs per config)
+- Validate by area touched (dry-build each): changes under `modules/`, `hosts/` or `configuration-*.nix` → `vexos-desktop-amd`, `vexos-desktop-nvidia`, `vexos-desktop-vm`; plus `vexos-server-amd` and `vexos-headless-server-amd` when `modules/server/` or those roles change; plus `vexos-stateless-amd` and `vexos-htpc-amd` when those roles change
 
 Test:
 - `nix flake show --impure` (flake structure check, low RAM)
@@ -25,7 +26,7 @@ Fast verify (also run by the Stop hook): `nix flake show --impure`
 - Architecture: Thin flake; host-generated `/etc/nixos/hardware-configuration.nix` is imported by reference. Modules follow "common base + role additions": `modules/<subsystem>.nix` applies to every role that imports it, `modules/<subsystem>-<qualifier>.nix` holds role/feature additions, and each `configuration-<role>.nix` expresses its role entirely through its import list.
 - CI environment: GitHub Actions (`ubuntu-latest`); `.github/workflows/ci.yml` runs static checks, then evaluates every config in 6 parallel groups (one per role) with a stub `hardware-configuration.nix`
 - OS requirements: Linux with Nix. `nixos-rebuild dry-build` needs `/etc/nixos/vexos-variant` and `/etc/nixos/hardware-configuration.nix` on the machine. On a Windows checkout, run Nix through WSL.
-- Build layout constraints: 30 outputs; evaluating all of them at once exhausts RAM on any single machine, so validate per target. Untracked new files are invisible to a `git+file` flake ref; evaluate with `path:.#...` before they are staged.
+- Build layout constraints: Validate per target, never all outputs at once (see Forbidden commands). Untracked new files are invisible to a `git+file` flake ref; evaluate with `path:.#...` before they are staged.
 - Large disk side-effects: None identified beyond normal Nix store growth
 - Other constraints: `hardware-configuration.nix` is generated per host and must never be committed
 - Special constraints:
@@ -34,6 +35,7 @@ Fast verify (also run by the Stop hook): `nix flake show --impure`
   - New flake inputs set `inputs.nixpkgs.follows = "nixpkgs"` unless a comment in `flake.nix` justifies the exception
   - Keep the inline `unstableOverlayModule` (`pkgs.unstable.*`); never make `nixpkgs-unstable` follow `nixpkgs`
   - Recipe names and parameter order in `just/` are a contract with VexPortal (`just --dump`); recipes may run with stdin closed (no terminal)
+  - Server modules (`modules/server/`): no plaintext credential assignments, no hardcoded secrets, no world-writable files
 
 ## Forbidden commands
 
@@ -51,7 +53,7 @@ What gets staged, committed, pushed, or stashed is the user's decision; the comm
 
 ### Project-specific
 
-- `nix flake check` (any form, any flags) — reason: evaluates all 30 `nixosConfigurations` in parallel and exhausts RAM on any single machine. Use instead: `nix flake show --impure` plus per-target `nix eval --impure ...drvPath` or `sudo nixos-rebuild dry-build`
+- `nix flake check` (any form, any flags) — reason: evaluates every `nixosConfigurations` output in parallel and exhausts RAM on any single machine. Use instead: `nix flake show --impure` plus per-target `nix eval --impure ...drvPath` or `sudo nixos-rebuild dry-build`
 - `nixos-rebuild switch` (with or without `sudo`) — reason: applies the configuration to the live system; user-initiated only. Use instead: `sudo nixos-rebuild dry-build --flake .#vexos-<role>-<gpu>`
 - `nixos-rebuild boot` (with or without `sudo`) — reason: schedules activation on next boot; user-initiated only. Use instead: `sudo nixos-rebuild dry-build --flake .#vexos-<role>-<gpu>`
 
