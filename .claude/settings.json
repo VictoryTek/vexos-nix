@@ -5,34 +5,40 @@
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
+      "Bash(git show:*)",
       "Bash(git ls-files:*)",
       "Bash(git branch:*)",
-      "Bash(git show:*)",
+      "Bash(stat:*)",
       "Bash(nix flake show:*)",
       "Bash(nix flake metadata:*)",
       "Bash(nix eval:*)",
-      "Bash(nix build --dry-run:*)",
       "Bash(sudo nixos-rebuild dry-build:*)",
-      "Bash(sudo nixos-rebuild dry-activate:*)",
-      "Bash(sudo nixos-rebuild list-generations:*)",
-      "Bash(bash scripts/preflight.sh:*)",
-      "Bash(nixpkgs-fmt --check:*)",
-      "Bash(grep:*)",
-      "Bash(find:*)",
-      "Bash(stat:*)",
-      "Bash(ls:*)",
-      "Bash(jq:*)",
-      "Bash(readlink:*)"
+      "Bash(bash scripts/preflight.sh:*)"
     ],
     "deny": [
-      "Bash(nix flake check:*)",
-      "Bash(sudo nixos-rebuild switch:*)",
-      "Bash(sudo nixos-rebuild boot:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git stash:*)",
+      "Bash(nix flake check:*)",
+      "Bash(nixos-rebuild switch:*)",
+      "Bash(sudo nixos-rebuild switch:*)",
+      "Bash(nixos-rebuild boot:*)",
+      "Bash(sudo nixos-rebuild boot:*)",
       "Bash(rm -rf:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify.sh",
+            "timeout": 600
+          }
+        ]
+      }
     ]
   }
 }
