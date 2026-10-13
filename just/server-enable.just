@@ -848,6 +848,20 @@ _service-enable service: _require-server-role (_require-known-service service)
         echo "  About:    Time-series metrics collection and alerting."
         echo "  Note:     Add scrape targets in the module. Node Exporter is not auto-enabled — add it separately."
         ;;
+      pihole)
+        echo "  Service:  pihole-ftl.service (backend = native) or docker-pihole.service (backend = docker)"
+        echo "  Web UI:   http://<server-ip>:8053/ (native) or http://<server-ip>:8053/admin (docker)"
+        echo "  Password: generated on first rebuild — sudo cat /etc/nixos/secrets/pihole-env"
+        echo "  DNS:      Loopback only by default — set dnsBindHosts and openDnsFirewall to serve the LAN, then point your router's DNS here."
+        echo "  Note:     Cannot run alongside AdGuard Home (both use port 53)."
+        ;;
+      unifi-toolkit)
+        echo "  Service:  docker-unifi-toolkit.service"
+        echo "  Web UI:   http://<server-ip>:8010"
+        echo "  About:    Wi-Fi Stalker, Threat Watch, Network Pulse and House Arrest for UniFi OS consoles (UDM, UCG, Cloud Key Gen2+)."
+        echo "  Setup:    Enter the controller's local IP and an API key in the web UI (gear icon). No login — keep it on the LAN."
+        echo "  Secret:   ENCRYPTION_KEY generated into /etc/nixos/secrets/unifi-toolkit-env — do not change it after setup."
+        ;;
       unbound)
         echo "  Service:  unbound.service"
         echo "  DNS:      Port 5335 (UDP/TCP)"

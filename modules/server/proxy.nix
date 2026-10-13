@@ -25,6 +25,8 @@ let
 
   services = [
     { name = "adguard"; enable = config.vexos.server.adguard.enable; port = config.vexos.server.adguard.port; }
+    { name = "pihole"; enable = config.vexos.server.pihole.enable; port = config.vexos.server.pihole.port; }
+    { name = "unifi-toolkit"; enable = config.vexos.server.unifi-toolkit.enable; port = config.vexos.server.unifi-toolkit.port; }
     { name = "seerr"; enable = config.vexos.server.seerr.enable; port = config.vexos.server.seerr.port; }
     { name = "cockpit"; enable = config.vexos.server.cockpit.enable; port = config.vexos.server.cockpit.port; }
     { name = "tautulli"; enable = config.vexos.server.tautulli.enable; port = 8181; }

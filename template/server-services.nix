@@ -9,7 +9,8 @@
 #   arr (SABnzbd + Sonarr + Radarr + Lidarr + Prowlarr + qBittorrent + Bazarr + Maintainerr),
 #   grimmory, papermc, nextcloud, syncthing, immich, photoprism, joplin,
 #   paperless, forgejo, code-server, attic, vaultwarden, authelia,
-#   nginx, caddy, traefik, adguard, headscale, unbound, nginx-proxy-manager,
+#   nginx, caddy, traefik, adguard, pihole, unifi-toolkit, headscale, unbound,
+#   nginx-proxy-manager,
 #   cockpit, uptime-kuma, homepage, scrutiny, prometheus, netdata,
 #   portainer, ntfy, mealie, humidor, home-registry,
 #   wishlist, zigbee2mqtt, kiji-proxy, proxmox, cloudflare-ddns
@@ -120,6 +121,9 @@
   # vexos.server.caddy.enable = false;                  # Ports 8880/8443
   # vexos.server.traefik.enable = false;                # Ports 8882/8445 + 8079 dashboard
   # vexos.server.adguard.enable = false;
+  # vexos.server.pihole.enable = false;                 # Port 8053 web UI + DNS :53 (loopback by default; not with adguard)
+  # vexos.server.pihole.backend = "native";             # "native" (nixpkgs) or "docker"
+  # vexos.server.unifi-toolkit.enable = false;          # Port 8010 — UniFi OS console monitoring tools (container)
   # vexos.server.headscale.enable = false;              # Port 8085 — Tailscale control server
   # vexos.server.unbound.enable = false;                 # Port 5335 — DNS resolver
   # vexos.server.cloudflare-ddns.enable = false;       # No port — Cloudflare DNS updater (zone + API token prompted on enable)

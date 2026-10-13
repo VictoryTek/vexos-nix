@@ -56,6 +56,8 @@
     ./proxy.nix
     ./traefik.nix
     ./adguard.nix
+    ./pihole.nix
+    ./unifi-toolkit.nix
     ./headscale.nix
     ./unbound.nix
     ./nginx-proxy-manager.nix

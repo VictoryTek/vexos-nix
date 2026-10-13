@@ -6,7 +6,7 @@
 # Available server service module names.
 # Keep in sync with _service_catalog below, modules/server/default.nix, and
 # template/server-services.nix.
-_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy chaptarr cloudflare-ddns cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy listenarr mealie mediamanager nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism plex podman portainer prometheus proxmox scrutiny searxng seerr sportarr syncthing tautulli tdarr traefik unbound uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
+_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy chaptarr cloudflare-ddns cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy listenarr mealie mediamanager nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism pihole plex podman portainer prometheus proxmox scrutiny searxng seerr sportarr syncthing tautulli tdarr traefik unbound unifi-toolkit uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
 
 # Server service catalog — the source for `just service available` (catalog view).
 # One line per module: group|name|description. Groups and order are rendered
@@ -57,6 +57,8 @@ _service_catalog := '''
     Networking & Security|adguard|DNS-based ad & tracker blocker
     Networking & Security|authelia|Single sign-on & two-factor auth gateway
     Networking & Security|headscale|Self-hosted Tailscale-compatible VPN (WireGuard)
+    Networking & Security|pihole|DNS ad blocker (nixpkgs or Docker)
+    Networking & Security|unifi-toolkit|Monitoring tools for UniFi OS consoles
     Networking & Security|unbound|Validating, recursive, caching DNS resolver
     Networking & Security|vaultwarden|Lightweight Bitwarden-compatible password manager
     Productivity|code-server|VS Code running in the browser
@@ -117,6 +119,7 @@ _service_runtime := '''
     paperless|paperless-web paperless-scheduler paperless-task-queue paperless-consumer|http://localhost:28981
     papermc|minecraft-server|
     photoprism|docker-photoprism|http://localhost:2342
+    pihole|pihole-ftl docker-pihole|http://localhost:8053/api/info/login
     plex|plex|http://localhost:32400/web
     podman|podman|
     portainer|docker-portainer podman-portainer|https://localhost:9443
@@ -131,6 +134,7 @@ _service_runtime := '''
     tdarr|tdarr-server tdarr-node-local|http://localhost:8265
     traefik|traefik|http://localhost:8079/dashboard/
     unbound|unbound|
+    unifi-toolkit|docker-unifi-toolkit|http://localhost:8010/health
     uptime-kuma|docker-uptime-kuma|http://localhost:3001
     vaultwarden|vaultwarden|http://localhost:8222
     vexboard|vexboard|http://localhost:7280
@@ -545,6 +549,7 @@ _service-info service="":
             printf "  %-18s  Console: enable-rcon=true in server.properties, then mcrcon\n"           ""
             printf "  %-18s  Monitor: journalctl -fu minecraft-server\n"                              ""
             ;;
+        pihole)          printf "  %-18s  Web UI  http://<server-ip>:8053  (/admin on docker)  |  DNS on :53\n"          "$1" ;;
         plex)            printf "  %-18s  Web UI  http://<server-ip>:32400/web\n"                                      "$1" ;;
         podman)          printf "  %-18s  No web UI — podman / podman compose CLI\n"                                   "$1" ;;
         scrutiny)        printf "  %-18s  Web UI  http://<server-ip>:8078\n"                                           "$1" ;;
@@ -566,6 +571,7 @@ _service-info service="":
         prometheus)      printf "  %-18s  Web UI  http://<server-ip>:9092\n"                                               "$1" ;;
         proxmox)         printf "  %-18s  Web UI  https://<server-ip>:8006  |  Ports :3128 (SPICE), :5900-5999 (VNC)\n"        "$1" ;;
         unbound)         printf "  %-18s  DNS on :5335\n"                                                                  "$1" ;;
+        unifi-toolkit)   printf "  %-18s  Web UI  http://<server-ip>:8010\n"                                           "$1" ;;
         zigbee2mqtt)     printf "  %-18s  Web UI  http://<server-ip>:8088\n"                                                   "$1" ;;
         *)               printf "  %-18s  (no info available)\n"                                                       "$1" ;;
       esac
