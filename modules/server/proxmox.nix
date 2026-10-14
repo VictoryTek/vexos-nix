@@ -79,6 +79,12 @@ in
       in
       [ "${patchedProxmoxLib}:${pkgs.proxmox-widget-toolkit}/share/javascript/proxmox-widget-toolkit/proxmoxlib.js" ];
 
+    # vzdump shells out to tar/gzip/zstd, and systemd services don't inherit the
+    # system PATH. Manual backups run under pvedaemon; scheduled jobs under
+    # pvescheduler. `path` is a list option, so this merges with upstream's.
+    systemd.services.pvedaemon.path    = with pkgs; [ gnutar gzip zstd ];
+    systemd.services.pvescheduler.path = with pkgs; [ gnutar gzip zstd ];
+
     assertions = [
       {
         assertion = cfg.ipAddress != "";
