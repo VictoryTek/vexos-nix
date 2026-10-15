@@ -151,6 +151,7 @@ service action="" *args:
         "available|Show the catalog of available service modules||stay" \
         "info|Ports, URLs and notes for all enabled services, or one (optional: service)||stay" \
         "status|systemd status and HTTP reachability of a service|Service name|stay" \
+        "running|Show which enabled services are running, stopped or failed||stay" \
         "restart|Restart a service, clearing any start-limit failure|Service name" \
         "enable|Enable a service module|Service name" \
         "set-url|Set the public URL of a service behind a reverse proxy|Service name" \
@@ -598,23 +599,97 @@ _service-info service="":
         echo "Enabled services:"
         echo ""
         FOUND=0
-        for svc in {{_server_service_names}}; do
-            # kernel-builder's module declares the camelCase option kernelBuilder.
-            OPT_NAME="$svc"
-            [ "$svc" = "kernel-builder" ] && OPT_NAME="kernelBuilder"
-            if nix_is_set "$SVC_FILE" "vexos.server.${OPT_NAME}.enable" true; then
-                _info "$svc"
-                FOUND=1
-            elif [ "$svc" = "arr" ] && arr_any_enabled "$SVC_FILE"; then
-                _info "$svc"
-                FOUND=1
-            fi
+        for svc in $({{_just}} _service-enabled); do
+            _info "$svc"
+            FOUND=1
         done
         if [ "$FOUND" -eq 0 ]; then
             echo "  (none enabled)"
         fi
         echo ""
     fi
+
+# Print the enabled server services, one name per line (nothing when
+# server-services.nix does not exist) — shared by `service info` and
+# `service running`.
+[private]
+_service-enabled:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source "{{justfile_directory()}}/just/lib.sh"
+    SVC_FILE="/etc/nixos/server-services.nix"
+    [ -f "$SVC_FILE" ] || exit 0
+    for svc in {{_server_service_names}}; do
+        # kernel-builder's module declares the camelCase option kernelBuilder.
+        OPT_NAME="$svc"
+        [ "$svc" = "kernel-builder" ] && OPT_NAME="kernelBuilder"
+        if nix_is_set "$SVC_FILE" "vexos.server.${OPT_NAME}.enable" true; then
+            echo "$svc"
+        elif [ "$svc" = "arr" ] && arr_any_enabled "$SVC_FILE"; then
+            echo "$svc"
+        fi
+    done
+
+# Show whether each enabled server service is actually running, from
+# `systemctl is-active` on its units. Read-only; exits 0 even when services
+# are down. Usage: just service running
+[private]
+_service-running: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -f /etc/nixos/server-services.nix ]; then
+        echo ""
+        echo "No services enabled yet — run 'just service enable <service>' to get started."
+        echo ""
+        exit 0
+    fi
+    ENABLED=$({{_just}} _service-enabled)
+    echo ""
+    if [ -z "$ENABLED" ]; then
+        echo "  (none enabled)"
+        echo ""
+        exit 0
+    fi
+
+    n_running=0 n_stopped=0 n_failed=0 n_partial=0 n_unbuilt=0
+    for svc in $ENABLED; do
+        UNITS=$({{_just}} _service-units "$svc")
+        if [ -z "$UNITS" ]; then
+            printf "  %-20s  \033[2m%-9s\033[0m  %s\n" "$svc" "not built" "(enabled in config, not rebuilt yet)"
+            n_unbuilt=$((n_unbuilt + 1))
+            continue
+        fi
+        total=0 active=0 failed=0 down=""
+        for unit in $UNITS; do
+            total=$((total + 1))
+            state=$(systemctl is-active "${unit}.service" 2>/dev/null) || true
+            case "$state" in
+                active) active=$((active + 1)) ;;
+                failed) failed=1; down="${down:+$down }${unit} (failed)" ;;
+                *)      down="${down:+$down }${unit} (${state:-unknown})" ;;
+            esac
+        done
+        if [ "$failed" -eq 1 ]; then
+            printf "  %-20s  \033[31m%-9s\033[0m  %s\n" "$svc" "failed" "$down"
+            n_failed=$((n_failed + 1))
+        elif [ "$active" -eq "$total" ]; then
+            printf "  %-20s  \033[32m%-9s\033[0m  %s\n" "$svc" "running" "$UNITS"
+            n_running=$((n_running + 1))
+        elif [ "$active" -eq 0 ]; then
+            printf "  %-20s  \033[33m%-9s\033[0m  %s\n" "$svc" "stopped" "$UNITS"
+            n_stopped=$((n_stopped + 1))
+        else
+            printf "  %-20s  \033[31m%-9s\033[0m  %s\n" "$svc" "partial" "$down"
+            n_partial=$((n_partial + 1))
+        fi
+    done
+
+    summary="$n_running running, $n_stopped stopped, $n_failed failed"
+    [ "$n_partial" -eq 0 ] || summary="$summary, $n_partial partial"
+    [ "$n_unbuilt" -eq 0 ] || summary="$summary, $n_unbuilt not built"
+    echo ""
+    echo "$summary"
+    echo ""
 
 # Guard: abort unless `service` is one of _server_service_names.
 [arg('service', pattern='[a-z0-9][a-z0-9-]*')]
