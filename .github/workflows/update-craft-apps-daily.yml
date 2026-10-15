@@ -116,8 +116,10 @@ jobs:
                 pkgs.vexos.craft-apps)')
 
           for name in $(jq -r 'keys[]' pkgs/craft-apps/pins.json); do
+            # No `grep -q`: it exits on first match, head then dies of SIGPIPE
+            # and pipefail turns that into a spurious failure.
             if ! head -c 262144 "$out/${name}.flatpak" \
-                | grep -aq "app/ai.storyteller.${name}/x86_64/stable"; then
+                | grep -aF "app/ai.storyteller.${name}/x86_64/stable" >/dev/null; then
               echo "error: ${name} bundle no longer declares app/ai.storyteller.${name}/x86_64/stable"
               exit 1
             fi
