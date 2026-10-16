@@ -163,7 +163,7 @@ _service_runtime := '''
 # Server services (server roles): list, catalog, info, status, restart, enable, disable.
 [group('Server')]
 [doc('Server services: list, catalog, status, enable, disable (menu)')]
-service action="" *args:
+service action="" *args: _require-server-role
     @{{_just}} _menu service "Server services" {{quote(action)}} {{quote(args)}} \
         "list|List enabled services, how to access them, and whether each is running, stopped or failed||stay" \
         "available|Show the catalog of available service modules||stay" \

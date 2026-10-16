@@ -33,7 +33,16 @@ default:
     # --unsorted keeps groups and recipes in file order (most-used first).
     heading="VexOS commands — ${variant:-variant unknown}"$'\n'
     heading+="Commands marked (menu) open a menu when run on their own. Search everything: just pick"$'\n\n'
-    {{_just}} --list --unsorted --list-heading "$heading"
+    # Server-only recipes (the Server group, zfs-pool, mergerfs-pool) are hidden
+    # from the listing on other roles; they stay callable and guard themselves.
+    if [[ "$variant" == *server* ]]; then
+        {{_just}} --list --unsorted --list-heading "$heading"
+    else
+        {{_just}} --list --unsorted --list-heading "$heading" | awk '
+            /^    \[/ { skip = ($0 == "    [Server]") }
+            /^    (zfs|mergerfs)-pool / { next }
+            !skip'
+    fi
     if [[ "$variant" == *stateless* ]]; then
         echo ""
         echo "Active role: stateless (ephemeral / tmpfs root)"
