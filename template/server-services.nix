@@ -12,6 +12,7 @@
 #   nginx, caddy, traefik, adguard, pihole, unifi-toolkit, headscale, unbound,
 #   nginx-proxy-manager,
 #   cockpit, uptime-kuma, homepage, scrutiny, prometheus, netdata,
+#   beszel, beszel-agent,
 #   portainer, ntfy, mealie, humidor, home-registry,
 #   wishlist, zigbee2mqtt, kiji-proxy, proxmox, cloudflare-ddns
 {
@@ -157,6 +158,8 @@
   # vexos.server.scrutiny.enable = false;               # Port 8078 — disk health (S.M.A.R.T.)
   # vexos.server.prometheus.enable = false;              # Port 9092 — metrics collection
   # vexos.server.netdata.enable = false;                 # Port 19999 — real-time system monitoring
+  # vexos.server.beszel.enable = false;                  # Port 8090 — Beszel monitoring hub
+  # vexos.server.beszel-agent.enable = false;            # Port 45876 — Beszel agent (KEY/TOKEN in /etc/nixos/secrets/beszel-agent-env)
   # vexos.server.portainer.enable = false;               # Port 9443 — Docker/Podman management UI
 
   # ── Notifications ────────────────────────────────────────────────────────

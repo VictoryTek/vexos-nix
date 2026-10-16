@@ -77,6 +77,7 @@
     ./alertmanager.nix
     ./fluent-bit.nix
     ./netdata.nix
+    ./beszel.nix
     ./portainer.nix
     # ── Notifications ────────────────────────────────────────────────────────
     ./ntfy.nix

@@ -40,6 +40,7 @@ let
     { name = "vaultwarden"; enable = config.vexos.server.vaultwarden.enable; port = config.vexos.server.vaultwarden.port; }
     { name = "zigbee2mqtt"; enable = config.vexos.server.zigbee2mqtt.enable; port = config.vexos.server.zigbee2mqtt.port; }
     { name = "scrutiny"; enable = config.vexos.server.scrutiny.enable; port = config.vexos.server.scrutiny.port; }
+    { name = "beszel"; enable = config.vexos.server.beszel.enable; port = config.vexos.server.beszel.port; }
     { name = "vexboard"; enable = config.vexos.server.vexboard.enable; port = config.vexos.server.vexboard.port; }
     { name = "headscale"; enable = config.vexos.server.headscale.enable; port = config.vexos.server.headscale.port; }
     { name = "forgejo"; enable = config.vexos.server.forgejo.enable; port = config.vexos.server.forgejo.port; }

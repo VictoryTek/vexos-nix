@@ -31,6 +31,7 @@ let
 
     # ── Stateless, or derived state only ─────────────────────────────────
     "alertmanager"    # silences/nflog are transient operational state
+    "beszel-agent"    # reports to the hub; the hub holds all history
     "cloudflare-ddns" # polls public IP and writes to Cloudflare's API; no local state
     "cockpit"         # web UI over the host; no state of its own
     "code-server"     # workspace lives in the user's home, backed up separately

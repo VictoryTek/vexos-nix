@@ -763,6 +763,22 @@ _service-enable service: _require-server-role (_require-known-service service)
         echo "  Web UI:   http://<server-ip>:19999"
         echo "  About:    Real-time system performance monitoring with per-second metrics and automatic anomaly detection."
         ;;
+      beszel)
+        echo "  Service:  beszel-hub.service"
+        echo "  Web UI:   http://<server-ip>:8090"
+        echo "  About:    Lightweight server monitoring hub — CPU, memory, disk, network and container stats with history and alerts."
+        echo "  Note:     Create the admin account on first visit. To monitor this host too, run 'just service enable beszel-agent'."
+        ;;
+      beszel-agent)
+        echo "  Service:  beszel-agent.service"
+        echo "  Port:     :45876 (the hub connects to the agent)"
+        echo "  About:    Reports this host's metrics to a Beszel hub."
+        echo "  Setup:    In the hub UI choose 'Add System' (host: this server, port 45876), then:"
+        echo "              printf 'KEY=%s\nTOKEN=%s\n' '<public key>' '<token>' | sudo tee /etc/nixos/secrets/beszel-agent-env >/dev/null"
+        echo "              sudo chmod 0600 /etc/nixos/secrets/beszel-agent-env"
+        echo "              sudo systemctl restart beszel-agent"
+        echo "  Note:     The agent fails to start until that file exists."
+        ;;
       nginx-proxy-manager)
         echo "  Container: nginx-proxy-manager (NixOS OCI container)"
         echo "  Admin UI: http://<server-ip>:81"

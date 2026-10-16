@@ -6,7 +6,7 @@
 # Available server service module names.
 # Keep in sync with _service_catalog below, modules/server/default.nix, and
 # template/server-services.nix.
-_server_service_names := "adguard arcane attic audiobookshelf authelia backup bazarr caddy chaptarr cloudflare-ddns cockpit code-server docker dockhand forgejo grimmory harmonia headscale home-registry homepage humidor immich jellyfin joplin kernel-builder kiji-proxy lidarr listenarr maintainerr mealie mediamanager nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism pihole plex podman portainer prometheus prowlarr proxmox qbittorrent radarr sabnzbd scrutiny searxng seerr sonarr sportarr syncthing tautulli tdarr traefik unbound unifi-toolkit uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
+_server_service_names := "adguard arcane attic audiobookshelf authelia backup bazarr beszel beszel-agent caddy chaptarr cloudflare-ddns cockpit code-server docker dockhand forgejo grimmory harmonia headscale home-registry homepage humidor immich jellyfin joplin kernel-builder kiji-proxy lidarr listenarr maintainerr mealie mediamanager nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism pihole plex podman portainer prometheus prowlarr proxmox qbittorrent radarr sabnzbd scrutiny searxng seerr sonarr sportarr syncthing tautulli tdarr traefik unbound unifi-toolkit uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
 
 # Server service catalog — the source for `just service available` (catalog view).
 # One line per module: group|name|description. Groups and order are rendered
@@ -54,6 +54,8 @@ _service_catalog := '''
     Media Requests & Automation|mediamanager|TV/movie request & download manager
     Media Requests & Automation|seerr|Media request manager (Jellyfin, Plex, Emby)
     Media Requests & Automation|sportarr|Sonarr-style PVR for sports events
+    Monitoring & Admin|beszel|Lightweight server monitoring hub with history & alerts
+    Monitoring & Admin|beszel-agent|Beszel agent — reports this host to a Beszel hub
     Monitoring & Admin|cockpit|Web-based Linux server management console
     Monitoring & Admin|nas|Cockpit + NAS plugins (Samba, NFS, ZFS)
     Monitoring & Admin|netdata|Real-time performance & health monitoring
@@ -102,6 +104,8 @@ _service_runtime := '''
     audiobookshelf|audiobookshelf|http://localhost:8234
     authelia|docker-authelia|http://localhost:9091
     backup|restic-backups-main|
+    beszel|beszel-hub|http://localhost:8090
+    beszel-agent|beszel-agent|
     caddy|caddy|http://localhost:8880
     chaptarr|docker-chaptarr|http://localhost:8789
     cloudflare-ddns|docker-cloudflare-ddns|
@@ -564,6 +568,8 @@ _service-info service="":
         authelia)        printf "  %-18s  Web UI  http://<server-ip>:9091\n"                                                   "$1" ;;
         code-server)     printf "  %-18s  Web UI  http://<server-ip>:4444\n"                                                   "$1" ;;
         netdata)         printf "  %-18s  Web UI  http://<server-ip>:19999\n"                                                  "$1" ;;
+        beszel)          printf "  %-18s  Web UI  http://<server-ip>:8090\n"                                                   "$1" ;;
+        beszel-agent)    printf "  %-18s  Agent on :45876  (add this host in the Beszel hub)\n"                                "$1" ;;
         nginx-proxy-manager) printf "  %-18s  Admin http://<server-ip>:81   |  Ports :8881, :8444\n"                         "$1" ;;
         paperless)       printf "  %-18s  Web UI  http://<server-ip>:28981\n"                                                  "$1" ;;
         photoprism)      printf "  %-18s  Web UI  http://<server-ip>:2342\n"                                                   "$1" ;;
