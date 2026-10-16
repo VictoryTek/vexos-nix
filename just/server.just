@@ -165,11 +165,9 @@ _service_runtime := '''
 [doc('Server services: list, catalog, status, enable, disable (menu)')]
 service action="" *args:
     @{{_just}} _menu service "Server services" {{quote(action)}} {{quote(args)}} \
-        "list|List enabled services and how to access them||stay" \
+        "list|List enabled services, how to access them, and whether each is running, stopped or failed||stay" \
         "available|Show the catalog of available service modules||stay" \
-        "info|Ports, URLs and notes for all enabled services, or one (optional: service)||stay" \
         "status|systemd status and HTTP reachability of a service|Service name|stay" \
-        "running|Show which enabled services are running, stopped or failed||stay" \
         "restart|Restart a service, clearing any start-limit failure|Service name" \
         "enable|Enable a service module|Service name" \
         "set-url|Set the public URL of a service behind a reverse proxy|Service name" \
@@ -484,8 +482,7 @@ _service-available:
 
 # Show access info for server services — ports, URLs, and key notes.
 # With no argument shows all currently enabled services; with a name shows that service.
-# Usage:  just service info            — all enabled services
-#         just service info jellyfin   — specific service
+# Internal helper behind `just service list`.
 [private]
 [arg('service', pattern='|[a-z0-9][a-z0-9-]*')]
 _service-info service="":
@@ -615,8 +612,8 @@ _service-info service="":
     fi
 
 # Print the enabled server services, one name per line (nothing when
-# server-services.nix does not exist) — shared by `service info` and
-# `service running`.
+# server-services.nix does not exist) — shared by `_service-info` and
+# `_service-running`.
 [private]
 _service-enabled:
     #!/usr/bin/env bash
@@ -632,7 +629,7 @@ _service-enabled:
 
 # Show whether each enabled server service is actually running, from
 # `systemctl is-active` on its units. Read-only; exits 0 even when services
-# are down. Usage: just service running
+# are down. Internal helper behind `just service list`.
 [private]
 _service-running: _require-server-role
     #!/usr/bin/env bash
@@ -812,10 +809,17 @@ _service-restart service: _require-server-role (_require-known-service service)
     done
     echo ""
 
-# List enabled server services and how to access them.
+# List enabled server services, how to access them, and whether each is
+# running, stopped or failed.
 [private]
 _service-list: _require-server-role
-    @{{_just}} service info
+    #!/usr/bin/env bash
+    set -euo pipefail
+    {{_just}} _service-info
+    # Nothing enabled: _service-info already said so.
+    [ -n "$({{_just}} _service-enabled)" ] || exit 0
+    echo "Status:"
+    {{_just}} _service-running
 
 # Toggle Plex Pass hardware transcoding on/off for an already-enabled Plex installation.
 # Usage: just plex-pass enable   /   just plex-pass disable
