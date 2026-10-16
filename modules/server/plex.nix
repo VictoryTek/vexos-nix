@@ -5,7 +5,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.plex;
-  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib config; };
 in
 {
   options.vexos.server.plex = {

@@ -6,7 +6,7 @@
 # that isn't ready yet and starting against an empty/missing path.
 #
 # Usage in a service module:
-#   storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
+#   storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib config; };
 #   options.vexos.server.<svc>.mediaMounts = storageMounts.mediaMountsOption;
 #   config.systemd.services.<unit>.unitConfig =
 #     storageMounts.requiresMountsFor cfg.mediaMounts;
@@ -15,7 +15,17 @@
 # per-service — not every unit a service defines touches its data path, e.g.
 # Immich's machine-learning worker only receives image bytes over HTTP and
 # never touches the library path itself).
-{ lib }:
+#
+# OCI-container modules with a media dependency also append
+#   volumes = [ ... ] ++ storageMounts.containerVolumes;
+# so the container sees the vexos.storage.remote NAS mounts (always under
+# /mnt/<server>/<share>, see scripts/attach-remote-storage.sh) at the same
+# path a native service would. /mnt itself is bound, not each mountpoint:
+# binding an automount point directly would trigger the NAS mount at container
+# start (a startup dependency native services don't have). The recursive bind
+# copies the autofs triggers untouched, and rslave propagates the host's lazy
+# mounts/remounts into the running container.
+{ lib, config }:
 {
   mediaMountsOption = lib.mkOption {
     type = lib.types.listOf lib.types.str;
@@ -38,4 +48,6 @@
     lib.mkIf (mounts != [ ]) {
       RequiresMountsFor = lib.concatStringsSep " " mounts;
     };
+
+  containerVolumes = lib.optional (config.vexos.storage.remote != [ ]) "/mnt:/mnt:rslave";
 }

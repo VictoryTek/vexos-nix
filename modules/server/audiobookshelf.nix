@@ -3,7 +3,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.audiobookshelf;
-  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib config; };
 in
 {
   options.vexos.server.audiobookshelf = {

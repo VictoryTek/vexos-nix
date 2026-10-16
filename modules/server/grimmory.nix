@@ -21,6 +21,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.grimmory;
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib config; };
   dumpTimer = import ../lib/dump-timer.nix { inherit lib pkgs; };
   effectiveEnvFile =
     if cfg.environmentFile != null
@@ -208,7 +209,7 @@ in
         "${cfg.dataDir}/app-data:/app/data"
         "${cfg.libraryDir}:/books"
         "${cfg.bookdropDir}:/bookdrop"
-      ];
+      ] ++ storageMounts.containerVolumes;
       extraOptions = [ "--network=grimmory-net" ];
       dependsOn = [ "grimmory-db" ];
     };

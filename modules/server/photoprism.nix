@@ -24,7 +24,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.photoprism;
-  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib config; };
   envFile = "/run/photoprism-container/env";
 in
 {
@@ -115,7 +115,7 @@ in
       volumes = [
         "${cfg.dataDir}:/photoprism/storage"
         "${cfg.originalsDir}:/photoprism/originals"
-      ];
+      ] ++ storageMounts.containerVolumes;
     };
 
     # Render the admin password into a root-only env file just before the

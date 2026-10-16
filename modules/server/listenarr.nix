@@ -12,7 +12,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.listenarr;
-  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib config; };
 in
 {
   options.vexos.server.listenarr = {
@@ -100,7 +100,7 @@ in
         "${cfg.dataDir}:/app/config"
         "${cfg.libraryDir}:/audiobooks"
         "${cfg.downloadsDir}:/downloads"
-      ];
+      ] ++ storageMounts.containerVolumes;
     };
 
     # Order the container after its library storage (local or remote).

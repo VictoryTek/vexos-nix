@@ -17,6 +17,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.bookshelf;
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib config; };
 in
 {
   options.vexos.server.bookshelf = {
@@ -101,7 +102,7 @@ in
       volumes = [
         "${cfg.dataDir}:/config"
         "${cfg.libraryDir}:/data"
-      ];
+      ] ++ storageMounts.containerVolumes;
     };
 
     networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;

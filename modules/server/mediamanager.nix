@@ -25,7 +25,7 @@
 let
   cfg = config.vexos.server.mediamanager;
   dumpTimer = import ../lib/dump-timer.nix { inherit lib pkgs; };
-  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib config; };
   effectiveEnvFile =
     if cfg.environmentFile != null
     then cfg.environmentFile
@@ -204,7 +204,7 @@ in
       volumes = [
         "${cfg.dataDir}/config:/app/config"
         "${cfg.libraryDir}:/data"
-      ];
+      ] ++ storageMounts.containerVolumes;
       extraOptions = [ "--network=mediamanager-net" ];
       dependsOn = [ "mediamanager-db" ];
     };

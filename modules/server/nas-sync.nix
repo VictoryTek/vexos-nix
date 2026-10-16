@@ -24,7 +24,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.nasSync;
-  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib; };
+  storageMounts = import ../lib/storage-mount-ordering.nix { inherit lib config; };
 
   jobModule = lib.types.submodule {
     options = {
