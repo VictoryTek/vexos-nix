@@ -130,11 +130,30 @@ nix_disable() {
     sudo sed -i -E "s|^(\s*${opt_re}\s*=\s*)true(\s*;)|\1false\2|" "$file"
 }
 
-# arr_any_enabled FILE — true if the *arr stack is enabled as a whole
-# (vexos.server.arr.enable) or through any per-component flag
-# (vexos.server.arr.<component>.enable) on an uncommented line.
-arr_any_enabled() {
-    grep -qP '^\s*vexos\.server\.arr\.(\w+\.)?enable\s*=\s*true\s*;' "$1" 2>/dev/null
+# service_option NAME — print the option path under vexos.server for a
+# service name. The *arr components are options nested under `arr`, and
+# kernel-builder's module declares the camelCase option kernelBuilder.
+service_option() {
+    case "$1" in
+        sabnzbd|sonarr|radarr|lidarr|prowlarr|qbittorrent|bazarr|maintainerr)
+            echo "arr.$1" ;;
+        kernel-builder) echo "kernelBuilder" ;;
+        *) echo "$1" ;;
+    esac
+}
+
+# service_is_enabled FILE NAME — true if the service is enabled on an
+# uncommented line. An *arr component also counts as enabled through the
+# legacy vexos.server.arr.enable meta-flag, which defaults the first five on.
+service_is_enabled() {
+    local opt
+    opt=$(service_option "$2")
+    nix_is_set "$1" "vexos.server.${opt}.enable" true && return 0
+    case "$2" in
+        sabnzbd|sonarr|radarr|lidarr|prowlarr)
+            nix_is_set "$1" vexos.server.arr.enable true ;;
+        *) return 1 ;;
+    esac
 }
 
 # seed_from_template NAME DEST

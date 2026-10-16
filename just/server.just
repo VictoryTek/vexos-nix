@@ -6,7 +6,7 @@
 # Available server service module names.
 # Keep in sync with _service_catalog below, modules/server/default.nix, and
 # template/server-services.nix.
-_server_service_names := "adguard arcane arr attic audiobookshelf authelia backup caddy chaptarr cloudflare-ddns cockpit code-server docker dockhand forgejo grimmory harmonia headscale kernel-builder home-registry homepage humidor immich jellyfin joplin kiji-proxy listenarr mealie mediamanager nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism pihole plex podman portainer prometheus proxmox scrutiny searxng seerr sportarr syncthing tautulli tdarr traefik unbound unifi-toolkit uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
+_server_service_names := "adguard arcane attic audiobookshelf authelia backup bazarr caddy chaptarr cloudflare-ddns cockpit code-server docker dockhand forgejo grimmory harmonia headscale home-registry homepage humidor immich jellyfin joplin kernel-builder kiji-proxy lidarr listenarr maintainerr mealie mediamanager nas netdata nextcloud nginx nginx-proxy-manager ntfy paperless papermc photoprism pihole plex podman portainer prometheus prowlarr proxmox qbittorrent radarr sabnzbd scrutiny searxng seerr sonarr sportarr syncthing tautulli tdarr traefik unbound unifi-toolkit uptime-kuma vaultwarden vexboard wishlist zigbee2mqtt"
 
 # Server service catalog — the source for `just service available` (catalog view).
 # One line per module: group|name|description. Groups and order are rendered
@@ -43,7 +43,14 @@ _service_catalog := '''
     Media|plex|Personal media library & streaming server
     Media|tautulli|Monitoring & analytics for Plex Media Server
     Media|tdarr|Distributed transcode automation (FFmpeg/HandBrake)
-    Media Requests & Automation|arr|*arr suite — Sonarr, Radarr, Lidarr, Prowlarr, SABnzbd, Maintainerr
+    Media Requests & Automation|sabnzbd|SABnzbd Usenet downloader
+    Media Requests & Automation|sonarr|Sonarr TV series management
+    Media Requests & Automation|radarr|Radarr movie management
+    Media Requests & Automation|lidarr|Lidarr music management
+    Media Requests & Automation|prowlarr|Prowlarr indexer manager for the *arr apps
+    Media Requests & Automation|qbittorrent|qBittorrent torrent client
+    Media Requests & Automation|bazarr|Bazarr subtitle manager for Sonarr & Radarr
+    Media Requests & Automation|maintainerr|Maintainerr automated library cleanup rules
     Media Requests & Automation|mediamanager|TV/movie request & download manager
     Media Requests & Automation|seerr|Media request manager (Jellyfin, Plex, Emby)
     Media Requests & Automation|sportarr|Sonarr-style PVR for sports events
@@ -83,7 +90,14 @@ _service_catalog := '''
 _service_runtime := '''
     adguard|adguardhome|http://localhost:3080
     arcane|docker-arcane podman-arcane|http://localhost:3552
-    arr|sabnzbd sonarr radarr lidarr prowlarr docker-maintainerr|http://localhost:8080 http://localhost:8989 http://localhost:7878 http://localhost:8686 http://localhost:9696 http://localhost:6246
+    sabnzbd|sabnzbd|http://localhost:8080
+    sonarr|sonarr|http://localhost:8989
+    radarr|radarr|http://localhost:7878
+    lidarr|lidarr|http://localhost:8686
+    prowlarr|prowlarr|http://localhost:9696
+    qbittorrent|qbittorrent|http://localhost:8081
+    bazarr|bazarr|http://localhost:6767
+    maintainerr|docker-maintainerr podman-maintainerr|http://localhost:6246
     attic|atticd|http://localhost:8400
     audiobookshelf|audiobookshelf|http://localhost:8234
     authelia|docker-authelia|http://localhost:9091
@@ -480,29 +494,14 @@ _service-info service="":
     _info() {
       case "$1" in
         adguard)         printf "  %-18s  Web UI  http://<server-ip>:3080   |  DNS on :53\n"                           "$1" ;;
-        arr)
-            _arr_full=false
-            nix_is_set "$SVC_FILE" vexos.server.arr.enable true && _arr_full=true
-            _arr_parts=""
-            _arr_want() {
-                if $_arr_full || nix_is_set "$SVC_FILE" "vexos.server.arr.$1.enable" true; then
-                    _arr_parts="$_arr_parts $2"
-                fi
-            }
-            _arr_want sabnzbd     "SABnzbd :8080"
-            _arr_want sonarr      "Sonarr :8989"
-            _arr_want radarr      "Radarr :7878"
-            _arr_want lidarr      "Lidarr :8686"
-            _arr_want prowlarr    "Prowlarr :9696"
-            _arr_want qbittorrent "qBittorrent :8081"
-            _arr_want bazarr      "Bazarr :6767"
-            _arr_want maintainerr "Maintainerr :6246"
-            if [ -z "$_arr_parts" ]; then
-                printf "  %-18s  (no arr components enabled)\n" "$1"
-            else
-                printf "  %-18s %s\n" "$1" "$_arr_parts"
-            fi
-            ;;
+        sabnzbd)          printf "  %-18s  Web UI  http://<server-ip>:8080\n" "$1" ;;
+        sonarr)           printf "  %-18s  Web UI  http://<server-ip>:8989\n" "$1" ;;
+        radarr)           printf "  %-18s  Web UI  http://<server-ip>:7878\n" "$1" ;;
+        lidarr)           printf "  %-18s  Web UI  http://<server-ip>:8686\n" "$1" ;;
+        prowlarr)         printf "  %-18s  Web UI  http://<server-ip>:9696\n" "$1" ;;
+        qbittorrent)      printf "  %-18s  Web UI  http://<server-ip>:8081\n" "$1" ;;
+        bazarr)           printf "  %-18s  Web UI  http://<server-ip>:6767\n" "$1" ;;
+        maintainerr)      printf "  %-18s  Web UI  http://<server-ip>:6246\n" "$1" ;;
         arcane)          printf "  %-18s  Web UI  http://<server-ip>:3552   (Docker/Podman container manager)\n"       "$1" ;;
         attic)           printf "  %-18s  HTTP    http://<server-ip>:8400   (Nix binary cache)\n"                      "$1" ;;
         audiobookshelf)  printf "  %-18s  Web UI  http://<server-ip>:8234\n"                                           "$1" ;;
@@ -620,12 +619,7 @@ _service-enabled:
     SVC_FILE="/etc/nixos/server-services.nix"
     [ -f "$SVC_FILE" ] || exit 0
     for svc in {{_server_service_names}}; do
-        # kernel-builder's module declares the camelCase option kernelBuilder.
-        OPT_NAME="$svc"
-        [ "$svc" = "kernel-builder" ] && OPT_NAME="kernelBuilder"
-        if nix_is_set "$SVC_FILE" "vexos.server.${OPT_NAME}.enable" true; then
-            echo "$svc"
-        elif [ "$svc" = "arr" ] && arr_any_enabled "$SVC_FILE"; then
+        if service_is_enabled "$SVC_FILE" "$svc"; then
             echo "$svc"
         fi
     done
@@ -919,27 +913,13 @@ _service-disable service: _require-server-role (_require-known-service service)
         exit 0
     fi
 
-    OPT_NAME="$SERVICE"
-    [ "$SERVICE" = "kernel-builder" ] && OPT_NAME="kernelBuilder"
-    OPTION="vexos.server.${OPT_NAME}.enable"
+    OPTION="vexos.server.$(service_option "$SERVICE").enable"
 
-    # Arr stack may have been enabled as a whole (top-level flag) or as
-    # individual components (per-component flags) — sweep both.
-    if [ "$SERVICE" = "arr" ]; then
-        ARR_FOUND=0
-        for _opt in vexos.server.arr.enable \
-                    vexos.server.arr.sabnzbd.enable vexos.server.arr.sonarr.enable \
-                    vexos.server.arr.radarr.enable vexos.server.arr.lidarr.enable \
-                    vexos.server.arr.prowlarr.enable vexos.server.arr.qbittorrent.enable \
-                    vexos.server.arr.bazarr.enable vexos.server.arr.maintainerr.enable; do
-            if nix_disable "$SVC_FILE" "$_opt"; then
-                ARR_FOUND=1
-            fi
-        done
-        if [ "$ARR_FOUND" -eq 0 ]; then
-            echo "$SERVICE is already disabled."
-            exit 0
-        fi
+    # An *arr component switched on through the legacy arr.enable meta-flag has
+    # no line of its own to flip — pin it off explicitly (an explicit false
+    # beats the meta-flag's mkDefault true).
+    if ! nix_is_set "$SVC_FILE" "$OPTION" true && service_is_enabled "$SVC_FILE" "$SERVICE"; then
+        nix_set "$SVC_FILE" "$OPTION" false
         echo "✗ Disabled: $SERVICE"
         echo "  → Run 'just rebuild' to apply."
         exit 0

@@ -18,7 +18,7 @@ _service-enable service: _require-server-role (_require-known-service service)
     # half-configured — so refuse before writing anything.
     if [ ! -t 0 ]; then
         case "$SERVICE" in
-            arr|plex|proxmox|backup|zigbee2mqtt|mediamanager|cloudflare-ddns)
+            plex|proxmox|backup|zigbee2mqtt|mediamanager|cloudflare-ddns)
                 echo "error: enabling '$SERVICE' asks questions — run 'just service enable $SERVICE' in a terminal." >&2
                 exit 1
                 ;;
@@ -36,7 +36,7 @@ _service-enable service: _require-server-role (_require-known-service service)
             _storage_tier="zfs-vm" ;;
         nextcloud|immich|photoprism|paperless|syncthing|forgejo)
             _storage_tier="zfs-live" ;;
-        jellyfin|plex|audiobookshelf|arr)
+        jellyfin|plex|audiobookshelf|sabnzbd|sonarr|radarr|lidarr|prowlarr|qbittorrent|bazarr|maintainerr)
             _storage_tier="mergerfs-bulk" ;;
     esac
     if [ -n "$_storage_tier" ]; then
@@ -92,77 +92,16 @@ _service-enable service: _require-server-role (_require-known-service service)
         seed_from_template server-services.nix "$SVC_FILE"
     fi
 
-    # The option uses dots as-is (e.g. uptime-kuma stays uptime-kuma),
-    # except kernel-builder whose module declares camelCase kernelBuilder.
-    OPT_NAME="$SERVICE"
-    [ "$SERVICE" = "kernel-builder" ] && OPT_NAME="kernelBuilder"
-    OPTION="vexos.server.${OPT_NAME}.enable"
-
-    # Arr stack: full-stack or individual-component selection.
-    if [ "$SERVICE" = "arr" ]; then
-        ARR_COMPONENTS="sabnzbd sonarr radarr lidarr prowlarr qbittorrent bazarr maintainerr"
-        if arr_any_enabled "$SVC_FILE"; then
-            echo "arr is already enabled (or has enabled components). Use 'just service disable arr' first to reconfigure."
-            exit 0
-        fi
-        echo "  Enable the full *arr stack, or select individual components?"
-        echo "    1. Full"
-        echo "    2. Individual"
-        read -r -p "  Select [1/2]: " _arr_mode
-        if [ "$_arr_mode" = "2" ]; then
-            echo "  Select components:"
-            _i=0
-            for _c in $ARR_COMPONENTS; do
-                _i=$((_i + 1))
-                printf "    %d. %s\n" "$_i" "$_c"
-            done
-            read -r -p "  Enter numbers (space or comma separated): " _arr_selected
-            _arr_selected="${_arr_selected//,/ }"
-            _arr_enabled=""
-            for _n in $_arr_selected; do
-                _c=$(echo "$ARR_COMPONENTS" | tr ' ' '\n' | sed -n "${_n}p")
-                if [ -z "$_c" ]; then
-                    echo "  error: invalid selection '$_n' — skipping"
-                    continue
-                fi
-                nix_set "$SVC_FILE" "vexos.server.arr.${_c}.enable" true
-                _arr_enabled="$_arr_enabled $_c"
-            done
-            if [ -z "$_arr_enabled" ]; then
-                echo "error: no valid components selected" >&2
-                exit 1
-            fi
-            echo "✓ Enabled arr components:$_arr_enabled"
-        else
-            nix_set "$SVC_FILE" "$OPTION" true
-            _arr_enabled=" sabnzbd sonarr radarr lidarr prowlarr"
-            echo "✓ Enabled: $SERVICE (full stack)"
-        fi
-
-        echo "  → Run 'just rebuild' to apply."
-        echo ""
-        echo "  Enabled components:"
-        for _c in $_arr_enabled; do
-            case "$_c" in
-                sabnzbd)     echo "    SABnzbd     → http://<server-ip>:8080" ;;
-                sonarr)      echo "    Sonarr      → http://<server-ip>:8989" ;;
-                radarr)      echo "    Radarr      → http://<server-ip>:7878" ;;
-                lidarr)      echo "    Lidarr      → http://<server-ip>:8686" ;;
-                prowlarr)    echo "    Prowlarr    → http://<server-ip>:9696" ;;
-                qbittorrent) echo "    qBittorrent → http://<server-ip>:8081" ;;
-                bazarr)      echo "    Bazarr      → http://<server-ip>:6767" ;;
-                maintainerr) echo "    Maintainerr → http://<server-ip>:6246" ;;
-            esac
-        done
-        exit 0
-    fi
+    # The option uses dots as-is (e.g. uptime-kuma stays uptime-kuma); see
+    # service_option for the *arr components and kernel-builder.
+    OPTION="vexos.server.$(service_option "$SERVICE").enable"
 
     # `backup` is exempt from the "already enabled" early-exit: it may have been
     # auto-enabled with local defaults alongside another service (see the
     # auto-enable block below), and running `just service enable backup` explicitly must
     # still let the user re-point the repository / passwordFile via the
     # interactive prompt block rather than silently no-op.
-    if [ "$SERVICE" != "backup" ] && nix_is_set "$SVC_FILE" "$OPTION" true; then
+    if [ "$SERVICE" != "backup" ] && service_is_enabled "$SVC_FILE" "$SERVICE"; then
         echo "$SERVICE is already enabled."
         if _pu=$(public_url_info "$SERVICE") && [ -z "$(nix_get_str "$SVC_FILE" "vexos.server.${SERVICE}.${_pu%%|*}")" ]; then
             echo "  Public URL not set — run 'just service set-url $SERVICE' if it is served behind a reverse proxy."
@@ -413,6 +352,30 @@ _service-enable service: _require-server-role (_require-known-service service)
     echo "  → Run 'just rebuild' to apply."
     echo ""
     case "$SERVICE" in
+      sabnzbd)
+        echo "  Web UI:   http://<server-ip>:8080"
+        ;;
+      sonarr)
+        echo "  Web UI:   http://<server-ip>:8989"
+        ;;
+      radarr)
+        echo "  Web UI:   http://<server-ip>:7878"
+        ;;
+      lidarr)
+        echo "  Web UI:   http://<server-ip>:8686"
+        ;;
+      prowlarr)
+        echo "  Web UI:   http://<server-ip>:9696"
+        ;;
+      qbittorrent)
+        echo "  Web UI:   http://<server-ip>:8081"
+        ;;
+      bazarr)
+        echo "  Web UI:   http://<server-ip>:6767"
+        ;;
+      maintainerr)
+        echo "  Web UI:   http://<server-ip>:6246"
+        ;;
       adguard)
         echo "  Service:  adguardhome.service"
         echo "  Web UI:   http://<server-ip>:3080"

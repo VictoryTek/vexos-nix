@@ -57,13 +57,14 @@ let
     { name = "uptime-kuma"; enable = config.vexos.server.uptime-kuma.enable; port = config.vexos.server.uptime-kuma.port; }
     { name = "mealie"; enable = config.vexos.server.mealie.enable; port = config.vexos.server.mealie.port; }
     { name = "proxmox"; enable = config.vexos.server.proxmox.enable; port = 8006; }
-    { name = "sonarr"; enable = config.vexos.server.arr.enable; port = 8989; }
-    { name = "radarr"; enable = config.vexos.server.arr.enable; port = 7878; }
-    { name = "lidarr"; enable = config.vexos.server.arr.enable; port = 8686; }
-    { name = "prowlarr"; enable = config.vexos.server.arr.enable; port = 9696; }
-    { name = "sabnzbd"; enable = config.vexos.server.arr.enable; port = 8080; }
+    { name = "sonarr"; enable = config.vexos.server.arr.sonarr.enable; port = 8989; }
+    { name = "radarr"; enable = config.vexos.server.arr.radarr.enable; port = 7878; }
+    { name = "lidarr"; enable = config.vexos.server.arr.lidarr.enable; port = 8686; }
+    { name = "prowlarr"; enable = config.vexos.server.arr.prowlarr.enable; port = 9696; }
+    { name = "sabnzbd"; enable = config.vexos.server.arr.sabnzbd.enable; port = 8080; }
     { name = "qbittorrent"; enable = config.vexos.server.arr.qbittorrent.enable; port = 8081; }
     { name = "bazarr"; enable = config.vexos.server.arr.bazarr.enable; port = 6767; }
+    { name = "maintainerr"; enable = config.vexos.server.arr.maintainerr.enable; port = config.vexos.server.arr.maintainerr.port; }
   ];
 
   enabledServices = builtins.filter (s: s.enable) services;

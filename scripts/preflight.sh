@@ -571,18 +571,23 @@ else
   # 11c: …and must cover every service module. Option roots under
   # vexos.server that `just service` deliberately does not manage are listed
   # here; anything else missing from the justfile is drift.
-  JUST_NOT_SERVICES="alertmanager bookshelf fluent-bit nasSync proxy storage"
+  # The *arr stack is one module (option root `arr`) that the justfile manages
+  # as individual components, so the root is excluded and the components are
+  # dropped from the justfile side of the comparison.
+  JUST_NOT_SERVICES="alertmanager arr bookshelf fluent-bit nasSync proxy storage"
+  ARR_COMPONENTS="sabnzbd sonarr radarr lidarr prowlarr qbittorrent bazarr maintainerr"
+  MODULE_NAMES=$(grep -vxF -f <(tr ' ' '\n' <<<"$ARR_COMPONENTS") <<<"$NAMES")
   if [ -z "${PRUNE_BIN:-}" ] || [ ! -f "${PRUNE_BIN:-}" ]; then
     warn "derived service list unavailable (check 10 failed) — skipping module coverage check"
   else
     DERIVED=$(sed -n 's/^VALID="\(.*\)"$/\1/p' "$PRUNE_BIN" | head -1 | tr ' ' '\n' |
       sed 's/^kernelBuilder$/kernel-builder/' |
       grep -vxF -f <(tr ' ' '\n' <<<"$JUST_NOT_SERVICES") | sed '/^$/d' | sort)
-    if [ "$DERIVED" = "$NAMES" ]; then
+    if [ "$DERIVED" = "$MODULE_NAMES" ]; then
       pass "justfile manages every server module (excluding: $JUST_NOT_SERVICES)"
     else
       fail "justfile service list does not match modules/server (< modules, > justfile):"
-      diff <(echo "$DERIVED") <(echo "$NAMES") | grep '^[<>]' | sed 's/^/    /'
+      diff <(echo "$DERIVED") <(echo "$MODULE_NAMES") | grep '^[<>]' | sed 's/^/    /'
       echo "    Add the service to the justfile tables, or to JUST_NOT_SERVICES here."
       EXIT_CODE=1
     fi

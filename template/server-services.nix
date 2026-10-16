@@ -6,7 +6,7 @@
 # Available services:
 #   docker, arcane, jellyfin, plex, audiobookshelf, tautulli,
 #   seerr,
-#   arr (SABnzbd + Sonarr + Radarr + Lidarr + Prowlarr + qBittorrent + Bazarr + Maintainerr),
+#   sabnzbd, sonarr, radarr, lidarr, prowlarr, qbittorrent, bazarr, maintainerr,
 #   grimmory, papermc, nextcloud, syncthing, immich, photoprism, joplin,
 #   paperless, forgejo, code-server, attic, vaultwarden, authelia,
 #   nginx, caddy, traefik, adguard, pihole, unifi-toolkit, headscale, unbound,
@@ -55,7 +55,7 @@
 
   # ── Media Automation (Arr Stack) ─────────────────────────────────────────
   # vexos.server.arr.enable = false;                    # Full stack: SABnzbd:8080 Sonarr:8989 Radarr:7878 Lidarr:8686 Prowlarr:9696
-  # Or enable components individually (via `just service enable arr` → individual mode,
+  # Or enable components individually (`just service enable sonarr`, etc.,
   # or by setting these directly):
   # vexos.server.arr.sabnzbd.enable = false;            # Port 8080
   # vexos.server.arr.sonarr.enable = false;             # Port 8989
