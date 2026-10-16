@@ -23,10 +23,10 @@
 # Supported roles (expand this list as new roles are added to the flake):
 #   desktop         — Gaming/workstation (AMD, NVIDIA, Intel, VM); choice of
 #                     GNOME/COSMIC/Hyprland desktop environment
-#   stateless       — Minimal/clean build (no gaming/dev/virt/ASUS modules) (AMD, NVIDIA, Intel, VM)
-#   htpc            — Home theatre PC (AMD, NVIDIA, Intel, VM)
 #   server          — GUI server / self-hosted services (AMD, NVIDIA, Intel, VM)
 #   headless-server — CLI-only server, no desktop environment (AMD, NVIDIA, Intel, VM)
+#   htpc            — Home theatre PC (AMD, NVIDIA, Intel, VM)
+#   stateless       — Minimal/clean build (no gaming/dev/virt/ASUS modules) (AMD, NVIDIA, Intel, VM)
 #   vanilla         — Stock NixOS baseline for system restore (AMD, NVIDIA, Intel, VM)
 #
 # SECURITY NOTICE:
@@ -130,9 +130,9 @@ echo ""
 # ---------- Role selection ---------------------------------------------------
 ask_choice ROLE "Select your role" "" "" \
   "desktop:Desktop  — Full gaming / workstation stack" \
-  "stateless:Stateless — Minimal build (no gaming / dev / virt / ASUS)" \
-  "htpc:HTPC    — Home theatre PC" \
   "server:Server  — Server (GUI or Headless)" \
+  "htpc:HTPC    — Home theatre PC" \
+  "stateless:Stateless — Minimal build (no gaming / dev / virt / ASUS)" \
   "vanilla:Vanilla  — Stock NixOS baseline (system restore)"
 
 # ---------- Server sub-type selection ----------------------------------------

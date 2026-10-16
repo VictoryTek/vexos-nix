@@ -114,10 +114,10 @@ parse_answer_flags "$@"
 if [ -z "${ROLE:-}" ]; then
   ask_choice ROLE "Select your role" "" "" \
     "desktop:Desktop  — Full gaming / workstation stack" \
-    "stateless:Stateless — Minimal build (no gaming / dev / virt / ASUS)" \
-    "htpc:HTPC    — Home theatre PC" \
     "server:Server  — Server (GUI or Headless)" \
     "headless-server:Headless Server — CLI only, no desktop environment" \
+    "htpc:HTPC    — Home theatre PC" \
+    "stateless:Stateless — Minimal build (no gaming / dev / virt / ASUS)" \
     "vanilla:Vanilla  — Stock NixOS baseline (system restore)"
   if [ "$ROLE" = "server" ]; then
     ask_choice SERVER_TYPE "Select server type" "" "" \
