@@ -485,11 +485,12 @@ _service-available:
 # Internal helper behind `just service list`.
 [private]
 [arg('service', pattern='|[a-z0-9][a-z0-9-]*')]
-_service-info service="":
+_service-info service="" status="":
     #!/usr/bin/env bash
     set -euo pipefail
     source "{{justfile_directory()}}/just/lib.sh"
     SERVICE={{quote(service)}}
+    STATUS={{quote(status)}}
     SVC_FILE="/etc/nixos/server-services.nix"
 
     _info() {
@@ -601,19 +602,35 @@ _service-info service="":
         echo "Enabled services:"
         echo ""
         FOUND=0
+        n_running=0 n_stopped=0 n_failed=0 n_partial=0 n_unbuilt=0
         for svc in $({{_just}} _service-enabled); do
             _info "$svc"
             FOUND=1
+            [ -n "$STATUS" ] || continue
+            IFS='|' read -r state detail < <({{_just}} _service-state "$svc")
+            case "$state" in
+                running) color=32; n_running=$((n_running + 1)) ;;
+                stopped) color=33; n_stopped=$((n_stopped + 1)) ;;
+                failed)  color=31; n_failed=$((n_failed + 1)) ;;
+                partial) color=31; n_partial=$((n_partial + 1)) ;;
+                *)       color=2;  n_unbuilt=$((n_unbuilt + 1)) ;;
+            esac
+            printf "  %-18s  \033[%sm%-9s\033[0m  %s\n" "" "$color" "$state" "$detail"
         done
         if [ "$FOUND" -eq 0 ]; then
             echo "  (none enabled)"
+        elif [ -n "$STATUS" ]; then
+            summary="$n_running running, $n_stopped stopped, $n_failed failed"
+            [ "$n_partial" -eq 0 ] || summary="$summary, $n_partial partial"
+            [ "$n_unbuilt" -eq 0 ] || summary="$summary, $n_unbuilt not built"
+            echo ""
+            echo "$summary"
         fi
         echo ""
     fi
 
 # Print the enabled server services, one name per line (nothing when
-# server-services.nix does not exist) — shared by `_service-info` and
-# `_service-running`.
+# server-services.nix does not exist) — used by `_service-info`.
 [private]
 _service-enabled:
     #!/usr/bin/env bash
@@ -627,66 +644,39 @@ _service-enabled:
         fi
     done
 
-# Show whether each enabled server service is actually running, from
-# `systemctl is-active` on its units. Read-only; exits 0 even when services
-# are down. Internal helper behind `just service list`.
+# Print one enabled service's state as `state|detail` for `_service-info`:
+# state is running, stopped, failed, partial or "not built"; detail is its
+# units (or the ones that are down). Read-only, from `systemctl is-active`.
 [private]
-_service-running: _require-server-role
+[arg('service', pattern='[a-z0-9][a-z0-9-]*')]
+_service-state service:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [ ! -f /etc/nixos/server-services.nix ]; then
-        echo ""
-        echo "No services enabled yet — run 'just service enable <service>' to get started."
-        echo ""
+    SVC={{quote(service)}}
+    UNITS=$({{_just}} _service-units "$SVC")
+    if [ -z "$UNITS" ]; then
+        echo "not built|(enabled in config, not rebuilt yet)"
         exit 0
     fi
-    ENABLED=$({{_just}} _service-enabled)
-    echo ""
-    if [ -z "$ENABLED" ]; then
-        echo "  (none enabled)"
-        echo ""
-        exit 0
-    fi
-
-    n_running=0 n_stopped=0 n_failed=0 n_partial=0 n_unbuilt=0
-    for svc in $ENABLED; do
-        UNITS=$({{_just}} _service-units "$svc")
-        if [ -z "$UNITS" ]; then
-            printf "  %-20s  \033[2m%-9s\033[0m  %s\n" "$svc" "not built" "(enabled in config, not rebuilt yet)"
-            n_unbuilt=$((n_unbuilt + 1))
-            continue
-        fi
-        total=0 active=0 failed=0 down=""
-        for unit in $UNITS; do
-            total=$((total + 1))
-            state=$(systemctl is-active "${unit}.service" 2>/dev/null) || true
-            case "$state" in
-                active) active=$((active + 1)) ;;
-                failed) failed=1; down="${down:+$down }${unit} (failed)" ;;
-                *)      down="${down:+$down }${unit} (${state:-unknown})" ;;
-            esac
-        done
-        if [ "$failed" -eq 1 ]; then
-            printf "  %-20s  \033[31m%-9s\033[0m  %s\n" "$svc" "failed" "$down"
-            n_failed=$((n_failed + 1))
-        elif [ "$active" -eq "$total" ]; then
-            printf "  %-20s  \033[32m%-9s\033[0m  %s\n" "$svc" "running" "$UNITS"
-            n_running=$((n_running + 1))
-        elif [ "$active" -eq 0 ]; then
-            printf "  %-20s  \033[33m%-9s\033[0m  %s\n" "$svc" "stopped" "$UNITS"
-            n_stopped=$((n_stopped + 1))
-        else
-            printf "  %-20s  \033[31m%-9s\033[0m  %s\n" "$svc" "partial" "$down"
-            n_partial=$((n_partial + 1))
-        fi
+    total=0 active=0 failed=0 down=""
+    for unit in $UNITS; do
+        total=$((total + 1))
+        state=$(systemctl is-active "${unit}.service" 2>/dev/null) || true
+        case "$state" in
+            active) active=$((active + 1)) ;;
+            failed) failed=1; down="${down:+$down }${unit} (failed)" ;;
+            *)      down="${down:+$down }${unit} (${state:-unknown})" ;;
+        esac
     done
-
-    summary="$n_running running, $n_stopped stopped, $n_failed failed"
-    [ "$n_partial" -eq 0 ] || summary="$summary, $n_partial partial"
-    [ "$n_unbuilt" -eq 0 ] || summary="$summary, $n_unbuilt not built"
-    echo ""
-    echo "$summary"
-    echo ""
+    if [ "$failed" -eq 1 ]; then
+        echo "failed|$down"
+    elif [ "$active" -eq "$total" ]; then
+        echo "running|$UNITS"
+    elif [ "$active" -eq 0 ]; then
+        echo "stopped|$UNITS"
+    else
+        echo "partial|$down"
+    fi
 
 # Guard: abort unless `service` is one of _server_service_names.
 [arg('service', pattern='[a-z0-9][a-z0-9-]*')]
@@ -813,13 +803,7 @@ _service-restart service: _require-server-role (_require-known-service service)
 # running, stopped or failed.
 [private]
 _service-list: _require-server-role
-    #!/usr/bin/env bash
-    set -euo pipefail
-    {{_just}} _service-info
-    # Nothing enabled: _service-info already said so.
-    [ -n "$({{_just}} _service-enabled)" ] || exit 0
-    echo "Status:"
-    {{_just}} _service-running
+    @{{_just}} _service-info "" 1
 
 # Toggle Plex Pass hardware transcoding on/off for an already-enabled Plex installation.
 # Usage: just plex-pass enable   /   just plex-pass disable
