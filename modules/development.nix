@@ -1,6 +1,6 @@
 # modules/development.nix
-# Development tools: VS Code, Python, Rust, TypeScript/Node, Docker, and general
-# app-development utilities installed system-wide.
+# Development tools: VS Code, Python, Rust (via rustup), TypeScript/Node,
+# Docker, and general app-development utilities installed system-wide.
 #
 # Enable on a per-host basis via /etc/nixos/features.nix:
 #   vexos.features.development.enable = true;
@@ -9,7 +9,7 @@ let
   cfg = config.vexos.features.development;
 in
 {
-  options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Rust, Go, Claude Code, Nix LSP, rust-analyzer)";
+  options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Rust via rustup, Go, Claude Code, Nix LSP)";
 
   config = lib.mkIf cfg.enable {
     # ── Flatpak ───────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ in
       pkgs.sqlite # Embedded SQL database + CLI
       pkgs.httpie # Human-friendly HTTP client
       pkgs.mkcert # Locally-trusted dev TLS certificates
-      pkgs.gcc # C/C++ compiler (for native modules, etc.)
+      pkgs.gcc # C/C++ compiler (native modules; also the `cc` linker rustup toolchains need)
 
       # ── AI tooling ────────────────────────────────────────────────────────────
       pkgs.claude-code # Anthropic Claude CLI
@@ -71,11 +71,28 @@ in
       pkgs.nix-output-monitor # Enhanced nix build output (nom)
 
       # ── Rust ──────────────────────────────────────────────────────────────────
-      pkgs.rustc        # Rust compiler
-      pkgs.cargo        # Rust package manager and build tool
-      pkgs.rustfmt      # Rust code formatter (cargo fmt)
-      pkgs.clippy       # Rust linter (cargo clippy)
-      pkgs.rust-analyzer # Rust LSP — IDE support in VSCodium
+      # The toolchain is managed by rustup (not nixpkgs), so `stable` tracks CI's
+      # Rust and Clippy instead of lagging the nixpkgs release. Toolchains live in
+      # ~/.rustup and are not part of the Nix closure.
+      #
+      #   Update stable (clippy, rustfmt, rust-analyzer, ...):
+      #     rustup update stable
+      #   First-time stable setup:
+      #     rustup toolchain install stable --profile default -c clippy -c rustfmt
+      #     rustup component add rust-analyzer       # else the rust-analyzer proxy recurses
+      #     rustup target add wasm32-unknown-unknown # only for projects that need it
+      #   MSRV checks (home-registry's rust-version):
+      #     rustup toolchain install 1.88.0 --profile minimal
+      #     cargo +1.88.0 check
+      #
+      # BREAKS AFTER GARBAGE COLLECTION: the nixpkgs rustup patches every
+      # toolchain binary at install time to a store-path glibc interpreter. When a
+      # system update and `nix-collect-garbage` remove that glibc, cargo/rustc fail
+      # with "No such file or directory". `rustup update` and `install --force`
+      # do NOT re-patch an up-to-date toolchain; it must be uninstalled and
+      # reinstalled. `just rust-repair` does that for every broken toolchain and
+      # keeps its components and targets.
+      pkgs.rustup
 
       # ── Go ────────────────────────────────────────────────────────────────────
       pkgs.go # Go programming language

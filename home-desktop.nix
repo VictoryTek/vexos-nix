@@ -23,7 +23,7 @@
   home.packages = with pkgs; [
     # Development tools
     # NOTE: VS Code (programs.vscode, below) is currently disabled.
-    rustup
+    # NOTE: rustup is installed system-wide via modules/development.nix.
     unstable.nodejs  # latest LTS (nodejs_25 removed — EOL 2026-06-01)
 
     # Terminal emulator

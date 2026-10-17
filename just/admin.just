@@ -1,4 +1,4 @@
-# just/admin.just — Day-to-day administration: power, GNOME reset, hostname, SSH keys.
+# just/admin.just — Day-to-day administration: power, GNOME reset, hostname, SSH keys, rustup repair.
 # Imported by the root justfile; recipe names share one namespace.
 
 # Reboot the system immediately.
@@ -372,3 +372,56 @@ ssh target="":
     echo ""
     echo "Done. Connect with: ssh ${TARGET}"
     echo ""
+
+# Repair rustup toolchains whose patched glibc was garbage-collected.
+# nixpkgs' rustup patches each toolchain binary to a store-path glibc at install
+# time; once a system update + garbage collection removes that glibc, cargo and
+# rustc fail with "No such file or directory". `rustup update` and `install
+# --force` leave a current toolchain untouched, so a broken one is uninstalled
+# and reinstalled with the same components and targets it had (read from
+# rustup's manifest, which works while rustc itself does not).
+[group('System Administration')]
+[doc('Reinstall rustup toolchains broken by garbage collection')]
+rust-repair:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v rustup >/dev/null 2>&1; then
+        echo "error: rustup is not installed (enable the development feature)." >&2
+        exit 1
+    fi
+
+    HOST=$(rustup show | sed -n 's/^Default host: //p')
+    mapfile -t TOOLCHAINS < <(rustup toolchain list | awk 'NF && $1 != "no" {print $1}')
+    if [ "${#TOOLCHAINS[@]}" -eq 0 ]; then
+        echo "No rustup toolchains installed — nothing to repair."
+        exit 0
+    fi
+
+    FAILED=0
+    for tc in "${TOOLCHAINS[@]}"; do
+        if rustup run "$tc" rustc --version >/dev/null 2>&1; then
+            echo "✓ $tc works"
+            continue
+        fi
+        echo "✗ $tc is broken — reinstalling"
+
+        # rust-std-* entries are targets, listed separately below; the host
+        # triple suffix is not part of the component name `-c` expects.
+        ARGS=()
+        while IFS= read -r comp; do
+            case "$comp" in rust-std-*|'') continue ;; esac
+            ARGS+=(-c "${comp%-"$HOST"}")
+        done < <(rustup component list --installed --toolchain "$tc")
+        while IFS= read -r target; do
+            [ -n "$target" ] && ARGS+=(-t "$target")
+        done < <(rustup target list --installed --toolchain "$tc")
+
+        rustup toolchain uninstall "$tc"
+        if rustup toolchain install "$tc" --profile minimal "${ARGS[@]}"; then
+            rustup run "$tc" rustc --version
+        else
+            echo "error: reinstalling $tc failed." >&2
+            FAILED=1
+        fi
+    done
+    exit "$FAILED"

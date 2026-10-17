@@ -178,7 +178,7 @@ _feature-enable feature: _require-desktop-role
             echo "  What this adds:"
             echo "    Services   Docker 29 (with weekly auto-prune)"
             echo "    Editor     VSCodium (telemetry-free VS Code fork)"
-            echo "    Languages  Python 3 + uv + ruff, TypeScript, Node (pnpm + bun), Rust (rustc + cargo + clippy + rust-analyzer), Go"
+            echo "    Languages  Python 3 + uv + ruff, TypeScript, Node (pnpm + bun), Rust (rustup — run 'just rust-repair' if cargo breaks after a cleanup), Go"
             echo "    Tools      GitHub CLI, git-lfs, jq, yq, pre-commit, sqlite, httpie, mkcert, gcc"
             echo "    AI         Claude Code (Anthropic Claude CLI)"
             echo "    Nix        nil (LSP), nixpkgs-fmt, nix-output-monitor"
