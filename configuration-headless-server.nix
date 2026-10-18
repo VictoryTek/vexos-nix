@@ -17,7 +17,7 @@
     ./modules/zfs-server.nix
     ./modules/nix.nix
     ./modules/notify.nix
-    ./modules/nix-server.nix        # 30-day GC retention (production server standard)
+    ./modules/nix-server.nix        # 14-day GC retention
     ./modules/nix-proxmox-cache.nix # SaumonNet proxmox-nixos binary cache
     ./modules/locale.nix
     ./modules/users.nix

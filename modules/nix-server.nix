@@ -1,13 +1,14 @@
 # modules/nix-server.nix
 # GC schedule for server and headless-server roles.
-# Keeps generations for 30 days — provides a full-month rollback window,
-# which is the standard for production/homelab servers: enough time to
-# detect a regression across a real workload cycle before the store is pruned.
+# Keeps generations for 14 days — a two-week rollback window, matching
+# desktop/HTPC. Homelab servers often boot from small OS drives and are
+# rebuilt frequently, so a longer window piles up old generations and eats
+# disk (30 days kept ~21 GiB on a 128 GB drive).
 { ... }:
 {
   nix.gc = {
     automatic = true;
     dates     = "weekly";
-    options   = "--delete-older-than 30d";
+    options   = "--delete-older-than 14d";
   };
 }
