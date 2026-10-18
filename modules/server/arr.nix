@@ -50,8 +50,10 @@ in
         settings.misc = {
           host = "0.0.0.0"; # module default is 127.0.0.1, which would make openFirewall pointless
           # Tailscale's CGNAT range isn't RFC1918/RFC4193, so SABnzbd otherwise treats
-          # it as "internet" and denies access ("External internet access denied")
-          local_ranges = "100.64.0.0/10";
+          # it as "internet" and denies access ("External internet access denied").
+          # A non-empty local_ranges also replaces SABnzbd's built-in defaults, so the
+          # private ranges (LAN, Docker bridges via 172.16.0.0/12) must be listed too.
+          local_ranges = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10";
           cache_limit = "512M"; # module default is "" and is re-applied on every start, clobbering the UI value
         };
       };
