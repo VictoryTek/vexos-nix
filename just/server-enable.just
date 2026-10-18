@@ -773,11 +773,9 @@ _service-enable service: _require-server-role (_require-known-service service)
         echo "  Service:  beszel-agent.service"
         echo "  Port:     :45876 (the hub connects to the agent)"
         echo "  About:    Reports this host's metrics to a Beszel hub."
-        echo "  Setup:    In the hub UI choose 'Add System' (host: this server, port 45876), then:"
-        echo "              printf 'KEY=%s\nTOKEN=%s\n' '<public key>' '<token>' | sudo tee /etc/nixos/secrets/beszel-agent-env >/dev/null"
-        echo "              sudo chmod 0600 /etc/nixos/secrets/beszel-agent-env"
-        echo "              sudo systemctl restart beszel-agent"
-        echo "  Note:     The agent fails to start until that file exists."
+        echo "  Setup:    After 'just rebuild', run 'just beszel setup' — it walks through the hub's"
+        echo "            'Add System' dialog and stores the key and token."
+        echo "  Note:     The agent fails to start until that is done. Check it with 'just beszel status'."
         ;;
       nginx-proxy-manager)
         echo "  Container: nginx-proxy-manager (NixOS OCI container)"

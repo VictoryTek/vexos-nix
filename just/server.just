@@ -181,6 +181,14 @@ plex-pass action="" *args: _require-server-role
         "enable|Turn on hardware transcoding for an enabled Plex" \
         "disable|Turn hardware transcoding off"
 
+# Beszel monitoring agent (server): set up and check.
+[group('Server')]
+[doc('Set up and check the Beszel monitoring agent (menu)')]
+beszel action="" *args: _require-server-role
+    @{{_just}} _menu beszel "Beszel agent" {{quote(action)}} {{quote(args)}} \
+        "setup|Configure this host's agent with the hub's key and token" \
+        "status|Show whether the agent is configured, running and listening||stay"
+
 # Guard: abort if the current host is not running a server variant.
 [private]
 _require-server-role:
@@ -837,6 +845,149 @@ _plex-pass-disable: _require-server-role
     else
         echo "Plex Pass is already disabled (or was never set)."
     fi
+    echo ""
+
+# Configure the Beszel agent: write the hub's public key and this system's
+# registration token (both shown by the hub's "Add System" dialog) to the agent's
+# EnvironmentFile, then restart the agent. KEY/TOKEN come from BESZEL_KEY /
+# BESZEL_TOKEN when both are set (VexPortal, stdin closed), else from a prompt.
+# The values never reach a command line, shell history or the terminal echo.
+# Usage: just beszel setup
+[private]
+_beszel-setup: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source "{{justfile_directory()}}/just/lib.sh"
+    SVC_FILE="/etc/nixos/server-services.nix"
+    ENV_FILE="/etc/nixos/secrets/beszel-agent-env"
+    UNIT="beszel-agent.service"
+    PORT=45876
+
+    if ! nix_is_set "$SVC_FILE" vexos.server.beszel-agent.enable true; then
+        echo "error: the Beszel agent is not enabled." >&2
+        echo "       Run 'just service enable beszel-agent && just rebuild', then 'just beszel setup'." >&2
+        exit 1
+    fi
+    if ! systemctl cat "$UNIT" &>/dev/null; then
+        echo "error: $UNIT does not exist yet — the agent is enabled but not rebuilt." >&2
+        echo "       Run 'just rebuild', then 'just beszel setup'." >&2
+        exit 1
+    fi
+
+    HOST=$(hostname)
+    LAN_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") { print $(i+1); exit }}' || true)
+    echo ""
+    echo "In the Beszel hub (web UI):"
+    echo "  1. Click 'Add System'."
+    echo "  2. Name = ${HOST}   Host = ${LAN_IP:-<LAN IP of this host>}   Port = ${PORT}"
+    echo "  3. Keep the dialog open and copy the Key and the Token."
+    echo "  4. Click 'Add System' only AFTER this recipe finishes."
+    echo ""
+
+    trim() {
+        local v="$1"
+        v="${v#"${v%%[![:space:]]*}"}"
+        v="${v%"${v##*[![:space:]]}"}"
+        printf '%s' "$v"
+    }
+
+    if [ -n "${BESZEL_KEY:-}" ] && [ -n "${BESZEL_TOKEN:-}" ]; then
+        KEY="$BESZEL_KEY"
+        TOKEN="$BESZEL_TOKEN"
+    elif [ -t 0 ]; then
+        read -r -p "Key (the hub's public key, starts with ssh-): " KEY || KEY=""
+        read -r -s -p "Token (input hidden): " TOKEN || TOKEN=""
+        echo ""
+    else
+        echo "error: no terminal to prompt on — set both BESZEL_KEY and BESZEL_TOKEN." >&2
+        exit 1
+    fi
+    KEY=$(trim "$KEY")
+    TOKEN=$(trim "$TOKEN")
+
+    if [ -z "$KEY" ] || [ -z "$TOKEN" ]; then
+        echo "error: the key and the token must both be non-empty." >&2
+        exit 1
+    fi
+    if [[ "$KEY$TOKEN" == *[$'\n\r']* ]]; then
+        echo "error: the key and the token must each be a single line." >&2
+        exit 1
+    fi
+    if [[ "$TOKEN" == *[[:space:]]* ]]; then
+        echo "error: the token must not contain whitespace." >&2
+        exit 1
+    fi
+    if [[ "$KEY" != ssh-* ]]; then
+        echo "error: the key must start with 'ssh-' (copy the Key from the hub's Add System dialog)." >&2
+        exit 1
+    fi
+
+    if sudo test -e "$ENV_FILE"; then
+        echo "$ENV_FILE already exists and will be overwritten."
+        if [ "$({{_just}} _confirm-typed)" != "true" ]; then
+            echo "Aborted — no changes made."
+            exit 1
+        fi
+    fi
+
+    sudo install -d -m 0700 -o root -g root "$(dirname "$ENV_FILE")"
+    # printf is a builtin, so the values stay out of argv. The temp file is
+    # created under umask 077 and renamed over the target in one step.
+    printf 'KEY=%s\nTOKEN=%s\n' "$KEY" "$TOKEN" | sudo sh -c '
+        umask 077
+        tmp="$1.new"
+        cat > "$tmp" && mv -f "$tmp" "$1" || { rm -f "$tmp"; exit 1; }
+    ' _ "$ENV_FILE"
+    unset KEY TOKEN BESZEL_KEY BESZEL_TOKEN
+    echo "✓ Wrote $ENV_FILE (root-owned, 0600)."
+
+    # The unit has most likely already hit its start limit while the file was missing.
+    sudo systemctl reset-failed "$UNIT" || true
+    sudo systemctl restart "$UNIT" || true
+    sleep 2
+    if systemctl is-active --quiet "$UNIT"; then
+        echo "✓ $UNIT is active."
+    else
+        echo "error: $UNIT is $(systemctl is-active "$UNIT" || true). Last 15 journal lines:" >&2
+        sudo journalctl -u "$UNIT" -n 15 --no-pager >&2 || true
+        exit 1
+    fi
+    echo ""
+    echo "Now click 'Add System' in the hub — ${HOST} should turn green within seconds."
+    echo ""
+
+# Read-only view of the Beszel agent: configured, running and listening.
+# Usage: just beszel status
+[private]
+_beszel-status: _require-server-role
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source "{{justfile_directory()}}/just/lib.sh"
+    SVC_FILE="/etc/nixos/server-services.nix"
+    ENV_FILE="/etc/nixos/secrets/beszel-agent-env"
+    UNIT="beszel-agent.service"
+    PORT=45876
+
+    if nix_is_set "$SVC_FILE" vexos.server.beszel-agent.enable true; then
+        echo "Enabled:   yes"
+    else
+        echo "Enabled:   no  (run 'just service enable beszel-agent && just rebuild')"
+    fi
+    # /etc/nixos/secrets is 0700 root, so look through sudo.
+    if sudo test -f "$ENV_FILE"; then
+        echo "Env file:  present ($(sudo stat -c '%a %U:%G' "$ENV_FILE"))  $ENV_FILE"
+    else
+        echo "Env file:  missing  (run 'just beszel setup')"
+    fi
+    echo "Unit:      $(systemctl is-active "$UNIT" 2>/dev/null || true)"
+    if [ -n "$(ss -H -tln "sport = :${PORT}" 2>/dev/null)" ]; then
+        echo "Port ${PORT}: listening"
+    else
+        echo "Port ${PORT}: not listening"
+    fi
+    echo ""
+    echo "── journalctl -u $UNIT (last 10) ──"
+    journalctl -u "$UNIT" -n 10 --no-pager 2>&1 || true
     echo ""
 
 # Remove entries for services that no longer exist from server-services.nix.

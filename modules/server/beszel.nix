@@ -10,14 +10,14 @@
 # A host can run either or both: one hub, and an agent on every server you
 # want to watch (including the hub's own host).
 #
-# Agent setup — the agent cannot start until it knows which hub to trust:
-#   1. In the hub UI: "Add System", enter this host's address and port 45876.
-#   2. Copy the KEY and TOKEN values the dialog shows into the env file:
+# Agent setup — the agent cannot start until it knows which hub to trust.
+# After enabling the agent and rebuilding, run:
 #
-#        printf 'KEY=%s\nTOKEN=%s\n' "<public key>" "<token>" > /etc/nixos/secrets/beszel-agent-env
-#        chmod 0600 /etc/nixos/secrets/beszel-agent-env
+#   just beszel setup
 #
-#   3. sudo systemctl restart beszel-agent
+# It walks through the hub's "Add System" dialog (Host = this host, port 45876),
+# takes the KEY and TOKEN that dialog shows, writes them to the environmentFile
+# (root-owned, 0600) and restarts the agent. `just beszel status` checks it.
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.server.beszel;

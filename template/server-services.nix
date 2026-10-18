@@ -159,7 +159,7 @@
   # vexos.server.prometheus.enable = false;              # Port 9092 — metrics collection
   # vexos.server.netdata.enable = false;                 # Port 19999 — real-time system monitoring
   # vexos.server.beszel.enable = false;                  # Port 8090 — Beszel monitoring hub
-  # vexos.server.beszel-agent.enable = false;            # Port 45876 — Beszel agent (KEY/TOKEN in /etc/nixos/secrets/beszel-agent-env)
+  # vexos.server.beszel-agent.enable = false;            # Port 45876 — Beszel agent (then run: just beszel setup)
   # vexos.server.portainer.enable = false;               # Port 9443 — Docker/Podman management UI
 
   # ── Notifications ────────────────────────────────────────────────────────
