@@ -1,18 +1,18 @@
 {
   "wordcraft": {
-    "version": "0.7.0",
-    "hash": "sha256-OpV6fF8lYjyjtkRHX4B44uBelcBmdtrRhhPmx9XAwPc="
+    "version": "0.8.0",
+    "hash": "sha256-5/6sXbWLt8JjzycUCYtajLaUBzd8GWnvccOZWL3MJxI="
   },
   "gridcraft": {
-    "version": "0.7.0",
-    "hash": "sha256-I7I6ZiCtc0+0ScESVk8+wAKK28S8No2HKOSrYb61OxQ="
+    "version": "0.8.0",
+    "hash": "sha256-AJwnPRSQnuJA3+t2j+g5nTdF5ZMxLPbdjovaGuLPh+Y="
   },
   "pdfcraft": {
-    "version": "0.8.0",
-    "hash": "sha256-lTVF4ze3vpXd1iUztPoGXh88YKX9Cz4sZfAjF/eLGtA="
+    "version": "0.9.0",
+    "hash": "sha256-/f0C0qBNw0eaaBNk4mFUEJb0bURKg40HWZLJDN59spI="
   },
   "photocraft": {
-    "version": "0.9.0",
-    "hash": "sha256-PTps3ehL850ZBUUig0Th3DNAgJSc2jLVPee66184cXU="
+    "version": "0.10.0",
+    "hash": "sha256-K2rK+QgSvMh4HhNuFQv0xnDotnvqojuICZM7VaGtVM0="
   }
 }
