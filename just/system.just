@@ -351,9 +351,9 @@ switch role="" variant="" flake="" de="" vmp="": _require-nixos
     # and crash, leaving a black screen with no way back in short of a reboot
     # anyway. So for a DE change, build it, queue it for next boot via
     # `nixos-rebuild boot` (which never restarts running services), and
-    # reboot straight into it — no live activation attempt, no [y/N] prompt,
-    # since the current session can't reach the new DE without a reboot
-    # regardless of the answer.
+    # offer to reboot into it — no live activation attempt, since the current
+    # session can't reach the new DE without a reboot. Declining leaves it
+    # queued for the next boot.
     #
     # A VM-platform change is queued the same way, for a different reason: it
     # swaps boot.kernelPackages (VirtualBox pins 6.18 LTS, QEMU follows the
@@ -391,9 +391,13 @@ switch role="" variant="" flake="" de="" vmp="": _require-nixos
         echo ""
         sudo nixos-rebuild boot --impure --flake "path:${_flake_dir}#${TARGET}"
         echo ""
-        echo "✓ All set — ${TARGET} is queued as the next boot entry. Rebooting now..."
-        sleep 2
-        sudo systemctl reboot
+        echo "✓ All set — ${TARGET} is queued as the next boot entry."
+        echo ""
+        if [ "$({{_just}} _confirm 'Reboot into it now? [y/N]: ')" = "true" ]; then
+            echo "Rebooting..."; sudo systemctl reboot
+        else
+            echo "Skipped — reboot manually when ready to start ${TARGET}."
+        fi
         exit 0
     fi
 
