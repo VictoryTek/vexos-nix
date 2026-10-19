@@ -393,6 +393,8 @@ switch role="" variant="" flake="" de="" vmp="": _require-nixos
         echo ""
         echo "✓ All set — ${TARGET} is queued as the next boot entry."
         echo ""
+        echo "After the reboot, run 'just clean' to remove leftovers from the previous generation."
+        echo ""
         if [ "$({{_just}} _confirm 'Reboot into it now? [y/N]: ')" = "true" ]; then
             echo "Rebooting..."; sudo systemctl reboot
         else
@@ -400,10 +402,6 @@ switch role="" variant="" flake="" de="" vmp="": _require-nixos
         fi
         exit 0
     fi
-
-    # Whether the system we are leaving ships Flatpak; compared after the switch.
-    _had_flatpak="false"
-    system_has_flatpak /run/current-system && _had_flatpak="true"
 
     # `cmd || _rc=$?`, not `if ! cmd; then _rc=$?` — inside that `if`, $? is
     # the status of the negation (always 0), which made a failed switch exit 0.
@@ -427,18 +425,10 @@ switch role="" variant="" flake="" de="" vmp="": _require-nixos
     echo ""
     echo "Switch complete."
 
-    # Post-switch cleanup, only after a clean switch (exit 4 above is a partial
-    # activation — leave the system alone until it has been rebooted).
+    # Cleanup lives in `just clean`, not here: it must run on the new system.
     if [ $_rc -eq 0 ]; then
-        if [ "$_had_flatpak" = "true" ] && ! system_has_flatpak /run/current-system && [ -d /var/lib/flatpak ]; then
-            offer_flatpak_removal
-        fi
         echo ""
-        if [ -e /run/current-system/etc/systemd/system/nix-gc.timer ]; then
-            echo "The previous generation is kept as a rollback and will be garbage-collected by the scheduled nix-gc, or run 'just clean' to do it now."
-        else
-            echo "The previous generation is kept as a rollback; this role has no scheduled nix-gc, so run 'just clean' to remove old generations."
-        fi
+        echo "After the reboot, run 'just clean' to remove leftovers from the previous generation."
     fi
     echo ""
     if [ "$({{_just}} _confirm 'Reboot now? [y/N]: ')" = "true" ]; then
@@ -1062,34 +1052,48 @@ rollforward:
     activate_generation "$(readlink -f /nix/var/nix/profiles/system)"
     echo "Now on generation: ${next}"
 
-# Free disk space now: delete old generations and unused store paths, and offer
-# to remove Flatpak leftovers if this system no longer ships Flatpak. Needs a
+# Free disk space after a switch, once you have rebooted into the new system:
+# garbage-collect old generations and offer to remove Flatpak leftovers if the
+# system no longer ships Flatpak. Stops if a reboot is still pending. Needs a
 # terminal to confirm; without one it only prints the commands.
 [group('System Upgrades & Rollbacks')]
-[doc('Delete old generations and unused store paths to free disk space')]
+[doc('After a reboot: collect garbage and remove leftovers from the previous generation')]
 clean:
     #!/usr/bin/env bash
     set -euo pipefail
     source "{{justfile_directory()}}/just/lib.sh"
 
+    # The running system differs from the newest generation: a switch was queued
+    # for the next boot. Cleaning now would act on the OLD system.
+    if [ "$(readlink -f /run/current-system)" != "$(readlink -f /nix/var/nix/profiles/system)" ]; then
+        echo "Reboot first: the running system is not the newest generation." >&2
+        echo "Run 'just clean' again after rebooting." >&2
+        exit 1
+    fi
+
     df -h /
     echo ""
-    echo "WARNING: this deletes every old system generation, including the rollback"
-    echo "generation, and all store paths nothing references. You will not be able to"
-    echo "roll back to them afterwards."
-    echo ""
     if [ ! -t 0 ]; then
-        echo "No terminal, so nothing was deleted. To do it manually:"
-        echo "  sudo nix-collect-garbage -d"
+        echo "No terminal, so nothing was deleted. To collect garbage manually:"
+        echo "  sudo nix-collect-garbage -d                   # free everything now (removes rollback generations)"
+        echo "  sudo nix-collect-garbage --delete-older-than 7d   # keep the last 7 days"
     else
-        printf 'Delete old generations and collect garbage? [y/N]: '
+        echo "Collect garbage:"
+        echo "  1) Free everything now — WARNING: removes every old generation, including"
+        echo "     the rollback generation (sudo nix-collect-garbage -d)"
+        echo "  2) Keep the last 7 days (sudo nix-collect-garbage --delete-older-than 7d)"
+        echo "  Enter) Skip"
+        printf 'Choice [1/2, Enter to skip]: '
         read -r _answer || _answer=""
-        case "${_answer,,}" in
-            y|yes)
+        case "$_answer" in
+            1)
                 sudo nix-collect-garbage -d
                 echo ""
                 echo "Boot entries for the deleted generations stay in the boot menu until the next"
                 echo "switch rewrites it."
+                ;;
+            2)
+                sudo nix-collect-garbage --delete-older-than 7d
                 ;;
             *) echo "Skipped." ;;
         esac
