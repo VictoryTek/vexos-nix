@@ -38,6 +38,47 @@ activate_generation() {
     exit 0
 }
 
+# system_has_flatpak TOPLEVEL — true if the built system at TOPLEVEL ships
+# Flatpak. Checks the binary under TOPLEVEL, never PATH: a running shell's PATH
+# was set before the switch and still describes the old system.
+system_has_flatpak() {
+    [ -x "$1/sw/bin/flatpak" ]
+}
+
+# offer_flatpak_removal — Flatpak is gone from the running system but its data
+# is still on disk. Report the sizes and offer to delete /var/lib/flatpak
+# (default No). The per-user directories are report-only: they hold user data,
+# so they are never deleted here. Without a terminal nothing is asked or
+# deleted; the manual commands are printed instead.
+offer_flatpak_removal() {
+    local d answer
+    echo ""
+    echo "Flatpak is no longer part of this system, but its data is still on disk:"
+    for d in /var/lib/flatpak "$HOME/.local/share/flatpak" "$HOME/.var/app"; do
+        if [ -e "$d" ]; then
+            du -sh "$d" 2>/dev/null || true
+        fi
+    done
+    echo "(~/.local/share/flatpak and ~/.var/app are per-user data and are never removed here.)"
+    if [ ! -t 0 ]; then
+        echo "No terminal, so nothing was deleted. To remove the system-wide data:"
+        echo "  sudo rm -rf /var/lib/flatpak"
+        return 0
+    fi
+    printf 'Remove /var/lib/flatpak? [y/N]: '
+    read -r answer || answer=""
+    case "${answer,,}" in
+        y|yes)
+            if sudo rm -rf --one-file-system /var/lib/flatpak; then
+                echo "✓ Removed /var/lib/flatpak."
+            else
+                echo "warning: could not fully remove /var/lib/flatpak." >&2
+            fi
+            ;;
+        *) echo "Skipped." ;;
+    esac
+}
+
 # nix_set FILE OPTION VALUE
 # Set OPTION to VALUE (a literal Nix expression: true, "a string", [ "x" ]) in
 # one of the flat /etc/nixos side-files, keeping any trailing comment and never
