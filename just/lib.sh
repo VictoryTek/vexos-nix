@@ -7,6 +7,37 @@
 # Directory holding the justfile (/etc/nixos on a host, the repo in a checkout).
 VEXOS_JF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# system_has_display_manager TOPLEVEL — true if the built system at TOPLEVEL
+# (/run/current-system, or a profile generation) runs a display manager.
+# Activating a system where this differs from the running one starts or stops
+# the display manager, which kills the live graphical session.
+system_has_display_manager() {
+    [ -e "$1/etc/systemd/system/display-manager.service" ]
+}
+
+# activate_generation TOPLEVEL — make the system profile's current generation
+# (already selected, at TOPLEVEL) take effect. Applied live unless that would
+# start or stop the display manager; then it is only made the boot default and
+# the machine reboots into it, rather than dropping the session to a black
+# screen before the caller can finish.
+activate_generation() {
+    local top="$1" now=false new=false
+    system_has_display_manager /run/current-system && now=true
+    system_has_display_manager "$top" && new=true
+    if [ "$now" = "$new" ]; then
+        sudo "$top/bin/switch-to-configuration" switch
+        return
+    fi
+    echo "This generation changes between graphical and headless, so it cannot be"
+    echo "applied to the running session. Queueing it as the next boot entry..."
+    sudo "$top/bin/switch-to-configuration" boot
+    echo ""
+    echo "✓ Queued. Rebooting now..."
+    sleep 2
+    sudo systemctl reboot
+    exit 0
+}
+
 # nix_set FILE OPTION VALUE
 # Set OPTION to VALUE (a literal Nix expression: true, "a string", [ "x" ]) in
 # one of the flat /etc/nixos side-files, keeping any trailing comment and never

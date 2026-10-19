@@ -360,9 +360,28 @@ switch role="" variant="" flake="" de="" vmp="": _require-nixos
     # role's own kernel) and swaps the guest-additions services. A live switch
     # would leave the running kernel mismatched against the new generation's
     # modules, so it needs a reboot regardless — queue it rather than half-apply.
-    if [ "$DE_CHANGED" = "true" ] || [ "$VM_PLATFORM_CHANGED" = "true" ]; then
+    #
+    # Going between a GUI role and headless-server is queued too: the old
+    # generation's display manager is stopped (GUI -> headless) or a new one
+    # started (headless -> GUI) by a live switch, which kills the running
+    # session — and this script with it, so the reboot prompt never appears.
+    # Every role except headless-server runs a display manager.
+    GUI_CHANGED="false"
+    _gui_now="false"; _gui_new="true"
+    system_has_display_manager /run/current-system && _gui_now="true"
+    [ "$ROLE" = "headless-server" ] && _gui_new="false"
+    [ "$_gui_now" != "$_gui_new" ] && GUI_CHANGED="true"
+
+    if [ "$DE_CHANGED" = "true" ] || [ "$VM_PLATFORM_CHANGED" = "true" ] || [ "$GUI_CHANGED" = "true" ]; then
         if [ "$DE_CHANGED" = "true" ]; then
             echo "Desktop environment is changing: ${OLD_DESKTOP_ENV} -> ${DESKTOP_ENV}"
+        fi
+        if [ "$GUI_CHANGED" = "true" ]; then
+            if [ "$_gui_new" = "true" ]; then
+                echo "Switching from a headless system to a graphical one (display manager starts)"
+            else
+                echo "Switching from a graphical system to a headless one (display manager stops)"
+            fi
         fi
         if [ "$VM_PLATFORM_CHANGED" = "true" ]; then
             echo "VM platform is changing: ${OLD_VM_PLATFORM} -> ${VM_PLATFORM} (kernel change)"
@@ -989,10 +1008,14 @@ upgrade-analysis target_version:
 rollback:
     #!/usr/bin/env bash
     set -euo pipefail
+    source "{{justfile_directory()}}/just/lib.sh"
     current=$(sudo nix-env -p /nix/var/nix/profiles/system --list-generations \
                 | awk '/current/{print $1}')
     echo "Current generation: ${current}"
-    sudo nixos-rebuild switch --rollback
+    # What `nixos-rebuild switch --rollback` does, split so a graphical <->
+    # headless rollback can be queued for reboot instead of applied live.
+    sudo nix-env --profile /nix/var/nix/profiles/system --rollback
+    activate_generation "$(readlink -f /nix/var/nix/profiles/system)"
     new=$(sudo nix-env -p /nix/var/nix/profiles/system --list-generations \
             | awk '/current/{print $1}')
     echo "Now on generation: ${new}"
@@ -1003,6 +1026,7 @@ rollback:
 rollforward:
     #!/usr/bin/env bash
     set -euo pipefail
+    source "{{justfile_directory()}}/just/lib.sh"
     current=$(sudo nix-env -p /nix/var/nix/profiles/system --list-generations \
                 | awk '/current/{print $1}')
     next=$(sudo nix-env -p /nix/var/nix/profiles/system --list-generations \
@@ -1013,7 +1037,7 @@ rollforward:
     fi
     echo "Rolling forward: generation ${current} → ${next}"
     sudo nix-env --profile /nix/var/nix/profiles/system --switch-generation "$next"
-    sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
+    activate_generation "$(readlink -f /nix/var/nix/profiles/system)"
     echo "Now on generation: ${next}"
 
 # Each recipe below shows a numbered menu when run with no action, or runs an
