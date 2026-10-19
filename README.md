@@ -150,6 +150,70 @@ You can switch between variants (and roles) at any time — no reinstall require
 
 > **Switching GPU drivers?** A reboot is recommended after switching between AMD, NVIDIA, and Intel variants so the kernel modules load cleanly.
 
+#### Theater mode and desktop mode
+
+The HTPC boots into **theater mode**: a full-screen, remote-friendly tile launcher ([Flex Launcher](https://complexlogic.github.io/flex-launcher/)) on a minimal labwc session. GNOME is still there as **desktop mode**, switched like a Steam Deck's Gaming/Desktop Mode (`modules/htpc-theater.nix`).
+
+- **To desktop:** the *Desktop Mode* tile. **Back to theater:** *Theater Mode* in the GNOME app grid, or log out of GNOME.
+- From a shell (including SSH): `vexos-session-select theater` or `vexos-session-select desktop`.
+- Every boot starts in `vexos.htpc.theater.defaultMode` (`"theater"` by default).
+- **Navigate** with arrows/Enter/Backspace, a gamepad (D-pad/left stick, A, B), or an air-mouse remote. **F10** (`homeKey`) closes the running app and returns to the launcher.
+- Greetd replaces GDM on this role and logs in automatically; there is no login screen. Ctrl+Alt+F2 opens a text console if a session ever fails to start.
+
+Settings go in `/etc/nixos/features.nix` (then `just switch`):
+
+```nix
+{ config, lib, ... }:
+let mkWebApp = config.vexos.htpc.theater.mkWebApp; in
+{
+  # Tiles are added to the defaults (before Desktop Mode / Power).
+  # Use lib.mkForce [ ... ] to replace the whole list instead.
+  vexos.htpc.theater.apps = [
+    # Any website as a tile: opens full-screen in its own Brave profile.
+    (mkWebApp {
+      name = "Netflix";
+      icon = /etc/nixos/htpc-icons/netflix.png;  # PNG/WebP with transparency, or SVG
+      url  = "https://www.netflix.com";
+    })
+    # Any program.
+    { name = "Kodi"; icon = /etc/nixos/htpc-icons/kodi.png; command = "kodi"; }
+    # A submenu (defined below).
+    { name = "Music"; icon = /etc/nixos/htpc-icons/music.png; command = ":submenu Music"; }
+  ];
+
+  vexos.htpc.theater.submenus.Music = [
+    (mkWebApp { name = "Spotify"; icon = /etc/nixos/htpc-icons/spotify.png; url = "https://open.spotify.com"; })
+  ];
+
+  # Theming (all optional).
+  vexos.htpc.theater.theme = {
+    background.mode  = "Image";                 # Color | Image | Slideshow | Transparent
+    background.image = /etc/nixos/htpc-bg.png;  # or background.slideshowDirectory
+    iconSize   = 256;
+    maxButtons = 5;
+    titles     = { fontSize = 36; color = "#FFFFFF"; };  # titles.font = /path/to/font.ttf
+    highlight  = { fillColor = "#FF8800"; fillOpacity = 30; cornerRadius = 20; };
+    clock.enable = true;
+  };
+}
+```
+
+- `mkWebApp { tvUserAgent = true; }` sends a Smart-TV user agent, so sites like `youtube.com/tv` serve their TV interface.
+- Web apps use Brave because nixpkgs Chromium has no Widevine (DRM). Each new web-app profile is pre-set to allow Widevine, which Brave downloads on first use, so DRM video may need a moment the first time.
+- A command can also be a `.desktop` file path, or one of Flex Launcher's special commands: `:submenu <Name>`, `:back`, `:home`, `:fork <cmd>`, `:shutdown`, `:restart`.
+- Tile titles, icon paths and submenu names cannot contain `;`.
+- If an icon has a sibling file named `<icon>_selected.<ext>`, it is shown while the tile is highlighted.
+
+Other options:
+
+| Option | Default | Purpose |
+|---|---|---|
+| `vexos.htpc.theater.enable` | `true` | `false` restores plain GNOME with GDM |
+| `vexos.htpc.theater.homeKey` | `"F10"` | `F1`–`F12` or `Home` |
+| `vexos.htpc.theater.gamepad.enable` | `true` | Gamepad control of the launcher |
+| `vexos.htpc.theater.gamepad.homeButton` | `false` | Gamepad Guide/PS button acts as the home key |
+| `vexos.htpc.theater.cec.enable` | `false` | TV remote over HDMI-CEC (needs a CEC adapter, e.g. Pulse-Eight USB-CEC) |
+
 
 ## Updating to the latest config
 

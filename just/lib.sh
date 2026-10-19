@@ -15,27 +15,55 @@ system_has_display_manager() {
     [ -e "$1/etc/systemd/system/display-manager.service" ]
 }
 
+# display_manager_unit TOPLEVEL — the unit display-manager.service resolves to
+# in the built system at TOPLEVEL: e.g. greetd.service, or GDM's own
+# display-manager.service. Empty when the system has no display manager.
+display_manager_unit() {
+    local unit="$1/etc/systemd/system/display-manager.service"
+    [ -e "$unit" ] && basename "$(readlink -f "$unit")"
+    return 0
+}
+
+# as_root CMD... — run CMD as root; plain when already root (vexos-update and
+# vexos-deploy source this file and run as root), sudo otherwise.
+as_root() {
+    if [ "$(id -u)" -eq 0 ]; then "$@"; else sudo "$@"; fi
+}
+
 # activate_generation TOPLEVEL — make the system profile's current generation
 # (already selected, at TOPLEVEL) take effect. Applied live unless that would
-# start or stop the display manager; then it is only made the boot default and
-# the machine reboots into it, rather than dropping the session to a black
-# screen before the caller can finish.
+# start, stop or swap the display manager:
+#   - graphical <-> headless: made the boot default and the machine reboots
+#     into it, rather than dropping the session to a black screen before the
+#     caller can finish.
+#   - a different display manager (e.g. GDM -> greetd): made the boot default
+#     only. Swapping it under a live session is the known black-screen case,
+#     but the running session is unaffected, so the reboot is left to the user.
 activate_generation() {
     local top="$1" now=false new=false
     system_has_display_manager /run/current-system && now=true
     system_has_display_manager "$top" && new=true
-    if [ "$now" = "$new" ]; then
-        sudo "$top/bin/switch-to-configuration" switch
-        return
+    if [ "$now" != "$new" ]; then
+        echo "This generation changes between graphical and headless, so it cannot be"
+        echo "applied to the running session. Queueing it as the next boot entry..."
+        as_root "$top/bin/switch-to-configuration" boot
+        echo ""
+        echo "✓ Queued. Rebooting now..."
+        sleep 2
+        as_root systemctl reboot
+        exit 0
     fi
-    echo "This generation changes between graphical and headless, so it cannot be"
-    echo "applied to the running session. Queueing it as the next boot entry..."
-    sudo "$top/bin/switch-to-configuration" boot
-    echo ""
-    echo "✓ Queued. Rebooting now..."
-    sleep 2
-    sudo systemctl reboot
-    exit 0
+    if [ "$(display_manager_unit /run/current-system)" != "$(display_manager_unit "$top")" ]; then
+        as_root "$top/bin/switch-to-configuration" boot
+        # Cleared by the reboot (/run is tmpfs); Up reads this marker.
+        as_root touch /run/reboot-required
+        echo ""
+        echo "⚠ Display manager change pending — reboot to apply."
+        echo "  The new generation is the boot default; this session keeps running"
+        echo "  on the current one until then."
+        return 0
+    fi
+    as_root "$top/bin/switch-to-configuration" switch
 }
 
 # system_has_flatpak TOPLEVEL — true if the built system at TOPLEVEL ships

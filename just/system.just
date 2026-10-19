@@ -405,8 +405,14 @@ switch role="" variant="" flake="" de="" vmp="": _require-nixos
 
     # `cmd || _rc=$?`, not `if ! cmd; then _rc=$?` — inside that `if`, $? is
     # the status of the negation (always 0), which made a failed switch exit 0.
+    # Built as the boot default first, then activated by activate_generation,
+    # which keeps a display-manager swap (e.g. GDM -> greetd) off the live
+    # session.
     _rc=0
-    sudo nixos-rebuild switch --impure --flake "path:${_flake_dir}#${TARGET}" || _rc=$?
+    sudo nixos-rebuild boot --impure --flake "path:${_flake_dir}#${TARGET}" || _rc=$?
+    if [ $_rc -eq 0 ]; then
+        activate_generation "$(readlink -f /nix/var/nix/profiles/system)" || _rc=$?
+    fi
     if [ $_rc -ne 0 ]; then
         if [ $_rc -eq 4 ]; then
             echo ""
@@ -535,7 +541,9 @@ _bootloader-switch target="limine":
     echo ""
 
     echo "Rebuilding and switching to Limine..."
-    sudo nixos-rebuild switch --impure --flake "path:/etc/nixos#${VARIANT}"
+    source "{{justfile_directory()}}/just/lib.sh"
+    sudo nixos-rebuild boot --impure --flake "path:/etc/nixos#${VARIANT}"
+    activate_generation "$(readlink -f /nix/var/nix/profiles/system)"
 
     NEW_LIMINE_LINE="$(efibootmgr | grep -i limine || true)"
     if [ -z "$NEW_LIMINE_LINE" ]; then
@@ -710,7 +718,9 @@ rebuild: _kernel-cache-guard
     echo ""
     echo "Rebuilding ${target}..."
     echo ""
-    sudo nixos-rebuild switch --impure --flake "path:/etc/nixos#${target}" || {
+    source "{{justfile_directory()}}/just/lib.sh"
+    { sudo nixos-rebuild boot --impure --flake "path:/etc/nixos#${target}" \
+        && activate_generation "$(readlink -f /nix/var/nix/profiles/system)"; } || {
         _rc=$?
         if command -v vexos-ai >/dev/null; then
             echo ""
@@ -794,9 +804,11 @@ update-all:
         flake update --flake path:/etc/nixos
     echo ""
     echo "Rebuilding: ${target}"
-    sudo nixos-rebuild switch --impure \
+    source "{{justfile_directory()}}/just/lib.sh"
+    sudo nixos-rebuild boot --impure \
         --flake path:/etc/nixos#"${target}" \
         --print-build-logs
+    activate_generation "$(readlink -f /nix/var/nix/profiles/system)"
 
 # Deploy config changes only — pulls the latest vexos-nix commit from GitHub
 # WITHOUT updating nixpkgs.

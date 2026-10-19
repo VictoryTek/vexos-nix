@@ -156,7 +156,13 @@ writeShellApplication {
 
     echo ""
     echo "Switching to: $VARIANT"
-    nixos-rebuild switch --impure --flake "path:$FLAKE_DIR#$VARIANT"
+    # Boot default first, then activate_generation (just/lib.sh) applies it
+    # live — or keeps a display-manager swap / graphical<->headless change
+    # off the running session.
+    # shellcheck source=/dev/null
+    source ${../../just/lib.sh}
+    nixos-rebuild boot --impure --flake "path:$FLAKE_DIR#$VARIANT"
     rm -f "$BAK"
+    activate_generation "$(readlink -f /nix/var/nix/profiles/system)"
   '';
 }

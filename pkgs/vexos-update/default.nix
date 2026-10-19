@@ -394,10 +394,16 @@ GITIGNORE
     fi
 
     echo "Applying update..."
-    nixos-rebuild switch \
+    # Boot default first, then activate_generation (just/lib.sh) applies it
+    # live — or keeps a display-manager swap / graphical<->headless change
+    # off the running session.
+    # shellcheck source=/dev/null
+    source ${../../just/lib.sh}
+    nixos-rebuild boot \
       --flake git+file:///etc/nixos#"$VARIANT" \
       --print-build-logs
     rm -f /etc/nixos/flake.lock.bak
+    activate_generation "$(readlink -f /nix/var/nix/profiles/system)"
     vexos-notify "Update applied on $(hostname)"
   '';
 }
