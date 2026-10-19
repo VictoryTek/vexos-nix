@@ -63,7 +63,7 @@ in
       description = ''
         systemd EnvironmentFile supplying KEY=<hub public key> and
         TOKEN=<registration token>, both shown by the hub's "Add System"
-        dialog. The agent fails to start until this file exists.
+        dialog. The agent is skipped (not failed) until this file exists.
       '';
     };
   };
@@ -90,6 +90,11 @@ in
         environmentFile = agentCfg.environmentFile;
         smartmon.enable = true;
       };
+
+      # Skip (not fail) the unit until the hub key exists, so an unconfigured
+      # agent never makes a rebuild or update exit non-zero.
+      systemd.services.beszel-agent.unitConfig.ConditionPathExists =
+        agentCfg.environmentFile;
     })
   ];
 }
