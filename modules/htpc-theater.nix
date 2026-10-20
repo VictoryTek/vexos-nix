@@ -36,6 +36,12 @@ let
   };
   brave      = lib.getExe pkgs.vexos.brave-origin;
 
+  # Same artwork as the HTPC desktop wallpaper. Flex Launcher loads images via
+  # SDL_image, which may lack JPEG XL, so convert to JPEG at build time.
+  wallpaper = pkgs.runCommand "vexos-htpc-theater-wallpaper.jpg" { nativeBuildInputs = [ pkgs.libjxl ]; } ''
+    djxl ${../wallpapers/htpc/vex-bb-dark.jxl} $out --jpeg_quality=92
+  '';
+
   stateFile = "/run/vexos-htpc/session";
 
   # Linux evdev key codes for ydotool (CEC and gamepad Guide mapping).
@@ -199,10 +205,20 @@ let
     </labwc_config>
   '';
 
-  # Keeps Flex Launcher running for as long as labwc does.
+  # Keeps Flex Launcher running for as long as labwc does. Its sizes are fixed
+  # pixels, so each start rescales icon, font and highlight padding from the
+  # 1920x1080 reference to the current output (the smaller axis ratio wins).
   launcherLoop = pkgs.writeShellScript "vexos-htpc-launcher-loop" ''
+    conf="$XDG_RUNTIME_DIR/vexos-flex-launcher.ini"
     while kill -0 "$LABWC_PID" 2>/dev/null; do
-      ${lib.getExe pkgs.flex-launcher} -c ${flexConfig}
+      read -r w h < <(${lib.getExe pkgs.wlr-randr} 2>/dev/null |
+        ${pkgs.gawk}/bin/awk '/current/ { split($1, a, "x"); print a[1], a[2]; exit }')
+      w=''${w:-1920}; h=''${h:-1080}
+      pct=$(( w * 100 / 1920 < h * 100 / 1080 ? w * 100 / 1920 : h * 100 / 1080 ))
+      ${pkgs.gawk}/bin/awk -F= -v pct="$pct" '
+        $1 ~ /^(IconSize|FontSize|VPadding|HPadding)$/ { $2 = int($2 * pct / 100) }
+        { print }' OFS== ${flexConfig} > "$conf"
+      ${lib.getExe pkgs.flex-launcher} -c "$conf"
       sleep 1
     done
   '';
@@ -368,7 +384,7 @@ in
       background = {
         mode = lib.mkOption {
           type    = lib.types.enum [ "Color" "Image" "Slideshow" "Transparent" ];
-          default = "Color";
+          default = "Image";
           description = "Background mode.";
         };
         color = lib.mkOption {
@@ -378,7 +394,8 @@ in
         };
         image = lib.mkOption {
           type    = lib.types.nullOr lib.types.path;
-          default = null;
+          default = wallpaper;
+          defaultText = lib.literalExpression "the HTPC dark wallpaper, converted to JPEG";
           description = "Background image (Image mode).";
         };
         slideshowDirectory = lib.mkOption {
@@ -390,7 +407,7 @@ in
       iconSize = lib.mkOption {
         type    = lib.types.ints.between 16 1024;
         default = 256;
-        description = "Tile icon size in pixels.";
+        description = "Tile icon size in pixels at 1920x1080; scaled down on smaller displays (likewise the title font size and highlight padding).";
       };
       maxButtons = lib.mkOption {
         type    = lib.types.ints.positive;
