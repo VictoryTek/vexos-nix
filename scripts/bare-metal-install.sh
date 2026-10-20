@@ -631,6 +631,7 @@ else
   echo "  Last 60 lines of the install log (${BUILD_LOG_PATH}):"
   echo ""
   tail -n 60 "${BUILD_LOG_PATH}" 2>/dev/null || true
+  offer_build_log "${BUILD_LOG_PATH}"
   echo ""
   echo -e "${RED}Installation incomplete — review the log above and re-run.${RESET}"
   exit 1

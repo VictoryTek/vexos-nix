@@ -732,9 +732,10 @@ else
   echo "  Last 60 lines of the build log (${BUILD_LOG_PATH}):"
   echo ""
   tail -n 60 "${BUILD_LOG_PATH}" 2>/dev/null || true
+  offer_build_log "${BUILD_LOG_PATH}"
   echo ""
   echo -e "${RED}${BOLD}Reboot skipped.${RESET}"
-  echo "  Review the full log above/at ${BUILD_LOG_PATH} and retry:"
+  echo "  The full log is at ${BUILD_LOG_PATH}. Retry with:"
   echo "    sudo nixos-rebuild ${REBUILD_ACTION} --flake /etc/nixos#${FLAKE_TARGET} --max-jobs 1"
   echo ""
   exit 1

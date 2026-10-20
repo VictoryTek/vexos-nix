@@ -460,6 +460,7 @@ else
   echo "  Last 60 lines of the build log (${BUILD_LOG_PATH}):"
   echo ""
   tail -n 60 "${BUILD_LOG_PATH}" 2>/dev/null || true
+  offer_build_log "${BUILD_LOG_PATH}"
   echo ""
   echo -e "${RED}Migration incomplete — fix the error above and re-run this script.${RESET}"
   exit 1

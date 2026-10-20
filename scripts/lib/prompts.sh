@@ -344,6 +344,39 @@ ask_yes_no() {
   esac
 }
 
+# offer_build_log LOG — after a failed build, offer to page through the full
+# log, opened at its first "error:" line: the tail shows the cascade of
+# "dependency failed" lines, while the cause (a failed download, a missing
+# attribute) is usually far above it. Skipped when unattended or when there is
+# no terminal to page on. Always returns 0 so callers keep their own exit path.
+offer_build_log() {
+  local log="$1" first answer
+  local -a opts=(-R)
+  [ -s "$log" ] || return 0
+  _unattended && return 0
+  { : </dev/tty; } 2>/dev/null || return 0
+  first="$(grep -n -m1 -E '(^|[^[:alnum:]])error:' "$log" 2>/dev/null | cut -d: -f1 || true)"
+  local prompt="View the full log?"
+  if [ -n "$first" ]; then
+    prompt="View the full log (opens at the first error, line ${first})?"
+    opts+=("+${first}")
+  fi
+  echo ""
+  if [ -n "${GUM:-}" ]; then
+    ui_confirm "$prompt" || return 0
+  else
+    printf "%s [Y/n] " "$prompt"
+    read -r answer </dev/tty || return 0
+    case "${answer,,}" in n|no) return 0 ;; esac
+  fi
+  if command -v less >/dev/null 2>&1; then
+    less "${opts[@]}" "$log" </dev/tty || true
+  else
+    "${PAGER:-more}" "$log" </dev/tty || true
+  fi
+  return 0
+}
+
 # ---------- Hardware / platform questions ------------------------------------
 
 # ask_gpu_variant → VARIANT (amd | nvidia | intel | vm)
