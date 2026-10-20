@@ -54,11 +54,12 @@ jobs:
 
           for name in $(jq -r 'keys[]' "$PINS"); do
             current=$(jq -r --arg n "$name" '.[$n].version' "$PINS")
+            owner=$(jq -r --arg n "$name" '.[$n].owner // "storytold"' "$PINS")
 
             # /releases/latest excludes drafts and prereleases.
             tag=$(
               curl -fsS -H "Authorization: Bearer $GH_TOKEN" \
-                "https://api.github.com/repos/storytold/${name}/releases/latest" \
+                "https://api.github.com/repos/${owner}/${name}/releases/latest" \
                 | jq -r '.tag_name // empty'
             ) || true
 
@@ -74,14 +75,14 @@ jobs:
               continue
             fi
 
-            url="https://github.com/storytold/${name}/releases/download/${tag}/${name}-${latest}-linux-x86_64.flatpak"
+            url="https://github.com/${owner}/${name}/releases/download/${tag}/${name}-${latest}-linux-x86_64.flatpak"
             raw=$(nix-prefetch-url "$url")
             hash=$(nix hash convert --hash-algo sha256 --to sri "$raw")
             echo "${name}: $current -> $latest ($hash)"
 
             tmp=$(mktemp)
             jq --arg n "$name" --arg v "$latest" --arg h "$hash" \
-              '.[$n] = { version: $v, hash: $h }' "$PINS" > "$tmp"
+              '.[$n].version = $v | .[$n].hash = $h' "$PINS" > "$tmp"
             mv "$tmp" "$PINS"
 
             changed="${changed:+$changed, }${name} ${latest}"

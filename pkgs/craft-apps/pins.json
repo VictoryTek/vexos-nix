@@ -14,5 +14,10 @@
   "photocraft": {
     "version": "0.10.0",
     "hash": "sha256-K2rK+QgSvMh4HhNuFQv0xnDotnvqojuICZM7VaGtVM0="
+  },
+  "solidcraft": {
+    "owner": "tangency-labs",
+    "version": "0.17.0",
+    "hash": "sha256-Os7nqAX35pGWSOvB3jCBMRCMU9mU43FgNv5fknYUoVY="
   }
 }

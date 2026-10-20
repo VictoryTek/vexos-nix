@@ -187,6 +187,7 @@ _feature-enable feature: _require-desktop-role
             echo "  What this adds:"
             echo "    Flatpak    Blender — 3D modelling, sculpting, rendering, animation"
             echo "               OrcaSlicer — FDM slicer with multi-material and plate support"
+            echo "               SolidCraft — parametric 3D CAD (Fusion-style)"
             ;;
         virtualization)
             echo "  What this adds:"

@@ -7,7 +7,7 @@
 #   gaming        — Steam, Proton-GE, GameMode, Gamescope, Wine, controllers,
 #                   32-bit GPU libs, SCX LAVD scheduler, gaming kernel params
 #   development   — Docker, VSCodium, Python, Node, Go, Claude Code, Nix LSP
-#   print3d       — Blender and OrcaSlicer (via Flatpak)
+#   print3d       — Blender, OrcaSlicer and SolidCraft (via Flatpak)
 #   virtualization — libvirtd/KVM, QEMU-KVM, GNOME Boxes / virt-manager support
 #   sunshine      — Self-hosted Moonlight game-stream host (KMS capture).
 #                   On by default on desktop/server/htpc (the project's remote-access
