@@ -27,7 +27,8 @@ let
   # lines under inih's length limit.
   icons = pkgs.linkFarm "vexos-htpc-icons" {
     "youtube.svg" = "${kora}/apps/scalable/youtube.svg";
-    "browser.svg" = "${kora}/apps/scalable/brave-browser.svg";
+    "browser.png" = "${pkgs.vexos.brave-origin}/share/icons/hicolor/256x256/apps/brave-origin.png";
+    "twitch.svg"  = "${kora}/apps/scalable/gnome-twitch.svg";
     "desktop.svg" = "${kora}/apps/scalable/preferences-desktop-display.svg";
     "plex.png"    = "${flexAssets}/icons/plex.png";
     "power.png"   = "${flexAssets}/icons/system.png";
@@ -487,9 +488,14 @@ in
           icon    = "${icons}/plex.png";
           command = lib.getExe pkgs.plex-htpc;
         }
+        (mkWebApp {
+          name = "Twitch";
+          icon = "${icons}/twitch.svg";
+          url  = "https://www.twitch.tv";
+        })
         {
           name    = "Browser";
-          icon    = "${icons}/browser.svg";
+          icon    = "${icons}/browser.png";
           command = "${brave} --start-fullscreen";
         }
       ] (lib.mkAfter [
