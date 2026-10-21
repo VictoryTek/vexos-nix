@@ -24,6 +24,7 @@
             "org.gnome.Nautilus.desktop"
             "io.github.up.desktop"
             "com.mitchellh.ghostty.desktop"
+            "vexos-theater-mode.desktop"       # switch to the full-screen TV launcher
           ];
         };
 
@@ -34,7 +35,7 @@
         };
 
         "org/gnome/desktop/app-folders" = {
-          folder-children = [ "Office" "Utilities" "System" ];
+          folder-children = [ "Office" "3D" "Utilities" "System" ];
         };
 
         "org/gnome/desktop/app-folders/folders/Office" = {
@@ -42,6 +43,15 @@
           apps = [
             "org.gnome.TextEditor.desktop"
             "net.cozic.joplin_desktop.desktop"
+          ];
+        };
+
+        "org/gnome/desktop/app-folders/folders/3D" = {
+          name = "3D";
+          apps = [
+            "org.blender.Blender.desktop"
+            "com.orcaslicer.OrcaSlicer.desktop"
+            "ai.storyteller.solidcraft.desktop"
           ];
         };
 
@@ -55,6 +65,9 @@
             "io.missioncenter.MissionCenter.desktop"
             "com.github.tchx84.Flatseal.desktop"
             "org.gnome.World.PikaBackup.desktop"
+            "LocalSend.desktop"
+            "flex-launcher.desktop"
+            "plex-htpc.desktop"
             "com.tmog.taskmanager.desktop"
           ];
         };

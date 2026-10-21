@@ -75,21 +75,25 @@
       Type            = "oneshot";
       RemainAfterExit = true;
       ExecStart       = toString (pkgs.writeShellScript "vexos-init-app-folders-htpc" ''
-        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v3"
+        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v4"
         [ -f "$STAMP" ] && exit 0
 
         D="${pkgs.dconf}/bin/dconf"
 
         $D write /org/gnome/desktop/app-folders/folder-children \
-          "['Office', 'Utilities', 'System']"
+          "['Office', '3D', 'Utilities', 'System']"
 
         $D write /org/gnome/desktop/app-folders/folders/Office/name   "'Office'"
         $D write /org/gnome/desktop/app-folders/folders/Office/apps \
-          "['org.gnome.TextEditor.desktop']"
+          "['org.gnome.TextEditor.desktop', 'net.cozic.joplin_desktop.desktop']"
+
+        $D write /org/gnome/desktop/app-folders/folders/"3D"/name "'3D'"
+        $D write /org/gnome/desktop/app-folders/folders/"3D"/apps \
+          "['org.blender.Blender.desktop', 'com.orcaslicer.OrcaSlicer.desktop', 'ai.storyteller.solidcraft.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/Utilities/name "'Utilities'"
         $D write /org/gnome/desktop/app-folders/folders/Utilities/apps \
-          "['com.mattjakeman.ExtensionManager.desktop', 'it.mijorus.gearlever.desktop', 'org.gnome.tweaks.desktop', 'io.github.flattool.Warehouse.desktop', 'io.missioncenter.MissionCenter.desktop', 'com.github.tchx84.Flatseal.desktop', 'org.gnome.World.PikaBackup.desktop', 'com.tmog.taskmanager.desktop']"
+          "['com.mattjakeman.ExtensionManager.desktop', 'it.mijorus.gearlever.desktop', 'org.gnome.tweaks.desktop', 'io.github.flattool.Warehouse.desktop', 'io.missioncenter.MissionCenter.desktop', 'com.github.tchx84.Flatseal.desktop', 'org.gnome.World.PikaBackup.desktop', 'LocalSend.desktop', 'flex-launcher.desktop', 'plex-htpc.desktop', 'com.tmog.taskmanager.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/System/name    "'System'"
         $D write /org/gnome/desktop/app-folders/folders/System/apps \
