@@ -176,7 +176,7 @@ in
       systemd.tmpfiles.rules = [ "d ${cfg.dataDir} 0750 root root -" ];
 
       virtualisation.oci-containers.containers.pihole = {
-        image = "pihole/pihole:2026.09.0";
+        image = "pihole/pihole:2026.10.0";
         ports = [ "${toString cfg.port}:80/tcp" ]
           ++ lib.concatMap
             (h: [ "${publishAddr h}:53:53/tcp" "${publishAddr h}:53:53/udp" ])

@@ -36,7 +36,7 @@ in
     virtualisation.oci-containers.backend = lib.mkDefault "docker";
 
     virtualisation.oci-containers.containers.mealie = {
-      image = "ghcr.io/mealie-recipes/mealie:v3.28.0";
+      image = "ghcr.io/mealie-recipes/mealie:v3.29.0";
       ports = [ "${toString cfg.port}:9000" ];
       volumes = [ "mealie-data:/app/data" ];
       environment = {

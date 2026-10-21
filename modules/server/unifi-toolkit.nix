@@ -82,7 +82,7 @@ in
     systemd.tmpfiles.rules = [ "d ${cfg.dataDir} 0750 1000 1000 -" ];
 
     virtualisation.oci-containers.containers.unifi-toolkit = {
-      image = "ghcr.io/crosstalk-solutions/unifi-toolkit:1.13.2";
+      image = "ghcr.io/crosstalk-solutions/unifi-toolkit:1.13.6";
       ports = [ "${toString cfg.port}:8000" ];
       environment = {
         DEPLOYMENT_TYPE = "local";
