@@ -58,6 +58,43 @@
     Install.WantedBy = [ "graphical-session.target" ];
   };
 
+  # ── One-time dock migration: pin Theater Mode ────────────────────────────
+  # Same shadowing as above: an existing user favorite-apps list hides the
+  # system default that pins vexos-theater-mode.desktop after Ghostty. Insert
+  # it into the user list once (stamp file); with no user key set there is
+  # nothing to do because the system default already applies.
+  systemd.user.services.vexos-pin-dock-theater-mode = {
+    Unit = {
+      Description = "VexOS: pin Theater Mode to the dock (once)";
+      After       = [ "graphical-session.target" ];
+      PartOf      = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type            = "oneshot";
+      RemainAfterExit = true;
+      ExecStart       = toString (pkgs.writeShellScript "vexos-pin-dock-theater-mode" ''
+        STAMP="$HOME/.local/share/vexos/.dock-theater-mode-pin-v1"
+        [ -f "$STAMP" ] && exit 0
+
+        CURRENT=$(${pkgs.dconf}/bin/dconf read /org/gnome/shell/favorite-apps)
+        if [ -n "$CURRENT" ] && ! echo "$CURRENT" | grep -q "vexos-theater-mode\.desktop"; then
+          if echo "$CURRENT" | grep -q "com\.mitchellh\.ghostty\.desktop"; then
+            UPDATED=$(echo "$CURRENT" | ${pkgs.gnused}/bin/sed \
+              "s/'com\.mitchellh\.ghostty\.desktop'/'com.mitchellh.ghostty.desktop', 'vexos-theater-mode.desktop'/")
+          else
+            UPDATED=$(echo "$CURRENT" | ${pkgs.gnused}/bin/sed \
+              "s/\]\$/, 'vexos-theater-mode.desktop']/")
+          fi
+          ${pkgs.dconf}/bin/dconf write /org/gnome/shell/favorite-apps "$UPDATED"
+        fi
+
+        mkdir -p "$HOME/.local/share/vexos"
+        touch "$STAMP"
+      '');
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
   # ── First-run app-folder layout ───────────────────────────────────────────
   # GNOME initialises org/gnome/desktop/app-folders/folder-children to [] on
   # first session start, which shadows the system dconf defaults.  This
