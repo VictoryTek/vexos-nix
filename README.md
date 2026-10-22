@@ -152,13 +152,12 @@ You can switch between variants (and roles) at any time — no reinstall require
 
 #### Theater mode and desktop mode
 
-The HTPC boots into **theater mode**: a full-screen, remote-friendly tile launcher ([Flex Launcher](https://complexlogic.github.io/flex-launcher/)) on a minimal labwc session. GNOME is still there as **desktop mode**, switched like a Steam Deck's Gaming/Desktop Mode (`modules/htpc-theater.nix`).
+The HTPC boots into **theater mode**: a full-screen, remote-friendly tile launcher ([VexTheater](https://github.com/VictoryTek/VexTheater)) running on top of the normal GNOME session (`modules/htpc-theater.nix`). GDM logs in automatically and the launcher starts as a systemd user service, so GNOME is always underneath: **desktop mode** is simply the launcher hidden.
 
-- **To desktop:** the *Desktop Mode* tile. **Back to theater:** *Theater Mode* in the GNOME app grid, or log out of GNOME.
-- From a shell (including SSH): `vexos-session-select theater` or `vexos-session-select desktop`.
-- Every boot starts in `vexos.htpc.theater.defaultMode` (`"theater"` by default).
-- **Navigate** with arrows/Enter/Backspace, a gamepad (D-pad/left stick, A, B), or an air-mouse remote. **F10** (`homeKey`) closes the running app and returns to the launcher.
-- Greetd replaces GDM on this role and logs in automatically; there is no login screen. Ctrl+Alt+F2 opens a text console if a session ever fails to start.
+- **To desktop:** the *Desktop Mode* tile. **Back to theater:** the home key, or *Theater Mode* in the GNOME app grid / dock.
+- **Navigate** with arrows/Enter/Backspace (Esc also goes back), the mouse (it hides when idle), or a TV remote through HDMI-CEC. **F10** (`homeKey`) closes the running app and returns to the launcher, from any app and from desktop mode; it is a GNOME keyboard shortcut running `vextheater --home`.
+- If the launcher fails to start you are simply in GNOME: it is a separate user service, so nothing leaves a black screen. A launcher that crashes five times in a minute is not restarted again; start it by hand with *Theater Mode* in the app grid, or turn it off with `vexos.htpc.theater.enable = false`. Ctrl+Alt+F2 opens a text console as a last resort.
+- A launcher that crashes in desktop mode restarts in desktop mode; a new login always starts in theater mode.
 
 Settings go in `/etc/nixos/features.nix` (then `just switch`):
 
@@ -172,47 +171,40 @@ let mkWebApp = config.vexos.htpc.theater.mkWebApp; in
     # Any website as a tile: opens full-screen in its own Brave profile.
     (mkWebApp {
       name = "Netflix";
-      icon = /etc/nixos/htpc-icons/netflix.png;  # PNG/WebP with transparency, or SVG
+      icon = /etc/nixos/htpc-icons/netflix.png;  # an image file, or an icon-theme name
       url  = "https://www.netflix.com";
     })
     # Any program.
     { name = "Kodi"; icon = /etc/nixos/htpc-icons/kodi.png; command = "kodi"; }
+    # An installed application, by desktop file id, or a Flatpak, by app id.
+    { name = "Files"; icon = "org.gnome.Nautilus"; desktop = "org.gnome.Nautilus.desktop"; }
+    { name = "FreeTube"; icon = "io.freetubeapp.FreeTube"; flatpak = "io.freetubeapp.FreeTube"; }
     # A submenu (defined below).
-    { name = "Music"; icon = /etc/nixos/htpc-icons/music.png; command = ":submenu Music"; }
+    { name = "Music"; icon = /etc/nixos/htpc-icons/music.png; submenu = "Music"; }
   ];
 
   vexos.htpc.theater.submenus.Music = [
     (mkWebApp { name = "Spotify"; icon = /etc/nixos/htpc-icons/spotify.png; url = "https://open.spotify.com"; })
   ];
-
-  # Theming (all optional).
-  vexos.htpc.theater.theme = {
-    background.mode  = "Image";                 # Color | Image | Slideshow | Transparent
-    background.image = /etc/nixos/htpc-bg.png;  # or background.slideshowDirectory
-    iconSize   = 256;
-    maxButtons = 5;
-    titles     = { fontSize = 36; color = "#FFFFFF"; };  # titles.font = /path/to/font.ttf
-    highlight  = { fillColor = "#FF8800"; fillOpacity = 30; cornerRadius = 20; };
-    clock.enable = true;
-  };
 }
 ```
 
+- Every tile has a `name`, an `icon` (an image file, SVG or PNG/WebP with transparency, or an icon-theme name such as `system-shutdown-symbolic`), an optional `description` shown while it is selected, and **exactly one** action: `command`, `desktop`, `flatpak`, `submenu` or `builtin` (`"desktop-mode"`, `"shutdown"`, `"restart"`). These become `/etc/vextheater/config.json`; the schema is documented in the VexTheater repository.
 - `mkWebApp { tvUserAgent = true; }` sends a Smart-TV user agent, so sites like `youtube.com/tv` serve their TV interface.
 - Web apps use Brave because nixpkgs Chromium has no Widevine (DRM). Each new web-app profile is pre-set to allow Widevine, which Brave downloads on first use, so DRM video may need a moment the first time.
-- A command can also be a `.desktop` file path, or one of Flex Launcher's special commands: `:submenu <Name>`, `:back`, `:home`, `:fork <cmd>`, `:shutdown`, `:restart`.
-- Tile titles, icon paths and submenu names cannot contain `;`.
-- If an icon has a sibling file named `<icon>_selected.<ext>`, it is shown while the tile is highlighted.
+- Flex Launcher's `command = ":submenu Music"`, `":shutdown"`, `":fork …"` and `.desktop` file paths no longer work: the build stops with a message naming the replacement.
+- The launcher styles itself, so the `vexos.htpc.theater.theme.*` options, `defaultMode`, `user` and `gamepad.enable` are gone. Setting one fails the build with a message saying so; remove it from `features.nix`.
 
 Other options:
 
 | Option | Default | Purpose |
 |---|---|---|
-| `vexos.htpc.theater.enable` | `true` | `false` restores plain GNOME with GDM |
+| `vexos.htpc.theater.enable` | `true` | `false` restores plain GNOME without the launcher |
 | `vexos.htpc.theater.homeKey` | `"F10"` | `F1`–`F12` or `Home` |
-| `vexos.htpc.theater.gamepad.enable` | `true` | Gamepad control of the launcher |
 | `vexos.htpc.theater.gamepad.homeButton` | `false` | Gamepad Guide/PS button acts as the home key |
 | `vexos.htpc.theater.cec.enable` | `false` | TV remote over HDMI-CEC (needs a CEC adapter, e.g. Pulse-Eight USB-CEC) |
+
+The first switch from the old launcher replaces greetd with GDM, so it is queued for the next boot and `just switch` asks for a reboot.
 
 
 ## Updating to the latest config

@@ -1,52 +1,42 @@
 # modules/htpc-theater.nix
-# HTPC "theater mode": a Roku-style full-screen Flex Launcher running in a
-# minimal labwc session, alongside GNOME as "desktop mode" — the Steam Deck
-# Gaming Mode / Desktop Mode model.
+# HTPC "theater mode": VexTheater (github:VictoryTek/VexTheater), a full-screen,
+# remote-friendly tile launcher that runs inside the normal GNOME session as a
+# systemd user service. GNOME is the only session: GDM logs in automatically
+# (modules/gnome.nix) and the launcher starts on top of it.
 #
-# How mode switching works:
-#   - greetd replaces GDM. Its initial_session (autologin) runs
-#     vexos-htpc-session, which reads /run/vexos-htpc/session and starts
-#     either the theater session or GNOME.
-#   - vexos-session-select <theater|desktop> writes that file and terminates
-#     the current session (cf. steamos-session-select).
-#   - greetd runs initial_session only once per start, so the "greeter" is
-#     `true`: it exits at once, greetd exits, systemd restarts it, and
-#     ExecStartPre clears greetd's runfile so autologin runs again.
-#   - The state file lives on /run, so every boot starts in defaultMode.
+#   - Theater mode is the launcher full screen; desktop mode is the launcher hidden
+#     (the Desktop Mode tile), which shows the plain GNOME desktop behind it.
+#   - The home key (a GNOME custom shortcut running `vextheater --home`) closes the
+#     running app and brings the launcher back, from an app or from desktop mode.
+#     The CEC remote and the gamepad Guide button press the same key through ydotool.
+#   - If VexTheater fails to start the user is simply in GNOME: the service is a
+#     separate unit, so nothing here can leave a black screen. A crash loop is cut
+#     off after five failures in a minute, and "Theater Mode" in the app grid starts
+#     the launcher by hand.
+#
+# The tiles below are turned into VexTheater's /etc/vextheater/config.json; its
+# schema (README.md and src/config.rs in the VexTheater repo) is the contract
+# between the two repositories. VexTheater's NixOS module comes in through
+# flake.nix (vexTheaterModule, htpc role): `imports` cannot reference `inputs`.
 #
 # Imported only by configuration-htpc.nix.
 { config, pkgs, lib, ... }:
 let
-  cfg   = config.vexos.htpc.theater;
-  theme = cfg.theme;
+  cfg = config.vexos.htpc.theater;
+  vt  = config.programs.vextheater;
 
-  flexAssets = "${pkgs.flex-launcher}/share/flex-launcher/assets";
-  kora       = "${pkgs.kora-icon-theme}/share/icons/kora";
+  kora  = "${pkgs.kora-icon-theme}/share/icons/kora/apps/scalable";
+  brave = lib.getExe pkgs.vexos.brave-origin;
 
-  # Default tile icons gathered under one short store path, keeping config
-  # lines under inih's length limit.
-  icons = pkgs.linkFarm "vexos-htpc-icons" {
-    "youtube.svg" = "${kora}/apps/scalable/youtube.svg";
-    "browser.png" = "${pkgs.vexos.brave-origin}/share/icons/hicolor/256x256/apps/brave-origin.png";
-    "twitch.svg"  = "${kora}/apps/scalable/gnome-twitch.svg";
-    "desktop.svg" = "${kora}/apps/scalable/preferences-desktop-display.svg";
-    "plex.png"    = "${flexAssets}/icons/plex.png";
-    "power.png"   = "${flexAssets}/icons/system.png";
-    "restart.png" = "${flexAssets}/icons/restart.png";
-  };
-  brave      = lib.getExe pkgs.vexos.brave-origin;
-
-  # Same artwork as the HTPC desktop wallpaper. Flex Launcher loads images via
-  # SDL_image, which may lack JPEG XL, so convert to JPEG at build time.
+  # Same artwork as the HTPC desktop wallpaper. GTK's image loaders may lack
+  # JPEG XL, so convert to JPEG at build time.
   wallpaper = pkgs.runCommand "vexos-htpc-theater-wallpaper.jpg" { nativeBuildInputs = [ pkgs.libjxl ]; } ''
     djxl ${../wallpapers/htpc/vex-bb-dark.jxl} $out --jpeg_quality=92
   '';
 
-  stateFile = "/run/vexos-htpc/session";
-
   # Linux evdev key codes for ydotool (CEC and gamepad Guide mapping).
-  # Its attribute names are also the allowed homeKey values (XKB key names,
-  # which is what labwc keybinds use).
+  # Its attribute names are also the allowed homeKey values: GNOME accelerator
+  # names, which is what the custom shortcut below takes.
   keyCodes = {
     F1 = 59; F2 = 60; F3 = 61; F4 = 62; F5 = 63; F6 = 64;
     F7 = 65; F8 = 66; F9 = 67; F10 = 68; F11 = 87; F12 = 88;
@@ -65,8 +55,8 @@ let
   # logins persist per site and a still-running instance can never swallow a
   # different --user-agent. On first launch the profile is pre-seeded with
   # Brave's Widevine opt-in so DRM content works without a settings detour.
-  mkWebApp = { name, icon, url, tvUserAgent ? false }: {
-    inherit name icon;
+  mkWebApp = { name, icon, url, description ? null, tvUserAgent ? false }: {
+    inherit name icon description;
     command = toString (pkgs.writeShellScript "vexos-htpc-webapp-${slug name}" ''
       dir="$HOME/.local/share/vexos-htpc/webapps/${slug name}"
       mkdir -p "$dir"
@@ -76,225 +66,74 @@ let
     '');
   };
 
-  appType = lib.types.submodule {
+  # ── Tiles ────────────────────────────────────────────────────────────────
+  # One tile = a name, an icon and exactly one action, as in VexTheater's schema.
+  actionKeys = [ "command" "desktop" "flatpak" "submenu" "builtin" ];
+
+  nullStr = lib.types.nullOr lib.types.str;
+
+  tileType = lib.types.submodule {
     options = {
       name = lib.mkOption {
         type        = lib.types.str;
         description = "Tile title.";
       };
       icon = lib.mkOption {
-        type        = lib.types.path;
-        description = "Tile icon (PNG/WebP with transparency, or SVG). A sibling <icon>_selected.<ext> is shown while the tile is highlighted.";
+        # A path (copied to the store) or an absolute path string is an image
+        # file; any other string is an icon-theme name, e.g. "system-shutdown-symbolic".
+        type        = lib.types.coercedTo lib.types.path (p: "${p}") lib.types.str;
+        description = "Tile icon: an image file (SVG, or PNG/WebP with transparency) or an icon-theme name.";
+      };
+      description = lib.mkOption {
+        type        = nullStr;
+        default     = null;
+        description = "One line shown under the title while the tile is selected.";
       };
       command = lib.mkOption {
-        type        = lib.types.str;
-        description = "Shell command, a .desktop file path (optionally followed by ;Action), or a Flex Launcher special command (:submenu <Name>, :back, :home, :fork <cmd>, :shutdown, :restart).";
+        type        = nullStr;
+        default     = null;
+        description = "Shell command line, run through sh.";
+      };
+      desktop = lib.mkOption {
+        type        = nullStr;
+        default     = null;
+        example     = "org.gnome.Nautilus.desktop";
+        description = "Desktop file id of an installed application.";
+      };
+      flatpak = lib.mkOption {
+        type        = nullStr;
+        default     = null;
+        example     = "io.freetubeapp.FreeTube";
+        description = "Flatpak application id.";
+      };
+      submenu = lib.mkOption {
+        type        = nullStr;
+        default     = null;
+        description = "Name of an entry in `submenus`, opened as its own row.";
+      };
+      builtin = lib.mkOption {
+        type        = lib.types.nullOr (lib.types.enum [ "desktop-mode" "shutdown" "restart" ]);
+        default     = null;
+        description = "Launcher action: hide the launcher (desktop mode), or power off / restart.";
       };
     };
   };
 
-  colorType = lib.types.strMatching "#[0-9A-Fa-f]{6}";
+  tileJson = tile: lib.filterAttrs (_: v: v != null)
+    (lib.getAttrs ([ "name" "icon" "description" ] ++ actionKeys) tile);
 
-  # ── Flex Launcher config.ini ─────────────────────────────────────────────
-  # Flex Launcher parses with nixpkgs' inih: lines are limited to 198
-  # characters and " ;" starts an inline comment. Commands therefore go into
-  # store-path wrapper scripts (other special commands and .desktop paths
-  # stay as-is), and titles/icons/menu names may not contain ';' (assertions).
-  wrapCommand = name: cmd:
-    toString (pkgs.writeShellScript "vexos-htpc-app-${slug name}" "exec ${cmd}");
+  allTiles = cfg.apps ++ lib.concatLists (lib.attrValues cfg.submenus);
+  tileActions = tile: lib.filter (key: tile.${key} != null) actionKeys;
 
-  entryCommand = app:
-    if lib.hasPrefix ":fork " app.command
-    then ":fork ${wrapCommand app.name (lib.removePrefix ":fork " app.command)}"
-    else if lib.hasPrefix ":" app.command || builtins.match "[^ ]*\\.desktop(;.*)?" app.command != null
-    then app.command
-    else wrapCommand app.name app.command;
+  # Flex Launcher spelled special actions inside `command`; they are attributes now.
+  legacyCommand = tile:
+    tile.command != null
+    && (lib.hasPrefix ":" tile.command || builtins.match "[^ ]*\\.desktop(;.*)?" tile.command != null);
 
-  menu = name: apps:
-    [ "" "[${name}]" ]
-    ++ lib.imap1 (i: app: "Entry${toString i}=${app.name};${app.icon};${entryCommand app}") apps;
-
-  pct = n: "${toString n}%";
-
-  iniLines = [
-    "[General]"
-    "DefaultMenu=Main"
-    "VSync=true"
-    "OnLaunch=Blank"
-    "InhibitOSScreensaver=true"
-    ""
-    "[Background]"
-    "Mode=${theme.background.mode}"
-    "Color=${theme.background.color}"
-  ]
-  ++ lib.optional (theme.background.image != null) "Image=${theme.background.image}"
-  ++ lib.optional (theme.background.slideshowDirectory != null)
-       "SlideshowDirectory=${theme.background.slideshowDirectory}"
-  ++ [
-    ""
-    "[Layout]"
-    "MaxButtons=${toString theme.maxButtons}"
-    "IconSize=${toString theme.iconSize}"
-    ""
-    "[Titles]"
-    "Enabled=true"
-    "Font=${theme.titles.font}"
-    "FontSize=${toString theme.titles.fontSize}"
-    "Color=${theme.titles.color}"
-    ""
-    "[Highlight]"
-    "Enabled=true"
-    "FillColor=${theme.highlight.fillColor}"
-    "FillOpacity=${pct theme.highlight.fillOpacity}"
-    "OutlineSize=${toString theme.highlight.outlineSize}"
-    "OutlineColor=${theme.highlight.outlineColor}"
-    "CornerRadius=${toString theme.highlight.cornerRadius}"
-    # Unset paddings stay -1, which Flex Launcher's geometry check turns into
-    # a -1 outline that disables CornerRadius; set upstream's sample values.
-    "VPadding=30"
-    "HPadding=30"
-    ""
-    "[Clock]"
-    "Enabled=${lib.boolToString theme.clock.enable}"
-    "Font=${theme.titles.font}"
-    "FontColor=${theme.titles.color}"
-    ""
-    "[Gamepad]"
-    "Enabled=${lib.boolToString cfg.gamepad.enable}"
-    "DeviceIndex=-1"
-    "LStickX-=:left"
-    "LStickX+=:right"
-    "ButtonDPadLeft=:left"
-    "ButtonDPadRight=:right"
-    "ButtonA=:select"
-    "ButtonB=:back"
-  ]
-  ++ menu "Main" cfg.apps
-  ++ lib.concatLists (lib.mapAttrsToList menu cfg.submenus);
-
-  flexConfig = pkgs.writeText "flex-launcher.ini" (lib.concatStringsSep "\n" iniLines + "\n");
-
-  reservedSections = [
-    "General" "Background" "Layout" "Titles" "Highlight" "Scroll Indicators"
-    "Clock" "Screensaver" "Hotkeys" "Gamepad" "Main"
-  ];
-  allApps = cfg.apps ++ lib.concatLists (lib.attrValues cfg.submenus);
-  hasBadChars = s: lib.hasInfix ";" s || lib.hasInfix "\n" s;
-
-  # ── labwc: home key closes the focused app (never the launcher) ──────────
-  labwcConfig = pkgs.writeTextDir "rc.xml" ''
-    <?xml version="1.0"?>
-    <labwc_config>
-      <keyboard>
-        <keybind key="${cfg.homeKey}">
-          <action name="If">
-            <query title="Flex Launcher"/>
-            <else>
-              <action name="Close"/>
-            </else>
-          </action>
-        </keybind>
-      </keyboard>
-      <windowRules>
-        <windowRule identifier="*" serverDecoration="no"/>
-        <windowRule identifier="*">
-          <action name="Maximize"/>
-          <action name="HideCursor"/>
-        </windowRule>
-      </windowRules>
-    </labwc_config>
-  '';
-
-  # Keeps Flex Launcher running for as long as labwc does. Its sizes are fixed
-  # pixels, so each start rescales icon, font and highlight padding from the
-  # 1920x1080 reference to the current output (the smaller axis ratio wins).
-  launcherLoop = pkgs.writeShellScript "vexos-htpc-launcher-loop" ''
-    conf="$XDG_RUNTIME_DIR/vexos-flex-launcher.ini"
-    while kill -0 "$LABWC_PID" 2>/dev/null; do
-      read -r w h < <(${lib.getExe pkgs.wlr-randr} 2>/dev/null |
-        ${pkgs.gawk}/bin/awk '/current/ { split($1, a, "x"); print a[1], a[2]; exit }')
-      w=''${w:-1920}; h=''${h:-1080}
-      pct=$(( w * 100 / 1920 < h * 100 / 1080 ? w * 100 / 1920 : h * 100 / 1080 ))
-      ${pkgs.gawk}/bin/awk -F= -v pct="$pct" '
-        $1 ~ /^(IconSize|FontSize|VPadding|HPadding)$/ { $2 = int($2 * pct / 100) }
-        { print }' OFS== ${flexConfig} > "$conf"
-      ${lib.getExe pkgs.flex-launcher} -c "$conf"
-      sleep 1
-    done
-  '';
-
-  theaterSession = pkgs.writeShellScriptBin "vexos-theater-session" ''
-    exec ${lib.getExe pkgs.labwc} -C ${labwcConfig} -s ${launcherLoop}
-  '';
-
-  theaterSessionPackage = pkgs.writeTextFile {
-    name        = "vexos-theater-session-desktop";
-    destination = "/share/wayland-sessions/vexos-theater.desktop";
-    text = ''
-      [Desktop Entry]
-      Name=VexOS Theater
-      Comment=Full-screen TV launcher (Flex Launcher on labwc)
-      Exec=${lib.getExe theaterSession}
-      Type=Application
-      DesktopNames=labwc;wlroots
-    '';
-    passthru.providedSessions = [ "vexos-theater" ];
-  };
-
-  # Started by greetd's initial_session; picks the mode from the state file.
-  sessionLauncher = pkgs.writeShellApplication {
-    name          = "vexos-htpc-session";
-    runtimeInputs = [ pkgs.coreutils ];
-    text = ''
-      mode=$(cat ${stateFile} 2>/dev/null || true)
-      case "$mode" in
-        theater|desktop) ;;
-        *) mode=${cfg.defaultMode} ;;
-      esac
-
-      if [ "$mode" = desktop ]; then
-        export XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=GNOME XDG_SESSION_DESKTOP=gnome DESKTOP_SESSION=gnome
-        ${pkgs.gnome-session}/bin/gnome-session || true
-        # A plain GNOME "Log Out" returns to theater mode, like leaving
-        # Desktop Mode on a Steam Deck.
-        printf 'theater\n' > ${stateFile}
-      else
-        exec ${lib.getExe theaterSession}
-      fi
-    '';
-  };
-
-  sessionSelect = pkgs.writeShellApplication {
-    name          = "vexos-session-select";
-    runtimeInputs = [ pkgs.coreutils pkgs.systemd ];
-    text = ''
-      case "''${1:-}" in
-        theater|desktop) ;;
-        *) echo "usage: vexos-session-select <theater|desktop>" >&2; exit 2 ;;
-      esac
-
-      printf '%s\n' "$1" > ${stateFile}
-
-      # End the graphical session; greetd restarts and autologs into the
-      # selected mode.
-      session=$(loginctl show-user "$(id -u)" -p Display --value 2>/dev/null || true)
-      session=''${session:-''${XDG_SESSION_ID:-}}
-      if [ -z "$session" ]; then
-        echo "vexos-session-select: no graphical session found to end" >&2
-        exit 1
-      fi
-      exec loginctl terminate-session "$session"
-    '';
-  };
-
-  theaterDesktopItem = pkgs.makeDesktopItem {
-    name        = "vexos-theater-mode";
-    desktopName = "Theater Mode";
-    comment     = "Switch to the full-screen TV launcher";
-    exec        = "${lib.getExe sessionSelect} theater";
-    icon        = "video-display";
-    categories  = [ "System" ];
-  };
+  removedMessage = why: "${why} VexTheater (modules/htpc-theater.nix) replaced Flex Launcher.";
+  removedStyling = path: lib.mkRemovedOptionModule
+    ([ "vexos" "htpc" "theater" "theme" ] ++ path)
+    (removedMessage "VexTheater styles itself with CSS, so the theme options no longer exist; remove this setting.");
 
   # Sends the home key through ydotoold (shared by CEC and gamepad Guide).
   pressHomeKey = "${lib.getExe pkgs.ydotool} key ${homeKeyCode}:1 ${homeKeyCode}:0";
@@ -330,46 +169,57 @@ let
   '';
 in
 {
+  imports = [
+    # Options that went away with Flex Launcher. Declared, not deleted, so a host's
+    # /etc/nixos/features.nix that still sets one fails the build with this message
+    # instead of an "option does not exist" error.
+    (removedStyling [ "background" "mode" ])
+    (removedStyling [ "background" "color" ])
+    (removedStyling [ "background" "image" ])
+    (removedStyling [ "background" "slideshowDirectory" ])
+    (removedStyling [ "iconSize" ])
+    (removedStyling [ "maxButtons" ])
+    (removedStyling [ "titles" "font" ])
+    (removedStyling [ "titles" "fontSize" ])
+    (removedStyling [ "titles" "color" ])
+    (removedStyling [ "highlight" "fillColor" ])
+    (removedStyling [ "highlight" "fillOpacity" ])
+    (removedStyling [ "highlight" "outlineSize" ])
+    (removedStyling [ "highlight" "outlineColor" ])
+    (removedStyling [ "highlight" "cornerRadius" ])
+    (removedStyling [ "clock" "enable" ])
+    (lib.mkRemovedOptionModule [ "vexos" "htpc" "theater" "defaultMode" ]
+      (removedMessage "There is one session now: GNOME, with the launcher on top. A login always starts in theater mode, and a launcher that crashes in desktop mode restarts in desktop mode. To turn the launcher off entirely, set vexos.htpc.theater.enable = false."))
+    (lib.mkRemovedOptionModule [ "vexos" "htpc" "theater" "user" ]
+      (removedMessage "Auto-login goes through GDM for vexos.user.name (modules/gnome.nix)."))
+    (lib.mkRemovedOptionModule [ "vexos" "htpc" "theater" "gamepad" "enable" ]
+      (removedMessage "VexTheater has no gamepad navigation yet; remove this setting. vexos.htpc.theater.gamepad.homeButton still maps the Guide button to the home key."))
+  ];
+
   options.vexos.htpc.theater = {
-    enable = lib.mkEnableOption "HTPC theater mode (Flex Launcher on labwc) with GNOME as desktop mode, switched via greetd autologin" // { default = true; };
-
-    user = lib.mkOption {
-      type        = lib.types.str;
-      default     = config.vexos.user.name;
-      defaultText = lib.literalExpression "config.vexos.user.name";
-      description = "User that greetd logs in automatically.";
-    };
-
-    defaultMode = lib.mkOption {
-      type        = lib.types.enum [ "theater" "desktop" ];
-      default     = "theater";
-      description = "Mode every boot starts in.";
-    };
+    enable = lib.mkEnableOption "HTPC theater mode (the VexTheater launcher on top of the GNOME session); false restores plain GNOME" // { default = true; };
 
     apps = lib.mkOption {
-      type        = lib.types.listOf appType;
+      type        = lib.types.listOf tileType;
       description = ''
-        Main menu tiles. The defaults are module definitions, so tiles you
+        Main row tiles. The defaults are module definitions, so tiles you
         define are added (before Desktop Mode and Power); use lib.mkForce to
         replace the whole list.
       '';
     };
 
     submenus = lib.mkOption {
-      type        = lib.types.attrsOf (lib.types.listOf appType);
-      description = "Flex Launcher submenus (name → tiles), opened by a tile with command \":submenu <name>\".";
+      type        = lib.types.attrsOf (lib.types.listOf tileType);
+      description = "Submenus (name → tiles), opened by a tile with `submenu = \"<name>\"`.";
     };
 
     homeKey = lib.mkOption {
       type        = lib.types.enum (lib.attrNames keyCodes);
       default     = "F10";
-      description = "Key that closes the focused app and returns to the launcher.";
+      description = "Key that closes the running app and brings the launcher back (GNOME custom shortcut running `vextheater --home`).";
     };
 
-    gamepad = {
-      enable = lib.mkEnableOption "gamepad control of the launcher" // { default = true; };
-      homeButton = lib.mkEnableOption "mapping the gamepad Guide button to the home key (via ydotool)";
-    };
+    gamepad.homeButton = lib.mkEnableOption "mapping the gamepad Guide button to the home key (via ydotool)";
 
     cec.enable = lib.mkEnableOption "HDMI-CEC TV remote input via libcec (needs a CEC adapter such as a Pulse-Eight USB-CEC)";
 
@@ -377,89 +227,7 @@ in
       type        = lib.types.raw;
       readOnly    = true;
       default     = mkWebApp;
-      description = "Helper: mkWebApp { name; icon; url; tvUserAgent ? false; } → an app tile that opens url in a Brave kiosk window.";
-    };
-
-    theme = {
-      background = {
-        mode = lib.mkOption {
-          type    = lib.types.enum [ "Color" "Image" "Slideshow" "Transparent" ];
-          default = "Image";
-          description = "Background mode.";
-        };
-        color = lib.mkOption {
-          type    = colorType;
-          default = "#000000";
-          description = "Background color (Color mode).";
-        };
-        image = lib.mkOption {
-          type    = lib.types.nullOr lib.types.path;
-          default = wallpaper;
-          defaultText = lib.literalExpression "the HTPC dark wallpaper, converted to JPEG";
-          description = "Background image (Image mode).";
-        };
-        slideshowDirectory = lib.mkOption {
-          type    = lib.types.nullOr lib.types.path;
-          default = null;
-          description = "Directory of background images (Slideshow mode).";
-        };
-      };
-      iconSize = lib.mkOption {
-        type    = lib.types.ints.between 16 1024;
-        default = 256;
-        description = "Tile icon size in pixels at 1920x1080; scaled down on smaller displays (likewise the title font size and highlight padding).";
-      };
-      maxButtons = lib.mkOption {
-        type    = lib.types.ints.positive;
-        default = 5;
-        description = "Tiles visible at once; more scroll.";
-      };
-      titles = {
-        font = lib.mkOption {
-          type    = lib.types.path;
-          default = "${flexAssets}/fonts/OpenSans-Regular.ttf";
-          defaultText = lib.literalExpression ''"''${pkgs.flex-launcher}/share/flex-launcher/assets/fonts/OpenSans-Regular.ttf"'';
-          description = "TTF font for tile titles and the clock.";
-        };
-        fontSize = lib.mkOption {
-          type    = lib.types.ints.positive;
-          default = 36;
-          description = "Title font size.";
-        };
-        color = lib.mkOption {
-          type    = colorType;
-          default = "#FFFFFF";
-          description = "Title and clock color.";
-        };
-      };
-      highlight = {
-        fillColor = lib.mkOption {
-          type    = colorType;
-          default = "#FFFFFF";
-          description = "Highlight fill color.";
-        };
-        fillOpacity = lib.mkOption {
-          type    = lib.types.ints.between 0 100;
-          default = 25;
-          description = "Highlight fill opacity, in percent.";
-        };
-        outlineSize = lib.mkOption {
-          type    = lib.types.ints.unsigned;
-          default = 0;
-          description = "Highlight outline width in pixels (must be 0 when cornerRadius is set).";
-        };
-        outlineColor = lib.mkOption {
-          type    = colorType;
-          default = "#0000FF";
-          description = "Highlight outline color.";
-        };
-        cornerRadius = lib.mkOption {
-          type    = lib.types.ints.unsigned;
-          default = 20;
-          description = "Highlight corner radius in pixels.";
-        };
-      };
-      clock.enable = lib.mkEnableOption "the on-screen clock" // { default = true; };
+      description = "Helper: mkWebApp { name; icon; url; description ? null; tvUserAgent ? false; } → a tile that opens url in a Brave kiosk window.";
     };
   };
 
@@ -467,124 +235,112 @@ in
     {
       assertions = [
         {
-          assertion = theme.highlight.cornerRadius == 0 || theme.highlight.outlineSize == 0;
-          message   = "vexos.htpc.theater.theme.highlight: cornerRadius requires outlineSize = 0.";
+          assertion = lib.all (t: lib.length (tileActions t) == 1) allTiles;
+          message   = "vexos.htpc.theater: every tile needs exactly one of ${lib.concatStringsSep ", " actionKeys} (tiles breaking this: ${
+            lib.concatStringsSep ", " (map (t: t.name) (lib.filter (t: lib.length (tileActions t) != 1) allTiles))}).";
         }
         {
-          assertion = theme.background.mode != "Image" || theme.background.image != null;
-          message   = "vexos.htpc.theater.theme.background.image must be set when mode = \"Image\".";
+          assertion = !(lib.any legacyCommand allTiles);
+          message   = "vexos.htpc.theater: a tile's `command` starts with ':' or names a .desktop file, which was Flex Launcher syntax. Use `submenu = \"<name>\"`, `builtin = \"shutdown\"` (or \"restart\" / \"desktop-mode\"), or `desktop = \"<id>.desktop\"` instead.";
         }
         {
-          assertion = theme.background.mode != "Slideshow" || theme.background.slideshowDirectory != null;
-          message   = "vexos.htpc.theater.theme.background.slideshowDirectory must be set when mode = \"Slideshow\".";
-        }
-        {
-          assertion = !(lib.any (n: lib.elem n reservedSections || hasBadChars n || lib.hasInfix "]" n) (lib.attrNames cfg.submenus));
-          message   = "vexos.htpc.theater.submenus: names must not contain ';', ']' or newlines, nor be one of: ${lib.concatStringsSep ", " reservedSections}.";
-        }
-        {
-          assertion = !(lib.any (a: hasBadChars a.name || hasBadChars "${a.icon}") allApps);
-          message   = "vexos.htpc.theater: app names and icon paths must not contain ';' or newlines.";
-        }
-        {
-          assertion = lib.all (l: lib.stringLength l <= 198) iniLines;
-          message   = "vexos.htpc.theater: a generated Flex Launcher config line exceeds 198 characters (inih limit): ${
-            lib.concatStringsSep ", " (lib.filter (l: lib.stringLength l > 198) iniLines)}";
+          assertion = lib.all (t: t.submenu == null || cfg.submenus ? ${t.submenu}) allTiles;
+          message   = "vexos.htpc.theater: a tile opens a submenu that is not defined in vexos.htpc.theater.submenus.";
         }
       ];
 
       vexos.htpc.theater.apps = lib.mkMerge [ [
         (mkWebApp {
           name        = "YouTube";
-          icon        = "${icons}/youtube.svg";
+          icon        = "${kora}/youtube.svg";
+          description = "YouTube TV interface, full screen";
           url         = "https://www.youtube.com/tv";
           tvUserAgent = true;
         })
         {
-          name    = "Plex";
-          icon    = "${icons}/plex.png";
-          command = lib.getExe pkgs.plex-htpc;
+          name        = "Plex";
+          icon        = "${kora}/plex-htpc.svg";
+          description = "Plex HTPC";
+          command     = lib.getExe pkgs.plex-htpc;
         }
         (mkWebApp {
-          name = "Twitch";
-          icon = "${icons}/twitch.svg";
-          url  = "https://www.twitch.tv";
+          name        = "Twitch";
+          icon        = "${kora}/gnome-twitch.svg";
+          description = "Live streams, full screen";
+          url         = "https://www.twitch.tv";
         })
         {
-          name    = "Browser";
-          icon    = "${icons}/browser.png";
-          command = "${brave} --start-fullscreen";
+          name        = "Browser";
+          icon        = "${pkgs.vexos.brave-origin}/share/icons/hicolor/256x256/apps/brave-origin.png";
+          description = "Brave, full screen";
+          command     = "${brave} --start-fullscreen";
         }
       ] (lib.mkAfter [
         {
-          name    = "Desktop Mode";
-          icon    = "${icons}/desktop.svg";
-          command = ":fork ${lib.getExe sessionSelect} desktop";
+          name        = "Desktop Mode";
+          icon        = "${kora}/preferences-desktop-display.svg";
+          description = "Show the GNOME desktop";
+          builtin     = "desktop-mode";
         }
         {
-          name    = "Power";
-          icon    = "${icons}/power.png";
-          command = ":submenu Power";
+          name        = "Power";
+          icon        = "system-shutdown-symbolic";
+          description = "Shut down or restart";
+          submenu     = "Power";
         }
       ]) ];
 
       # No Sleep tile: modules/system-nosleep.nix masks every sleep target.
       vexos.htpc.theater.submenus.Power = [
-        { name = "Shutdown"; icon = "${icons}/power.png";   command = ":shutdown"; }
-        { name = "Restart";  icon = "${icons}/restart.png"; command = ":restart"; }
+        { name = "Shutdown"; icon = "system-shutdown-symbolic"; description = "Turn the HTPC off";  builtin = "shutdown"; }
+        { name = "Restart";  icon = "system-reboot-symbolic";   description = "Restart the HTPC";   builtin = "restart"; }
       ];
 
-      environment.systemPackages = [
-        pkgs.labwc
-        pkgs.flex-launcher
-        pkgs.plex-htpc
-        theaterSession
-        sessionSelect
-        theaterDesktopItem
-      ];
+      environment.systemPackages = [ pkgs.plex-htpc ];
 
-      services.displayManager.sessionPackages = [ theaterSessionPackage ];
-      xdg.portal.config.labwc.default = [ "gtk" ];
-
-      # ── greetd replaces GDM (modules/gnome.nix) ────────────────────────────
-      services.displayManager.gdm.enable       = lib.mkForce false;
-      services.displayManager.autoLogin.enable = lib.mkForce false;
-
-      services.greetd = {
-        enable = true;
+      # ── VexTheater ─────────────────────────────────────────────────────────
+      # `autostart` runs it as a systemd user service in graphical-session.target,
+      # restarted if it crashes; GDM auto-login (modules/gnome.nix) starts the session.
+      programs.vextheater = {
+        enable    = true;
+        autostart = true;
         settings = {
-          initial_session = {
-            user    = cfg.user;
-            command = lib.getExe sessionLauncher;
+          title      = "VexOS Theater";
+          homeKey    = cfg.homeKey;
+          background = "${wallpaper}";
+          tiles      = map tileJson cfg.apps;
+          submenus   = lib.mapAttrs (_: map tileJson) cfg.submenus;
+        };
+      };
+
+      # A launcher that keeps crashing stops after five failures in a minute and
+      # leaves the plain GNOME desktop, instead of flashing over it every two seconds.
+      systemd.user.services.vextheater.unitConfig = {
+        StartLimitIntervalSec = 60;
+        StartLimitBurst       = 5;
+      };
+
+      # ── Home key ───────────────────────────────────────────────────────────
+      # A GNOME custom shortcut, so it works over any app and from desktop mode, and
+      # the ydotool key presses from CEC / the gamepad Guide button reach it like a
+      # keyboard. gsd-media-keys keeps ONE custom-keybindings list per dconf database:
+      # the desktop role lists its own in modules/gnome-desktop.nix, which the htpc
+      # role does not import; a second list here would not merge with it.
+      programs.dconf.profiles.user.databases = [
+        {
+          settings = {
+            "org/gnome/settings-daemon/plugins/media-keys" = {
+              custom-keybindings = [
+                "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vextheater-home/"
+              ];
+            };
+            "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vextheater-home" = {
+              name    = "VexTheater home";
+              command = "${lib.getExe vt.package} --home";
+              binding = cfg.homeKey;
+            };
           };
-          # No greeter: it exits at once, greetd exits, and systemd restarts
-          # greetd straight back into initial_session.
-          default_session.command = "${pkgs.coreutils}/bin/true";
-        };
-      };
-
-      systemd.services.greetd = {
-        # pam_systemd falls back to the process environment, so logind
-        # registers the session as Wayland (GNOME Shell needs this).
-        environment.XDG_SESSION_TYPE = "wayland";
-        serviceConfig = {
-          ExecStartPre = "${pkgs.coreutils}/bin/rm -f /run/greetd.run";
-          Restart      = "always";
-          RestartSec   = 1;
-        };
-        # Room for normal back-and-forth switching; a real crash loop stops.
-        startLimitBurst       = 10;
-        startLimitIntervalSec = 60;
-        # Never start on top of a running GDM: a live switch from the old
-        # GDM generation (from any update path) skips greetd, and GDM keeps
-        # the session until the next boot, when /run is empty again.
-        unitConfig.ConditionPathExists = "!/run/gdm/gdm.pid";
-      };
-
-      # User-writable mode file, recreated with defaultMode on every boot.
-      systemd.tmpfiles.rules = [
-        "d /run/vexos-htpc 0755 ${cfg.user} users -"
-        "f ${stateFile} 0644 ${cfg.user} users - ${cfg.defaultMode}"
+        }
       ];
     }
 

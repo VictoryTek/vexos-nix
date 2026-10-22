@@ -14,7 +14,7 @@
     ./modules/packages-common.nix
     ./modules/packages-desktop.nix
     ./modules/packages-htpc.nix     # GStreamer codecs, VLC, mpv, libcec
-    ./modules/htpc-theater.nix      # theater mode (Flex Launcher on labwc) + GNOME desktop mode via greetd
+    ./modules/htpc-theater.nix      # theater mode: the VexTheater launcher on top of the GNOME session (GDM auto-login)
     ./modules/branding.nix
     ./modules/branding-display.nix  # wallpapers, GDM logo/dconf
     ./modules/system.nix

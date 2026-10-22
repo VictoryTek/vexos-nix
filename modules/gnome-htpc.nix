@@ -24,7 +24,7 @@
             "org.gnome.Nautilus.desktop"
             "io.github.up.desktop"
             "com.mitchellh.ghostty.desktop"
-            "vexos-theater-mode.desktop"       # switch to the full-screen TV launcher
+            "io.github.vextheater.desktop"     # "Theater Mode": the full-screen TV launcher
           ];
         };
 
@@ -66,7 +66,6 @@
             "com.github.tchx84.Flatseal.desktop"
             "org.gnome.World.PikaBackup.desktop"
             "LocalSend.desktop"
-            "flex-launcher.desktop"
             "plex-htpc.desktop"
             "com.tmog.taskmanager.desktop"
           ];

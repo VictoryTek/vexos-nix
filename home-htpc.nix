@@ -60,9 +60,11 @@
 
   # ── One-time dock migration: pin Theater Mode ────────────────────────────
   # Same shadowing as above: an existing user favorite-apps list hides the
-  # system default that pins vexos-theater-mode.desktop after Ghostty. Insert
-  # it into the user list once (stamp file); with no user key set there is
-  # nothing to do because the system default already applies.
+  # system default that pins Theater Mode after Ghostty. Insert it into the user
+  # list once (stamp file); with no user key set there is nothing to do because
+  # the system default already applies. v2: the launcher is VexTheater now
+  # (io.github.vextheater.desktop), so an entry the v1 pin left for the old
+  # vexos-theater-mode.desktop is renamed instead of added a second time.
   systemd.user.services.vexos-pin-dock-theater-mode = {
     Unit = {
       Description = "VexOS: pin Theater Mode to the dock (once)";
@@ -73,17 +75,20 @@
       Type            = "oneshot";
       RemainAfterExit = true;
       ExecStart       = toString (pkgs.writeShellScript "vexos-pin-dock-theater-mode" ''
-        STAMP="$HOME/.local/share/vexos/.dock-theater-mode-pin-v1"
+        STAMP="$HOME/.local/share/vexos/.dock-theater-mode-pin-v2"
         [ -f "$STAMP" ] && exit 0
 
         CURRENT=$(${pkgs.dconf}/bin/dconf read /org/gnome/shell/favorite-apps)
-        if [ -n "$CURRENT" ] && ! echo "$CURRENT" | grep -q "vexos-theater-mode\.desktop"; then
-          if echo "$CURRENT" | grep -q "com\.mitchellh\.ghostty\.desktop"; then
+        if [ -n "$CURRENT" ] && ! echo "$CURRENT" | grep -q "io\.github\.vextheater\.desktop"; then
+          if echo "$CURRENT" | grep -q "vexos-theater-mode\.desktop"; then
             UPDATED=$(echo "$CURRENT" | ${pkgs.gnused}/bin/sed \
-              "s/'com\.mitchellh\.ghostty\.desktop'/'com.mitchellh.ghostty.desktop', 'vexos-theater-mode.desktop'/")
+              "s/vexos-theater-mode\.desktop/io.github.vextheater.desktop/")
+          elif echo "$CURRENT" | grep -q "com\.mitchellh\.ghostty\.desktop"; then
+            UPDATED=$(echo "$CURRENT" | ${pkgs.gnused}/bin/sed \
+              "s/'com\.mitchellh\.ghostty\.desktop'/'com.mitchellh.ghostty.desktop', 'io.github.vextheater.desktop'/")
           else
             UPDATED=$(echo "$CURRENT" | ${pkgs.gnused}/bin/sed \
-              "s/\]\$/, 'vexos-theater-mode.desktop']/")
+              "s/\]\$/, 'io.github.vextheater.desktop']/")
           fi
           ${pkgs.dconf}/bin/dconf write /org/gnome/shell/favorite-apps "$UPDATED"
         fi
@@ -130,7 +135,7 @@
 
         $D write /org/gnome/desktop/app-folders/folders/Utilities/name "'Utilities'"
         $D write /org/gnome/desktop/app-folders/folders/Utilities/apps \
-          "['com.mattjakeman.ExtensionManager.desktop', 'it.mijorus.gearlever.desktop', 'org.gnome.tweaks.desktop', 'io.github.flattool.Warehouse.desktop', 'io.missioncenter.MissionCenter.desktop', 'com.github.tchx84.Flatseal.desktop', 'org.gnome.World.PikaBackup.desktop', 'LocalSend.desktop', 'flex-launcher.desktop', 'plex-htpc.desktop', 'com.tmog.taskmanager.desktop']"
+          "['com.mattjakeman.ExtensionManager.desktop', 'it.mijorus.gearlever.desktop', 'org.gnome.tweaks.desktop', 'io.github.flattool.Warehouse.desktop', 'io.missioncenter.MissionCenter.desktop', 'com.github.tchx84.Flatseal.desktop', 'org.gnome.World.PikaBackup.desktop', 'LocalSend.desktop', 'plex-htpc.desktop', 'com.tmog.taskmanager.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/System/name    "'System'"
         $D write /org/gnome/desktop/app-folders/folders/System/apps \

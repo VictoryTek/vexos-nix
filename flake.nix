@@ -79,6 +79,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # VexTheater — GTK4 + libadwaita full-screen TV launcher that runs inside the
+    # GNOME session (htpc role only; modules/htpc-theater.nix). Tracks main; the
+    # lock file pins the revision and the daily flake-update job bumps it.
+    vextheater = {
+      url = "github:VictoryTek/VexTheater";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # proxmox-nixos: Proxmox VE hypervisor on NixOS. Used by modules/server/proxmox.nix.
     # Do NOT add inputs.proxmox-nixos.inputs.nixpkgs.follows = "nixpkgs" — the upstream
     # flake manages its own nixpkgs-stable pin; overriding it breaks package builds.
@@ -193,6 +201,11 @@
       imports = [ inputs.vexportal.nixosModules.default ];
       programs.vexportal.enable = true;
     };
+
+    # VexTheater NixOS module (programs.vextheater options) — htpc role only. Only
+    # the options are imported here; modules/htpc-theater.nix enables and configures
+    # it (`imports` cannot reference the `inputs` module arg).
+    vexTheaterModule = { imports = [ inputs.vextheater.nixosModules.default ]; };
 
     # vex-vpn GUI + tray NixOS module — desktop, htpc, stateless (the roles that
     # import modules/vpn.nix, which sets programs.vex-vpn.enable only when
@@ -376,7 +389,7 @@
       };
       htpc = {
         homeFile         = ./home-htpc.nix;
-        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule vexosAiModule ];
+        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule vexosAiModule vexTheaterModule ];
         extraModules     = [];
         hostLocalModules = featuresModule ++ storageRemoteModule;
       };
