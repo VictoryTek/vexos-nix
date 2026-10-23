@@ -79,7 +79,6 @@
             "org.gnome.Settings.desktop"
             "org.gnome.seahorse.Application.desktop"
             "nixos-manual.desktop"
-            "cups.desktop"
             "gparted.desktop"
             "blueman-manager.desktop"
             "btop.desktop"
