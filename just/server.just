@@ -800,6 +800,9 @@ _service-restart service: _require-server-role (_require-known-service service)
     # ordering between them (e.g. a db unit before the app unit that depends on it).
     sudo systemctl restart $UNIT_SERVICES
 
+    echo ""
+    echo "✔ Restarted: $SERVICE"
+
     for unit in $UNITS; do
         echo ""
         echo "── systemctl status ${unit}.service ──────────────────────────"
