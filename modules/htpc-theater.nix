@@ -28,6 +28,19 @@ let
   kora  = "${pkgs.kora-icon-theme}/share/icons/kora/apps/scalable";
   brave = lib.getExe pkgs.vexos.brave-origin;
 
+  # kora-icon-theme has no Apple TV icon. Fetched at build time from the selfh.st
+  # icon collection (the same source VexBoard uses), pinned to a commit.
+  appleTvIcon = pkgs.fetchurl {
+    url  = "https://cdn.jsdelivr.net/gh/selfhst/icons@1d65d45a42e6323b54b8096967b1ea4b65321f97/svg/apple-tv.svg";
+    hash = "sha256-dZDWA6ZEWj9Mc8AC4dhAnYmy7puz3EZINEP/xqZhkfM=";
+  };
+
+  # kora has no YouTube TV icon either; dashboard-icons has one (selfh.st does not).
+  youtubeTvIcon = pkgs.fetchurl {
+    url  = "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@d3b9234dd56f3af5862f06741f0dce101193b3df/svg/youtube-tv.svg";
+    hash = "sha256-Bf8mTwOGkijP6KuZS8dPhO8V4SBUidYbBgSkX9F4sEU=";
+  };
+
   # Same artwork as the HTPC desktop wallpaper. GTK's image loaders may lack
   # JPEG XL, so convert to JPEG at build time.
   wallpaper = pkgs.runCommand "vexos-htpc-theater-wallpaper.jpg" { nativeBuildInputs = [ pkgs.libjxl ]; } ''
@@ -257,6 +270,18 @@ in
           url         = "https://www.youtube.com/tv";
           tvUserAgent = true;
         })
+        (mkWebApp {
+          name        = "YouTube TV";
+          icon        = youtubeTvIcon;
+          description = "Live TV and DVR, full screen";
+          url         = "https://tv.youtube.com";
+        })
+        (mkWebApp {
+          name        = "Apple TV";
+          icon        = appleTvIcon;
+          description = "Apple TV+, full screen";
+          url         = "https://tv.apple.com";
+        })
         {
           name        = "Plex";
           icon        = "${kora}/plex-htpc.svg";
@@ -272,8 +297,8 @@ in
         {
           name        = "Browser";
           icon        = "${pkgs.vexos.brave-origin}/share/icons/hicolor/256x256/apps/brave-origin.png";
-          description = "Brave, with address bar";
-          command     = "${brave} --start-maximized --user-data-dir=\"$HOME/.config/vexos-brave-browser\"";
+          description = "Brave, full screen";
+          command     = "${brave} --start-fullscreen";
         }
       ] (lib.mkAfter [
         {
