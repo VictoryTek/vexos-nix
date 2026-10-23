@@ -30,10 +30,17 @@ let
 
   # kora-icon-theme has no Apple TV icon. Fetched at build time from the selfh.st
   # icon collection (the same source VexBoard uses), pinned to a commit.
-  appleTvIcon = pkgs.fetchurl {
-    url  = "https://cdn.jsdelivr.net/gh/selfhst/icons@1d65d45a42e6323b54b8096967b1ea4b65321f97/svg/apple-tv.svg";
-    hash = "sha256-dZDWA6ZEWj9Mc8AC4dhAnYmy7puz3EZINEP/xqZhkfM=";
-  };
+  # The upstream SVG has no fill (renders black), invisible on the dark theme,
+  # so give it a white fill.
+  appleTvIcon = let
+    src = pkgs.fetchurl {
+      url  = "https://cdn.jsdelivr.net/gh/selfhst/icons@1d65d45a42e6323b54b8096967b1ea4b65321f97/svg/apple-tv.svg";
+      hash = "sha256-dZDWA6ZEWj9Mc8AC4dhAnYmy7puz3EZINEP/xqZhkfM=";
+    };
+  in pkgs.runCommand "apple-tv-white.svg" { } ''
+    sed 's/<path /<path fill="#fff" /g' ${src} > $out
+    grep -q 'fill="#fff"' $out
+  '';
 
   # kora has no YouTube TV icon either; dashboard-icons has one (selfh.st does not).
   youtubeTvIcon = pkgs.fetchurl {
