@@ -272,8 +272,8 @@ in
         {
           name        = "Browser";
           icon        = "${pkgs.vexos.brave-origin}/share/icons/hicolor/256x256/apps/brave-origin.png";
-          description = "Brave, full screen";
-          command     = "${brave} --start-fullscreen";
+          description = "Brave, with address bar";
+          command     = "${brave} --start-maximized --user-data-dir=\"$HOME/.config/vexos-brave-browser\"";
         }
       ] (lib.mkAfter [
         {
