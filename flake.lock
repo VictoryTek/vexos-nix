@@ -498,11 +498,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792773803,
-        "narHash": "sha256-89JxDbZIWjMknH7FZlyg0rXO6z/Huyh2Eojx9cafTwI=",
+        "lastModified": 1792783493,
+        "narHash": "sha256-DN4uzzcERctP+107q7RiiwpnJaar8aEiQOdiw8gMfrE=",
         "owner": "VictoryTek",
         "repo": "Up",
-        "rev": "4bfea6172eabd0be7eccf7d6b5f330ac37040607",
+        "rev": "349f24403e15e6b9366f20b81c3b3c3a8ffd847c",
         "type": "github"
       },
       "original": {
@@ -621,11 +621,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792764977,
-        "narHash": "sha256-dr5JYswzWOG2wENWt9PvvoMcU/PZ4dL5/WsmCV98mw8=",
+        "lastModified": 1792782818,
+        "narHash": "sha256-3xfytdaLz0f3IIySEAEE5FkJVwObkVK3H+moIbZFin0=",
         "owner": "VictoryTek",
         "repo": "VexTheater",
-        "rev": "062b73bb7755e5dd245d236277fea09100024de4",
+        "rev": "d1ea3547c108cd170f928e48e1655944f4ea747f",
         "type": "github"
       },
       "original": {
