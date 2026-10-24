@@ -29,16 +29,30 @@ let
   brave = lib.getExe pkgs.vexos.brave-origin;
 
   # Plex HTPC has no fullscreen flag; it restores the window state it saved in
-  # plex.ini. The old labwc session maximized it, so that is what got saved, and
-  # GNOME then shows it maximized with a title bar and the top bar. Rewrite the
-  # saved state to fullscreen (Qt: visibility 5 = FullScreen, windowStates 4 =
-  # WindowFullScreen) before each launch.
-  plexFullscreen = pkgs.writeShellScript "plex-htpc-fullscreen" ''
+  # plex.ini (Qt: visibility 5 / windowStates 4 = fullscreen, 4 / 2 = maximized,
+  # which the old labwc session left behind). The Plex tile sets fullscreen before
+  # launching, and resets to maximized once Plex exits, so Plex started from the
+  # GNOME desktop is unaffected. Plex stays a child so the SIGTERM VexTheater sends
+  # when closing an app is forwarded and the reset still runs.
+  plexTheaterLaunch = pkgs.writeShellScript "plex-htpc-theater" ''
     ini="''${XDG_DATA_HOME:-$HOME/.local/share}/plex/plex.ini"
-    if [ -f "$ini" ]; then
-      ${lib.getExe pkgs.gnused} -i '/^\[ui\]/,/^\[/{s/^visibility=.*/visibility=5/;s/^windowStates=.*/windowStates=4/}' "$ini"
+    set_state() {
+      [ -f "$ini" ] || return 0
+      ${lib.getExe pkgs.gnused} -i "/^\[ui\]/,/^\[/{s/^visibility=.*/visibility=$1/;s/^windowStates=.*/windowStates=$2/}" "$ini"
+    }
+    set_state 5 4
+    ${lib.getExe pkgs.plex-htpc} "$@" &
+    pid=$!
+    trap 'kill -TERM "$pid" 2>/dev/null' TERM INT
+    wait "$pid"
+    status=$?
+    # A trapped signal ends the wait early while Plex is still shutting down.
+    if [ "$status" -gt 128 ] && kill -0 "$pid" 2>/dev/null; then
+      wait "$pid"
+      status=$?
     fi
-    exec ${lib.getExe pkgs.plex-htpc} "$@"
+    set_state 4 2
+    exit "$status"
   '';
 
   # kora-icon-theme has no Apple TV icon. Fetched at build time from the selfh.st
@@ -306,7 +320,7 @@ in
           name        = "Plex";
           icon        = "${kora}/plex-htpc.svg";
           description = "Plex HTPC";
-          command     = "${plexFullscreen}";
+          command     = "${plexTheaterLaunch}";
         }
         (mkWebApp {
           name        = "Twitch";
