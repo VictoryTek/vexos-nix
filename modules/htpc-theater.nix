@@ -28,6 +28,19 @@ let
   kora  = "${pkgs.kora-icon-theme}/share/icons/kora/apps/scalable";
   brave = lib.getExe pkgs.vexos.brave-origin;
 
+  # Plex HTPC has no fullscreen flag; it restores the window state it saved in
+  # plex.ini. The old labwc session maximized it, so that is what got saved, and
+  # GNOME then shows it maximized with a title bar and the top bar. Rewrite the
+  # saved state to fullscreen (Qt: visibility 5 = FullScreen, windowStates 4 =
+  # WindowFullScreen) before each launch.
+  plexFullscreen = pkgs.writeShellScript "plex-htpc-fullscreen" ''
+    ini="''${XDG_DATA_HOME:-$HOME/.local/share}/plex/plex.ini"
+    if [ -f "$ini" ]; then
+      ${lib.getExe pkgs.gnused} -i '/^\[ui\]/,/^\[/{s/^visibility=.*/visibility=5/;s/^windowStates=.*/windowStates=4/}' "$ini"
+    fi
+    exec ${lib.getExe pkgs.plex-htpc} "$@"
+  '';
+
   # kora-icon-theme has no Apple TV icon. Fetched at build time from the selfh.st
   # icon collection (the same source VexBoard uses), pinned to a commit.
   # The upstream SVG has no fill (renders black), invisible on the dark theme,
@@ -293,7 +306,7 @@ in
           name        = "Plex";
           icon        = "${kora}/plex-htpc.svg";
           description = "Plex HTPC";
-          command     = lib.getExe pkgs.plex-htpc;
+          command     = "${plexFullscreen}";
         }
         (mkWebApp {
           name        = "Twitch";
