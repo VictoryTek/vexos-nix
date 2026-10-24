@@ -12,12 +12,12 @@
     "hash": "sha256-THsbwUIJGPKcCvc3JBFfsTcSOkQ/3AKoMUTy7N2PSSg="
   },
   "photocraft": {
-    "version": "0.14.0",
-    "hash": "sha256-DJAys0rsYrThRnd1UDK6rJvBeIROR0SThp6j5UnMYbk="
+    "version": "0.15.1",
+    "hash": "sha256-RxQEUgcq81r6l/gIb3jV/gye/7gd3Fkcq8TSkjPjlzI="
   },
   "solidcraft": {
     "owner": "tangency-labs",
-    "version": "0.20.0",
-    "hash": "sha256-Xk2wDCfNqRL8X6vPCN16u9hYuB2Csh/fcSVIJwXMMo4="
+    "version": "0.21.0",
+    "hash": "sha256-8cGwIFZuLSsR5pZmBJQc2c1IpLySHXr+tlFvjJTQeG0="
   }
 }
