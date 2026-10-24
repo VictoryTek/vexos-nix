@@ -102,11 +102,19 @@ let
   # logins persist per site and a still-running instance can never swallow a
   # different --user-agent. On first launch the profile is pre-seeded with
   # Brave's Widevine opt-in so DRM content works without a settings detour.
+  # A SingletonLock naming another host (left by an unclean exit before the
+  # hostname changed) makes Brave refuse to start with no window, so it is removed
+  # first; see home/gnome-common-browser.nix, which does this for the default profiles.
   mkWebApp = { name, icon, url, description ? null, tvUserAgent ? false }: {
     inherit name icon description;
     command = toString (pkgs.writeShellScript "vexos-htpc-webapp-${slug name}" ''
       dir="$HOME/.local/share/vexos-htpc/webapps/${slug name}"
       mkdir -p "$dir"
+      lockhost="$(${pkgs.coreutils}/bin/readlink "$dir/SingletonLock" 2>/dev/null)" || lockhost=""
+      lockhost="''${lockhost%-*}"
+      if [ -n "$lockhost" ] && [ "$lockhost" != "$(${pkgs.hostname}/bin/hostname)" ]; then
+        ${pkgs.coreutils}/bin/rm -f "$dir/SingletonLock" "$dir/SingletonCookie" "$dir/SingletonSocket"
+      fi
       [ -e "$dir/Local State" ] || printf '%s\n' '{"brave":{"widevine_opted_in":true}}' > "$dir/Local State"
       exec ${brave} --kiosk --app=${lib.escapeShellArg url} --user-data-dir="$dir" ${
         lib.optionalString tvUserAgent "--user-agent=${lib.escapeShellArg smartTvUserAgent}"}
