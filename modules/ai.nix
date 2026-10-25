@@ -23,6 +23,7 @@ in
       # unstable: agent CLIs move weekly
       claudePackage = pkgs.unstable.claude-code;
       opencodePackage = pkgs.unstable.opencode;
+      claudeAcpPackage = pkgs.unstable.claude-agent-acp;
     };
   };
 }
