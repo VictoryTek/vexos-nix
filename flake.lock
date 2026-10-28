@@ -579,11 +579,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793131994,
-        "narHash": "sha256-rSjSoJW7RBcpoC2VO/0+KC1WYN3KxmEvMoutOCXsI5o=",
+        "lastModified": 1793148263,
+        "narHash": "sha256-oWWlsaAAJCQEwPpdD+EcsMiQpdr7ZvsQd7ij87wUQ7w=",
         "owner": "VictoryTek",
         "repo": "vexos-ai",
-        "rev": "3fcc714d3cb30818e9d12ca4248051d29813c6b5",
+        "rev": "612d2fbdfad354cab4c53beb6f06d5f1172306ba",
         "type": "github"
       },
       "original": {
@@ -600,11 +600,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793027667,
-        "narHash": "sha256-p1fmcrVGof7dkxR/e0UQyMyDZsImI8Rz3Mj94TTmaQM=",
+        "lastModified": 1793151111,
+        "narHash": "sha256-qec+JC1NLDLwcmq+Hl40049spRa8c6P6ct1Qt7VYyB8=",
         "owner": "VictoryTek",
         "repo": "VexPortal",
-        "rev": "5d24788f0cd8979519414ac425ce89db366b27fc",
+        "rev": "5e0b55c9479968d319fc81a242b2e003ac99687b",
         "type": "github"
       },
       "original": {

@@ -240,8 +240,6 @@ _feature-enable feature: _require-desktop-role
             echo "               /etc/nixos side-files and dry-builds; you apply with 'just rebuild'"
             echo "    Diagnose   'just diagnose [unit|rebuild]', plus a 'Diagnose with AI'"
             echo "               notification when a program crashes"
-            echo "    Accounts   Several Claude accounts, usage warnings near a limit, optional"
-            echo "               auto-switch ('vexos-ai panel')"
             echo ""
             echo "  On first launch you choose Claude Code or OpenCode and sign in"
             echo "  through the tool's own browser login."

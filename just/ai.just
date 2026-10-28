@@ -25,30 +25,6 @@ diagnose target="": _require-ai
 ai-pick agent="": _require-ai
     @vexos-ai pick {{quote(agent)}}
 
-# Sign in an extra Claude account: just ai-account-add <label>
-[group('AI Assistant')]
-[doc('Sign in an extra Claude account')]
-ai-account-add label: _require-ai
-    @vexos-ai account add {{quote(label)}}
-
-# Account for new Claude sessions: just ai-account-use <label|next>
-[group('AI Assistant')]
-[doc("Pick the Claude account for new sessions (a label, or 'next')")]
-ai-account-use target: _require-ai
-    @vexos-ai account use {{quote(target)}}
-
-# Remove an extra Claude account: just ai-account-remove <label>
-[group('AI Assistant')]
-[doc('Remove an extra Claude account')]
-ai-account-remove label: _require-ai
-    @vexos-ai account remove {{quote(label)}}
-
-# Warn only, or also switch, near a limit: just ai-account-mode <manual|auto> [pct]
-[group('AI Assistant')]
-[doc('Near a usage limit: warn only (manual) or also switch (auto)')]
-ai-account-mode mode pct="": _require-ai
-    @vexos-ai account mode {{quote(mode)}} {{quote(pct)}}
-
 # Mute, unmute or list crash notifications: just ai-crash-mute [name] [off]
 [group('AI Assistant')]
 [doc('Mute, unmute or list crash notifications')]
