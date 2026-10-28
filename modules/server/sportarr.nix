@@ -72,7 +72,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.sportarr = {
-      image = "sportarr/sportarr:4.1.10.1120";
+      image = "sportarr/sportarr:4.1.11.1121";
       ports = [ "${toString cfg.port}:1867" ];
       environment = {
         PUID  = toString cfg.userId;
