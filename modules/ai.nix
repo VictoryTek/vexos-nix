@@ -17,13 +17,22 @@ in
 {
   options.vexos.features.ai.enable = lib.mkEnableOption "AI assistant (Claude Code or OpenCode) that can change and troubleshoot VexOS";
 
-  config = lib.mkIf cfg.enable {
-    programs.vexos-ai = {
-      enable = true;
-      # unstable: agent CLIs move weekly
-      claudePackage = pkgs.unstable.claude-code;
-      opencodePackage = pkgs.unstable.opencode;
-      claudeAcpPackage = pkgs.unstable.claude-agent-acp;
-    };
-  };
+  config = lib.mkMerge [
+    (lib.mkIf cfg.enable {
+      programs.vexos-ai = {
+        enable = true;
+        # unstable: agent CLIs move weekly
+        claudePackage = pkgs.unstable.claude-code;
+        opencodePackage = pkgs.unstable.opencode;
+        claudeAcpPackage = pkgs.unstable.claude-agent-acp;
+      };
+    })
+
+    # The vexos-ai module only installs the panel's Shell extension; this turns
+    # it on by appending its uuid to the enabled-extensions default (see
+    # vexos.gnome.extraExtensions in modules/gnome.nix).
+    (lib.mkIf (config.programs.vexos-ai.enable && config.programs.vexos-ai.enablePanelExtension) {
+      vexos.gnome.extraExtensions = [ "vexos-assistant@victorytek.github.io" ];
+    })
+  ];
 }
