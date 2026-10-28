@@ -1,19 +1,19 @@
 {
   "wordcraft": {
-    "version": "0.11.0",
-    "hash": "sha256-Xsog5wzr5QJWYOrjUMOz50rp/DbvspPSY1d+I2lvsZM="
+    "version": "0.12.0",
+    "hash": "sha256-Gaft0AT63sjuCF5rmduZI4x6wWBOmPAik+BLHs0461E="
   },
   "gridcraft": {
-    "version": "0.12.1",
-    "hash": "sha256-CGHCWpDKtIrZsgaJ3dJBe3+nFabGJfr1gAGolAnJ4ZA="
+    "version": "0.13.0",
+    "hash": "sha256-9AQS1bxPOcV30qeyAqxXB+BkgVDwGWl2SdQDHU2wLbg="
   },
   "pdfcraft": {
-    "version": "0.14.0",
-    "hash": "sha256-fuS/VUufGFTa3wcRdPe2FuoFBdHbi5roUFLgtmPxj+U="
+    "version": "0.15.0",
+    "hash": "sha256-RvKBx9t8mkIjUD7UmwE3G9Ls7W+cyXycFRfcQdBQKeY="
   },
   "photocraft": {
-    "version": "0.16.0",
-    "hash": "sha256-uLhEpJUfaHci/Mrn5E82C72v3xEpER2NEB6JNJTqMgI="
+    "version": "0.17.0",
+    "hash": "sha256-yW3AzBDLHbJp2sog1KJUm/aVDFFL59aLjcJtVXRAFjc="
   },
   "solidcraft": {
     "owner": "tangency-labs",
