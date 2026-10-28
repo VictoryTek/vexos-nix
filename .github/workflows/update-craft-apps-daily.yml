@@ -10,7 +10,7 @@ name: Craft Apps Pins — Daily
 # For every app listed in pins.json it asks GitHub for the newest non-prerelease
 # release, prefetches the x86_64 bundle, and rewrites the pin in place. It then
 # BUILDS the fetched bundles and asserts each still declares its expected app ID
-# (app/ai.storyteller.<name>/x86_64/stable) — an upstream rename would otherwise
+# (app/<appId>/x86_64/stable, appId from the pin, default ai.storyteller.<name>) — an upstream rename would otherwise
 # silently orphan the app-grid folder entries — and only commits if that passes.
 #
 # Mirrors update-brave-origin-weekly-thursday.yml's direct-commit-to-main style.
@@ -119,9 +119,10 @@ jobs:
           for name in $(jq -r 'keys[]' pkgs/craft-apps/pins.json); do
             # No `grep -q`: it exits on first match, head then dies of SIGPIPE
             # and pipefail turns that into a spurious failure.
+            app_id=$(jq -r --arg n "$name" '.[$n].appId // ("ai.storyteller." + $n)' pkgs/craft-apps/pins.json)
             if ! head -c 262144 "$out/${name}.flatpak" \
-                | grep -aF "app/ai.storyteller.${name}/x86_64/stable" >/dev/null; then
-              echo "error: ${name} bundle no longer declares app/ai.storyteller.${name}/x86_64/stable"
+                | grep -aF "app/${app_id}/x86_64/stable" >/dev/null; then
+              echo "error: ${name} bundle no longer declares app/${app_id}/x86_64/stable"
               exit 1
             fi
           done

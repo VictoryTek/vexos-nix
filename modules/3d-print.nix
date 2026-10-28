@@ -18,6 +18,7 @@ in
     { vexos.flatpak.managedApps = [
         "org.blender.Blender"
         "com.orcaslicer.OrcaSlicer"
+        "ai.storyteller.solidcraft"  # pre-0.25 SolidCraft ID; removed on upgrade to io.tangencylabs.solidcraft
       ];
     }
 

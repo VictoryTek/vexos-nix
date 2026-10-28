@@ -9,7 +9,8 @@
 # repo name to pins.json with any version/hash (the workflow corrects them) — the
 # repo name must match the release asset prefix (<name>-<ver>-linux-x86_64.flatpak)
 # and the app ID (ai.storyteller.<name>). Apps outside the storytold org (SolidCraft
-# lives at tangency-labs) set an optional "owner" in their pin.
+# lives at tangency-labs) set an optional "owner" in their pin, and an app whose
+# bundle declares a different ID (SolidCraft: io.tangencylabs.solidcraft) sets "appId".
 #
 # To update an entry manually:
 #   HASH=$(nix-prefetch-url \
@@ -20,7 +21,7 @@ let
   pins = builtins.fromJSON (builtins.readFile ./pins.json);
 in
 lib.mapAttrs (name: pin: {
-  appId   = "ai.storyteller.${name}";
+  appId   = pin.appId or "ai.storyteller.${name}";
   version = pin.version;
   bundle  = fetchurl {
     url  = "https://github.com/${pin.owner or "storytold"}/${name}/releases/download/v${pin.version}/${name}-${pin.version}-linux-x86_64.flatpak";

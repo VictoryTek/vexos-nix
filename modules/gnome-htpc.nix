@@ -51,7 +51,7 @@
           apps = [
             "org.blender.Blender.desktop"
             "com.orcaslicer.OrcaSlicer.desktop"
-            "ai.storyteller.solidcraft.desktop"
+            "io.tangencylabs.solidcraft.desktop"
           ];
         };
 

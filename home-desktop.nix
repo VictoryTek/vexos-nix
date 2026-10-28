@@ -208,7 +208,7 @@
       Type            = "oneshot";
       RemainAfterExit = true;
       ExecStart       = toString (pkgs.writeShellScript "vexos-init-app-folders-desktop" ''
-        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v6"
+        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v7"
         [ -f "$STAMP" ] && exit 0
 
         D="${pkgs.dconf}/bin/dconf"
@@ -234,7 +234,7 @@
 
         $D write /org/gnome/desktop/app-folders/folders/"3D"/name "'3D'"
         $D write /org/gnome/desktop/app-folders/folders/"3D"/apps \
-          "['org.blender.Blender.desktop', 'com.orcaslicer.OrcaSlicer.desktop', 'ai.storyteller.solidcraft.desktop']"
+          "['org.blender.Blender.desktop', 'com.orcaslicer.OrcaSlicer.desktop', 'io.tangencylabs.solidcraft.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/Utilities/name "'Utilities'"
         $D write /org/gnome/desktop/app-folders/folders/Utilities/apps \
