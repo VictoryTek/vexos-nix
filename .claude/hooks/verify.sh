@@ -13,10 +13,14 @@ cd "${CLAUDE_PROJECT_DIR:-.}" 2>/dev/null || exit 0
 # Nothing changed in the working tree (or not a git repo): nothing to verify.
 [ -z "$(git status --porcelain 2>/dev/null)" ] && exit 0
 
-# The verify tool is not installed on this machine (for example Nix on Windows outside WSL): skip instead of failing every turn.
-command -v nix >/dev/null 2>&1 || exit 0
+# The verify command cannot run on this machine: skip with a note instead of failing every turn.
+if ! { command -v nix; } >/dev/null 2>&1; then
+  echo "skipping verify: nix not found; run Nix through WSL on Windows checkouts" >&2
+  exit 0
+fi
 
-output="$(nix flake show --impure 2>&1)"
+# Group the command so output from every part of a chained command is captured.
+output="$( { nix flake show --impure; } 2>&1 )"
 status=$?
 
 if [ "$status" -ne 0 ]; then
