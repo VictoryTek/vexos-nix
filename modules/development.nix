@@ -63,7 +63,19 @@ in
 
       # ── AI tooling ────────────────────────────────────────────────────────────
       pkgs.claude-code # Anthropic Claude CLI
-      pkgs.mcp-nixos # MCP server exposing NixOS/nixpkgs/home-manager option data to MCP-aware tools
+      # MCP server exposing NixOS/nixpkgs/home-manager option data to MCP-aware tools.
+      # fastmcp 3.2.3's tests/server/providers/proxy/test_stateful_proxy_client.py fails in
+      # the sandbox (anyio "exit a cancel scope" RuntimeError), which breaks the whole
+      # system build. Skip that file until nixpkgs ships a fixed fastmcp, then drop the override.
+      (pkgs.mcp-nixos.override {
+        python3Packages = pkgs.python3Packages // {
+          fastmcp = pkgs.python3Packages.fastmcp.overridePythonAttrs (o: {
+            disabledTestPaths = (o.disabledTestPaths or [ ]) ++ [
+              "tests/server/providers/proxy/test_stateful_proxy_client.py"
+            ];
+          });
+        };
+      })
 
       # ── Nix tooling ───────────────────────────────────────────────────────────
       pkgs.nil # Nix LSP server
