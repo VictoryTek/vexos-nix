@@ -9,7 +9,7 @@ let
   cfg = config.vexos.features.development;
 in
 {
-  options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Rust via rustup, Go, Claude Code, Nix LSP)";
+  options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Rust via rustup, Go, Claude Code, T3 Code, Nix LSP)";
 
   config = lib.mkIf cfg.enable {
     # ── Flatpak ───────────────────────────────────────────────────────────────
@@ -63,6 +63,7 @@ in
 
       # ── AI tooling ────────────────────────────────────────────────────────────
       pkgs.claude-code # Anthropic Claude CLI
+      pkgs.vexos.t3code # T3 Code GUI for coding agents (official AppImage; nixpkgs lags)
       # MCP server exposing NixOS/nixpkgs/home-manager option data to MCP-aware tools.
       # fastmcp 3.2.3's tests/server/providers/proxy/test_stateful_proxy_client.py fails in
       # the sandbox (anyio "exit a cancel scope" RuntimeError), which breaks the whole

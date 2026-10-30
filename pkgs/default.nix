@@ -18,6 +18,8 @@ final: prev: {
     vexos-vpn            = final.callPackage ./vexos-vpn { };     # PIA WireGuard/OpenVPN + kill switch CLI
     # ── Utilities ───────────────────────────────────────────────────────────
     tmog                 = final.callPackage ./tmog { };
+    # ── Development ─────────────────────────────────────────────────────────
+    t3code               = final.callPackage ./t3code { };
     # ── Flatpak bundles (release assets, not on Flathub) ────────────────────
     # pkgs.vexos.craft-apps.<name>.{appId,version,bundle}; installed by
     # modules/flatpak-bundles.nix. Plain import (not callPackage) so the set is

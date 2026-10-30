@@ -1,0 +1,123 @@
+name: T3 Code Pin — Weekly Saturday
+
+# T3 Code is hand-packaged from upstream's official AppImage
+# (pkgs/t3code/default.nix) because nixpkgs lags it and there is no Flatpak. The
+# version and fetchurl hash are hardcoded, so neither the flake-lock update workflows
+# nor anything at runtime (/nix/store is read-only) can ever move it. Without this
+# workflow the pin drifts indefinitely.
+#
+# This workflow asks the GitHub releases API for the latest *stable* release
+# (/releases/latest skips prereleases, so the several-per-day nightlies are ignored),
+# rewrites the version and hash in place, BUILDS the result, and only commits if the
+# build succeeds. The build gate matters in the same way as in
+# update-tmog-weekly-friday.yml: a new upstream binary can introduce shared-library
+# dependencies that break appimageTools, and CI's `nix eval ... drvPath` would not
+# catch that.
+#
+# Mirrors update-tmog-weekly-friday.yml's direct-commit-to-main style.
+# A commit here only updates the repo — hosts receive the new binary on the next
+# `git pull` + `just update` / the "Up" GUI.
+
+on:
+  schedule:
+    - cron: '0 6 * * 6'   # Saturdays, 06:00 UTC (offset from the Wed/Thu/Fri pin jobs)
+  workflow_dispatch:        # Manual trigger: same scope as the schedule
+
+permissions:
+  contents: write           # Required to commit and push the updated pin back to main
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for a newer T3 Code release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          PKG="pkgs/t3code/default.nix"
+
+          current=$(grep -oP '^\s*version\s*=\s*"\K[^"]+' "$PKG")
+          echo "Current pin: $current"
+
+          latest=$(
+            curl -fsS -H "Authorization: Bearer $GH_TOKEN" \
+              https://api.github.com/repos/pingdotgg/t3code/releases/latest \
+              | jq -r '.tag_name' \
+              | sed 's/^v//' \
+              | grep -xP '[0-9]+\.[0-9]+\.[0-9]+'
+          ) || true
+
+          if [ -z "$latest" ]; then
+            echo "warning: could not determine a stable T3 Code release (API failure or"
+            echo "warning: unexpected tag format) — leaving the pin untouched."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Latest: $latest"
+
+          if [ "$latest" = "$current" ]; then
+            echo "t3code already at latest ($current)"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          url="https://github.com/pingdotgg/t3code/releases/download/v${latest}/T3-Code-${latest}-x86_64.AppImage"
+          raw=$(nix-prefetch-url "$url")
+          hash=$(nix hash convert --hash-algo sha256 --to sri "$raw")
+          echo "New hash: $hash"
+
+          sed -i \
+            -e "s|^\(\s*version\s*=\s*\)\"${current}\"|\1\"${latest}\"|" \
+            -e "s|^\(\s*hash\s*=\s*\)\"sha256-[^\"]*\"|\1\"${hash}\"|" \
+            "$PKG"
+
+          # Guard against a silently-missed substitution.
+          if ! grep -q "\"${latest}\"" "$PKG" || ! grep -q "\"${hash}\"" "$PKG"; then
+            echo "error: in-place rewrite of $PKG did not apply cleanly"
+            exit 1
+          fi
+
+          echo "Bumping t3code: $current -> $latest"
+          echo "changed=true"    >> "$GITHUB_OUTPUT"
+          echo "version=$latest" >> "$GITHUB_OUTPUT"
+
+      # The package is only reachable through the vexos overlay inside each
+      # nixosConfiguration — there is no packages.<system> flake output — so build it
+      # against the flake's own pinned nixpkgs. Nix's dirty-tree evaluation picks up the
+      # modified (tracked) package file without any staging step.
+      - name: Build the bumped package
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          nix build --impure --no-link --print-out-paths --expr '
+            let
+              flake = builtins.getFlake (toString ./.);
+              pkgs  = import flake.inputs.nixpkgs {
+                system   = "x86_64-linux";
+                overlays = [ (import ./pkgs) ];
+              };
+            in pkgs.vexos.t3code'
+
+      - name: Commit updated T3 Code pin
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pkgs/t3code/default.nix
+          git commit -m "chore(t3code): bump to ${{ steps.check.outputs.version }}"
+          git push
