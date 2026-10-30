@@ -35,7 +35,7 @@
     ./modules/gaming.nix             # optional: vexos.features.gaming.enable (bundles gpu-gaming + system-gaming)
     ./modules/development.nix        # optional: vexos.features.development.enable
     ./modules/ai.nix                 # optional: vexos.features.ai.enable (AI assistant)
-    ./modules/flatpak-bundles.nix    # vexos.flatpak.bundles option (3d-print.nix SolidCraft)
+    ./modules/flatpak-bundles.nix    # vexos.flatpak.bundles option (htpc-theater.nix SmartTwitchTV, 3d-print.nix SolidCraft)
     ./modules/3d-print.nix           # optional: vexos.features.print3d.enable
     ./modules/virtualization.nix     # optional: vexos.features.virtualization.enable
   ];

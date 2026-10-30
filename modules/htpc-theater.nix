@@ -75,6 +75,22 @@ let
     hash = "sha256-Bf8mTwOGkijP6KuZS8dPhO8V4SBUidYbBgSkX9F4sEU=";
   };
 
+  # SmartTwitchTV Desktop: a remote/controller Twitch client (Electron, Flatpak).
+  # Pinned to the VictoryTek fork's v0.1.0 release, never the author's rolling "latest"
+  # (deleted and rebuilt weekly, so its hash changes). That release file is fixed, but
+  # its build pulled the upstream SmartTwitchTV master unpinned: a rebuild of the tag
+  # gives a different hash, so never replace the hash with a rebuilt one. To update,
+  # push a new tag on the fork and bump version and hash together.
+  # Installed by modules/flatpak-bundles.nix; the app is closed through `flatpak kill`.
+  smartTwitchTv = {
+    id      = "io.github.smarttwitchtv.Desktop";
+    version = "0.1.0";
+    src     = pkgs.fetchurl {
+      url  = "https://github.com/VictoryTek/twitchtv-htpc/releases/download/v0.1.0/SmartTwitchTV.flatpak";
+      hash = "sha256-YjiIxkzDsaTCUrtT6ziDqvrA6nMiHCC1FQZbgWNZ+YA=";
+    };
+  };
+
   # Same artwork as the HTPC desktop wallpaper. GTK's image loaders may lack
   # JPEG XL, so convert to JPEG at build time.
   wallpaper = pkgs.runCommand "vexos-htpc-theater-wallpaper.jpg" { nativeBuildInputs = [ pkgs.libjxl ]; } ''
@@ -330,12 +346,12 @@ in
           description = "Plex HTPC";
           command     = "${plexTheaterLaunch}";
         }
-        (mkWebApp {
+        {
           name        = "Twitch";
           icon        = "${kora}/gnome-twitch.svg";
-          description = "Live streams, full screen";
-          url         = "https://www.twitch.tv";
-        })
+          description = "SmartTwitchTV, made for the remote";
+          flatpak     = smartTwitchTv.id;
+        }
         {
           name        = "Browser";
           icon        = "${pkgs.vexos.brave-origin}/share/icons/hicolor/256x256/apps/brave-origin.png";
@@ -364,6 +380,19 @@ in
       ];
 
       environment.systemPackages = [ pkgs.plex-htpc ];
+
+      vexos.flatpak.bundles = [ smartTwitchTv ];
+
+      # A `flatpak` tile cannot set environment variables, so native Wayland (the app
+      # defaults to XWayland) is a system-wide Flatpak override, a key file Flatpak reads
+      # on every run of the app.
+      systemd.tmpfiles.rules = [
+        "d /var/lib/flatpak/overrides 0755 root root -"
+        "L+ /var/lib/flatpak/overrides/${smartTwitchTv.id} - - - - ${pkgs.writeText "smarttwitchtv-override" ''
+          [Environment]
+          STV_WAYLAND=1
+        ''}"
+      ];
 
       # ── VexTheater ─────────────────────────────────────────────────────────
       # `autostart` runs it as a systemd user service in graphical-session.target,
