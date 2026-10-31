@@ -12,6 +12,7 @@
     exfatprogs          # mkfs.exfat — lets gparted format exFAT
     jdk21               # Java 21 (LTS)
     localsend           # Cross-platform AirDrop alternative (LAN file sharing)
+    mission-center      # System monitor (nixpkgs, not Flatpak: the Flathub build's host-side magpie helper can't run on NixOS)
     mpv                 # Video player (replaces Totem Flatpak on desktop/stateless/server)
     vexos.tmog          # TMOG (TaskManagerOG) system monitor / task manager
   ];
