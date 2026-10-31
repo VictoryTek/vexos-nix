@@ -153,7 +153,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # vexos-ai — the VexOS AI assistant (Claude Code / OpenCode launcher, skills,
+    # vexos-ai — the VexOS AI assistant (Claude Code launcher, skills,
     # agent deny policy). Install-only NixOS module (programs.vexos-ai); the
     # feature toggle lives in modules/ai.nix. Pure shell package, so it is cheap
     # to build.

@@ -234,15 +234,14 @@ _feature-enable feature: _require-desktop-role
             ;;
         ai)
             echo "  What this adds:"
-            echo "    Apps       Claude Code + OpenCode, and 'VexOS Assistant' in the app menu"
+            echo "    Apps       Claude Code, and 'VexOS Assistant' in the app menu"
             echo "               (Super+Shift+A; 'just agent' from a terminal)"
             echo "    Skills     Teaches the assistant how VexOS is configured: it edits"
             echo "               /etc/nixos side-files and dry-builds; you apply with 'just rebuild'"
             echo "    Diagnose   'just diagnose [unit|rebuild]', plus a 'Diagnose with AI'"
             echo "               notification when a program crashes"
             echo ""
-            echo "  On first launch you choose Claude Code or OpenCode and sign in"
-            echo "  through the tool's own browser login."
+            echo "  On first launch you sign in through Claude Code's own browser login."
             ;;
     esac
     echo ""

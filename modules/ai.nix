@@ -1,5 +1,5 @@
 # modules/ai.nix
-# VexOS AI assistant: Claude Code and OpenCode, taught how VexOS works and
+# VexOS AI assistant: Claude Code, taught how VexOS works and
 # fenced off from applying changes. The agent edits /etc/nixos side-files and
 # dry-builds; the user runs `just rebuild`.
 #
@@ -15,7 +15,7 @@ let
   cfg = config.vexos.features.ai;
 in
 {
-  options.vexos.features.ai.enable = lib.mkEnableOption "AI assistant (Claude Code or OpenCode) that can change and troubleshoot VexOS";
+  options.vexos.features.ai.enable = lib.mkEnableOption "AI assistant (Claude Code) that can change and troubleshoot VexOS";
 
   config = lib.mkMerge [
     (lib.mkIf cfg.enable {
@@ -23,7 +23,6 @@ in
         enable = true;
         # unstable: agent CLIs move weekly
         claudePackage = pkgs.unstable.claude-code;
-        opencodePackage = pkgs.unstable.opencode;
         claudeAcpPackage = pkgs.unstable.claude-agent-acp;
       };
     })

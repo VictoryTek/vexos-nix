@@ -2,9 +2,9 @@
 # Imported by the root justfile; recipe names share one namespace.
 
 # Requires the ai feature: just feature enable ai
-# Open your AI assistant (Claude Code or OpenCode) in /etc/nixos.
+# Open your AI assistant (Claude Code) in /etc/nixos.
 [group('AI Assistant')]
-[doc('Open your AI assistant (Claude Code or OpenCode) in /etc/nixos')]
+[doc('Open your AI assistant (Claude Code) in /etc/nixos')]
 agent: _require-ai
     @vexos-ai
 
@@ -19,9 +19,9 @@ diagnose target="": _require-ai
 
 # The ai-* recipes are VexPortal's AI Assistant page controls; each wraps a
 # non-interactive vexos-ai command (github:VictoryTek/vexos-ai docs/contract.md).
-# Choose your AI assistant: just ai-pick [claude|opencode]
+# Choose your AI assistant: just ai-pick [claude]
 [group('AI Assistant')]
-[doc('Choose your AI assistant (claude or opencode)')]
+[doc('Choose your AI assistant (claude)')]
 ai-pick agent="": _require-ai
     @vexos-ai pick {{quote(agent)}}
 

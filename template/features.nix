@@ -14,7 +14,7 @@
 #                   story); off by default on vanilla. Set to false below to opt out.
 #   vpn           — PIA VPN (WireGuard/OpenVPN) + nftables kill switch + vex-vpn
 #                   GUI/tray. Off by default; always on in the stateless role.
-#   ai            — AI assistant (Claude Code or OpenCode) that can change and
+#   ai            — AI assistant (Claude Code) that can change and
 #                   troubleshoot VexOS; you apply its changes with `just rebuild`.
 #                   Desktop, server and htpc roles only.
 #
