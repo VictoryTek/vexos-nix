@@ -25,11 +25,11 @@
 
 let
   pname = "t3code";
-  version = "0.1.5";
+  version = "0.1.6";
 
   src = fetchurl {
     url = "https://github.com/pingdotgg/t3code/releases/download/v${version}/T3-Code-${version}-x86_64.AppImage";
-    hash = "sha256-kz/53ExlCnWqQIfJjyrmxlQMIz8OL+sy6/+VCwm+hJ0=";
+    hash = "sha256-CeJQcgjHeTCbOWvoRq6h2UUUS9eAYGiZwvSByW3fNNA=";
   };
 
   # Pulls the AppImage's own .desktop file and hicolor icon set out at build time so
