@@ -62,7 +62,7 @@ in
       pkgs.gcc # C/C++ compiler (native modules; also the `cc` linker rustup toolchains need)
 
       # ── AI tooling ────────────────────────────────────────────────────────────
-      pkgs.claude-code # Anthropic Claude CLI
+      pkgs.unstable.claude-code # Anthropic Claude CLI (unstable: releases land near-daily)
       pkgs.vexos.t3code # T3 Code GUI for coding agents (official AppImage; nixpkgs lags)
       # MCP server exposing NixOS/nixpkgs/home-manager option data to MCP-aware tools.
       # fastmcp 3.2.3's tests/server/providers/proxy/test_stateful_proxy_client.py fails in

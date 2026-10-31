@@ -1,10 +1,9 @@
 name: Flake Update — Weekly Monday (all other inputs)
 
 # Runs Mondays at 04:00 UTC. Updates the inputs that are NOT covered by the
-# daily workflow: nixpkgs-unstable, home-manager, impermanence, sops-nix,
-# proxmox-nixos. Kept weekly (not daily) because nixpkgs-unstable moves fast
-# enough that daily bumps regularly land ahead of Hydra's cache — see
-# update-flake-lock-daily.yml for the stable-input daily job.
+# daily workflow: home-manager, impermanence, sops-nix, proxmox-nixos.
+# nixpkgs-unstable is bumped daily (see update-flake-lock-daily.yml) and is
+# listed here too so a manual run still refreshes it.
 
 on:
   schedule:

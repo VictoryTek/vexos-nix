@@ -1,9 +1,10 @@
-name: Flake Update — Daily (stable inputs)
+name: Flake Update — Daily (nixpkgs inputs)
 
-# Runs every day at 04:00 UTC. Updates only the stable-tracked inputs
-# (nixpkgs 26.05, up, vexboard, vexportal, vextheater, vexos-ai). Safe to trigger manually at any time —
-# this workflow never touches nixpkgs-unstable or the other weekly-only
-# inputs; see update-flake-lock-weekly-monday.yml for those.
+# Runs every day at 04:00 UTC. Updates nixpkgs 26.05, nixpkgs-unstable (kept
+# daily so pkgs.unstable.claude-code tracks upstream), up, vexboard, vexportal,
+# vextheater, vexos-ai. Safe to trigger manually at any time — this workflow
+# never touches the other weekly-only inputs; see
+# update-flake-lock-weekly-monday.yml for those.
 
 on:
   schedule:
@@ -28,8 +29,8 @@ jobs:
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update nixpkgs stable, up, vexboard, vexportal, vextheater, and vexos-ai
-        run: nix flake update nixpkgs up vexboard vexportal vextheater vexos-ai
+      - name: Update nixpkgs, nixpkgs-unstable, up, vexboard, vexportal, vextheater, and vexos-ai
+        run: nix flake update nixpkgs nixpkgs-unstable up vexboard vexportal vextheater vexos-ai
 
       - name: Commit updated flake.lock
         run: |
