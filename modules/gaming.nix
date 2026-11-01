@@ -100,6 +100,7 @@ in
 
       # Game addon management
       wowup-cf             # World of Warcraft addon updater (CurseForge); unfree; X11 wrapper above
+      pkgs.vexos.curseforge # CurseForge app (game mod/addon manager); unfree AppImage, see pkgs/curseforge
 
       # Container tooling (Distrobox for running other distro environments)
       pkgs.distrobox

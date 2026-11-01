@@ -208,7 +208,7 @@
       Type            = "oneshot";
       RemainAfterExit = true;
       ExecStart       = toString (pkgs.writeShellScript "vexos-init-app-folders-desktop" ''
-        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v9"
+        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v10"
         [ -f "$STAMP" ] && exit 0
 
         D="${pkgs.dconf}/bin/dconf"
@@ -222,7 +222,7 @@
 
         $D write /org/gnome/desktop/app-folders/folders/"Game Utilities"/name "'Game Utilities'"
         $D write /org/gnome/desktop/app-folders/folders/"Game Utilities"/apps \
-          "['com.vysp3r.ProtonPlus.desktop', 'protontricks.desktop', 'dev.vencord.Vesktop.desktop', 'com.discordapp.Discord.desktop', 'wowup-cf.desktop']"
+          "['com.vysp3r.ProtonPlus.desktop', 'protontricks.desktop', 'dev.vencord.Vesktop.desktop', 'com.discordapp.Discord.desktop', 'wowup-cf.desktop', 'curseforge.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/Office/name   "'Office'"
         $D write /org/gnome/desktop/app-folders/folders/Office/apps \
