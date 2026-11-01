@@ -9,6 +9,20 @@
 { config, pkgs, lib, ... }:
 let
   cfg = config.vexos.features.gaming;
+
+  # Electron 37 on native Wayland crashes at startup on hybrid NVIDIA/AMD
+  # laptops: gnome-shell cannot import the dmabufs it allocates ("failed to
+  # import supplied dmabufs"), kills the client, and Chromium then traps
+  # (SIGTRAP). Override the system-wide ELECTRON_OZONE_PLATFORM_HINT=auto so
+  # WowUp runs through XWayland instead.
+  wowup-cf = pkgs.symlinkJoin {
+    name = "wowup-cf";
+    paths = [ pkgs.wowup-cf ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/wowup-cf --set ELECTRON_OZONE_PLATFORM_HINT x11
+    '';
+  };
 in
 {
   imports = [
@@ -85,7 +99,7 @@ in
       pkgs.duperemove      # deduplicates Wine prefix content
 
       # Game addon management
-      pkgs.wowup-cf        # World of Warcraft addon updater (CurseForge); unfree
+      wowup-cf             # World of Warcraft addon updater (CurseForge); unfree; X11 wrapper above
 
       # Container tooling (Distrobox for running other distro environments)
       pkgs.distrobox
