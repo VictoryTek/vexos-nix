@@ -108,6 +108,7 @@ in
             "protontricks.desktop"
             "dev.vencord.Vesktop.desktop"
             "com.discordapp.Discord.desktop"
+            "wowup-cf.desktop"
           ];
         };
 

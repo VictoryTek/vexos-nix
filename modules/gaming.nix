@@ -84,6 +84,9 @@ in
       # Disk / prefix maintenance
       pkgs.duperemove      # deduplicates Wine prefix content
 
+      # Game addon management
+      pkgs.wowup-cf        # World of Warcraft addon updater (CurseForge); unfree
+
       # Container tooling (Distrobox for running other distro environments)
       pkgs.distrobox
 
