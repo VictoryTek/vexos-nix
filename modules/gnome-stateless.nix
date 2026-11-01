@@ -55,6 +55,7 @@
             "io.missioncenter.MissionCenter.desktop"
             "com.github.tchx84.Flatseal.desktop"
             "com.tmog.taskmanager.desktop"
+            "com.moonlight_stream.Moonlight.desktop"
           ];
         };
 

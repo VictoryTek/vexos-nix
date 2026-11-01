@@ -145,6 +145,7 @@ in
             "org.gnome.World.PikaBackup.desktop"
             "LocalSend.desktop"
             "com.tmog.taskmanager.desktop"
+            "com.moonlight_stream.Moonlight.desktop"
           ];
         };
 
@@ -167,6 +168,7 @@ in
             "org.gnome.Logs.desktop"
             "btrfs-assistant.desktop"
             "org.gnome.SystemMonitor.desktop"
+            "dev.lizardbyte.app.Sunshine.desktop"
             "com.system76.Popsicle.desktop"
           ];
         };
