@@ -27,6 +27,15 @@ in
 
   config = lib.mkIf cfg.enable {
     vexos.server.backup.servicePaths.plex = [ "/var/lib/plex" ];
+    # Re-downloadable Plex data (~19 GB). The databases (Plug-in Support/
+    # Databases) and Preferences.xml stay in the backup.
+    vexos.server.backup.exclude = map (d: "/var/lib/plex/Plex Media Server/${d}") [
+      "Metadata"
+      "Media"
+      "Cache"
+      "Codecs"
+      "Logs"
+    ];
 
     services.plex = {
       enable = true;

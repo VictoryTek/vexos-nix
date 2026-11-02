@@ -104,6 +104,17 @@ in
       '';
     };
 
+    exclude = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = [ "/var/lib/plex/Plex Media Server/Cache" ];
+      description = ''
+        restic exclude patterns. Like servicePaths, set by each service module
+        in its own file for data that can be re-downloaded or regenerated and
+        is not worth the repository space.
+      '';
+    };
+
     repository = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
@@ -137,8 +148,12 @@ in
 
     pruneOpts = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [ "--keep-daily 7" "--keep-weekly 4" "--keep-monthly 6" ];
-      description = "restic forget --prune retention policy.";
+      default = [ "--keep-daily 7" "--keep-weekly 4" "--keep-monthly 3" ];
+      description = ''
+        restic forget --prune retention policy. nixpkgs runs it in the same
+        oneshot unit right after the backup (backup, unlock, forget --prune),
+        so a prune never overlaps a backup of this repository.
+      '';
     };
 
     timerConfig = lib.mkOption {
@@ -194,7 +209,7 @@ in
         builtins.toJSON backupPathsManifest;
 
       services.restic.backups.main = {
-        inherit (cfg) repository repositoryFile pruneOpts timerConfig;
+        inherit (cfg) repository repositoryFile pruneOpts timerConfig exclude;
         # Tag every snapshot with "vexos" plus one tag per service it covers, so
         # `restic-main snapshots --tag <service>` and `restic-main restore
         # latest --tag <service>` can select by service. The nixpkgs restic
