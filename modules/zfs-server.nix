@@ -11,6 +11,24 @@
 #   imported ONLY by configuration-server.nix and configuration-headless-server.nix.
 { config, lib, pkgs, ... }:
 {
+  # ── Scrub switch ─────────────────────────────────────────────────────────
+  # zfs-scrub.service fails ("missing pool name argument") on a host with no
+  # pool, so scrubbing must be opt-in per host. Off by default; the default
+  # flips on only when pools are registered in boot.zfs.extraPools (written to
+  # /etc/nixos/zfs-pools.nix by `just zfs-pool create`). Override per host with
+  # `vexos.zfs.localPool = true;` (e.g. in /etc/nixos/zfs-pools.nix).
+  options.vexos.zfs.localPool = lib.mkOption {
+    type = lib.types.bool;
+    default = config.boot.zfs.extraPools != [ ];
+    defaultText = lib.literalExpression "config.boot.zfs.extraPools != [ ]";
+    description = ''
+      Whether this host has a local ZFS pool. When true, monthly
+      services.zfs.autoScrub runs on the pools in boot.zfs.extraPools.
+      False on hosts with no pool, so no scrub unit is created.
+    '';
+  };
+
+  config = {
   # ── Kernel + userland ────────────────────────────────────────────────────
   boot.supportedFilesystems        = [ "zfs" ];
   boot.zfs.forceImportRoot         = false;   # backing pools are not the rootfs
@@ -48,7 +66,8 @@
   # nixos/modules/tasks/filesystems/zfs.nix (allPools = fsToPool fileSystems ++
   # extraPools; nothing else is scanned).
   boot.zfs.extraPools              = [ ];
-  services.zfs.autoScrub.enable    = true;
+  services.zfs.autoScrub.enable    = config.vexos.zfs.localPool;
+  services.zfs.autoScrub.pools     = config.boot.zfs.extraPools;
   services.zfs.autoScrub.interval  = "monthly";
   services.zfs.trim.enable         = true;
   services.zfs.trim.interval       = "weekly";
@@ -118,4 +137,5 @@
   # ZRAM swap (configured unconditionally in modules/system.nix) is unaffected
   # and continues to provide fast in-RAM compressed swap on all server roles.
   vexos.swap.enable = lib.mkDefault false;
+  };
 }
