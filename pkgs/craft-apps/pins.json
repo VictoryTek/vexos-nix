@@ -1,24 +1,24 @@
 {
   "wordcraft": {
-    "version": "0.13.2",
-    "hash": "sha256-oA3yO+tXlIrbiZCa/Na5Ex2yk9OUsFqyiQ8/WYAW4eQ="
+    "version": "0.14.0",
+    "hash": "sha256-yAyvbTYsPfEscgmu/TVibcPd+/4XT21SdAqewoHE8yc="
   },
   "gridcraft": {
-    "version": "0.14.2",
-    "hash": "sha256-BQ56tulx72lzm9SmMF7AOaAiFb2ZfnWPmx+YnA/7nc8="
+    "version": "0.15.0",
+    "hash": "sha256-XqRmO5u5KzIoB9YsmIBB1poxVcf8CpCO8c7Fsy8iEhg="
   },
   "pdfcraft": {
-    "version": "0.16.1",
-    "hash": "sha256-BN7jmgm3xaBqlTOeQbYRiwGHZXnpaPAb5VWVq6OlkIc="
+    "version": "0.17.0",
+    "hash": "sha256-duLUkbNVTIfm5CCzKQNwQ/m5QaRZZa6PwWpqQur49Ws="
   },
   "photocraft": {
-    "version": "0.18.0",
-    "hash": "sha256-z5pq2ytnng5RA0IIoPty2j4JZMqqXH9fCztHVIa8vXI="
+    "version": "0.19.0",
+    "hash": "sha256-cGXkEBDzdQxM9bYS/wJJ5vSl67UFAbdv2ViRISGG6QE="
   },
   "solidcraft": {
     "owner": "tangency-labs",
     "appId": "io.tangencylabs.solidcraft",
-    "version": "0.29.0",
-    "hash": "sha256-xkxgm8mGYGUaESs7q2FAZ7me+aOzxKX74J8LrPdTgbQ="
+    "version": "0.30.0",
+    "hash": "sha256-Ud8niKhw9b77edkpXxjjNzUOBtoEDwcWCCOGpA81yHQ="
   }
 }
