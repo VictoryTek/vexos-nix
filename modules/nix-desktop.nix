@@ -5,6 +5,8 @@
 # regression after a weekly update, short enough to avoid runaway store growth.
 { ... }:
 {
+  imports = [ ./nix-gc-cleanup.nix ]; # journal vacuum + Docker image prune after GC
+
   nix.gc = {
     automatic = true;
     dates     = "weekly";

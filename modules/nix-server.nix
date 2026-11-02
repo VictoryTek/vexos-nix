@@ -6,6 +6,8 @@
 # disk (30 days kept ~21 GiB on a 128 GB drive).
 { ... }:
 {
+  imports = [ ./nix-gc-cleanup.nix ]; # journal vacuum + Docker image prune after GC
+
   nix.gc = {
     automatic = true;
     dates     = "weekly";
