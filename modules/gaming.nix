@@ -17,7 +17,7 @@ let
   # WowUp runs through XWayland instead.
   wowup-cf = pkgs.symlinkJoin {
     name = "wowup-cf";
-    paths = [ pkgs.wowup-cf ];
+    paths = [ pkgs.unstable.wowup-cf ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       wrapProgram $out/bin/wowup-cf --set ELECTRON_OZONE_PLATFORM_HINT x11

@@ -75,19 +75,16 @@ let
     hash = "sha256-Bf8mTwOGkijP6KuZS8dPhO8V4SBUidYbBgSkX9F4sEU=";
   };
 
-  # SmartTwitchTV Desktop: a remote/controller Twitch client (Electron, Flatpak).
-  # Pinned to the VictoryTek fork's v0.1.0 release, never the author's rolling "latest"
-  # (deleted and rebuilt weekly, so its hash changes). That release file is fixed, but
-  # its build pulled the upstream SmartTwitchTV master unpinned: a rebuild of the tag
-  # gives a different hash, so never replace the hash with a rebuilt one. To update,
-  # push a new tag on the fork and bump version and hash together.
+  # VacuumStream: a controller-first Twitch client using Twitch's official player
+  # (Electron, Flatpak). Pinned to a release asset; to update, bump version and hash
+  # together (hash from the release's SHA256SUMS, converted with `nix hash convert`).
   # Installed by modules/flatpak-bundles.nix; the app is closed through `flatpak kill`.
-  smartTwitchTv = {
-    id      = "io.github.smarttwitchtv.Desktop";
-    version = "0.1.0";
+  vacuumStream = {
+    id      = "io.github.eliottness.VacuumStream";
+    version = "0.2.1";
     src     = pkgs.fetchurl {
-      url  = "https://github.com/VictoryTek/twitchtv-htpc/releases/download/v0.1.0/SmartTwitchTV.flatpak";
-      hash = "sha256-YjiIxkzDsaTCUrtT6ziDqvrA6nMiHCC1FQZbgWNZ+YA=";
+      url  = "https://github.com/eliottness/VacuumStream/releases/download/v0.2.1/VacuumStream-0.2.1-x86_64.flatpak";
+      hash = "sha256-IRWESfdUjDwLDyiJhcqmjUHLsjja9D98QsAGKJFzx3M=";
     };
   };
 
@@ -349,8 +346,8 @@ in
         {
           name        = "Twitch";
           icon        = "${kora}/gnome-twitch.svg";
-          description = "SmartTwitchTV, made for the remote";
-          flatpak     = smartTwitchTv.id;
+          description = "VacuumStream, made for the remote";
+          flatpak     = vacuumStream.id;
         }
         {
           name        = "Browser";
@@ -381,18 +378,7 @@ in
 
       environment.systemPackages = [ pkgs.plex-htpc ];
 
-      vexos.flatpak.bundles = [ smartTwitchTv ];
-
-      # A `flatpak` tile cannot set environment variables, so native Wayland (the app
-      # defaults to XWayland) is a system-wide Flatpak override, a key file Flatpak reads
-      # on every run of the app.
-      systemd.tmpfiles.rules = [
-        "d /var/lib/flatpak/overrides 0755 root root -"
-        "L+ /var/lib/flatpak/overrides/${smartTwitchTv.id} - - - - ${pkgs.writeText "smarttwitchtv-override" ''
-          [Environment]
-          STV_WAYLAND=1
-        ''}"
-      ];
+      vexos.flatpak.bundles = [ vacuumStream ];
 
       # ── VexTheater ─────────────────────────────────────────────────────────
       # `autostart` runs it as a systemd user service in graphical-session.target,
