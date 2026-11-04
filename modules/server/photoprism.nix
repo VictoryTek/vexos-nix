@@ -103,7 +103,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.photoprism = {
-      image = "photoprism/photoprism:261007";
+      image = "photoprism/photoprism:261029";
       ports = [ "${toString cfg.port}:2342" ];
       environment = {
         PHOTOPRISM_UID = toString cfg.userId;

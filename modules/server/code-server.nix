@@ -95,7 +95,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.code-server = {
-      image = "codercom/code-server:4.143.1";
+      image = "codercom/code-server:4.144.0";
       ports = [ "${toString cfg.port}:8080" ];
       user = "${toString cfg.userId}:${toString cfg.groupId}";
       environment = {
