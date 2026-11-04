@@ -1,15 +1,15 @@
 {
   "wordcraft": {
-    "version": "0.15.0",
-    "hash": "sha256-0j1piqHbC2lNRPqtkYX6mjJ4ihiy3exleiYK566R7mU="
+    "version": "0.15.1",
+    "hash": "sha256-JDJ9UtKWUYYubVh35iJaDoQYXSxcYRn/ju7fDJSluN0="
   },
   "gridcraft": {
     "version": "0.16.0",
     "hash": "sha256-D+LI42uAgJJVnpX7clASC5sCLll6f7FUDjZq7ppNH7E="
   },
   "pdfcraft": {
-    "version": "0.18.0",
-    "hash": "sha256-oIhFZFn95QzFmHjb/aPnLjDEK3V77ERdB/g/8CWv7Ec="
+    "version": "0.18.1",
+    "hash": "sha256-11x3ETAT6GmO7e3wx/+3OVArXD/AXWOlBhIktb1GhSA="
   },
   "photocraft": {
     "version": "0.20.1",
