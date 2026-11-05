@@ -621,11 +621,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793675351,
-        "narHash": "sha256-ZAmHZyQMGcSMvtFRAPn+b6CZreRtoHMTfrI6gq96/qU=",
+        "lastModified": 1793819630,
+        "narHash": "sha256-YHU2RLFylHDhbXS5V2ca9+qElTFJP7WbBmDIGrNM7P8=",
         "owner": "VictoryTek",
         "repo": "VexTheater",
-        "rev": "e7cced276cbbf2ea5f06dddeb7582b9f748c7475",
+        "rev": "25940be7d1e1e1ff892b03b5797423dca4b065b3",
         "type": "github"
       },
       "original": {
