@@ -155,7 +155,7 @@ You can switch between variants (and roles) at any time — no reinstall require
 The HTPC boots into **theater mode**: a full-screen, remote-friendly tile launcher ([VexTheater](https://github.com/VictoryTek/VexTheater)) running on top of the normal GNOME session (`modules/htpc-theater.nix`). GDM logs in automatically and the launcher starts as a systemd user service, so GNOME is always underneath: **desktop mode** is simply the launcher hidden.
 
 - **To desktop:** the *Desktop Mode* tile. **Back to theater:** the home key, or *Theater Mode* in the GNOME app grid / dock.
-- **Navigate** with arrows/Enter/Backspace (Esc also goes back), the mouse (it hides when idle), or a TV remote through HDMI-CEC. **F10** (`homeKey`) closes the running app and returns to the launcher, from any app and from desktop mode; it is a GNOME keyboard shortcut running `vextheater --home`.
+- **Navigate** with arrows/Enter/Backspace (Esc also goes back), the mouse (it hides when idle), or a TV remote through HDMI-CEC. **Home** on the Fire TV remote (`homeKey`, the `XF86HomePage` key; F10 no longer does this) closes the running app and returns to the launcher, from any app and from desktop mode; it is a GNOME keyboard shortcut running `vextheater --home`.
 - If the launcher fails to start you are simply in GNOME: it is a separate user service, so nothing leaves a black screen. A launcher that crashes five times in a minute is not restarted again; start it by hand with *Theater Mode* in the app grid, or turn it off with `vexos.htpc.theater.enable = false`. Ctrl+Alt+F2 opens a text console as a last resort.
 - A launcher that crashes in desktop mode restarts in desktop mode; a new login always starts in theater mode.
 
@@ -200,11 +200,33 @@ Other options:
 | Option | Default | Purpose |
 |---|---|---|
 | `vexos.htpc.theater.enable` | `true` | `false` restores plain GNOME without the launcher |
-| `vexos.htpc.theater.homeKey` | `"F10"` | `F1`–`F12` or `Home` |
+| `vexos.htpc.theater.homeKey` | `"XF86HomePage"` | `F1`–`F12`, `Home` or `XF86HomePage` |
 | `vexos.htpc.theater.gamepad.homeButton` | `false` | Gamepad Guide/PS button acts as the home key |
 | `vexos.htpc.theater.cec.enable` | `false` | TV remote over HDMI-CEC (needs a CEC adapter, e.g. Pulse-Eight USB-CEC) |
 
 The first switch from the old launcher replaces greetd with GDM, so it is queued for the next boot and `just switch` asks for a reboot.
+
+#### Amazon Fire TV remote (Bluetooth)
+
+The HTPC remaps four buttons of the Fire TV Bluetooth remote (it shows up as the input device "AR Keyboard", vendor `0171`, product `0427`) with a udev hwdb entry in `modules/htpc-theater.nix`. It matches only this remote (`evdev:input:b0005v0171p0427*`); every other button keeps the kernel's mapping.
+
+| Button | HID usage | Key |
+|---|---|---|
+| Rewind | `c00b4` | Left |
+| Fast forward | `c00b3` | Right |
+| Settings | `c0033` | `KEY_CONFIG` (opens GNOME Settings) |
+| Recent apps | `c0002` | Left Super (opens the Overview) |
+| Home | | `KEY_HOMEPAGE`, the VexTheater home key (not remapped) |
+
+To check it on the HTPC after `just switch` (pair the remote first):
+
+```bash
+sudo "$(nix build nixpkgs#evtest --no-link --print-out-paths)/bin/evtest"   # pick the "AR Keyboard" entry, then press each button
+udevadm info /dev/input/eventN | grep -E 'KEYBOARD_KEY|ID_INPUT_KEY'   # eventN = the number evtest showed
+systemd-hwdb query 'evdev:input:b0005v0171p0427e0000'   # should list the four KEYBOARD_KEY_c00… lines
+```
+
+In `evtest`, the Rewind button should report `KEY_LEFT`, Fast forward `KEY_RIGHT`, Settings `KEY_CONFIG` and Recent apps `KEY_LEFTMETA`; before the remap the last two showed `KEY_UNKNOWN`. Each press also prints a `MSC_SCAN` line (for example `value c00b4`): that is the scancode the hwdb entry matches. If a button still shows its old key, the remote's bus, vendor or product differs from the match line (compare with the `Input device ID` line `evtest` prints: `bus 0x5 vendor 0x171 product 0x427`), or the remote needs to be re-paired or the hwdb refreshed with `sudo systemd-hwdb update && sudo udevadm trigger --subsystem-match=input`. `evtest` also shows the Home button as `KEY_HOMEPAGE`.
 
 
 ## Updating to the latest config

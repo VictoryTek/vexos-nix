@@ -6,7 +6,8 @@
 #
 #   - Theater mode is the launcher full screen; desktop mode is the launcher hidden
 #     (the Desktop Mode tile), which shows the plain GNOME desktop behind it.
-#   - The home key (a GNOME custom shortcut running `vextheater --home`) closes the
+#   - The home key (XF86HomePage by default, a GNOME custom shortcut running
+#     `vextheater --home`) closes the
 #     running app and brings the launcher back, from an app or from desktop mode.
 #     The CEC remote and the gamepad Guide button press the same key through ydotool.
 #   - If VexTheater fails to start the user is simply in GNOME: the service is a
@@ -101,6 +102,7 @@ let
     F1 = 59; F2 = 60; F3 = 61; F4 = 62; F5 = 63; F6 = 64;
     F7 = 65; F8 = 66; F9 = 67; F10 = 68; F11 = 87; F12 = 88;
     Home = 102;
+    XF86HomePage = 172;   # KEY_HOMEPAGE: the Fire TV remote's Home button
   };
   homeKeyCode = toString keyCodes.${cfg.homeKey};
 
@@ -283,8 +285,8 @@ in
 
     homeKey = lib.mkOption {
       type        = lib.types.enum (lib.attrNames keyCodes);
-      default     = "F10";
-      description = "Key that closes the running app and brings the launcher back (GNOME custom shortcut running `vextheater --home`).";
+      default     = "XF86HomePage";
+      description = "Key that closes the running app and brings the launcher back (GNOME custom shortcut running `vextheater --home`). XF86HomePage is the keysym of KEY_HOMEPAGE, which the Fire TV remote's Home button sends.";
     };
 
     gamepad.homeButton = lib.mkEnableOption "mapping the gamepad Guide button to the home key (via ydotool)";
@@ -401,6 +403,19 @@ in
         StartLimitIntervalSec = 60;
         StartLimitBurst       = 5;
       };
+
+      # ── Amazon Fire TV remote (Bluetooth, "AR Keyboard") ───────────────────
+      # Matched to this remote only (bus 0005 = Bluetooth, vendor 0171, product 0427).
+      # Its Home button already sends KEY_HOMEPAGE (the home key above); the other
+      # buttons are left as the kernel maps them. The scancode is the HID consumer
+      # usage (page 0x0c, usage 0xb4 → c00b4). Check with evtest, see the README.
+      services.udev.extraHwdb = ''
+        evdev:input:b0005v0171p0427*
+         KEYBOARD_KEY_c00b4=left
+         KEYBOARD_KEY_c00b3=right
+         KEYBOARD_KEY_c0033=config
+         KEYBOARD_KEY_c0002=leftmeta
+      '';
 
       # ── Home key ───────────────────────────────────────────────────────────
       # A GNOME custom shortcut, so it works over any app and from desktop mode, and
