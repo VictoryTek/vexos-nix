@@ -155,7 +155,7 @@ You can switch between variants (and roles) at any time — no reinstall require
 The HTPC boots into **theater mode**: a full-screen, remote-friendly tile launcher ([VexTheater](https://github.com/VictoryTek/VexTheater)) running on top of the normal GNOME session (`modules/htpc-theater.nix`). GDM logs in automatically and the launcher starts as a systemd user service, so GNOME is always underneath: **desktop mode** is simply the launcher hidden.
 
 - **To desktop:** the *Desktop Mode* tile. **Back to theater:** the home key, or *Theater Mode* in the GNOME app grid / dock.
-- **Navigate** with arrows/Enter/Backspace (Esc also goes back), the mouse (it hides when idle), or a TV remote through HDMI-CEC. **Home** on the Fire TV remote (`homeKey`, the `XF86HomePage` key; F10 no longer does this) closes the running app and returns to the launcher, from any app and from desktop mode; it is a GNOME keyboard shortcut running `vextheater --home`.
+- **Navigate** with arrows/Enter/Backspace (Esc also goes back), the mouse (it hides when idle), or a TV remote through HDMI-CEC. **Home** on the Fire TV remote (`homeKey`, the `XF86HomePage` key) or **F10** on a keyboard (`extraHomeKeys`) closes the running app and returns to the launcher, from any app and from desktop mode; it is a GNOME keyboard shortcut running `vextheater --home`.
 - If the launcher fails to start you are simply in GNOME: it is a separate user service, so nothing leaves a black screen. A launcher that crashes five times in a minute is not restarted again; start it by hand with *Theater Mode* in the app grid, or turn it off with `vexos.htpc.theater.enable = false`. Ctrl+Alt+F2 opens a text console as a last resort.
 - A launcher that crashes in desktop mode restarts in desktop mode; a new login always starts in theater mode.
 
@@ -201,6 +201,7 @@ Other options:
 |---|---|---|
 | `vexos.htpc.theater.enable` | `true` | `false` restores plain GNOME without the launcher |
 | `vexos.htpc.theater.homeKey` | `"XF86HomePage"` | `F1`–`F12`, `Home` or `XF86HomePage` |
+| `vexos.htpc.theater.extraHomeKeys` | `[ "F10" ]` | Further keys that also go home (each its own GNOME shortcut); same values as `homeKey` |
 | `vexos.htpc.theater.gamepad.homeButton` | `false` | Gamepad Guide/PS button acts as the home key |
 | `vexos.htpc.theater.cec.enable` | `false` | TV remote over HDMI-CEC (needs a CEC adapter, e.g. Pulse-Eight USB-CEC) |
 

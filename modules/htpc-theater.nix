@@ -9,7 +9,9 @@
 #   - The home key (XF86HomePage by default, a GNOME custom shortcut running
 #     `vextheater --home`) closes the
 #     running app and brings the launcher back, from an app or from desktop mode.
-#     The CEC remote and the gamepad Guide button press the same key through ydotool.
+#     `extraHomeKeys` (F10 by default) are further shortcuts that do the same, for a
+#     keyboard. The CEC remote and the gamepad Guide button press the home key
+#     through ydotool.
 #   - If VexTheater fails to start the user is simply in GNOME: the service is a
 #     separate unit, so nothing here can leave a black screen. A crash loop is cut
 #     off after five failures in a minute, and "Theater Mode" in the app grid starts
@@ -96,8 +98,8 @@ let
   '';
 
   # Linux evdev key codes for ydotool (CEC and gamepad Guide mapping).
-  # Its attribute names are also the allowed homeKey values: GNOME accelerator
-  # names, which is what the custom shortcut below takes.
+  # Its attribute names are also the allowed homeKey and extraHomeKeys values: GNOME
+  # accelerator names, which is what the custom shortcuts below take.
   keyCodes = {
     F1 = 59; F2 = 60; F3 = 61; F4 = 62; F5 = 63; F6 = 64;
     F7 = 65; F8 = 66; F9 = 67; F10 = 68; F11 = 87; F12 = 88;
@@ -105,6 +107,13 @@ let
     XF86HomePage = 172;   # KEY_HOMEPAGE: the Fire TV remote's Home button
   };
   homeKeyCode = toString keyCodes.${cfg.homeKey};
+
+  # Further keys that also go home (a keyboard next to the remote), each its own
+  # GNOME custom shortcut. VexTheater keeps only the `vextheater-home` shortcut
+  # (homeKey) in step with its config and leaves every other shortcut alone.
+  extraHomeKeys = lib.filter (key: key != cfg.homeKey) (lib.unique cfg.extraHomeKeys);
+  mediaKeysPath = "org/gnome/settings-daemon/plugins/media-keys";
+  extraHomeEntry = key: "${mediaKeysPath}/custom-keybindings/vextheater-home-${lib.toLower key}";
 
   # Smart-TV user agent from the Flex Launcher docs; makes youtube.com/tv
   # serve its TV interface.
@@ -289,6 +298,12 @@ in
       description = "Key that closes the running app and brings the launcher back (GNOME custom shortcut running `vextheater --home`). XF86HomePage is the keysym of KEY_HOMEPAGE, which the Fire TV remote's Home button sends.";
     };
 
+    extraHomeKeys = lib.mkOption {
+      type        = lib.types.listOf (lib.types.enum (lib.attrNames keyCodes));
+      default     = [ "F10" ];
+      description = "Further keys that do the same as `homeKey` (each its own GNOME custom shortcut running `vextheater --home`). The default keeps F10 working on a keyboard while the Fire TV remote's Home button is `homeKey`. A key equal to `homeKey` is ignored. CEC and the gamepad Guide button press `homeKey` only.";
+    };
+
     gamepad.homeButton = lib.mkEnableOption "mapping the gamepad Guide button to the home key (via ydotool)";
 
     cec.enable = lib.mkEnableOption "HDMI-CEC TV remote input via libcec (needs a CEC adapter such as a Pulse-Eight USB-CEC)";
@@ -428,21 +443,26 @@ in
       # the ydotool key presses from CEC / the gamepad Guide button reach it like a
       # keyboard. gsd-media-keys keeps ONE custom-keybindings list per dconf database:
       # the desktop role lists its own in modules/gnome-desktop.nix, which the htpc
-      # role does not import; a second list here would not merge with it.
+      # role does not import; a second list here would not merge with it. The extra
+      # home keys are entries of this same list.
       programs.dconf.profiles.user.databases = [
         {
           settings = {
-            "org/gnome/settings-daemon/plugins/media-keys" = {
-              custom-keybindings = [
-                "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vextheater-home/"
-              ];
+            ${mediaKeysPath} = {
+              custom-keybindings =
+                [ "/${mediaKeysPath}/custom-keybindings/vextheater-home/" ]
+                ++ map (key: "/${extraHomeEntry key}/") extraHomeKeys;
             };
-            "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vextheater-home" = {
+            "${mediaKeysPath}/custom-keybindings/vextheater-home" = {
               name    = "VexTheater home";
               command = "${lib.getExe vt.package} --home";
               binding = cfg.homeKey;
             };
-          };
+          } // lib.listToAttrs (map (key: lib.nameValuePair (extraHomeEntry key) {
+            name    = "VexTheater home (${key})";
+            command = "${lib.getExe vt.package} --home";
+            binding = key;
+          }) extraHomeKeys);
         }
       ];
     }
