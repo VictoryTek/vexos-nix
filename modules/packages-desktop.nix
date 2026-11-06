@@ -4,7 +4,6 @@
 { pkgs, ... }:
 {
   environment.systemPackages = with pkgs; [
-    brave               # Chromium-based browser
     vexos.brave-origin  # Brave Origin standalone browser
     gparted             # Graphical disk partition editor (system package so .desktop is resolvable by GNOME)
     ntfs3g              # mkfs.ntfs — lets gparted format NTFS
