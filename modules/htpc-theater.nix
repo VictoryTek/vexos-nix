@@ -407,14 +407,20 @@ in
       # ── Amazon Fire TV remote (Bluetooth, "AR Keyboard") ───────────────────
       # Matched to this remote only (bus 0005 = Bluetooth, vendor 0171, product 0427).
       # Its Home button already sends KEY_HOMEPAGE (the home key above); the other
-      # buttons are left as the kernel maps them. The scancode is the HID consumer
-      # usage (page 0x0c, usage 0xb4 → c00b4). Check with evtest, see the README.
+      # buttons are left as the kernel maps them. The scancode is the HID usage:
+      # page 0x0c (consumer) + usage 0xb4 → c00b4, page 0x07 (keyboard) + usage
+      # 0xf1 → 700f1. Check with evtest, see the README.
+      # Back sends KEY_BACK (scancode 700f1), which Brave treats as browser-history
+      # back: a single-page web app such as YouTube TV has no history to go back
+      # to, so it does nothing. Web apps treat Escape as Back, and the VexTheater
+      # launcher accepts it too, so Back is remapped to Escape.
       services.udev.extraHwdb = ''
         evdev:input:b0005v0171p0427*
          KEYBOARD_KEY_c00b4=left
          KEYBOARD_KEY_c00b3=right
          KEYBOARD_KEY_c0033=config
          KEYBOARD_KEY_c0002=leftmeta
+         KEYBOARD_KEY_700f1=esc
       '';
 
       # ── Home key ───────────────────────────────────────────────────────────

@@ -208,7 +208,7 @@ The first switch from the old launcher replaces greetd with GDM, so it is queued
 
 #### Amazon Fire TV remote (Bluetooth)
 
-The HTPC remaps four buttons of the Fire TV Bluetooth remote (it shows up as the input device "AR Keyboard", vendor `0171`, product `0427`) with a udev hwdb entry in `modules/htpc-theater.nix`. It matches only this remote (`evdev:input:b0005v0171p0427*`); every other button keeps the kernel's mapping.
+The HTPC remaps five buttons of the Fire TV Bluetooth remote (it shows up as the input device "AR Keyboard", vendor `0171`, product `0427`) with a udev hwdb entry in `modules/htpc-theater.nix`. It matches only this remote (`evdev:input:b0005v0171p0427*`); every other button keeps the kernel's mapping.
 
 | Button | HID usage | Key |
 |---|---|---|
@@ -216,6 +216,7 @@ The HTPC remaps four buttons of the Fire TV Bluetooth remote (it shows up as the
 | Fast forward | `c00b3` | Right |
 | Settings | `c0033` | `KEY_CONFIG` (opens GNOME Settings) |
 | Recent apps | `c0002` | Left Super (opens the Overview) |
+| Back | `700f1` | Escape (web apps treat Escape as Back; the launcher already accepts it) |
 | Home | | `KEY_HOMEPAGE`, the VexTheater home key (not remapped) |
 
 To check it on the HTPC after `just switch` (pair the remote first):
@@ -223,10 +224,10 @@ To check it on the HTPC after `just switch` (pair the remote first):
 ```bash
 sudo "$(nix build nixpkgs#evtest --no-link --print-out-paths)/bin/evtest"   # pick the "AR Keyboard" entry, then press each button
 udevadm info /dev/input/eventN | grep -E 'KEYBOARD_KEY|ID_INPUT_KEY'   # eventN = the number evtest showed
-systemd-hwdb query 'evdev:input:b0005v0171p0427e0000'   # should list the four KEYBOARD_KEY_c00… lines
+systemd-hwdb query 'evdev:input:b0005v0171p0427e0000'   # should list the five KEYBOARD_KEY_… lines
 ```
 
-In `evtest`, the Rewind button should report `KEY_LEFT`, Fast forward `KEY_RIGHT`, Settings `KEY_CONFIG` and Recent apps `KEY_LEFTMETA`; before the remap the last two showed `KEY_UNKNOWN`. Each press also prints a `MSC_SCAN` line (for example `value c00b4`): that is the scancode the hwdb entry matches. If a button still shows its old key, the remote's bus, vendor or product differs from the match line (compare with the `Input device ID` line `evtest` prints: `bus 0x5 vendor 0x171 product 0x427`), or the remote needs to be re-paired or the hwdb refreshed with `sudo systemd-hwdb update && sudo udevadm trigger --subsystem-match=input`. `evtest` also shows the Home button as `KEY_HOMEPAGE`.
+In `evtest`, the Rewind button should report `KEY_LEFT`, Fast forward `KEY_RIGHT`, Settings `KEY_CONFIG`, Recent apps `KEY_LEFTMETA` and Back `KEY_ESC`; before the remap Settings and Recent apps showed `KEY_UNKNOWN` and Back showed `KEY_BACK`. Each press also prints a `MSC_SCAN` line (for example `value c00b4`): that is the scancode the hwdb entry matches. If a button still shows its old key, the remote's bus, vendor or product differs from the match line (compare with the `Input device ID` line `evtest` prints: `bus 0x5 vendor 0x171 product 0x427`), or the remote needs to be re-paired or the hwdb refreshed with `sudo systemd-hwdb update && sudo udevadm trigger --subsystem-match=input`. `evtest` also shows the Home button as `KEY_HOMEPAGE`.
 
 
 ## Updating to the latest config
