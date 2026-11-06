@@ -397,6 +397,18 @@ in
 
       vexos.flatpak.bundles = [ vacuumStream ];
 
+      # VacuumStream opens a 1280x720 window unless it believes it runs in Steam Game
+      # Mode (SteamOS=1 and SteamGamepadUI=1; src/main/index.ts). A system override
+      # sets both, so the Twitch tile starts full screen. It is an override rather
+      # than a `command` tile so VexTheater still closes the app through `flatpak kill`.
+      systemd.tmpfiles.settings."10-vacuumstream-fullscreen" = {
+        "/var/lib/flatpak/overrides".d = { mode = "0755"; user = "root"; group = "root"; };
+        "/var/lib/flatpak/overrides/${vacuumStream.id}"."f+" = {
+          mode = "0644"; user = "root"; group = "root";
+          argument = "[Environment]\nSteamOS=1\nSteamGamepadUI=1\n";
+        };
+      };
+
       # ── VexTheater ─────────────────────────────────────────────────────────
       # `autostart` runs it as a systemd user service in graphical-session.target,
       # restarted if it crashes; GDM auto-login (modules/gnome.nix) starts the session.
