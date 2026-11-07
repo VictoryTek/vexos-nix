@@ -33,7 +33,7 @@
 let
   # Same app set the DMS dock pinned (home/dank-material-shell.nix), kept in
   # sync deliberately so switching shells does not silently change the dock.
-  # Codium is only actually installed when the development feature is on, so
+  # T3 Code is only actually installed when the development feature is on, so
   # pinning it unconditionally would leave a dead icon that launches nothing.
   basePinnedApps = [
     "brave-origin"
@@ -42,7 +42,7 @@ let
     "com.mitchellh.ghostty"
     "io.github.up"
     "org.gnome.Boxes"
-  ] ++ lib.optional osConfig.vexos.features.development.enable "codium";
+  ] ++ lib.optional osConfig.vexos.features.development.enable "t3code";
 
   # Every shell action is reached through `noctalia msg <command>`. These are
   # bound in two places — a Hyprland keybind (files/hypr/hyprland.conf) and a

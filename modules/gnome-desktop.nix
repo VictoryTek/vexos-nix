@@ -35,7 +35,7 @@ in
             "com.mitchellh.ghostty.desktop"
             "io.github.up.desktop"
             "org.gnome.Boxes.desktop"
-            "codium.desktop"
+            "t3code.desktop"
           ];
         };
 
@@ -86,7 +86,19 @@ in
         };
 
         "org/gnome/desktop/app-folders" = {
-          folder-children = [ "Games" "Game Utilities" "Office" "Graphics" "Utilities" "System" ];
+          folder-children = [ "Games" "Game Utilities" "Office" "Graphics" "Development" "Utilities" "System" ];
+        };
+
+        # Apps installed by modules/development.nix. GNOME ignores entries that
+        # are not installed, so the folder stays hidden while the feature is off.
+        "org/gnome/desktop/app-folders/folders/Development" = {
+          name = "Development";
+          apps = [
+            "t3code.desktop"
+            "codium.desktop"
+            "ai.opencode.desktop.desktop"
+            "io.github.pol_rivero.github-desktop-plus.desktop"
+          ];
         };
 
         "org/gnome/desktop/app-folders/folders/Games" = {

@@ -15,7 +15,7 @@
 # for its option declarations only and never sets `enable`.
 { config, pkgs, lib, inputs, osConfig, ... }:
 let
-  # Codium is only actually installed when the development feature is on
+  # T3 Code is only actually installed when the development feature is on
   # (modules/development.nix, per-host opt-in) — pinning it unconditionally
   # left a dead placeholder icon on the dock that couldn't launch anything.
   basePinnedApps = [
@@ -25,7 +25,7 @@ let
     "com.mitchellh.ghostty"
     "io.github.up"
     "org.gnome.Boxes"
-  ] ++ lib.optional osConfig.vexos.features.development.enable "codium";
+  ] ++ lib.optional osConfig.vexos.features.development.enable "t3code";
 in
 {
   # Imports cannot be conditional — they are resolved before option values

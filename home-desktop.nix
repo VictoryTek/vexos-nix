@@ -196,6 +196,36 @@
     Install.WantedBy = [ "graphical-session.target" ];
   };
 
+  # ── One-time dock migration: codium → t3code ─────────────────────────────
+  # Same user-dconf shadowing as the brave migration above: an existing user
+  # favorite-apps list hides the new system default, so swap the entry once.
+  systemd.user.services.vexos-migrate-dock-t3code = {
+    Unit = {
+      Description = "VexOS: migrate dock from codium to t3code (once)";
+      After       = [ "graphical-session.target" ];
+      PartOf      = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type            = "oneshot";
+      RemainAfterExit = true;
+      ExecStart       = toString (pkgs.writeShellScript "vexos-migrate-dock-t3code" ''
+        STAMP="$HOME/.local/share/vexos/.dock-t3code-migration-v1"
+        [ -f "$STAMP" ] && exit 0
+
+        CURRENT=$(${pkgs.dconf}/bin/dconf read /org/gnome/shell/favorite-apps)
+        if echo "$CURRENT" | grep -q "codium\.desktop"; then
+          UPDATED=$(echo "$CURRENT" | ${pkgs.gnused}/bin/sed \
+            "s/codium\.desktop/t3code.desktop/g")
+          ${pkgs.dconf}/bin/dconf write /org/gnome/shell/favorite-apps "$UPDATED"
+        fi
+
+        mkdir -p "$HOME/.local/share/vexos"
+        touch "$STAMP"
+      '');
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
   # ── First-run app-folder layout ───────────────────────────────────────────
   # See comment in home-htpc.nix for rationale.
   systemd.user.services.vexos-init-app-folders = {
@@ -208,13 +238,13 @@
       Type            = "oneshot";
       RemainAfterExit = true;
       ExecStart       = toString (pkgs.writeShellScript "vexos-init-app-folders-desktop" ''
-        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v10"
+        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v11"
         [ -f "$STAMP" ] && exit 0
 
         D="${pkgs.dconf}/bin/dconf"
 
         $D write /org/gnome/desktop/app-folders/folder-children \
-          "['Games', 'Game Utilities', 'Office', 'Graphics', '3D', 'Utilities', 'System']"
+          "['Games', 'Game Utilities', 'Office', 'Graphics', '3D', 'Development', 'Utilities', 'System']"
 
         $D write /org/gnome/desktop/app-folders/folders/Games/name  "'Games'"
         $D write /org/gnome/desktop/app-folders/folders/Games/apps \
@@ -235,6 +265,10 @@
         $D write /org/gnome/desktop/app-folders/folders/"3D"/name "'3D'"
         $D write /org/gnome/desktop/app-folders/folders/"3D"/apps \
           "['org.blender.Blender.desktop', 'com.orcaslicer.OrcaSlicer.desktop', 'io.tangencylabs.solidcraft.desktop']"
+
+        $D write /org/gnome/desktop/app-folders/folders/Development/name "'Development'"
+        $D write /org/gnome/desktop/app-folders/folders/Development/apps \
+          "['t3code.desktop', 'codium.desktop', 'ai.opencode.desktop.desktop', 'io.github.pol_rivero.github-desktop-plus.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/Utilities/name "'Utilities'"
         $D write /org/gnome/desktop/app-folders/folders/Utilities/apps \
