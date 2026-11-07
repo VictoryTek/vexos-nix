@@ -9,7 +9,7 @@ let
   cfg = config.vexos.features.development;
 in
 {
-  options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Rust via rustup, Go, Claude Code, T3 Code, Nix LSP)";
+  options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Rust via rustup, Go, Claude Code, opencode, T3 Code, Nix LSP)";
 
   config = lib.mkIf cfg.enable {
     # ── Flatpak ───────────────────────────────────────────────────────────────
@@ -64,6 +64,11 @@ in
       # ── AI tooling ────────────────────────────────────────────────────────────
       pkgs.unstable.claude-code # Anthropic Claude CLI (unstable: releases land near-daily)
       pkgs.vexos.t3code # T3 Code GUI for coding agents (official AppImage; nixpkgs lags)
+      # opencode: provider-agnostic coding agent (works with local models). T3 Code
+      # drives the `opencode` CLI. From unstable: stable's opencode-desktop needs
+      # electron 41, which nixpkgs marks insecure (EOL), and the CLI is a major behind.
+      pkgs.unstable.opencode # opencode CLI / TUI
+      pkgs.unstable.opencode-desktop # opencode desktop app
       # MCP server exposing NixOS/nixpkgs/home-manager option data to MCP-aware tools.
       # fastmcp 3.2.3's tests/server/providers/proxy/test_stateful_proxy_client.py fails in
       # the sandbox (anyio "exit a cancel scope" RuntimeError), which breaks the whole
