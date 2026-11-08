@@ -153,6 +153,19 @@
   # vexos.server.cockpit.fileSharing.nfs.mountdPort = 20048;
   # vexos.server.cockpit.fileSharing.nfs.lockdPort = 4001;
   # vexos.server.cockpit.fileSharing.nfs.statdPort = 4000;
+  # Scheduled NAS-to-NAS rsync mirror (replaces a manual Grsync session). Monthly by default;
+  # run one now with 'just nas-sync-now tv', check with 'just nas-sync-status' or Cockpit.
+  # keepDeletedDays/keepDeletedDir move files the mirror would delete or overwrite into a dated
+  # folder on the destination and prune folders older than N days (omit both for a plain mirror).
+  # vexos.server.nasSync.enable = false;
+  # vexos.server.nasSync.jobs.tv = {
+  #   source = "/goliath/data/media/tv/";
+  #   destination = "/megatron/data/media/tv/";
+  #   mediaMounts = [ "/goliath" "/megatron" ];
+  #   keepDeletedDays = 60;
+  #   keepDeletedDir = "/megatron/data/media/.nas-sync-deleted/tv";
+  #   # timerConfig = { OnCalendar = "monthly"; Persistent = true; };
+  # };
   # vexos.server.uptime-kuma.enable = false;
   # vexos.server.homepage.enable = false;
   # vexos.server.scrutiny.enable = false;               # Port 8078 — disk health (S.M.A.R.T.)
