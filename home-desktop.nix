@@ -238,7 +238,7 @@
       Type            = "oneshot";
       RemainAfterExit = true;
       ExecStart       = toString (pkgs.writeShellScript "vexos-init-app-folders-desktop" ''
-        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v11"
+        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v12"
         [ -f "$STAMP" ] && exit 0
 
         D="${pkgs.dconf}/bin/dconf"
@@ -268,7 +268,7 @@
 
         $D write /org/gnome/desktop/app-folders/folders/Development/name "'Development'"
         $D write /org/gnome/desktop/app-folders/folders/Development/apps \
-          "['t3code.desktop', 'codium.desktop', 'ai.opencode.desktop.desktop', 'io.github.pol_rivero.github-desktop-plus.desktop']"
+          "['t3code.desktop', 'codium.desktop', 'ai.opencode.desktop.desktop', 'io.github.pol_rivero.github-desktop-plus.desktop', 'ai.storyteller.craft-anything.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/Utilities/name "'Utilities'"
         $D write /org/gnome/desktop/app-folders/folders/Utilities/apps \

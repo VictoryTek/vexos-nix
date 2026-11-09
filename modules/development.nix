@@ -4,9 +4,13 @@
 #
 # Enable on a per-host basis via /etc/nixos/features.nix:
 #   vexos.features.development.enable = true;
+#
+# Requires: modules/flatpak.nix and modules/flatpak-bundles.nix (vexos.flatpak.bundles,
+# used for Craft Anything, which upstream ships only as a release-asset .flatpak).
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.features.development;
+  craftAnything = pkgs.vexos.craft-apps.craft-anything;
 in
 {
   options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Rust via rustup, Go, Claude Code, opencode, T3 Code, Nix LSP)";
@@ -15,6 +19,10 @@ in
     # ── Flatpak ───────────────────────────────────────────────────────────────
     vexos.flatpak.extraApps = [
       "io.github.pol_rivero.github-desktop-plus"  # GitHub Desktop (community fork)
+    ];
+
+    vexos.flatpak.bundles = [
+      { id = craftAnything.appId; inherit (craftAnything) version; src = craftAnything.bundle; }  # Craft Anything → Development folder
     ];
 
     # ── Docker ────────────────────────────────────────────────────────────────

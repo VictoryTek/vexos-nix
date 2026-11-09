@@ -15,6 +15,10 @@
     "version": "0.22.0",
     "hash": "sha256-eMNtCP1hRlUxYrPeMhf8vVAkbD1cmjq5htPc0tfxHdo="
   },
+  "craft-anything": {
+    "version": "0.6.0",
+    "hash": "sha256-dnw9/fqDlA8ZoxWGKvi0BHASD6xC0I+W3JPtT80qAwk="
+  },
   "solidcraft": {
     "owner": "tangency-labs",
     "appId": "io.tangencylabs.solidcraft",
