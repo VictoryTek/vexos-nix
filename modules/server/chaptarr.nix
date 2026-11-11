@@ -81,7 +81,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.chaptarr = {
-      image = "chaptarr/chaptarr:0.9.965";
+      image = "chaptarr/chaptarr:0.9.1000";
       ports = [ "${toString cfg.port}:8789" ];
       environment = {
         PUID  = toString cfg.userId;

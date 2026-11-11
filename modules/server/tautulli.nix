@@ -65,7 +65,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.tautulli = {
-      image = "ghcr.io/tautulli/tautulli:v2.18.2";
+      image = "ghcr.io/tautulli/tautulli:v2.19.1";
       ports = [ "${toString cfg.port}:8181" ];
       environment = {
         PUID = toString cfg.userId;
