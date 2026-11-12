@@ -21,6 +21,7 @@ final: prev: {
     curseforge           = final.callPackage ./curseforge { };  # game mod/addon manager (AppImage)
     # ── Development ─────────────────────────────────────────────────────────
     t3code               = final.callPackage ./t3code { };
+    chatgpt-desktop      = final.callPackage ./chatgpt-desktop { };  # ChatGPT desktop app incl. Codex (.deb)
     # ── Flatpak bundles (release assets, not on Flathub) ────────────────────
     # pkgs.vexos.craft-apps.<name>.{appId,version,bundle}; installed by
     # modules/flatpak-bundles.nix. Plain import (not callPackage) so the set is

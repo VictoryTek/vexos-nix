@@ -98,6 +98,7 @@ in
             "codium.desktop"
             "ai.opencode.desktop.desktop"
             "io.github.pol_rivero.github-desktop-plus.desktop"
+            "chatgpt.desktop"
           ];
         };
 

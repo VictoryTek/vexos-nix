@@ -13,7 +13,7 @@ let
   craftAnything = pkgs.vexos.craft-apps.craft-anything;
 in
 {
-  options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Rust via rustup, Go, Claude Code, opencode, T3 Code, Nix LSP)";
+  options.vexos.features.development.enable = lib.mkEnableOption "development tools (Docker, VSCodium, Python, Node, Rust via rustup, Go, Claude Code, Codex, opencode, T3 Code, Nix LSP)";
 
   config = lib.mkIf cfg.enable {
     # ── Flatpak ───────────────────────────────────────────────────────────────
@@ -72,6 +72,11 @@ in
       # ── AI tooling ────────────────────────────────────────────────────────────
       pkgs.unstable.claude-code # Anthropic Claude CLI (unstable: releases land near-daily)
       pkgs.vexos.t3code # T3 Code GUI for coding agents (official AppImage; nixpkgs lags)
+      # Codex CLI from stable on purpose: unstable's codex 0.167.0 is not in the binary
+      # cache and fails to build (aws-lc-sys: "requires a system-installed AWS-LC").
+      # Switch to pkgs.unstable.codex once nixpkgs fixes that.
+      pkgs.codex # OpenAI Codex CLI
+      pkgs.vexos.chatgpt-desktop # ChatGPT desktop app incl. Codex (official .deb, unfree; not in nixpkgs)
       # opencode: provider-agnostic coding agent (works with local models). T3 Code
       # drives the `opencode` CLI. From unstable: stable's opencode-desktop needs
       # electron 41, which nixpkgs marks insecure (EOL), and the CLI is a major behind.

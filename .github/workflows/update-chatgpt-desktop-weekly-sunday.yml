@@ -1,0 +1,136 @@
+name: ChatGPT Desktop Pin — Weekly Sunday
+
+# The ChatGPT desktop app (includes Codex) is hand-packaged from OpenAI's official
+# Linux .deb (pkgs/chatgpt-desktop/default.nix) because it is not in nixpkgs and has
+# no Flatpak or AppImage. The version and fetchurl hash are hardcoded, so neither the
+# flake-lock update workflows nor the app's own updater (/nix/store is read-only) can
+# ever move it. Without this workflow the pin drifts indefinitely.
+#
+# The package pins the versioned file in OpenAI's signed apt repository
+# (.../linux/deb/pool/...), not the unversioned `latest` URL. This workflow reads the
+# repository's `Packages` index, which lists the newest Version and the SHA256 of the
+# .deb, so the ~560 MB file is never downloaded just to learn a hash. It rewrites the
+# version and hash in place, BUILDS the result, and only commits if the build succeeds.
+# The build gate matters as in update-brave-origin-weekly-thursday.yml: a new upstream
+# Electron build can add shared-library dependencies that break autoPatchelfHook, and
+# CI's `nix eval ... drvPath` would not catch that.
+#
+# Mirrors update-t3code-weekly-saturday.yml's direct-commit-to-main style.
+# A commit here only updates the repo — hosts receive the new app on the next
+# `git pull` + `just update` / the "Up" GUI.
+
+on:
+  schedule:
+    - cron: '0 6 * * 0'   # Sundays, 06:00 UTC (offset from the Mon–Sat pin jobs)
+  workflow_dispatch:        # Manual trigger: same scope as the schedule
+
+permissions:
+  contents: write           # Required to commit and push the updated pin back to main
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60     # the package is ~1.8 GB unpacked; allow for a slow download
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for a newer ChatGPT desktop release
+        id: check
+        run: |
+          set -euo pipefail
+
+          PKG="pkgs/chatgpt-desktop/default.nix"
+          REPO="https://persistent.oaistatic.com/codex-app-prod/linux/deb"
+
+          current=$(grep -oP '^\s*version\s*=\s*"\K[^"]+' "$PKG")
+          echo "Current pin: $current"
+
+          # The index holds one stanza per published build of `chatgpt` (currently just
+          # one). Collect "Version SHA256 Filename" for each and take the highest
+          # version, so an index that also lists older builds can never cause a downgrade.
+          index=$(curl -fsS "$REPO/dists/stable/main/binary-amd64/Packages") || true
+          latest=""; sha256=""; file=""
+          best=$(
+            printf '%s\n' "$index" | awk 'BEGIN { RS = ""; FS = "\n" }
+              {
+                p = ""; v = ""; s = ""; f = ""
+                for (i = 1; i <= NF; i++) {
+                  if      ($i ~ /^Package: /)  p = substr($i, 10)
+                  else if ($i ~ /^Version: /)  v = substr($i, 10)
+                  else if ($i ~ /^SHA256: /)   s = substr($i, 9)
+                  else if ($i ~ /^Filename: /) f = substr($i, 11)
+                }
+                if (p == "chatgpt") print v, s, f
+              }' | sort -V | tail -1
+          ) || true
+          read -r latest sha256 file <<< "$best" || true
+
+          if ! printf '%s' "$latest" | grep -qxP '[0-9]+(\.[0-9]+)+' \
+             || ! printf '%s' "$sha256" | grep -qxP '[0-9a-f]{64}' \
+             || [ "$file" != "pool/main/c/chatgpt/chatgpt_${latest}_amd64.deb" ]; then
+            echo "warning: could not read a valid version/SHA256/filename from the apt"
+            echo "warning: index (fetch failure or changed layout) — leaving the pin untouched."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Latest: $latest"
+
+          if [ "$latest" = "$current" ]; then
+            echo "chatgpt-desktop already at latest ($current)"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          hash=$(nix hash convert --hash-algo sha256 --to sri "$sha256")
+          echo "New hash: $hash"
+
+          sed -i \
+            -e "s|^\(\s*version\s*=\s*\)\"${current}\"|\1\"${latest}\"|" \
+            -e "s|^\(\s*hash\s*=\s*\)\"sha256-[^\"]*\"|\1\"${hash}\"|" \
+            "$PKG"
+
+          # Guard against a silently-missed substitution.
+          if ! grep -q "\"${latest}\"" "$PKG" || ! grep -q "\"${hash}\"" "$PKG"; then
+            echo "error: in-place rewrite of $PKG did not apply cleanly"
+            exit 1
+          fi
+
+          echo "Bumping chatgpt-desktop: $current -> $latest"
+          echo "changed=true"    >> "$GITHUB_OUTPUT"
+          echo "version=$latest" >> "$GITHUB_OUTPUT"
+
+      # The package is only reachable through the vexos overlay inside each
+      # nixosConfiguration — there is no packages.<system> flake output — so build it
+      # against the flake's own pinned nixpkgs. Nix's dirty-tree evaluation picks up the
+      # modified (tracked) package file without any staging step. The binary is unfree.
+      - name: Build the bumped package
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          nix build --impure --no-link --print-out-paths --expr '
+            let
+              flake = builtins.getFlake (toString ./.);
+              pkgs  = import flake.inputs.nixpkgs {
+                system   = "x86_64-linux";
+                config.allowUnfree = true;
+                overlays = [ (import ./pkgs) ];
+              };
+            in pkgs.vexos.chatgpt-desktop'
+
+      - name: Commit updated ChatGPT desktop pin
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pkgs/chatgpt-desktop/default.nix
+          git commit -m "chore(chatgpt-desktop): bump to ${{ steps.check.outputs.version }}"
+          git push
