@@ -72,10 +72,7 @@ in
       # ── AI tooling ────────────────────────────────────────────────────────────
       pkgs.unstable.claude-code # Anthropic Claude CLI (unstable: releases land near-daily)
       pkgs.vexos.t3code # T3 Code GUI for coding agents (official AppImage; nixpkgs lags)
-      # Codex CLI from stable on purpose: unstable's codex 0.167.0 is not in the binary
-      # cache and fails to build (aws-lc-sys: "requires a system-installed AWS-LC").
-      # Switch to pkgs.unstable.codex once nixpkgs fixes that.
-      pkgs.codex # OpenAI Codex CLI
+      pkgs.unstable.codex # OpenAI Codex CLI (unstable: stable lags far behind upstream)
       pkgs.vexos.chatgpt-desktop # ChatGPT desktop app incl. Codex (official .deb, unfree; not in nixpkgs)
       # opencode: provider-agnostic coding agent (works with local models). T3 Code
       # drives the `opencode` CLI. From unstable: stable's opencode-desktop needs
