@@ -326,13 +326,21 @@
           # trunk's libdeflate-sys 1.23.1 uses the `no-evex512` target attribute,
           # which GCC 16 rejects. Build trunk's C code with clang until nixpkgs
           # ships a fixed trunk, then drop this override.
+          # nixpkgs-unstable's cargo-setup-hook exports
+          # LIBSQLITE3_SYS_USE_PKG_CONFIG=1 for every Rust build, which makes
+          # libsqlite3-sys link the system libsqlite3 even though sqlx uses the
+          # bundled one (vexboard's own pinned nixpkgs predates the hook). Opt
+          # vexboard out so the bundled SQLite is used. Drop once vexboard sets
+          # this itself.
           (final: prev: {
-            vexboard = prev.vexboard.override {
+            vexboard = (prev.vexboard.override {
               trunk = final.unstable.trunk.overrideAttrs (o: {
                 nativeBuildInputs = o.nativeBuildInputs ++ [ final.unstable.clang ];
                 env.CC_x86_64_unknown_linux_gnu = "clang";
               });
-            };
+            }).overrideAttrs (_: {
+              dontCargoUseSystemLibs = true;
+            });
           })
         ];
       }
