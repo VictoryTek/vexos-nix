@@ -15,7 +15,7 @@ let
   cfg = config.vexos.features.ai;
 in
 {
-  options.vexos.features.ai.enable = lib.mkEnableOption "AI assistant (Claude Code) that can change and troubleshoot VexOS";
+  options.vexos.features.ai.enable = lib.mkEnableOption "AI assistant (Claude Code) that can change and troubleshoot VexOS, plus the Claude Code, Codex and opencode CLIs";
 
   config = lib.mkMerge [
     (lib.mkIf cfg.enable {
@@ -25,6 +25,15 @@ in
         claudePackage = pkgs.unstable.claude-code;
         claudeAcpPackage = pkgs.unstable.claude-agent-acp;
       };
+
+      # The same three agent CLIs as modules/development.nix, so each feature
+      # works without the other. Keep the two lists in step; a package listed
+      # by both is installed once.
+      environment.systemPackages = [
+        pkgs.unstable.claude-code # Anthropic Claude CLI
+        pkgs.unstable.codex       # OpenAI Codex CLI
+        pkgs.unstable.opencode    # provider-agnostic coding agent CLI / TUI
+      ];
     })
 
     # The vexos-ai module only installs the panel's Shell extension; this turns

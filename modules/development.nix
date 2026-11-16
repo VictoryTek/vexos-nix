@@ -70,6 +70,8 @@ in
       pkgs.gcc # C/C++ compiler (native modules; also the `cc` linker rustup toolchains need)
 
       # ── AI tooling ────────────────────────────────────────────────────────────
+      # claude-code, codex and opencode (CLIs) are also installed by modules/ai.nix
+      # when vexos.features.ai is on. Keep the two lists in step.
       pkgs.unstable.claude-code # Anthropic Claude CLI (unstable: releases land near-daily)
       pkgs.vexos.t3code # T3 Code GUI for coding agents (official AppImage; nixpkgs lags)
       pkgs.unstable.codex # OpenAI Codex CLI (unstable: stable lags far behind upstream)
