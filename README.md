@@ -269,6 +269,17 @@ sudo nixos-rebuild switch --flake /etc/nixos#$(cat /etc/nixos/vexos-variant)
 sudo nix --extra-experimental-features 'nix-command flakes' flake update --flake /etc/nixos
 ```
 
+## Agent skills
+
+Agent skills are installed once per device and shared by every agent: Claude Code reads `~/.claude/skills`, Codex, opencode and others read `~/.agents/skills`. The set is published read-only at `/etc/vexos/agent-skills`, and each skill is linked individually into both directories for the primary user. Your own skills in those directories are left alone.
+
+- **Your skills** live in `files/agent-skills/<name>/` (one folder per skill with a `SKILL.md` whose `name:` matches the folder). Skills copied from elsewhere keep a `LICENSE` and an `UPSTREAM.md` with the source URL and commit, either in their own folder or, for a set copied together (superpowers), in `files/agent-skills/.upstream/<set>/`. A folder without a `SKILL.md` is not a skill and is not linked. They are linked when `vexos.features.ai` or `vexos.features.development` is on.
+- **The VexOS skills** (`vexos`, `vexos-diagnose`) come from the vexos-ai input and are linked only when `vexos.features.ai` is on, because they rely on the policy that feature installs.
+- The module is `modules/agent-skills.nix`, imported by the desktop, htpc, server and vanilla roles. Stateless and headless-server have neither feature, so they get no skills.
+- To add a skill, put its folder in `files/agent-skills/` and run `just switch`. With the ai feature on, a skill name that vexos-ai also ships fails the build.
+- A real directory at a link path (for example an old `~/.claude/skills/unslop`) is replaced by the link, so move it into `files/agent-skills/` first. A skill you delete from the repo, or one whose feature you turn off (for example `vexos` and `vexos-diagnose` when you turn ai off), leaves a dangling link behind; remove it with `rm`.
+- Check with `ls -l ~/.claude/skills ~/.agents/skills`.
+
 ## Rollback
 
 ```bash

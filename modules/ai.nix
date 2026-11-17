@@ -9,7 +9,8 @@
 # This module is only the toggle. The assistant itself (launcher, skills, agent
 # deny policy, user services) lives in the vexos-ai flake input
 # (github:VictoryTek/vexos-ai); its NixOS module is imported by flake.nix as
-# vexosAiModule, same split as vpn.nix / vex-vpn.
+# vexosAiModule, same split as vpn.nix / vex-vpn. The assistant's skills are
+# linked into ~/.claude/skills and ~/.agents/skills by modules/agent-skills.nix.
 { config, lib, pkgs, ... }:
 let
   cfg = config.vexos.features.ai;

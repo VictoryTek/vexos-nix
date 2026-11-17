@@ -19,6 +19,7 @@
     ./modules/flatpak.nix            # required by gaming.nix / 3d-print.nix's managedApps declarations below
     ./modules/gaming.nix             # optional: vexos.features.gaming.enable (bundles gpu-gaming + system-gaming)
     ./modules/development.nix        # optional: vexos.features.development.enable
+    ./modules/agent-skills.nix       # agent skills for development (~/.claude/skills, ~/.agents/skills)
     ./modules/flatpak-bundles.nix    # vexos.flatpak.bundles option (3d-print.nix SolidCraft)
     ./modules/3d-print.nix           # optional: vexos.features.print3d.enable
     ./modules/virtualization.nix     # optional: vexos.features.virtualization.enable
