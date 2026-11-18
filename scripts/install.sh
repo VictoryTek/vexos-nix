@@ -354,6 +354,24 @@ if [ ! -d /sys/firmware/efi ]; then
       GRUB_DEVICE=""
     fi
   done
+  # /dev/sdX letters can change between boots (RAID/HBA controllers enumerate
+  # disks in no fixed order), which can leave GRUB aimed at the wrong disk.
+  # Write a stable /dev/disk/by-id path instead; keep the given name if the
+  # disk has no by-id alias.
+  case "$GRUB_DEVICE" in
+    /dev/disk/by-*) ;;
+    *)
+      _grub_real="$(readlink -f "$GRUB_DEVICE")"
+      for _link in /dev/disk/by-id/wwn-* /dev/disk/by-id/*; do
+        case "$_link" in *-part*) continue ;; esac
+        if [ -e "$_link" ] && [ "$(readlink -f "$_link")" = "$_grub_real" ]; then
+          echo "  Using stable path ${_link} for ${GRUB_DEVICE}."
+          GRUB_DEVICE="$_link"
+          break
+        fi
+      done
+      ;;
+  esac
   echo ""
   echo "  Writing /etc/nixos/bootloader.nix to use GRUB on ${GRUB_DEVICE}..."
   # The wrapper imports bootloader.nix when present. Use the vexos.bootloader /

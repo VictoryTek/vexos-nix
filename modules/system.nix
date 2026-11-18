@@ -84,6 +84,15 @@
         device     = config.vexos.grub.device;
         efiSupport = false;
       };
+      # /dev/sdX letters can change between boots on multi-disk hosts, leaving
+      # GRUB aimed at the wrong disk (e.g. a ZFS data disk).
+      warnings = lib.optional (lib.hasPrefix "/dev/sd" config.vexos.grub.device) ''
+        vexos.grub.device is "${config.vexos.grub.device}", a name that can
+        change between boots on multi-disk hosts. Use a stable path so GRUB
+        always targets the same disk.
+        Fix: find it with `ls -l /dev/disk/by-id | grep -w sd[a-z]`, then set
+        vexos.grub.device = "/dev/disk/by-id/wwn-..."; in /etc/nixos/bootloader.nix.
+      '';
     })
 
     # ── Limine (UEFI, opt-in) ─────────────────────────────────────────────
