@@ -10,11 +10,15 @@
 #                                  is on: they tell the agent to edit /etc/nixos and rely
 #                                  on the managed policy that only the ai feature installs.
 #
-# The combined set is published read-only at /etc/vexos/agent-skills. Each skill is
-# linked on its own (never the whole directory) into the primary user's
-# ~/.claude/skills and ~/.agents/skills, so the user's other skills there are left
-# alone. `L+` replaces whatever is at the link path itself, including a real directory
-# of the same name.
+# The combined set is built once (one linkFarm in the Nix store) and published
+# read-only at /etc/vexos/agent-skills. Each skill is linked on its own (never the
+# whole directory) into the primary user's ~/.claude/skills and ~/.agents/skills, so
+# the user's other skills there are left alone. `L+` replaces whatever is at the link
+# path itself, including a real directory of the same name.
+#
+# The per-agent links point at the store path of that same set, not at /etc: apps that
+# run in a sandbox with their own /etc (T3 Code's FHS env) cannot see /etc/vexos, and
+# Claude Code silently skips a skill whose link is broken. /nix is visible everywhere.
 #
 # Imported by every role that imports development.nix or ai.nix (desktop, htpc, server,
 # vanilla). headless-server and stateless import neither, so they do not import this.
@@ -49,7 +53,7 @@ let
 
   collisions = lib.attrNames (lib.intersectAttrs localSkills aiSkills);
 
-  centralDir = "/etc/vexos/agent-skills";
+  centralSet = pkgs.linkFarm "agent-skills" skills;
 in
 {
   config = lib.mkMerge [
@@ -61,10 +65,10 @@ in
     }
 
     (lib.mkIf (skills != { }) {
-      environment.etc."vexos/agent-skills".source = pkgs.linkFarm "agent-skills" skills;
+      environment.etc."vexos/agent-skills".source = centralSet;
 
       systemd.user.tmpfiles.users.${config.vexos.user.name}.rules = lib.concatMap
-        (dir: map (name: "L+ %h/${dir}/${name} - - - - ${centralDir}/${name}") (lib.attrNames skills))
+        (dir: map (name: "L+ %h/${dir}/${name} - - - - ${centralSet}/${name}") (lib.attrNames skills))
         [ ".claude/skills" ".agents/skills" ];
     })
   ];
