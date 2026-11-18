@@ -579,11 +579,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794940993,
-        "narHash": "sha256-DQtT1xp1kVgp3fsnV/7RS/yOiCh+s/fuMtqkSjCjNB4=",
+        "lastModified": 1795013536,
+        "narHash": "sha256-dQ+HFPcLlZF/lrrQ7/Kn/rzxIXpXzD3Z5LwjSaQvoks=",
         "owner": "VictoryTek",
         "repo": "vexos-ai",
-        "rev": "20f382afce43b04477f1109228a6533fb5547e78",
+        "rev": "9dccc7741b7189eaa7513184db9035f464e96875",
         "type": "github"
       },
       "original": {
