@@ -180,7 +180,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.humidor-db = {
-      image = "postgres:17.11";
+      image = "postgres:17.12";
       environment = {
         POSTGRES_USER = "humidor_user";
         POSTGRES_DB   = "humidor_db";

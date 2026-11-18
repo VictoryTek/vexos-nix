@@ -196,7 +196,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.home-registry-db = {
-      image = "postgres:17.11";
+      image = "postgres:17.12";
       environment = {
         POSTGRES_USER = "postgres";
         POSTGRES_DB   = "home_inventory";

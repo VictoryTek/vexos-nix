@@ -2,7 +2,7 @@
 # Joplin Server — self-hosted sync target for Joplin desktop/mobile clients.
 # No nixpkgs package or NixOS module exists for Joplin Server (only the
 # joplin-desktop client is packaged), so it is deployed as a two-container
-# OCI stack: joplin-server (the app) + joplin-db (dedicated postgres:16.15),
+# OCI stack: joplin-server (the app) + joplin-db (dedicated postgres:16.16),
 # talking to each other over an isolated Docker network. The dedicated
 # Postgres instance is intentional — it avoids opening the host's shared
 # Postgres to the Docker bridge network for a service this repo has no
@@ -149,7 +149,7 @@ in
       '';
     };
 
-    # No tmpfiles rule for dataDir/postgres: the postgres:16.15 image's root
+    # No tmpfiles rule for dataDir/postgres: the postgres:16.16 image's root
     # entrypoint chowns PGDATA to its own UID on first run and expects to
     # own it thereafter. A "d ... root root" rule here would re-assert
     # root:root ownership on every activation (systemd-tmpfiles --create
@@ -161,7 +161,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.joplin-db = {
-      image = "postgres:16.15";
+      image = "postgres:16.16";
       environment = {
         POSTGRES_USER = "joplin";
         POSTGRES_DB   = "joplin";
@@ -174,7 +174,7 @@ in
     };
 
     virtualisation.oci-containers.containers.joplin-server = {
-      image = "joplin/server:3.7.4";
+      image = "joplin/server:3.7.6";
       ports = [ "${toString cfg.port}:22300" ];
       environment = {
         APP_PORT          = "22300";

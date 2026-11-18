@@ -170,7 +170,7 @@ in
     ];
 
     virtualisation.oci-containers.containers.mediamanager-db = {
-      image = "postgres:17.11";
+      image = "postgres:17.12";
       environment = {
         POSTGRES_USER = "MediaManager";
         POSTGRES_DB   = "MediaManager";
