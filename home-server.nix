@@ -159,7 +159,7 @@
 
         $D write /org/gnome/desktop/app-folders/folders/Utilities/name "'Utilities'"
         $D write /org/gnome/desktop/app-folders/folders/Utilities/apps \
-          "['com.mattjakeman.ExtensionManager.desktop', 'it.mijorus.gearlever.desktop', 'org.gnome.tweaks.desktop', 'io.github.flattool.Warehouse.desktop', 'io.missioncenter.MissionCenter.desktop', 'com.github.tchx84.Flatseal.desktop', 'org.gnome.World.PikaBackup.desktop', 'LocalSend.desktop', 'com.tmog.taskmanager.desktop', 'com.moonlight_stream.Moonlight.desktop']"
+          "['com.mattjakeman.ExtensionManager.desktop', 'it.mijorus.gearlever.desktop', 'org.gnome.tweaks.desktop', 'io.github.flattool.Warehouse.desktop', 'com.github.tchx84.Flatseal.desktop', 'org.gnome.World.PikaBackup.desktop', 'LocalSend.desktop', 'com.moonlight_stream.Moonlight.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/System/name    "'System'"
         $D write /org/gnome/desktop/app-folders/folders/System/apps \

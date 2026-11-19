@@ -17,7 +17,6 @@ final: prev: {
     vexos-update         = final.callPackage ./vexos-update { };
     vexos-vpn            = final.callPackage ./vexos-vpn { };     # PIA WireGuard/OpenVPN + kill switch CLI
     # ── Utilities ───────────────────────────────────────────────────────────
-    tmog                 = final.callPackage ./tmog { };
     curseforge           = final.callPackage ./curseforge { };  # game mod/addon manager (AppImage)
     # ── Development ─────────────────────────────────────────────────────────
     t3code               = final.callPackage ./t3code { };

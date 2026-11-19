@@ -154,11 +154,9 @@ in
             "it.mijorus.gearlever.desktop"
             "org.gnome.tweaks.desktop"
             "io.github.flattool.Warehouse.desktop"
-            "io.missioncenter.MissionCenter.desktop"
             "com.github.tchx84.Flatseal.desktop"
             "org.gnome.World.PikaBackup.desktop"
             "LocalSend.desktop"
-            "com.tmog.taskmanager.desktop"
             "com.moonlight_stream.Moonlight.desktop"
           ];
         };
@@ -167,6 +165,7 @@ in
           name = "System";
           apps = [
             "org.pulseaudio.pavucontrol.desktop"
+            "io.missioncenter.MissionCenter.desktop"
             "rog-control-center.desktop"
             "org.gnome.Settings.desktop"
             "org.gnome.seahorse.Application.desktop"
