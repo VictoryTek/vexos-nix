@@ -19,50 +19,18 @@
 let
   variant = config.vexos.gpu.nvidiaDriverVariant;
 
-  # Kernel 7.2 compatibility patch for the open kernel modules.
-  #
-  # 7.2 removed strncpy() from the kernel-space string API (strscpy replaces it)
-  # and renamed the DRM atomic types (drm_atomic_state* -> drm_atomic_commit*).
-  # NVIDIA 595.71.05 predates both, so its open modules fail to compile on 7.2.
-  # CachyOS maintains the compat patch; nixpkgs already vendors CachyOS patches
-  # exactly this way for 6.15 and 6.19 (see gpl_symbols_linux_615_patch and
-  # kernel_6_19_patch in pkgs/os-specific/linux/nvidia-x11/default.nix) but has
-  # not picked up the 7.2 one yet.
-  #
-  # Pinned to a commit, not a branch, so the build stays reproducible.
-  #
-  # Safe on older kernels: the DRM half is guarded by LINUX_VERSION_CODE >= 7.2,
-  # and strscpy has existed since 4.3 — verified building on 6.12 and 7.2.
-  #
-  # REMOVE THIS once nixpkgs ships a driver that builds on 7.2 — either a version
-  # newer than 595.71.05 (upstream NVIDIA is already at 610.x) or its own
-  # kernel-7.x entry in patchesOpen. It fails loudly at patch time if the driver
-  # moves underneath it, never silently.
-  kernel_7_2_patch = pkgs.fetchpatch {
-    url = "https://github.com/CachyOS/kernel-patches/raw/93c48e8161fedeff9fd640cf7ebb54d07b22937d/7.2/misc/nvidia/0001-make-Add-support-for-7.2-Kernel.patch";
-    hash = "sha256-K5T7xBWxl2I5Pw/GyHumi4Iq/i6M2jcshI80nSXf/AE=";
-  };
-
   stable = config.boot.kernelPackages.nvidiaPackages.stable;
 
   # Map variant string to the correct driver package.
   #
-  # The "latest" patch is attached by overriding the `.open` derivation directly
-  # rather than via `.override { patchesOpen = ...; }` — patchesOpen is an
-  # argument to nvidia-x11's generic.nix, consumed before callPackage, so it is
-  # not an overridable argument on the finished package.
-  #
-  # legacy_580 needs no patch: since 580.178.04 NVIDIA's own source no longer
-  # calls strncpy(), so the closed modules build on 7.2 as shipped. (A vendored
-  # strncpy->strscpy patch written for 580.173.02 was removed — it fails to apply
-  # to 580.178.04.)
+  # Neither variant needs a kernel-compat patch: "latest" (595.112.07+) and
+  # legacy_580 (580.178.04+) both build on Linux 7.x as shipped. (A vendored
+  # CachyOS 7.2 patch for 595.71.05 was removed — 595.112.07 already contains
+  # those fixes, so the patch no longer applies. Likewise the earlier strncpy
+  # patch for 580.173.02.)
   driverPackage =
     if variant == "latest" then
-      stable // {
-        open = stable.open.overrideAttrs (old: {
-          patches = (old.patches or [ ]) ++ [ kernel_7_2_patch ];
-        });
-      }
+      stable
     else
       config.boot.kernelPackages.nvidiaPackages.legacy_580;
 
