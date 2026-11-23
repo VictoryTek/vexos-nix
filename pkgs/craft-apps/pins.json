@@ -8,8 +8,8 @@
     "hash": "sha256-U1KJBHw4keWiOP6qGGCWyjwMKDzf3h4P/3IkD19HXQI="
   },
   "pdfcraft": {
-    "version": "0.21.1",
-    "hash": "sha256-TxJv9xjoUbpU7gIHxLbOnuvd/dctESRTHSFcwPiTfa8="
+    "version": "0.22.0",
+    "hash": "sha256-8+nbffCL4nd4qX70F9z6T+uCNejcUqHTZk+VTMH5w3o="
   },
   "photocraft": {
     "version": "0.23.1",
@@ -22,7 +22,7 @@
   "solidcraft": {
     "owner": "tangency-labs",
     "appId": "io.tangencylabs.solidcraft",
-    "version": "0.45.0",
-    "hash": "sha256-4HbT5bbJkSUqvWnfy14HdUJxCeh9HCq25AxbF36eIFE="
+    "version": "0.47.0",
+    "hash": "sha256-f1NNXXDoY667aEjIqQHpqo/CqELzJT7zkbUSf67hXSY="
   }
 }
