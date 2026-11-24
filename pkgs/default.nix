@@ -21,6 +21,8 @@ final: prev: {
     # ── Development ─────────────────────────────────────────────────────────
     t3code               = final.callPackage ./t3code { };
     chatgpt-desktop      = final.callPackage ./chatgpt-desktop { };  # ChatGPT desktop app incl. Codex (.deb)
+    photocraft-cli       = final.callPackage ./photocraft-cli { };   # PhotoCraft CLI + MCP server (release tarball)
+    solidcraft-cli       = final.callPackage ./solidcraft-cli { };   # SolidCraft CLI + MCP server (release tarball)
     # ── Flatpak bundles (release assets, not on Flathub) ────────────────────
     # pkgs.vexos.craft-apps.<name>.{appId,version,bundle}; installed by
     # modules/flatpak-bundles.nix. Plain import (not callPackage) so the set is

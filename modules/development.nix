@@ -77,6 +77,8 @@ in
       pkgs.vexos.t3code # T3 Code GUI for coding agents (official AppImage; nixpkgs lags)
       pkgs.unstable.codex # OpenAI Codex CLI (unstable: stable lags far behind upstream)
       pkgs.vexos.chatgpt-desktop # ChatGPT desktop app incl. Codex (official .deb, unfree; not in nixpkgs)
+      pkgs.vexos.photocraft-cli # PhotoCraft CLI; `photocraft-cli mcp` MCP server (release tarball; not in nixpkgs)
+      pkgs.vexos.solidcraft-cli # SolidCraft CLI; `solidcraft-cli mcp` MCP server (release tarball; not in nixpkgs)
       # opencode: provider-agnostic coding agent (works with local models). T3 Code
       # drives the `opencode` CLI. From unstable: stable's opencode-desktop needs
       # electron 41, which nixpkgs marks insecure (EOL), and the CLI is a major behind.
