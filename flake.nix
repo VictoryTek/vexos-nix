@@ -153,6 +153,17 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # gliff — remote desktop over SSH (VictoryTek fork, GNOME backend). NixOS
+    # module installs gliff + gliff-server (programs.gliff); the feature toggle
+    # lives in modules/gliff.nix. Not in nixpkgs or any binary cache, so it is a
+    # cargo release build on first install — same class as vex-vpn.
+    # Its own nixpkgs input is overridden so it builds against this flake's
+    # 26.05 pin.
+    gliff = {
+      url = "github:VictoryTek/gliff";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # vexos-ai — the VexOS AI assistant (Claude Code launcher, skills,
     # agent deny policy). Install-only NixOS module (programs.vexos-ai); the
     # feature toggle lives in modules/ai.nix. Pure shell package, so it is cheap
@@ -214,6 +225,12 @@
     # module arg, and the /etc/nixos wrapper flake does not pass it as a
     # specialArg for every role (infinite recursion on `inputs`).
     vexVpnModule = { imports = [ inputs.vex-vpn.nixosModules.default ]; };
+
+    # gliff NixOS module (programs.gliff options) — desktop, htpc, server, vanilla
+    # (the roles that import modules/gliff.nix, which sets programs.gliff.enable
+    # only when vexos.features.gliff.enable is on). Imported here for the same
+    # reason as vexVpnModule: `imports` cannot reference the `inputs` module arg.
+    gliffModule = { imports = [ inputs.gliff.nixosModules.default ]; };
 
     # vexos-ai NixOS module — desktop, htpc, server (the roles that import
     # modules/ai.nix, which sets programs.vexos-ai.enable only when
@@ -391,13 +408,13 @@
     roles = {
       desktop = {
         homeFile         = ./home-desktop.nix;
-        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule vexosAiModule ] ++ dmsBase;
+        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule vexosAiModule gliffModule ] ++ dmsBase;
         extraModules     = [];
         hostLocalModules = featuresModule ++ storageRemoteModule;
       };
       htpc = {
         homeFile         = ./home-htpc.nix;
-        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule vexosAiModule vexTheaterModule ];
+        baseModules      = commonBase ++ [ upModule vexportalModule vexVpnModule vexosAiModule vexTheaterModule gliffModule ];
         extraModules     = [];
         hostLocalModules = featuresModule ++ storageRemoteModule;
       };
@@ -414,7 +431,7 @@
         # modules/server/proxmox.nix) to avoid infinite recursion — `imports`
         # cannot safely reference _module.args.
         # vexboardBase: overlay + NixOS module for the default server dashboard.
-        baseModules      = commonBase ++ [ upModule vexportalModule vexosAiModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
+        baseModules      = commonBase ++ [ upModule vexportalModule vexosAiModule gliffModule ] ++ proxmoxBase ++ sopsBase ++ vexboardBase;
         extraModules     = [];
         hostLocalModules = serverServicesModule ++ featuresModule ++ storagePoolModule ++ storageRemoteModule;
       };
@@ -435,10 +452,10 @@
       };
       vanilla = {
         homeFile         = ./home-vanilla.nix;
-        baseModules      = [];
+        baseModules      = [ gliffModule ];
         extraModules     = [];
         # Optional feature toggles (gaming, development, print3d, virtualization,
-        # sunshine) are available on vanilla too — same /etc/nixos/features.nix
+        # gliff) are available on vanilla too — same /etc/nixos/features.nix
         # mechanism as desktop/server/htpc. Empty list when absent so vanilla
         # outputs stay buildable on machines that haven't run `just feature enable`.
         hostLocalModules = featuresModule;

@@ -1,6 +1,6 @@
 # modules/desktop-common.nix
 # DE-agnostic desktop-role additions: fonts, printing, Bluetooth, VPN plugin,
-# and Moonlight client. Applies regardless of vexos.desktop.environment
+# and ozone/portal defaults. Applies regardless of vexos.desktop.environment
 # (gnome/cosmic/hyprland) — extracted from modules/gnome.nix so COSMIC and
 # Hyprland hosts get the same baseline.
 #
@@ -12,10 +12,6 @@
 #   modules/hyprland-desktop.nix (GDM, via modules/hyprland-greeter.nix)
 { pkgs, ... }:
 {
-  # ── Moonlight client ──────────────────────────────────────────────────────
-  # Connect to other machines' Sunshine hosts (modules/sunshine.nix).
-  environment.systemPackages = [ pkgs.moonlight-qt ];
-
   # ── Fonts ─────────────────────────────────────────────────────────────────
   fonts = {
     enableDefaultPackages = true;

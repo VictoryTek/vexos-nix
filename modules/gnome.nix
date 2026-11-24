@@ -3,7 +3,7 @@
 # and the role-agnostic GNOME Shell extensions. Active only when
 # vexos.desktop.environment == "gnome" (see modules/desktop-environment.nix).
 # DE-agnostic content (fonts, printing, Bluetooth, VPN plugin, auto-login,
-# Moonlight) lives in modules/desktop-common.nix instead.
+# portal enable) lives in modules/desktop-common.nix instead.
 #
 # Role-specific additions (accent colour, dock favourites, role-only extensions,
 # Flatpak install service, extra excludePackages) live in:
@@ -164,7 +164,7 @@ in
 
   # ── GNOME Remote Desktop (RDP) — disabled ─────────────────────────────────
   # The upstream GNOME NixOS module sets this to mkDefault true. Force it off:
-  # this project uses Sunshine/Moonlight (modules/sunshine.nix) for remote
+  # this project uses gliff (modules/gliff.nix, over SSH) for remote
   # access, not GNOME's built-in RDP server.
   services.gnome.gnome-remote-desktop.enable = lib.mkForce false;
 

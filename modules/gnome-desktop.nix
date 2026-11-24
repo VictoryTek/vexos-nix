@@ -157,7 +157,7 @@ in
             "com.github.tchx84.Flatseal.desktop"
             "org.gnome.World.PikaBackup.desktop"
             "LocalSend.desktop"
-            "com.moonlight_stream.Moonlight.desktop"
+            "gliff.desktop"
           ];
         };
 
@@ -181,7 +181,6 @@ in
             "org.gnome.Logs.desktop"
             "btrfs-assistant.desktop"
             "org.gnome.SystemMonitor.desktop"
-            "dev.lizardbyte.app.Sunshine.desktop"
             "com.system76.Popsicle.desktop"
           ];
         };

@@ -233,8 +233,8 @@ in
         };
 
         # hide_passive (default true) hides any StatusNotifierItem reporting
-        # status "Passive" — Sunshine's own tray icon reports Passive, which
-        # silently hid it from the bar.
+        # status "Passive" — some apps' tray icons report Passive, which
+        # silently hid them from the bar.
         widget.tray = {
           hide_passive = false;
         };

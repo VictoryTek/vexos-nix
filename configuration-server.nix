@@ -4,7 +4,7 @@
   imports = [
     ./modules/gnome.nix
     ./modules/gnome-server.nix
-    ./modules/sunshine.nix          # self-hosted Moonlight game-stream host
+    ./modules/gliff.nix             # remote desktop over SSH (gliff)
     ./modules/audio.nix
     ./modules/gpu.nix
     ./modules/branding.nix

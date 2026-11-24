@@ -161,6 +161,26 @@
         "type": "github"
       }
     },
+    "gliff": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795539111,
+        "narHash": "sha256-IiDvl3nNH9tCa3SJA+OVDXmaNs6+tbg7fuQ45GG5CEc=",
+        "owner": "VictoryTek",
+        "repo": "gliff",
+        "rev": "717bf17f8b40a32ea6324ed5a20abb25ae193362",
+        "type": "github"
+      },
+      "original": {
+        "owner": "VictoryTek",
+        "repo": "gliff",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -359,6 +379,7 @@
       "inputs": {
         "disko": "disko",
         "dms": "dms",
+        "gliff": "gliff",
         "home-manager": "home-manager",
         "impermanence": "impermanence",
         "nixpkgs": "nixpkgs_2",

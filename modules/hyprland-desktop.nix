@@ -22,12 +22,12 @@
 #     dank-material-shell option-tree NixOS module. DMS ships no overlays.
 #     Modules in this repo stay pure and never take `inputs`.
 #
-# DE-agnostic content (fonts, printing, Bluetooth, Moonlight, base XDG portal
+# DE-agnostic content (fonts, printing, Bluetooth, base XDG portal
 # enable) comes from modules/desktop-common.nix, imported transitively via
 # modules/gnome.nix's import list (present regardless of DE, only its `config`
 # is gated).
 #
-# No remote-desktop setup here — Sunshine/Moonlight (modules/sunshine.nix) is
+# No remote-desktop setup here — gliff (modules/gliff.nix) is
 # the project's remote-access solution across all desktop environments.
 { config, pkgs, lib, ... }:
 let

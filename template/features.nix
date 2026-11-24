@@ -9,7 +9,7 @@
 #   development   — Docker, VSCodium, Python, Node, Go, Claude Code, Nix LSP
 #   print3d       — Blender, OrcaSlicer and SolidCraft (via Flatpak)
 #   virtualization — libvirtd/KVM, QEMU-KVM, GNOME Boxes / virt-manager support
-#   sunshine      — Self-hosted Moonlight game-stream host (KMS capture).
+#   gliff         — Remote desktop over SSH (connect with `gliff user@host`).
 #                   On by default on desktop/server/htpc (the project's remote-access
 #                   story); off by default on vanilla. Set to false below to opt out.
 #   vpn           — PIA VPN (WireGuard/OpenVPN) + nftables kill switch + vex-vpn
@@ -39,7 +39,7 @@
   # vexos.features.development.enable    = false;
   # vexos.features.print3d.enable        = false;
   # vexos.features.virtualization.enable = false;
-  # vexos.features.sunshine.enable       = true;   # default on desktop/server/htpc; set false to opt out
+  # vexos.features.gliff.enable          = true;   # default on desktop/server/htpc; set false to opt out
   # vexos.features.vpn.enable            = false;
   # vexos.features.ai.enable             = false;   # desktop/server/htpc only
   # vexos.desktop.environment            = "gnome";

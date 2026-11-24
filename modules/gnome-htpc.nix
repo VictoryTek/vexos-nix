@@ -66,7 +66,7 @@
             "org.gnome.World.PikaBackup.desktop"
             "LocalSend.desktop"
             "plex-htpc.desktop"
-            "com.moonlight_stream.Moonlight.desktop"
+            "gliff.desktop"
           ];
         };
 
@@ -89,7 +89,6 @@
             "org.gnome.Logs.desktop"
             "btrfs-assistant.desktop"
             "org.gnome.SystemMonitor.desktop"
-            "dev.lizardbyte.app.Sunshine.desktop"
           ];
         };
       };

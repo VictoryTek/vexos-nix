@@ -120,7 +120,7 @@ in
         #           - cpuUsage
         #           - memUsage
         #           - notificationButton  (use $mod+N)
-        # systemTray is kept — Sunshine / Vesktop / gamemode etc. need a tray.
+        # systemTray is kept — Vesktop / gamemode etc. need a tray.
         # Only the structural keys DMS reads unguarded are set; every appearance
         # key (spacing, transparency, autoHide, borders, …) is intentionally
         # omitted so DMS's own `?? default` fallbacks supply the upstream

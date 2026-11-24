@@ -8,7 +8,7 @@
     ./modules/cosmic-desktop.nix    # active only when vexos.desktop.environment == "cosmic"
     ./modules/hyprland-desktop.nix  # active only when vexos.desktop.environment == "hyprland"
     ./modules/hyprland-greeter.nix  # GDM login greeter; active only when vexos.desktop.environment == "hyprland"
-    ./modules/sunshine.nix          # self-hosted Moonlight game-stream host
+    ./modules/gliff.nix             # remote desktop over SSH (gliff)
     ./modules/gaming.nix             # optional: vexos.features.gaming.enable (bundles gpu-gaming + system-gaming)
     ./modules/development.nix        # optional: vexos.features.development.enable
     ./modules/ai.nix                 # optional: vexos.features.ai.enable (AI assistant)

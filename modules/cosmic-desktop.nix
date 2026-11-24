@@ -2,12 +2,12 @@
 # COSMIC desktop environment (System76) for the desktop role. Active only
 # when vexos.desktop.environment == "cosmic" (see
 # modules/desktop-environment.nix). DE-agnostic content (fonts, printing,
-# Bluetooth, auto-login, Moonlight, base XDG portal enable) comes from
+# Bluetooth, auto-login, base XDG portal enable) comes from
 # modules/desktop-common.nix, imported transitively via modules/gnome.nix's
 # import list (present regardless of DE, only its `config` is gated).
 #
-# No remote-desktop setup here — Sunshine/Moonlight (modules/sunshine.nix)
-# is the project's remote-access solution across all desktop environments.
+# No remote-desktop setup here — gliff (modules/gliff.nix) is installed, but
+# its server supports only Hyprland and GNOME sessions, not COSMIC.
 { config, pkgs, lib, ... }:
 let
   isCosmic = config.vexos.desktop.environment == "cosmic";

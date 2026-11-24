@@ -60,7 +60,7 @@ fix-flake:
 
 # Available optional feature names (desktop, server, htpc, and vanilla roles;
 # ai is desktop, server and htpc only).
-_feature_names := "gaming development print3d virtualization sunshine vpn kernel ai"
+_feature_names := "gaming development print3d virtualization gliff vpn kernel ai"
 
 # Guard: abort if the current host is stateless or headless-server (features not
 # supported there — neither role wires /etc/nixos/features.nix into its module set).
@@ -83,8 +83,8 @@ _feature-list: _require-desktop-role
     source "{{justfile_directory()}}/just/lib.sh"
     FEAT_FILE="/etc/nixos/features.nix"
     # $2 ("on"/"off", default "off") is the module's own default when the option is
-    # absent/commented out in features.nix — sunshine defaults to true in
-    # modules/sunshine.nix, the rest default to false.
+    # absent/commented out in features.nix — gliff defaults to true in
+    # modules/gliff.nix, the rest default to false.
     _check() {
         local feat="$1"
         local default="${2:-off}"
@@ -105,7 +105,7 @@ _feature-list: _require-desktop-role
     _check development
     _check print3d
     _check virtualization
-    _check sunshine on
+    _check gliff on
     _check vpn
     _check ai
     echo ""
@@ -196,17 +196,14 @@ _feature-enable feature: _require-desktop-role
             echo "    Features   Virtual TPM 2.0 — required for Windows 11 guests"
             echo "    Groups     User added to libvirtd (manage VMs without sudo)"
             ;;
-        sunshine)
+        gliff)
             echo "  What this adds:"
-            echo "    Services   Sunshine — self-hosted Moonlight game-stream host (KMS capture)"
-            echo "    Firewall   Sunshine's TCP/UDP port range opened automatically"
-            echo "    Groups     User added to uinput (remote mouse/keyboard input)"
+            echo "    Apps       gliff (viewer) and gliff-server — remote desktop over SSH"
+            echo "    Firewall   Nothing extra — gliff uses only SSH"
             echo ""
-            echo "  Two one-time manual steps remain after rebuild (cannot be scripted):"
-            TS_IP=$(tailscale ip -4 2>/dev/null || echo "<run 'tailscale ip -4' to find it>")
-            echo "    1. Create the WebUI admin account (first run only): https://$TS_IP:47990"
-            echo "    2. In Moonlight, add this host by IP ($TS_IP), then enter the PIN"
-            echo "       shown under the WebUI's PIN tab to pair the client."
+            echo "  Connect from another machine with: gliff user@host"
+            echo "  It mirrors a logged-in, unlocked session; a locked screen blocks capture."
+            echo "  There is no Windows client yet."
             ;;
         vpn)
             echo "  What this adds:"

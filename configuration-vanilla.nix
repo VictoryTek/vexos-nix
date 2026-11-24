@@ -3,7 +3,7 @@
 # Intentionally minimal by default — mirrors what a default nixos-generate-config +
 # GNOME desktop selection produces. Does NOT include, by default: custom kernel,
 # performance tuning, ZRAM, AppArmor, gaming, Flatpak, branding, or custom packages.
-# Optional features (gaming, development, print3d, virtualization, sunshine) are
+# Optional features (gaming, development, print3d, virtualization, gliff) are
 # available via /etc/nixos/features.nix — see `just feature enable` — but none are
 # enabled unless explicitly opted into; vanilla stays stock until then.
 { config, pkgs, lib, ... }:
@@ -23,7 +23,7 @@
     ./modules/flatpak-bundles.nix    # vexos.flatpak.bundles option (3d-print.nix SolidCraft)
     ./modules/3d-print.nix           # optional: vexos.features.print3d.enable
     ./modules/virtualization.nix     # optional: vexos.features.virtualization.enable
-    ./modules/sunshine.nix           # optional: vexos.features.sunshine.enable
+    ./modules/gliff.nix              # optional: vexos.features.gliff.enable
   ];
 
   # Stub option: gaming.nix (imported above) sets vexos.gnome.extraExtensions to
@@ -63,11 +63,11 @@
     # ProtonPlus, PrismLauncher) — both toggles are needed for those.
     vexos.flatpak.enable = lib.mkDefault false;
 
-    # modules/sunshine.nix defaults vexos.features.sunshine.enable to true (it's the
+    # modules/gliff.nix defaults vexos.features.gliff.enable to true (it's the
     # project's remote-access story on every other role) — override back to false here
     # for the same reason as flatpak above: vanilla stays stock until explicitly opted
     # into via /etc/nixos/features.nix.
-    vexos.features.sunshine.enable = lib.mkDefault false;
+    vexos.features.gliff.enable = lib.mkDefault false;
 
     # ---------- GNOME desktop (stock NixOS default) ----------
     # Mirrors the desktop environment a standard NixOS GNOME install provides.

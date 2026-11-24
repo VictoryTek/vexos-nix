@@ -53,7 +53,6 @@
             "org.gnome.tweaks.desktop"
             "io.github.flattool.Warehouse.desktop"
             "com.github.tchx84.Flatseal.desktop"
-            "com.moonlight_stream.Moonlight.desktop"
           ];
         };
 
