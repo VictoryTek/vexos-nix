@@ -97,6 +97,18 @@ GITIGNORE
       echo "✓ Wrapper now loads /etc/nixos/local.nix when present."
     fi
 
+    # ── Drop options removed upstream from features.nix ──────────────────
+    # features.nix is host-owned and never resynced. Sunshine/Moonlight were
+    # replaced by gliff, and a leftover `vexos.features.sunshine.enable` line
+    # now fails evaluation (mkRemovedOptionModule in modules/gliff.nix).
+    # Delete only an uncommented assignment; commented template lines are
+    # harmless. Runs before the tracking commit below so the edit is committed.
+    if [ -f /etc/nixos/features.nix ] \
+       && grep -qE '^[[:space:]]*vexos\.features\.sunshine\.enable[[:space:]]*=' /etc/nixos/features.nix; then
+      sed -i -E '/^[[:space:]]*vexos\.features\.sunshine\.enable[[:space:]]*=/d' /etc/nixos/features.nix
+      echo "✓ Removed obsolete vexos.features.sunshine line from features.nix (replaced by gliff)."
+    fi
+
     # ── Repair repos initialised with old gitignore ──────────────────────
     # Earlier versions of this migration excluded hardware-configuration.nix,
     # kernel-install-override.nix, and stateless-user-override.nix from git,
