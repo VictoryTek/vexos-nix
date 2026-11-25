@@ -193,7 +193,7 @@ in
     };
 
     virtualisation.oci-containers.containers.grimmory = {
-      image = "grimmory/grimmory:v3.5.0";
+      image = "grimmory/grimmory:v3.5.1";
       ports = [ "${toString cfg.port}:6060" ];
       environment = {
         USER_ID            = toString cfg.userId;
