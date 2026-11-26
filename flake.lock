@@ -168,11 +168,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795577406,
-        "narHash": "sha256-NBUABy1ZQyQfPBnAWOGtJbDwHaWrsVVVsyeL/eorR+w=",
+        "lastModified": 1795652553,
+        "narHash": "sha256-8tBSoKXnQ7wgcP+EzNpE9VL7dqltv9NpMW6IjTwCk7g=",
         "owner": "VictoryTek",
         "repo": "gliff",
-        "rev": "5f147693690acbc425fddc625f6cdc18164493b7",
+        "rev": "a5764978b660641c50dc9c26e2108ce0dac84803",
         "type": "github"
       },
       "original": {
