@@ -22,7 +22,7 @@
   "solidcraft": {
     "owner": "tangency-labs",
     "appId": "io.tangencylabs.solidcraft",
-    "version": "0.49.1",
-    "hash": "sha256-RS5T3PbWbYyjTgEFj90trd0ucKYG+K9vXQ8VNOsAHIQ="
+    "version": "0.50.0",
+    "hash": "sha256-pSTNn6nZE6CX9uXlyaqkHkO6dBsV7wr8jnh/GKJWes8="
   }
 }
