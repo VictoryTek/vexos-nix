@@ -55,6 +55,7 @@
   environment.systemPackages = with pkgs; [
     gnome-boxes
     popsicle
+    marktext  # Markdown editor (Office folder)
   ];
 
   # ---------- State version ----------

@@ -238,7 +238,7 @@
       Type            = "oneshot";
       RemainAfterExit = true;
       ExecStart       = toString (pkgs.writeShellScript "vexos-init-app-folders-desktop" ''
-        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v13"
+        STAMP="$HOME/.local/share/vexos/.dconf-app-folders-initialized-v14"
         [ -f "$STAMP" ] && exit 0
 
         D="${pkgs.dconf}/bin/dconf"
@@ -256,7 +256,7 @@
 
         $D write /org/gnome/desktop/app-folders/folders/Office/name   "'Office'"
         $D write /org/gnome/desktop/app-folders/folders/Office/apps \
-          "['org.onlyoffice.desktopeditors.desktop', 'org.gnome.TextEditor.desktop', 'org.gnome.Papers.desktop', 'net.cozic.joplin_desktop.desktop', 'ai.storyteller.wordcraft.desktop', 'ai.storyteller.gridcraft.desktop', 'ai.storyteller.pdfcraft.desktop']"
+          "['org.onlyoffice.desktopeditors.desktop', 'org.gnome.TextEditor.desktop', 'org.gnome.Papers.desktop', 'net.cozic.joplin_desktop.desktop', 'marktext.desktop', 'ai.storyteller.wordcraft.desktop', 'ai.storyteller.gridcraft.desktop', 'ai.storyteller.pdfcraft.desktop']"
 
         $D write /org/gnome/desktop/app-folders/folders/Graphics/name "'Graphics'"
         $D write /org/gnome/desktop/app-folders/folders/Graphics/apps \

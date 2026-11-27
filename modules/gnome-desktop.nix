@@ -133,6 +133,7 @@ in
             "org.gnome.TextEditor.desktop"
             "org.gnome.Papers.desktop"
             "net.cozic.joplin_desktop.desktop"
+            "marktext.desktop"
             "ai.storyteller.wordcraft.desktop"
             "ai.storyteller.gridcraft.desktop"
             "ai.storyteller.pdfcraft.desktop"
