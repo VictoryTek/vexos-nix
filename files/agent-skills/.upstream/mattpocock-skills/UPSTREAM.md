@@ -5,31 +5,33 @@
 - License: MIT, Copyright (c) 2026 Matt Pocock (`LICENSE` next to this file).
 - Local changes: none. Every folder is a byte-for-byte copy of the upstream folder, including `agents/openai.yaml`.
 
-Skills copied, from `skills/engineering/`:
+Skills copied: every skill in the promoted buckets `skills/engineering/` and `skills/productivity/`, which is the set
+upstream ships in its Claude Code plugin (`.claude-plugin/plugin.json`):
 
-- Requested: grill-with-docs, domain-modeling, to-spec, to-tickets, implement, code-review, retro, tdd,
-  setup-matt-pocock-skills.
-- Pulled in because a skill calls them with the Skill tool: `codebase-design` (from `tdd`) and, from
-  `skills/productivity/`, `writing-for-agents` (from `retro`).
+- engineering: ask-matt, code-review, codebase-design, diagnosing-bugs, domain-modeling, grill-with-docs, implement,
+  implement-spec, improve-codebase-architecture, pr, prototype, research, retro, setup-matt-pocock-skills, tdd,
+  to-spec, to-tickets, triage, wayfinder, wizard.
+- productivity: grill-me, grilling, handoff, teach, to-questionnaire, wait-what, writing-for-agents.
 
-Already vendored separately, with their own `UPSTREAM.md` (commit `5863806`, content identical to this commit):
-`grilling` and `grill-me`. `grill-with-docs` calls `grilling`.
+`grilling` and `grill-me` keep their own `UPSTREAM.md` (commit `5863806`, content identical to this commit).
 
-Not copied: the other upstream skills. The ones the copied skills only mention conditionally are `triage`,
-`wayfinder`, `prototype`, `research`, `pr`, `improve-codebase-architecture`. `setup-matt-pocock-skills` asks whether
-`triage` is installed and skips its triage-label section when it is not.
+Not copied: `skills/in-progress/` (upstream marks them beta and leaves them out of its plugin), `skills/misc/` (kept
+upstream but "rarely used, not promoted") and `skills/deprecated/`.
 
 ## Things to know
 
 - **Names.** `code-review` has the same name as Claude Code's built-in `/code-review`. Check which one wins when
   you invoke it.
-- **Manual-only skills.** `grill-with-docs`, `to-spec`, `to-tickets`, `implement`, `retro` and
-  `setup-matt-pocock-skills` set `disable-model-invocation: true`. They only run when you type the command.
+- **Manual-only skills.** `ask-matt`, `grill-with-docs`, `grill-me`, `handoff`, `implement`, `implement-spec`,
+  `improve-codebase-architecture`, `retro`, `setup-matt-pocock-skills`, `teach`, `to-questionnaire`, `to-spec`,
+  `to-tickets`, `triage`, `wait-what` and `wayfinder` set `disable-model-invocation: true`. They only run when you
+  type the command.
 - **Setup first.** `to-spec`, `to-tickets` and `code-review` expect the issue tracker settings that
   `/setup-matt-pocock-skills` writes into a repo's `CLAUDE.md`/`AGENTS.md` and `docs/agents/`. Run it once per repo.
-- **git rules.** `implement` ends with "Commit your work to the current branch". In this repo `CLAUDE.md` forbids
+- **git rules.** `implement` (and other skills that commit or open PRs, such as `pr`) ends with "Commit your work to the current branch". In this repo `CLAUDE.md` forbids
   `git commit`, and that rule wins.
-- **Scripts.** None of the copied skills bundle scripts.
+- **Scripts.** Only `wizard` bundles one (`template.sh`, the library for the bash wizards it generates). It runs only
+  when you use that skill.
 
 ## Updating
 
