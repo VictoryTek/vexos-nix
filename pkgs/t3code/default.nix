@@ -18,18 +18,21 @@
 #   1. Update `version` below (latest non-prerelease at
 #      https://github.com/pingdotgg/t3code/releases).
 #   2. Run:
-#        HASH=$(nix-prefetch-url https://github.com/pingdotgg/t3code/releases/download/v<VER>/T3-Code-<VER>-x86_64.AppImage)
+#        HASH=$(nix-prefetch-url https://github.com/pingdotgg/t3code/releases/download/v<VER>/T3-Code-x86_64.AppImage)
 #        nix hash convert --hash-algo sha256 --to sri "$HASH"
 #   3. Replace `hash` with the new SRI string.
 { lib, appimageTools, fetchurl }:
 
 let
   pname = "t3code";
-  version = "0.1.9";
+  version = "0.1.13";
 
   src = fetchurl {
-    url = "https://github.com/pingdotgg/t3code/releases/download/v${version}/T3-Code-${version}-x86_64.AppImage";
-    hash = "sha256-0KtW3z4zjyQoSENWISl/2WOjNxWw2CCNvwg5lllXLYE=";
+    url = "https://github.com/pingdotgg/t3code/releases/download/v${version}/T3-Code-x86_64.AppImage";
+    # Upstream's filename carries no version; keep it in the store name so a bumped
+    # version with a stale hash fails instead of silently reusing the old download.
+    name = "T3-Code-${version}-x86_64.AppImage";
+    hash = "sha256-2sG76ek8Gl+wlCMyvvqZhZf2oIYjKod2bvXYI1pE9W0=";
   };
 
   # Pulls the AppImage's own .desktop file and hicolor icon set out at build time so

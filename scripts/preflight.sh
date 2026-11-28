@@ -452,8 +452,16 @@ echo "[8/12] Building pkgs.vexos.vexos-update (shellcheck runs at build time)...
 # as part of the build — this is a fast, standalone way to catch shellcheck
 # regressions even when CHECK 2's full dry-build is skipped (no sudo, no
 # /etc/nixos files present — the common case on a dev machine).
-if nix build --impure --no-link \
-    ".#nixosConfigurations.vexos-desktop-amd.pkgs.vexos.vexos-update" 2>&1; then
+# Built from the overlay against the flake's nixpkgs rather than through a
+# nixosConfiguration, which would need /etc/nixos/hardware-configuration.nix.
+if nix build --impure --no-link --expr '
+    let
+      flake = builtins.getFlake (toString ./.);
+      pkgs  = import flake.inputs.nixpkgs {
+        system   = "x86_64-linux";
+        overlays = [ (import ./pkgs) ];
+      };
+    in pkgs.vexos.vexos-update' 2>&1; then
   pass "pkgs.vexos.vexos-update builds (shellcheck passed)"
 else
   fail "pkgs.vexos.vexos-update failed to build — check shellcheck output above"

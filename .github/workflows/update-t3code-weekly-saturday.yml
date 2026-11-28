@@ -76,7 +76,7 @@ jobs:
             exit 0
           fi
 
-          url="https://github.com/pingdotgg/t3code/releases/download/v${latest}/T3-Code-${latest}-x86_64.AppImage"
+          url="https://github.com/pingdotgg/t3code/releases/download/v${latest}/T3-Code-x86_64.AppImage"
           raw=$(nix-prefetch-url "$url")
           hash=$(nix hash convert --hash-algo sha256 --to sri "$raw")
           echo "New hash: $hash"
